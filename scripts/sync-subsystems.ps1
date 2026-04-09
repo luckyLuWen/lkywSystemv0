@@ -27,7 +27,7 @@ function Copy-DirectoryContents {
   )
 
   if (-not (Test-Path -LiteralPath $Source)) {
-    throw "Source path not found: $Source"
+    throw "未找到源目录: $Source"
   }
 
   Reset-Directory -Path $Target
@@ -43,7 +43,7 @@ function Convert-ViteIndexToRelative {
   )
 
   if (-not (Test-Path -LiteralPath $IndexPath)) {
-    throw "Index file not found: $IndexPath"
+    throw "未找到入口文件: $IndexPath"
   }
 
   $content = Get-Content -LiteralPath $IndexPath -Raw
@@ -85,4 +85,4 @@ foreach ($target in $targets) {
   }
 }
 
-Write-Host 'Subsystem public assets synced successfully.'
+Write-Host '子系统静态资源同步完成。'

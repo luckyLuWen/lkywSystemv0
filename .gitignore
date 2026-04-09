@@ -1,4 +1,4 @@
-# Logs
+# 日志
 logs/
 *.log
 npm-debug.log*
@@ -7,7 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Node
+# Node 依赖与构建产物
 **/node_modules/
 **/dist/
 dist-ssr/
@@ -16,16 +16,16 @@ coverage/
 *.tsbuildinfo
 .eslintcache
 
-# Python
+# Python 缓存
 **/__pycache__/
 *.pyc
 *.pyo
 
-# Local data and media
+# 本地数据与媒体文件
 *.db
 *.mp4
 
-# Editor directories and files
+# 编辑器文件
 .DS_Store
 .idea/
 *.suo

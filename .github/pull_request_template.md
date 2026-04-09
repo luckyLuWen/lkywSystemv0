@@ -1,22 +1,22 @@
-## Summary
+## 一、改动说明
 
-- What changed:
-- Why it changed:
+- 改了什么：
+- 为什么改：
 
-## Scope
+## 二、范围确认
 
-- [ ] Only files related to my task are included
-- [ ] I verified locally in my own environment
-- [ ] I created this branch from `develop`
-- [ ] I am targeting `develop`
+- [ ] 本次提交只包含与当前任务相关的文件
+- [ ] 我已经在自己的本地环境验证过
+- [ ] 这个分支是从 `develop` 拉出来的
+- [ ] 本次 PR 的目标分支是 `develop`
 
-## Integration
+## 三、集成确认
 
-- [ ] No main shell integration asset changed
-- [ ] I rebuilt the affected subsystem if needed
-- [ ] I ran `.\scripts\sync-subsystems.ps1` when required
+- [ ] 本次改动不涉及主程序集成静态资源
+- [ ] 如果涉及子系统集成，我已重新构建相关子系统
+- [ ] 如果需要，我已执行 `.\scripts\sync-subsystems.ps1`
 
-## Risk check
+## 四、风险检查
 
-- [ ] No `node_modules`, `dist`, or cache files are included
-- [ ] Shared files were changed intentionally and communicated
+- [ ] 没有提交 `node_modules`、`dist`、缓存文件等无关内容
+- [ ] 如果改了共享文件，我已经提前沟通过
