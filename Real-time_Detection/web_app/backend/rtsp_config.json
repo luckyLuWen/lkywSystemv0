@@ -1,0 +1,17 @@
+{
+  "rtsp_streams": [
+    {
+      "id": "rtsp_cam_01",
+      "name": "OBS模拟摄像头-01",
+      "url": "rtsp://localhost:8554/live",
+      "location": "测试区域A",
+      "enabled": true
+    }
+  ],
+  "model_path": "../../yolo11s.pt",
+  "detection_settings": {
+    "confidence_threshold": 0.25,
+    "frame_skip": 0,
+    "max_retries": 5
+  }
+}

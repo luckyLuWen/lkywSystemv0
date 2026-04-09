@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Wuhan Traffic Digital Twin</title>
+  <link href="Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <script src="Build/Cesium/Cesium.js"></script>
+
+  <style>
+    html,
+    body,
+    #cesiumContainer {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #000;
+    }
+
+    #videoOverlay {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 480px;
+      background: rgba(11, 14, 30, 0.9);
+      border: 1px solid #00C4FF;
+      z-index: 1000;
+      box-shadow: 0 0 20px rgba(0, 196, 255, 0.5);
+      padding: 15px;
+      border-radius: 4px;
+      color: #fff;
+      font-family: sans-serif;
+    }
+
+    .overlay-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      border-bottom: 1px solid rgba(0, 196, 255, 0.3);
+      padding-bottom: 5px;
+    }
+
+    .overlay-title {
+      color: #00C4FF;
+      margin: 0;
+      font-size: 16px;
+    }
+
+    #closeBtn {
+      cursor: pointer;
+      font-size: 18px;
+      color: #ccc;
+      transition: color 0.3s;
+    }
+
+    #closeBtn:hover {
+      color: #ff4d4f;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="cesiumContainer"></div>
+
+  <div id="videoOverlay">
+    <div class="overlay-header">
+      <h3 class="overlay-title" id="videoTitle">交通事故现场监控录像</h3>
+      <div id="closeBtn" onclick="closeVideo()">✖</div>
+    </div>
+    <video id="trafficVideo" width="100%" controls muted></video>
+  </div>
+
+  <script>
+    // 建议使用你自己的 Ion Token
+    Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJlZTYwYWU0Yi1lMTg5LTQwM2MtYjgyMy1jYmIyODc4N2JjZDUiLCJpZCI6MzUwMzc1LCJpYXQiOjE3Njg0ODM5MzV9.Z8UGl8_DELPXzFXnPCHG4P8-B79k0wSQwF-67oA5WqA';
+
+    (async function () {
+      if (typeof Cesium === 'undefined') {
+        alert("错误：Cesium 库未加载！");
+        return;
+      }
+
+      const viewer = new Cesium.Viewer('cesiumContainer', {
+        terrain: Cesium.Terrain.fromWorldTerrain(),
+        animation: false,
+        timeline: false,
+        baseLayerPicker: false,
+        sceneMode: Cesium.SceneMode.SCENE3D,
+      });
+
+      viewer.scene.globe.showGroundAtmosphere = false;
+      viewer.scene.skyBox.show = false;
+      viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#0b0e1e');
+
+      // 视角定位到事故区域
+      viewer.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(113.087, 30.250, 15000),
+        orientation: {
+          heading: 0.0,
+          pitch: Cesium.Math.toRadians(-35.0),
+          roll: 0.0
+        }
+      });
+
+      // 加载 OSM 科技感建筑
+      try {
+        const tileset = await Cesium.createOsmBuildingsAsync();
+        viewer.scene.primitives.add(tileset);
+        tileset.style = new Cesium.Cesium3DTileStyle({
+          color: { conditions: [['true', "color('#00C4FF', 0.5)"]] }
+        });
+      } catch (error) {
+        console.error("建筑加载失败:", error);
+      }
+
+      // --- 模型加载辅助函数 ---
+      function createModel(id, name, lon, lat, modelPath, headingDeg) {
+        const position = Cesium.Cartesian3.fromDegrees(lon, lat, 0); // 高度设为0贴地
+        const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(headingDeg), 0, 0);
+        const orientation = Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
+
+        return viewer.entities.add({
+          id: id,
+          name: name,
+          position: position,
+          orientation: orientation,
+          model: {
+            uri: modelPath, // 此处为模型路径
+            minimumPixelSize: 128,
+            maximumScale: 20000,
+            runAnimations: true // 如果 Blender 导出的模型带动画，设为 true
+          }
+        });
+      }
+
+      // ================================================================
+      // 【模型路径替换区】
+      // 请将下面的 './models/...' 替换为你实际的 .glb 文件存放路径
+      // ================================================================
+
+      // 1. 市区道路：油罐车泄漏模型
+      createModel(
+        'model_leak', 
+        '市区道路-油罐车泄漏现场', 
+        113.070272, 
+        30.238683, 
+        './models/tanker_leak_scene.glb', // <--- 【此处替换为油罐车泄漏模型路径】
+        45.0 // 调整模型朝向角度
+      );
+
+      // 2. 高速公路：货车追尾模型
+      createModel(
+        'model_crash', 
+        '高速公路-货车追尾现场', 
+        113.104833, 
+        30.385469, 
+        './models/truck_collision_scene.glb', // <--- 【此处替换为货车追尾模型路径】
+        180.0 // 调整模型朝向角度
+      );
+
+      // ================================================================
+
+      // 添加红色控制点，代表事故点位置
+      function createAccidentPoint(id, name, lon, lat, videoPath) {
+        return viewer.entities.add({
+          id: id,
+          name: name,
+          position: Cesium.Cartesian3.fromDegrees(lon, lat, 100), // 高度设为100米，使其突出显示
+          point: {
+            pixelSize: 10,
+            color: Cesium.Color.RED,
+            outlineColor: Cesium.Color.WHITE,
+            outlineWidth: 2,
+            scaleByDistance: new Cesium.NearFarScalar(1000, 1, 10000, 0.5)
+          },
+          description: name
+        });
+      }
+
+      // 创建两个事故点
+      createAccidentPoint(
+        'accident_leak', 
+        '市区道路-油罐车泄漏现场', 
+        113.070272, 
+        30.238683, 
+        './video/accident-xielou.mp4'
+      );
+
+      createAccidentPoint(
+        'accident_crash', 
+        '高速公路-货车追尾现场', 
+        113.104833, 
+        30.385469, 
+        './video/accident10001-0120.mp4'
+      );
+
+      // 保留原有点击交互逻辑
+      const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+      handler.setInputAction(function (click) {
+        const pickedObject = viewer.scene.pick(click.position);
+        if (Cesium.defined(pickedObject) && pickedObject.id) {
+          const entity = pickedObject.id;
+          // 如果点击的是模型或事故点，可以触发特定视频
+          let videoPath;
+          let videoTitle;
+          
+          if (entity.id === 'model_leak' || entity.id === 'accident_leak') {
+            videoPath = './video/accident-xielou.mp4';
+            videoTitle = '市区道路-油罐车泄漏现场 - 实时监控';
+          } else if (entity.id === 'model_crash' || entity.id === 'accident_crash') {
+            videoPath = './video/accident10001-0120.mp4';
+            videoTitle = '高速公路-货车追尾现场 - 实时监控';
+          }
+          
+          if (videoPath) {
+            document.getElementById('videoTitle').innerText = videoTitle;
+            const videoElement = document.getElementById('trafficVideo');
+            videoElement.src = videoPath;
+            videoElement.load();
+            document.getElementById('videoOverlay').style.display = 'block';
+            videoElement.play().catch(e => console.log("播放被拦截:", e));
+          }
+        }
+      }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+    })();
+
+    function closeVideo() {
+      const overlay = document.getElementById('videoOverlay');
+      const videoElement = document.getElementById('trafficVideo');
+      overlay.style.display = 'none';
+      videoElement.pause();
+    }
+  </script>
+</body>
+
+</html>

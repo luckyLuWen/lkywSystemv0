@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>“两客一危”智能救援系统</title>
+    <style>
+        /* CSS 变量，定义科技风主题色 */
+        :root {
+            --primary-color: #00e5ff;
+            --text-color: #ffffff;
+            --bg-color: #020813;
+            --panel-bg: rgba(4, 20, 40, 0.6);
+            --border-color: rgba(0, 229, 255, 0.3);
+            --glow-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+        }
+
+        /* 基础重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
+            background-image: radial-gradient(circle at center, #0a1b35 0%, #020813 100%);
+        }
+
+        /* 整体布局容器 */
+        .dashboard-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 20px;
+        }
+
+        /* 顶部导航栏 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 60px;
+            margin-bottom: 20px;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-color);
+            text-shadow: var(--glow-shadow);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 30px;
+        }
+
+        .header-nav a {
+            color: #ddd;
+            text-decoration: none;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+
+        .header-nav a:hover, .header-nav a.active {
+            color: var(--primary-color);
+            text-shadow: var(--glow-shadow);
+        }
+
+        .header-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 14px;
+        }
+
+        /* 主体内容区（三列布局） */
+        .main-content {
+            display: flex;
+            flex: 1;
+            gap: 20px;
+        }
+
+        /* 左右两侧面板通用样式 */
+        .side-panel {
+            flex: 0 0 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 10;
+        }
+
+        /* 模块卡片样式 */
+        .card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: inset 0 0 15px rgba(0, 229, 255, 0.1);
+            backdrop-filter: blur(5px);
+            flex: 1;
+        }
+
+        .card-title {
+            font-size: 18px;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            text-shadow: var(--glow-shadow);
+        }
+
+        /* 左侧：统计列表 */
+        .stat-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .stat-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .icon-cyan { background-color: #00e5ff; box-shadow: 0 0 8px #00e5ff; }
+        .icon-red { background-color: #ff3333; box-shadow: 0 0 8px #ff3333; }
+        .icon-green { background-color: #33ff33; box-shadow: 0 0 8px #33ff33; }
+
+        .stat-value {
+            font-size: 20px;
+            color: var(--primary-color);
+            font-family: monospace;
+        }
+
+        /* 左侧：任务栏切换 */
+        .task-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 15px;
+        }
+        
+        .task-tabs span {
+            padding: 5px 15px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #aaa;
+        }
+        
+        .task-tabs span.active {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .task-list {
+            list-style: none;
+            font-size: 14px;
+        }
+
+        .task-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .task-list li span:last-child {
+            color: var(--primary-color);
+        }
+
+        /* 中间：地图区域 (占位) */
+        .center-panel {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            background: radial-gradient(circle, rgba(0,229,255,0.05) 0%, transparent 70%);
+        }
+
+        .map-placeholder-text {
+            color: var(--primary-color);
+            font-size: 24px;
+            opacity: 0.5;
+            letter-spacing: 2px;
+        }
+
+        /* 右侧：气象预报 */
+        .weather-box {
+            display: flex;
+            justify-content: space-between;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .weather-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .weather-temp {
+            font-size: 18px;
+            color: #ff9900;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-container">
+    <header class="header">
+        <div class="header-title">
+            <span style="font-size: 28px;">&#8859;</span> “两客一危”智能救援系统
+        </div>
+        <nav class="header-nav">
+            <a href="#">传感器管理</a>
+            <a href="#" class="active">实时检测</a>
+            <a href="#">协同响应</a>
+            <a href="#">精细建模</a>
+            <a href="#">仿真推演</a>
+        </nav>
+        <div class="header-info">
+            <span>多云 32°C</span>
+            <span>09:01:00</span>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <aside class="side-panel">
+            <div class="card">
+                <div class="card-title">应急任务年度统计</div>
+                <div class="stat-list">
+                    <div class="stat-item">
+                        <div style="display: flex; align-items: center;">
+                            <div class="stat-icon icon-cyan"></div>
+                            <span>任务数量</span>
+                        </div>
+                        <span class="stat-value">1802</span>
+                    </div>
+                    <div style="font-size: 12px; color: #aaa; margin-left: 30px;">A级 32% &nbsp; B级 28% &nbsp; C级 40%</div>
+                    
+                    <div class="stat-item" style="margin-top: 10px;">
+                        <div style="display: flex; align-items: center;">
+                            <div class="stat-icon icon-red"></div>
+                            <span>待完成数量</span>
+                        </div>
+                        <span class="stat-value">106</span>
+                    </div>
+                    
+                    <div class="stat-item">
+                        <div style="display: flex; align-items: center;">
+                            <div class="stat-icon icon-green"></div>
+                            <span>已完成数量</span>
+                        </div>
+                        <span class="stat-value">1693</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title" style="display: flex; justify-content: space-between;">
+                    应急任务栏
+                    <span style="font-size: 14px; cursor: pointer;">更多 ></span>
+                </div>
+                <div class="task-tabs">
+                    <span class="active">新任务</span>
+                    <span>进行中</span>
+                    <span>已完结</span>
+                </div>
+                <ul class="task-list">
+                    <li><span>某时某地发生车祸</span> <span>2020*-1-21</span></li>
+                    <li><span>某时某地发生车祸</span> <span>2020*-1-21</span></li>
+                    <li><span>某时某地发生车祸</span> <span>2020*-1-21</span></li>
+                    <li><span>某时某地发生车祸</span> <span>2020*-1-21</span></li>
+                </ul>
+            </div>
+        </aside>
+
+        <section class="center-panel">
+            <div class="map-placeholder-text">[ 此处嵌入 3D 地图 / WebGL 引擎 ]</div>
+        </section>
+
+        <aside class="side-panel">
+            <div class="card" style="flex: 0.5;">
+                <div class="card-title">气象预报</div>
+                <div class="weather-box">
+                    <div class="weather-item">
+                        <span>2025/12/4</span>
+                        <span class="weather-temp">25°C</span>
+                        <span>☁️ 多云</span>
+                        <span>11-25 °C</span>
+                    </div>
+                    <div class="weather-item">
+                        <span>2025/12/5</span>
+                        <span class="weather-temp">26°C</span>
+                        <span>☀️ 晴</span>
+                        <span>20-26 °C</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="flex: 1.5;">
+                <div class="card-title">通知栏</div>
+                <div style="color: #666; text-align: center; margin-top: 50px;">暂无最新通知</div>
+            </div>
+        </aside>
+    </main>
+</div>
+
+</body>
+</html>

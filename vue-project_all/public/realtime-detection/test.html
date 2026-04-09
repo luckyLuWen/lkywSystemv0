@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>测试页面</title>
+</head>
+<body>
+    <h1>如果你能看到这个，说明HTML加载正常</h1>
+    <p>后端状态: <span id="status">检测中...</span></p>
+    
+    <script>
+        // 测试后端连接
+        fetch('http://localhost:5000/api/health')
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('status').textContent = '✅ ' + data.message;
+                document.getElementById('status').style.color = 'green';
+            })
+            .catch(err => {
+                document.getElementById('status').textContent = '❌ 无法连接: ' + err.message;
+                document.getElementById('status').style.color = 'red';
+            });
+    </script>
+</body>
+</html>

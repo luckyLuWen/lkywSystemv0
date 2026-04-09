@@ -1,0 +1,146 @@
+{
+  "cameras": [
+    {
+      "camera_id": "CAM_G15_K120_N01",
+      "name": "G15高速K120+500北向01号摄像头",
+      "rtsp_url": "rtsp://192.168.1.100:554/stream1",
+      "ip_address": "192.168.1.100",
+      "status": "online",
+      "location": {
+        "latitude": 31.2304,
+        "longitude": 121.4737,
+        "altitude": 15.5,
+        "address": "上海市浦东新区G15沈海高速K120+500",
+        "road_name": "G15沈海高速",
+        "mileage": "K120+500",
+        "direction": "北向",
+        "lane": "主线",
+        "coverage_range": "K120+300至K120+700"
+      },
+      "device_info": {
+        "manufacturer": "Hikvision",
+        "model": "DS-2CD2T47G2-L",
+        "serial_number": "DS2CD2T47G2L20220815AAWRC12345678",
+        "firmware_version": "V5.7.3",
+        "install_date": "2023-06-15",
+        "maintenance_date": "2024-12-01"
+      },
+      "detection_config": {
+        "enable_fire_detection": true,
+        "confidence_threshold": 0.25,
+        "alert_level": "high",
+        "contact_person": "张三",
+        "contact_phone": "13800138000"
+      }
+    },
+    {
+      "camera_id": "CAM_G15_K120_S01",
+      "name": "G15高速K120+500南向01号摄像头",
+      "rtsp_url": "rtsp://192.168.1.101:554/stream1",
+      "ip_address": "192.168.1.101",
+      "status": "online",
+      "location": {
+        "latitude": 31.2298,
+        "longitude": 121.4735,
+        "altitude": 15.5,
+        "address": "上海市浦东新区G15沈海高速K120+500",
+        "road_name": "G15沈海高速",
+        "mileage": "K120+500",
+        "direction": "南向",
+        "lane": "主线",
+        "coverage_range": "K120+300至K120+700"
+      },
+      "device_info": {
+        "manufacturer": "Hikvision",
+        "model": "DS-2CD2T47G2-L",
+        "serial_number": "DS2CD2T47G2L20220815AAWRC12345679",
+        "firmware_version": "V5.7.3",
+        "install_date": "2023-06-15",
+        "maintenance_date": "2024-12-01"
+      },
+      "detection_config": {
+        "enable_fire_detection": true,
+        "confidence_threshold": 0.25,
+        "alert_level": "high",
+        "contact_person": "张三",
+        "contact_phone": "13800138000"
+      }
+    },
+    {
+      "camera_id": "CAM_G2_K85_E01",
+      "name": "G2京沪高速K85+200东向01号摄像头",
+      "rtsp_url": "rtsp://192.168.2.100:554/stream1",
+      "ip_address": "192.168.2.100",
+      "status": "online",
+      "location": {
+        "latitude": 31.1234,
+        "longitude": 121.5678,
+        "altitude": 12.0,
+        "address": "江苏省苏州市G2京沪高速K85+200",
+        "road_name": "G2京沪高速",
+        "mileage": "K85+200",
+        "direction": "东向",
+        "lane": "主线",
+        "coverage_range": "K85+000至K85+400"
+      },
+      "device_info": {
+        "manufacturer": "Dahua",
+        "model": "DH-IPC-HFW5442E-ZE",
+        "serial_number": "DH5442EZE20230320BBXYZ98765432",
+        "firmware_version": "V2.840.0000000.35.R",
+        "install_date": "2023-08-20",
+        "maintenance_date": "2024-11-15"
+      },
+      "detection_config": {
+        "enable_fire_detection": true,
+        "confidence_threshold": 0.30,
+        "alert_level": "medium",
+        "contact_person": "李四",
+        "contact_phone": "13900139000"
+      }
+    },
+    {
+      "camera_id": "DRONE_UAV001",
+      "name": "应急无人机UAV001",
+      "rtsp_url": "rtsp://192.168.100.50:554/live",
+      "ip_address": "192.168.100.50",
+      "status": "standby",
+      "location": {
+        "latitude": 0.0,
+        "longitude": 0.0,
+        "altitude": 0.0,
+        "address": "动态位置（实时GPS）",
+        "road_name": "N/A",
+        "mileage": "N/A",
+        "direction": "N/A",
+        "lane": "N/A",
+        "coverage_range": "动态覆盖"
+      },
+      "device_info": {
+        "manufacturer": "DJI",
+        "model": "Matrice 300 RTK",
+        "serial_number": "DJI300RTK20240101CCABC11223344",
+        "firmware_version": "V07.00.01.00",
+        "install_date": "2024-01-15",
+        "maintenance_date": "2024-12-10"
+      },
+      "detection_config": {
+        "enable_fire_detection": true,
+        "confidence_threshold": 0.25,
+        "alert_level": "critical",
+        "contact_person": "王五",
+        "contact_phone": "13700137000",
+        "gps_update_interval": 1.0,
+        "is_mobile": true
+      }
+    }
+  ],
+  "metadata": {
+    "version": "1.0",
+    "last_update": "2025-12-20T10:00:00Z",
+    "total_cameras": 4,
+    "online_cameras": 3,
+    "offline_cameras": 0,
+    "standby_cameras": 1
+  }
+}

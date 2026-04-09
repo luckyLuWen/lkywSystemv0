@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>两客一危交通事故检测系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .status {
+            text-align: right;
+        }
+        
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        
+        .tabs {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            background: white;
+        }
+        
+        .tab:hover {
+            background: #f9fafb;
+        }
+        
+        .tab.active {
+            border-bottom-color: #667eea;
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .content {
+            display: none;
+        }
+        
+        .content.active {
+            display: block;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .card h3 {
+            margin-bottom: 15px;
+            color: #667eea;
+            font-size: 20px;
+        }
+        
+        .settings {
+            margin-bottom: 15px;
+        }
+        
+        .settings label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .settings input[type="range"] {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .upload-area {
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f7fafc;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #edf2f7;
+        }
+        
+        .upload-icon {
+            font-size: 60px;
+            color: #cbd5e0;
+            margin-bottom: 15px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #059669;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .result-image {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin: 20px 0;
+        }
+        
+        .detection-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .info-box {
+            background: #f0f9ff;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .info-box h4 {
+            color: #667eea;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .info-box p {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .detection-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .detection-badge {
+            background: #10b981;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        
+        video {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .footer {
+            background: #1f2937;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+        }
+        
+        .model-info {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .model-info h4 {
+            color: #92400e;
+            margin-bottom: 5px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .frame-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .frame-card h5 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .frame-card img {
+            width: 100%;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+        
+        .frame-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #f9fafb;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        
+        .frame-info span {
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div>
+                    <h1>🚗 两客一危交通事故检测系统</h1>
+                    <p>基于 YOLOv11 的智能检测系统</p>
+                </div>
+                <div class="status">
+                    <p>系统状态</p>
+                    <p><span class="status-dot"></span> 在线运行</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="container">
+            <!-- Tabs -->
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('image')">📷 图片检测</div>
+                <div class="tab" onclick="switchTab('video')">🎬 视频检测</div>
+                <div class="tab" onclick="switchTab('webcam')">📹 实时检测</div>
+            </div>
+
+            <!-- Image Detection -->
+            <div id="image-content" class="content active">
+                <div class="grid-2">
+                    <!-- Settings -->
+                    <div class="card">
+                        <h3>⚙️ 检测设置</h3>
+                        
+                        <div class="model-info">
+                            <h4>🔥 当前模型</h4>
+                            <p>YOLOv11n</p>
+                            <small>检测类别: 两客一危交通事故</small>
+                        </div>
+                        
+                        <div class="settings">
+                            <label>置信度阈值: <span id="conf-value">0.25</span></label>
+                            <input type="range" id="conf-slider" min="0.1" max="0.9" step="0.05" value="0.25" oninput="updateConf(this.value)">
+                        </div>
+                        
+                        <div class="settings">
+                            <label>IOU 阈值: <span id="iou-value">0.45</span></label>
+                            <input type="range" id="iou-slider" min="0.1" max="0.9" step="0.05" value="0.45" oninput="updateIou(this.value)">
+                        </div>
+                    </div>
+
+                    <!-- Upload and Results -->
+                    <div class="card">
+                        <h3>📤 上传图片</h3>
+                        
+                        <div class="upload-area" id="upload-area" onclick="document.getElementById('image-input').click()">
+                            <div class="upload-icon">☁️</div>
+                            <p style="font-size: 18px; margin-bottom: 10px;">点击或拖拽图片到此处</p>
+                            <p style="color: #888;">支持 JPG, PNG, BMP, WEBP 格式</p>
+                            <input type="file" id="image-input" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+                        </div>
+
+                        <div id="image-loading" class="loading hidden">
+                            <div class="spinner"></div>
+                            <p>正在检测中，请稍候...</p>
+                        </div>
+
+                        <div id="image-result" class="hidden">
+                            <h4 style="margin-top: 20px;">检测结果</h4>
+                            <img id="result-image" class="result-image">
+                            
+                            <div class="detection-info">
+                                <div class="info-box">
+                                    <h4>检测数量</h4>
+                                    <p id="detection-count">0</p>
+                                </div>
+                                <div class="info-box">
+                                    <h4>使用模型</h4>
+                                    <p>YOLOv11n</p>
+                                </div>
+                                <div class="info-box">
+                                    <h4>检测耗时</h4>
+                                    <p id="inference-time">0 ms</p>
+                                </div>
+                            </div>
+
+                            <h4>检测对象:</h4>
+                            <div id="detection-list" class="detection-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video Detection -->
+            <div id="video-content" class="content">
+                <div class="card">
+                    <h3>🎬 视频抽帧检测</h3>
+                    
+                    <div class="settings" style="margin-bottom: 20px;">
+                        <p style="font-size: 14px; color: #666;">
+                            
+                        </p>
+                    </div>
+                    
+                    <div class="upload-area" onclick="document.getElementById('video-input').click()">
+                        <div class="upload-icon">🎥</div>
+                        <p style="font-size: 18px; margin-bottom: 10px;">点击上传视频文件</p>
+                        <p style="color: #888;">支持 MP4, AVI, MOV 格式</p>
+                        <input type="file" id="video-input" accept="video/*" style="display: none;" onchange="handleVideoUpload(event)">
+                    </div>
+
+                    <div id="video-preview" class="hidden" style="margin-top: 20px;">
+                        <h4>📹 视频预览</h4>
+                        <video id="preview-video" controls style="width: 100%; max-height: 400px; border-radius: 8px; margin: 10px 0;"></video>
+                        <div id="video-preview-buttons" style="display: flex; gap: 10px; justify-content: center;">
+                            <button class="btn btn-primary" onclick="startVideoDetection()">
+                                🚀 开始检测
+                            </button>
+                            <button class="btn btn-danger" onclick="cancelVideoUpload()">
+                                ❌ 取消
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="video-loading" class="loading hidden">
+                        <div class="spinner"></div>
+                        <p>正在抽帧检测中，请稍候...</p>
+                        <p style="color: #888; margin-top: 10px;">正在处理第 <span id="processing-info">0</span> 帧</p>
+                    </div>
+
+                    <div id="video-result" class="hidden">
+                        <h4>✅ 检测完成</h4>
+                        <div class="detection-info">
+                            <div class="info-box">
+                                <h4>视频总帧数</h4>
+                                <p id="video-total-frames">0</p>
+                            </div>
+                            <div class="info-box">
+                                <h4>平均帧处理时间</h4>
+                                <p id="video-avg-frame-time">0 ms</p>
+                            </div>
+                            <div class="info-box">
+                                <h4>检测到目标</h4>
+                                <p id="video-detection-count">0</p>
+                            </div>
+                        </div>
+
+                        <h4 style="margin-top: 30px;">检测结果帧:</h4>
+                        <div id="video-frames-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Webcam Detection -->
+            <div id="webcam-content" class="content">
+                <div class="card">
+                    <h3>📹 实时检测</h3>
+                    
+                    <!-- 选择检测源 -->
+                    <div style="margin-bottom: 20px; text-align: center;">
+                        <label style="margin-right: 20px;">
+                            <input type="radio" name="detection-source" value="webcam" checked onchange="switchDetectionSource('webcam')">
+                            📷 本地摄像头
+                        </label>
+                        <label>
+                            <input type="radio" name="detection-source" value="rtsp" onchange="switchDetectionSource('rtsp')">
+                            📡 RTSP流（OBS推流）
+                        </label>
+                    </div>
+                    
+                    <!-- 本地摄像头检测 -->
+                    <div id="webcam-detection-area">
+                        <div style="text-align: center;">
+                            <video id="webcam" autoplay playsinline style="display: none;"></video>
+                            <canvas id="canvas" style="display: none;"></canvas>
+                            
+                            <div id="webcam-placeholder" style="padding: 60px; background: #f3f4f6; border-radius: 8px; margin: 20px 0;">
+                                <p style="font-size: 18px; color: #888;">点击下方按钮启动摄像头</p>
+                            </div>
+                            
+                            <button id="start-webcam" class="btn btn-success" onclick="startWebcam()">
+                                ▶️ 启动摄像头
+                            </button>
+                            <button id="stop-webcam" class="btn btn-danger hidden" onclick="stopWebcam()">
+                                ⏹️ 停止检测
+                            </button>
+
+                            <div id="webcam-detections" class="detection-list" style="justify-content: center; margin-top: 20px;"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- RTSP流检测 -->
+                    <div id="rtsp-detection-area" style="display: none;">
+                        <div class="model-info" style="background: #dbeafe; border-color: #3b82f6;">
+                            <h4 style="color: #1e40af;">💡 使用说明</h4>
+                            <p style="font-size: 14px; color: #1e3a8a; margin-top: 5px;">
+                                1. 确保OBS Studio已启动并开始推流<br>
+                                2. 默认RTSP地址: rtsp://localhost:8554/live<br>
+                                3. 点击"启动检测"开始实时检测
+                            </p>
+                        </div>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">RTSP流地址:</label>
+                            <input type="text" id="rtsp-url-input" value="rtsp://localhost:8554/live" 
+                                   style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px; font-size: 14px;">
+                        </div>
+                        
+                        <div style="text-align: center;">
+                            <img id="rtsp-stream" src="" alt="等待RTSP流..." 
+                                 style="display: none; width: 100%; max-height: 600px; border-radius: 8px; margin-bottom: 20px; image-rendering: auto;">
+                            
+                            <div id="rtsp-placeholder" style="padding: 60px; background: #f3f4f6; border-radius: 8px; margin: 20px 0;">
+                                <p style="font-size: 18px; color: #888;">📡 等待启动RTSP流检测...</p>
+                                <p style="font-size: 14px; color: #aaa; margin-top: 10px;">请确保OBS已开始推流</p>
+                            </div>
+                            
+                            <button id="start-rtsp" class="btn btn-success" onclick="startRTSP()">
+                                ▶️ 启动RTSP检测
+                            </button>
+                            <button id="stop-rtsp" class="btn btn-danger hidden" onclick="stopRTSP()">
+                                ⏹️ 停止检测
+                            </button>
+                        </div>
+                        
+                        <!-- RTSP统计信息 -->
+                        <div id="rtsp-stats" class="detection-info" style="margin-top: 20px; display: none;">
+                            <div class="info-box">
+                                <h4>总帧数</h4>
+                                <p id="rtsp-frame-count">0</p>
+                            </div>
+                            <div class="info-box">
+                                <h4>火灾检测次数</h4>
+                                <p id="rtsp-fire-count">0</p>
+                            </div>
+                            <div class="info-box">
+                                <h4>当前检测数</h4>
+                                <p id="rtsp-detection-count">0</p>
+                            </div>
+                            <div class="info-box">
+                                <h4>最后更新</h4>
+                                <p id="rtsp-last-update" style="font-size: 1.2em;">--</p>
+                            </div>
+                        </div>
+                        
+                        <!-- RTSP检测结果 -->
+                        <div id="rtsp-detections" class="detection-list" style="justify-content: center; margin-top: 20px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2025 两客一危交通事故检测系统 | 基于 Ultralytics YOLOv11</p>
+            <p style="margin-top: 10px; font-size: 14px; opacity: 0.8;">智能检测 · 安全出行</p>
+        </footer>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+        let settings = {
+            model: 'yolo11n',
+            conf: 0.25,
+            iou: 0.45
+        };
+        let webcamStream = null;
+        let webcamInterval = null;
+        let videoResultFile = '';
+        let videoFps = 30;
+        let pendingVideoFile = null;
+        const FIXED_INTERVAL = 30; // 固定抽帧间隔
+        
+        // RTSP相关变量
+        const RTSP_STREAM_ID = 'rtsp_cam_01';
+        let rtspUpdateInterval = null;
+        let currentDetectionSource = 'webcam'; // 'webcam' 或 'rtsp'
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all contents
+            document.querySelectorAll('.content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+            
+            // Show selected content
+            document.getElementById(tabName + '-content').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Update settings
+        function updateConf(value) {
+            settings.conf = parseFloat(value);
+            document.getElementById('conf-value').textContent = value;
+        }
+
+        function updateIou(value) {
+            settings.iou = parseFloat(value);
+            document.getElementById('iou-value').textContent = value;
+        }
+
+
+
+        // Drag and drop
+        const uploadArea = document.getElementById('upload-area');
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) processImageFile(file);
+        });
+
+        // Image upload
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) processImageFile(file);
+        }
+
+        async function processImageFile(file) {
+            document.getElementById('image-loading').classList.remove('hidden');
+            document.getElementById('image-result').classList.add('hidden');
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('model', settings.model);
+            formData.append('conf', settings.conf);
+            formData.append('iou', settings.iou);
+
+            try {
+                const data = await safeFetch(`${API_URL}/api/detect/image`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (data.success) {
+                    document.getElementById('result-image').src = data.image;
+                    document.getElementById('detection-count').textContent = data.count;
+                    
+                    // 显示检测耗时
+                    const inferenceTime = data.inference_time || 0;
+                    document.getElementById('inference-time').textContent = `${inferenceTime} ms`;
+                    
+                    const detectionList = document.getElementById('detection-list');
+                    detectionList.innerHTML = '';
+                    data.detections.forEach(det => {
+                        const badge = document.createElement('span');
+                        badge.className = 'detection-badge';
+                        badge.textContent = `${det.class} (${(det.confidence * 100).toFixed(1)}%)`;
+                        detectionList.appendChild(badge);
+                    });
+                    
+                    document.getElementById('image-result').classList.remove('hidden');
+                } else {
+                    alert('检测失败: ' + data.error);
+                }
+            } catch (error) {
+                alert('检测失败: ' + error.message);
+            } finally {
+                document.getElementById('image-loading').classList.add('hidden');
+            }
+        }
+
+        // Video upload - 先预览
+        function handleVideoUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // 保存文件引用
+            pendingVideoFile = file;
+
+            // 显示预览
+            const previewVideo = document.getElementById('preview-video');
+            const videoPreview = document.getElementById('video-preview');
+            
+            previewVideo.src = URL.createObjectURL(file);
+            videoPreview.classList.remove('hidden');
+            
+            // 隐藏结果区域
+            document.getElementById('video-result').classList.add('hidden');
+        }
+
+        // 取消视频上传
+        function cancelVideoUpload() {
+            pendingVideoFile = null;
+            document.getElementById('video-preview').classList.add('hidden');
+            document.getElementById('preview-video').src = '';
+            document.getElementById('video-input').value = '';
+        }
+
+        // 重置视频检测（检测完成后重新上传）
+        function resetVideoDetection() {
+            // 隐藏预览和结果
+            document.getElementById('video-preview').classList.add('hidden');
+            document.getElementById('video-result').classList.add('hidden');
+            document.getElementById('preview-video').src = '';
+            
+            // 重置按钮
+            document.getElementById('video-preview-buttons').innerHTML = `
+                <button class="btn btn-primary" onclick="startVideoDetection()">
+                    🚀 开始检测
+                </button>
+                <button class="btn btn-danger" onclick="cancelVideoUpload()">
+                    ❌ 取消
+                </button>
+            `;
+            
+            // 清空文件输入
+            document.getElementById('video-input').value = '';
+            pendingVideoFile = null;
+        }
+
+        // 开始视频检测
+        async function startVideoDetection() {
+            if (!pendingVideoFile) return;
+
+            // 隐藏按钮，显示加载，保持预览可见
+            document.getElementById('video-preview-buttons').style.display = 'none';
+            document.getElementById('video-loading').classList.remove('hidden');
+            document.getElementById('video-result').classList.add('hidden');
+
+            const formData = new FormData();
+            formData.append('file', pendingVideoFile);
+            formData.append('model', settings.model);
+            formData.append('conf', settings.conf);
+            formData.append('iou', settings.iou);
+            formData.append('interval', FIXED_INTERVAL);
+
+            try {
+                const data = await safeFetch(`${API_URL}/api/detect/video`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (data.success) {
+                    videoFps = data.fps;
+                    displayVideoResults(data);
+                    document.getElementById('video-result').classList.remove('hidden');
+                    
+                    // 检测完成后，显示"重新检测"按钮
+                    document.getElementById('video-preview-buttons').innerHTML = `
+                        <button class="btn btn-primary" onclick="resetVideoDetection()">
+                            🔄 重新检测
+                        </button>
+                    `;
+                    document.getElementById('video-preview-buttons').style.display = 'flex';
+                    
+                    // 清理
+                    pendingVideoFile = null;
+                    document.getElementById('video-input').value = '';
+                } else {
+                    alert('视频处理失败: ' + data.error);
+                    // 失败时恢复按钮
+                    document.getElementById('video-preview-buttons').style.display = 'flex';
+                }
+            } catch (error) {
+                alert('视频处理失败: ' + error.message);
+                // 失败时恢复按钮
+                document.getElementById('video-preview-buttons').style.display = 'flex';
+            } finally {
+                document.getElementById('video-loading').classList.add('hidden');
+            }
+        }
+
+        function displayVideoResults(data) {
+            document.getElementById('video-total-frames').textContent = data.total_frames;
+            
+            // 显示平均帧处理时间
+            const avgFrameTime = data.avg_frame_time || 0;
+            document.getElementById('video-avg-frame-time').textContent = `${avgFrameTime} ms`;
+            
+            // 统计总检测数
+            let totalDetections = 0;
+            data.frames.forEach(frame => {
+                totalDetections += frame.detection_count;
+            });
+            document.getElementById('video-detection-count').textContent = totalDetections;
+            
+            // 显示每一帧
+            const container = document.getElementById('video-frames-container');
+            container.innerHTML = '';
+            
+            data.frames.forEach((frame, index) => {
+                const frameCard = document.createElement('div');
+                frameCard.className = 'frame-card';
+                
+                let detectionsHTML = '';
+                if (frame.detections.length > 0) {
+                    detectionsHTML = '<div class="detection-list">';
+                    frame.detections.forEach(det => {
+                        detectionsHTML += `<span class="detection-badge">${det.class} (${(det.confidence * 100).toFixed(1)}%)</span>`;
+                    });
+                    detectionsHTML += '</div>';
+                } else {
+                    detectionsHTML = '<p style="color: #888; font-size: 14px;">未检测到目标</p>';
+                }
+                
+                frameCard.innerHTML = `
+                    <h5>📸 第 ${index + 1} 帧 (帧号: ${frame.frame_number})</h5>
+                    <div class="frame-info">
+                        <span>⏱️ 时间: ${frame.time}</span>
+                        <span>🎯 检测数: ${frame.detection_count}</span>
+                    </div>
+                    <img src="${frame.image}" alt="Frame ${frame.frame_number}">
+                    ${detectionsHTML}
+                `;
+                
+                container.appendChild(frameCard);
+            });
+        }
+
+        // Webcam
+        async function startWebcam() {
+            try {
+                webcamStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 640, height: 480 } 
+                });
+                
+                const video = document.getElementById('webcam');
+                video.srcObject = webcamStream;
+                video.style.display = 'block';
+                
+                document.getElementById('webcam-placeholder').style.display = 'none';
+                document.getElementById('start-webcam').classList.add('hidden');
+                document.getElementById('stop-webcam').classList.remove('hidden');
+
+                // Start detection loop
+                webcamInterval = setInterval(detectWebcamFrame, 1000);
+            } catch (error) {
+                alert('无法访问摄像头: ' + error.message);
+            }
+        }
+
+        function stopWebcam() {
+            if (webcamStream) {
+                webcamStream.getTracks().forEach(track => track.stop());
+                webcamStream = null;
+            }
+            if (webcamInterval) {
+                clearInterval(webcamInterval);
+                webcamInterval = null;
+            }
+            
+            document.getElementById('webcam').style.display = 'none';
+            document.getElementById('webcam-placeholder').style.display = 'block';
+            document.getElementById('start-webcam').classList.remove('hidden');
+            document.getElementById('stop-webcam').classList.add('hidden');
+            document.getElementById('webcam-detections').innerHTML = '';
+        }
+
+        async function detectWebcamFrame() {
+            const video = document.getElementById('webcam');
+            const canvas = document.getElementById('canvas');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            const imageData = canvas.toDataURL('image/jpeg');
+
+            try {
+                const data = await safeFetch(`${API_URL}/api/detect/webcam`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image: imageData,
+                        model: settings.model,
+                        conf: settings.conf,
+                        iou: settings.iou
+                    })
+                });
+
+                if (data.success) {
+                    const detectionList = document.getElementById('webcam-detections');
+                    detectionList.innerHTML = '';
+                    data.detections.forEach(det => {
+                        const badge = document.createElement('span');
+                        badge.className = 'detection-badge';
+                        badge.textContent = `${det.class} (${(det.confidence * 100).toFixed(1)}%)`;
+                        detectionList.appendChild(badge);
+                    });
+                }
+            } catch (error) {
+                console.error('Detection error:', error);
+            }
+        }
+
+        // Check backend status on load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(`${API_URL}/api/health`);
+                const data = await response.json();
+                console.log('Backend status:', data);
+            } catch (error) {
+                console.error('Backend not available:', error);
+                // 显示友好的提示信息，而不是弹出警告
+                const statusElement = document.querySelector('.status');
+                if (statusElement) {
+                    statusElement.innerHTML = `
+                        <p>系统状态</p>
+                        <p style="color: #f87171;"><span class="status-dot" style="background: #f87171;"></span> 后端服务未启动</p>
+                        <p style="font-size: 12px; color: #9ca3af; margin-top: 5px;">请先运行 backend/app.py</p>
+                    `;
+                }
+            }
+        });
+
+        // 优雅处理后端服务不可用的情况
+        async function safeFetch(url, options = {}) {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('API request failed:', error);
+                // 显示友好的错误提示
+                alert('后端服务未启动，请先运行 backend/app.py');
+                return { success: false, error: error.message };
+            }
+        }
+        
+        // ==================== RTSP检测功能 ====================
+        
+        // 切换检测源
+        function switchDetectionSource(source) {
+            currentDetectionSource = source;
+            
+            // 停止当前正在运行的检测
+            if (source === 'rtsp') {
+                stopWebcam();
+                document.getElementById('webcam-detection-area').style.display = 'none';
+                document.getElementById('rtsp-detection-area').style.display = 'block';
+            } else {
+                stopRTSP();
+                document.getElementById('webcam-detection-area').style.display = 'block';
+                document.getElementById('rtsp-detection-area').style.display = 'none';
+            }
+        }
+        
+        // 启动RTSP检测
+        async function startRTSP() {
+            const rtspUrl = document.getElementById('rtsp-url-input').value;
+            
+            if (!rtspUrl) {
+                alert('请输入RTSP流地址');
+                return;
+            }
+            
+            try {
+                const data = await safeFetch(`${API_URL}/api/rtsp/start`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        stream_id: RTSP_STREAM_ID,
+                        rtsp_url: rtspUrl,
+                        camera_name: 'OBS模拟摄像头'
+                    })
+                });
+                
+                if (data.success) {
+                    // 显示视频流
+                    document.getElementById('rtsp-placeholder').style.display = 'none';
+                    const rtspStream = document.getElementById('rtsp-stream');
+                    rtspStream.style.display = 'block';
+                    rtspStream.src = `${API_URL}/api/rtsp/video_feed/${RTSP_STREAM_ID}?t=${Date.now()}`;
+                    
+                    // 显示统计信息
+                    document.getElementById('rtsp-stats').style.display = 'grid';
+                    
+                    // 切换按钮
+                    document.getElementById('start-rtsp').classList.add('hidden');
+                    document.getElementById('stop-rtsp').classList.remove('hidden');
+                    
+                    // 开始定期更新检测结果
+                    rtspUpdateInterval = setInterval(updateRTSPDetection, 1000);
+                    
+                    console.log('✅ RTSP检测已启动');
+                } else {
+                    alert('❌ 启动失败: ' + (data.error || '未知错误'));
+                }
+            } catch (error) {
+                alert('❌ 连接失败: ' + error.message);
+                console.error('RTSP启动错误:', error);
+            }
+        }
+        
+        // 停止RTSP检测
+        async function stopRTSP() {
+            try {
+                const data = await safeFetch(`${API_URL}/api/rtsp/stop/${RTSP_STREAM_ID}`, {
+                    method: 'POST'
+                });
+                
+                if (data.success) {
+                    // 隐藏视频流
+                    document.getElementById('rtsp-stream').style.display = 'none';
+                    document.getElementById('rtsp-placeholder').style.display = 'block';
+                    
+                    // 隐藏统计信息
+                    document.getElementById('rtsp-stats').style.display = 'none';
+                    
+                    // 切换按钮
+                    document.getElementById('start-rtsp').classList.remove('hidden');
+                    document.getElementById('stop-rtsp').classList.add('hidden');
+                    
+                    // 停止更新
+                    if (rtspUpdateInterval) {
+                        clearInterval(rtspUpdateInterval);
+                        rtspUpdateInterval = null;
+                    }
+                    
+                    // 清空检测结果
+                    document.getElementById('rtsp-detections').innerHTML = '';
+                    
+                    console.log('⏹️ RTSP检测已停止');
+                }
+            } catch (error) {
+                console.error('停止RTSP失败:', error);
+            }
+        }
+        
+        // 更新RTSP检测结果
+        async function updateRTSPDetection() {
+            try {
+                const data = await safeFetch(`${API_URL}/api/rtsp/detection/${RTSP_STREAM_ID}`);
+                
+                if (data.success && data.stats) {
+                    // 更新统计信息
+                    document.getElementById('rtsp-frame-count').textContent = data.stats.frame_count || 0;
+                    document.getElementById('rtsp-fire-count').textContent = data.stats.fire_count || 0;
+                    
+                    if (data.stats.last_detection_time) {
+                        const date = new Date(data.stats.last_detection_time * 1000);
+                        document.getElementById('rtsp-last-update').textContent = 
+                            date.toLocaleTimeString('zh-CN');
+                    }
+                    
+                    // 更新检测结果
+                    if (data.detection && data.detection.detections) {
+                        const detections = data.detection.detections;
+                        document.getElementById('rtsp-detection-count').textContent = detections.length;
+                        
+                        const detectionList = document.getElementById('rtsp-detections');
+                        detectionList.innerHTML = '';
+                        
+                        if (detections.length > 0) {
+                            detections.forEach(det => {
+                                const badge = document.createElement('span');
+                                badge.className = 'detection-badge';
+                                
+                                // 根据类别设置不同颜色
+                                if (det.class.includes('fire') || det.class.includes('火')) {
+                                    badge.style.background = '#ef4444'; // 红色
+                                } else if (det.class.includes('lkyw') || det.class.includes('两客一危')) {
+                                    badge.style.background = '#f59e0b'; // 橙色
+                                } else {
+                                    badge.style.background = '#10b981'; // 绿色
+                                }
+                                
+                                badge.textContent = `${det.class} (${(det.confidence * 100).toFixed(1)}%)`;
+                                detectionList.appendChild(badge);
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('更新RTSP检测结果失败:', error);
+            }
+        }
+    </script>
+</body>
+</html>

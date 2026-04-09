@@ -1,0 +1,13 @@
+* text=auto
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+*.db binary
+*.mp4 binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.glb binary
+*.wasm binary

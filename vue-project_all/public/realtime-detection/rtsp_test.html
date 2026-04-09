@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RTSP实时检测测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .control-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-start {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-start:hover {
+            background: #218838;
+        }
+        
+        .btn-stop {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-stop:hover {
+            background: #c82333;
+        }
+        
+        .video-container {
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        #videoStream {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .detection-list {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .detection-item {
+            background: white;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        .status.running {
+            background: #28a745;
+            color: white;
+        }
+        
+        .status.stopped {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 RTSP实时火灾检测系统</h1>
+        
+        <div id="alertBox"></div>
+        
+        <div class="control-panel">
+            <h2>控制面板</h2>
+            <div class="input-group">
+                <label for="rtspUrl">RTSP流地址：</label>
+                <input type="text" id="rtspUrl" value="rtsp://localhost:8554/live" 
+                       placeholder="例如: rtsp://localhost:8554/live">
+            </div>
+            
+            <div class="input-group">
+                <label for="cameraName">摄像头名称：</label>
+                <input type="text" id="cameraName" value="OBS模拟摄像头" 
+                       placeholder="例如: 测试区域A">
+            </div>
+            
+            <div class="button-group">
+                <button class="btn-start" onclick="startDetection()">▶️ 启动检测</button>
+                <button class="btn-stop" onclick="stopDetection()">⏹️ 停止检测</button>
+            </div>
+            
+            <div style="margin-top: 15px; text-align: center;">
+                状态: <span id="statusBadge" class="status stopped">未运行</span>
+            </div>
+        </div>
+        
+        <div class="video-container">
+            <img id="videoStream" src="" alt="等待视频流..." 
+                 style="display: none;">
+            <div id="placeholder" style="padding: 100px; text-align: center; color: #666;">
+                <h2>📹 等待启动RTSP流...</h2>
+                <p>请先在OBS中启动推流，然后点击"启动检测"</p>
+            </div>
+        </div>
+        
+        <div class="stats-panel">
+            <div class="stat-card">
+                <div class="stat-label">总帧数</div>
+                <div class="stat-value" id="frameCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">火灾检测次数</div>
+                <div class="stat-value" id="fireCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">当前检测数</div>
+                <div class="stat-value" id="detectionCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">最后更新</div>
+                <div class="stat-value" id="lastUpdate" style="font-size: 1.2em;">--</div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <h3>最新检测结果</h3>
+            <div class="detection-list" id="detectionList">
+                <p style="text-align: center; color: #999;">暂无检测结果</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        const STREAM_ID = 'rtsp_cam_01';
+        let updateInterval = null;
+        
+        function showAlert(message, type = 'success') {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.innerHTML = `
+                <div class="alert alert-${type}">
+                    ${message}
+                </div>
+            `;
+            setTimeout(() => {
+                alertBox.innerHTML = '';
+            }, 5000);
+        }
+        
+        async function startDetection() {
+            const rtspUrl = document.getElementById('rtspUrl').value;
+            const cameraName = document.getElementById('cameraName').value;
+            
+            if (!rtspUrl) {
+                showAlert('请输入RTSP流地址', 'danger');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/rtsp/start`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        stream_id: STREAM_ID,
+                        rtsp_url: rtspUrl,
+                        camera_name: cameraName
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('✅ RTSP检测已启动！', 'success');
+                    document.getElementById('statusBadge').className = 'status running';
+                    document.getElementById('statusBadge').textContent = '运行中';
+                    
+                    // 显示视频流
+                    document.getElementById('placeholder').style.display = 'none';
+                    const videoStream = document.getElementById('videoStream');
+                    videoStream.style.display = 'block';
+                    videoStream.src = `${API_BASE}/rtsp/video_feed/${STREAM_ID}?t=${Date.now()}`;
+                    
+                    // 开始定期更新检测结果
+                    startUpdating();
+                } else {
+                    showAlert('❌ 启动失败: ' + (data.error || '未知错误'), 'danger');
+                }
+            } catch (error) {
+                showAlert('❌ 连接失败: ' + error.message, 'danger');
+            }
+        }
+        
+        async function stopDetection() {
+            try {
+                const response = await fetch(`${API_BASE}/rtsp/stop/${STREAM_ID}`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('⏹️ RTSP检测已停止', 'success');
+                    document.getElementById('statusBadge').className = 'status stopped';
+                    document.getElementById('statusBadge').textContent = '未运行';
+                    
+                    // 隐藏视频流
+                    document.getElementById('videoStream').style.display = 'none';
+                    document.getElementById('placeholder').style.display = 'block';
+                    
+                    // 停止更新
+                    stopUpdating();
+                } else {
+                    showAlert('❌ 停止失败: ' + (data.error || '未知错误'), 'danger');
+                }
+            } catch (error) {
+                showAlert('❌ 连接失败: ' + error.message, 'danger');
+            }
+        }
+        
+        async function updateDetectionResults() {
+            try {
+                const response = await fetch(`${API_BASE}/rtsp/detection/${STREAM_ID}`);
+                const data = await response.json();
+                
+                if (data.success && data.stats) {
+                    // 更新统计信息
+                    document.getElementById('frameCount').textContent = data.stats.frame_count || 0;
+                    document.getElementById('fireCount').textContent = data.stats.fire_count || 0;
+                    
+                    if (data.stats.last_detection_time) {
+                        const date = new Date(data.stats.last_detection_time * 1000);
+                        document.getElementById('lastUpdate').textContent = 
+                            date.toLocaleTimeString('zh-CN');
+                    }
+                    
+                    // 更新检测结果
+                    if (data.detection && data.detection.detections) {
+                        const detections = data.detection.detections;
+                        document.getElementById('detectionCount').textContent = detections.length;
+                        
+                        if (detections.length > 0) {
+                            const listHtml = detections.map(det => `
+                                <div class="detection-item">
+                                    <strong>${det.class}</strong> - 
+                                    置信度: ${(det.confidence * 100).toFixed(1)}%
+                                </div>
+                            `).join('');
+                            document.getElementById('detectionList').innerHTML = listHtml;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('更新检测结果失败:', error);
+            }
+        }
+        
+        function startUpdating() {
+            if (updateInterval) return;
+            updateInterval = setInterval(updateDetectionResults, 1000);
+        }
+        
+        function stopUpdating() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# 模型文件（太大，不上传）
+*.pt
+*.pth
+*.weights
+*.onnx
+
+# 数据集（太大，不上传）
+dataset_split/train/
+dataset_split/val/
+dataset_split/test/
+train/
+两客一危_火灾/
+两客一危_非火灾/
+非两客一危 火灾/
+非两客一危 非火灾/
+测试图片/
+
+# 训练结果（太大，不上传）
+runs/
+real_test/
+
+# 临时文件
+temp_content.txt
+*.tmp
+*.log
+
+# Web应用临时文件
+web_app/backend/uploads/
+web_app/backend/results/
+
+# 测试视频（太大，不上传）
+video_test/*.mp4
+special_test/*.mp4
+special_test/*.png
+
+# Word文档
+*.docx
+
+# 其他大文件
+*.zip
+*.tar.gz
+*.rar

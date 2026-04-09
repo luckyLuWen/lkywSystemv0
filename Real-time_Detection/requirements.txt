@@ -1,0 +1,22 @@
+# 核心依赖
+ultralytics>=8.0.0
+opencv-python>=4.8.0
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Web应用
+flask>=2.3.0
+flask-cors>=4.0.0
+
+# 数据处理
+numpy>=1.24.0
+pandas>=2.0.0
+pillow>=10.0.0
+
+# 可视化
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# 其他工具
+pyyaml>=6.0
+tqdm>=4.65.0
