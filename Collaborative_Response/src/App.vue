@@ -1,71 +1,208 @@
 <template>
-  <div class="system-container">
+  <div class="layout">
     <aside class="sidebar">
-      <h2 class="title">🚨 两客一危路径规划指挥决策总控台</h2>
-      
-      <div class="menu-list">
-        <button class="menu-btn blue" @click="showStreamlitView">🚑 协同调度平台</button>
-        <button class="menu-btn blue" style="background: linear-gradient(to right, #0284c7, #38bdf8);" @click="show2DView">🌍 二维动态推演（次生灾害规避）</button>
-        <button class="menu-btn purple" @click="run3DAlgorithm" :disabled="isLoading3D">
-          {{ isLoading3D ? '⏳ 算力全开计算中...' : '🟣 三维协同与动态避障' }}
-        </button>
-        <button class="menu-btn green" @click="toggleMetrics">📊 协同策略能效评估</button>
+      <h2>协同响应指挥面板</h2>
+
+      <div class="menu">
+        <button class="menu-btn blue" @click="showHome">系统首页</button>
+        <button class="menu-btn blue" @click="showStreamlitView">协同调度平台</button>
+        <button class="menu-btn cyan" @click="show2DView">二维动态推演</button>
+        <button class="menu-btn purple" @click="show3DView">三维态势地图</button>
+        <button class="menu-btn green" @click="openEvaluationPanel">协同策略评估</button>
       </div>
 
-      <div class="metrics-panel" v-show="isMetricsVisible && metrics && currentView === '3d'">
-        <h3>📋 实时评估指标 (3D)</h3>
-        <div class="metric-item"><span>车辆用时:</span> <span>{{ metrics?.carTime }} 分钟</span></div>
-        <div class="metric-item"><span>无人机飞行:</span> <span>{{ metrics?.uavTime }} 分钟</span></div>
-        <div class="metric-item"><span>无人机能耗:</span> <span class="warning">{{ metrics?.uavEnergy }} kJ</span></div>
+      <div class="status-box">
+        <div class="status-row">
+          <span>当前视图</span>
+          <strong>{{ viewLabel }}</strong>
+        </div>
+        <div class="status-row">
+          <span>控制层</span>
+          <strong :class="controllerStatusClass">{{ controllerStatusText }}</strong>
+        </div>
+        <div class="status-row">
+          <span>指挥后端</span>
+          <strong :class="commandCenterStatusClass">{{ commandCenterStatusText }}</strong>
+        </div>
+        <div class="status-row">
+          <span>协同调度</span>
+          <strong :class="streamlitStatusClass">{{ streamlitStatusText }}</strong>
+        </div>
       </div>
     </aside>
 
-    <main class="map-view">
-      <iframe v-show="currentView === 'streamlit'" src="http://localhost:8501/?embed=true" class="iframe-map"></iframe>
-      
-      <iframe v-show="currentView === '2d'" :key="iframeKey" :src="iframe2DSrc" class="iframe-map"></iframe>
-      
-      <div class="floating-2d-panel" v-show="currentView === '2d'">
-        <h4>🌪️ 次生灾害图层重载</h4>
-        <div class="loading-mask" v-if="isUpdating2D">正在安全重构路径，请稍候...</div>
-        
-        <label class="toggle-container" title="关闭后将重新规划直达路径">
-          <input type="checkbox" v-model="hasGroundBlock" :disabled="isUpdating2D">
-          <span class="toggle-slider"></span>
-          <span class="toggle-label">爆炸禁行区 (地面阻断)</span>
-        </label>
-        
-        <label class="toggle-container" title="关闭后将恢复直线飞行">
-          <input type="checkbox" v-model="hasAirSmoke" :disabled="isUpdating2D">
-          <span class="toggle-slider"></span>
-          <span class="toggle-label">烟雾禁飞区 (低空限制)</span>
-        </label>
+    <main class="content">
+      <section v-if="currentView === 'home'" class="panel">
+        <div class="card">
+          <h3>协同响应子系统接入面板</h3>
+          <p>
+            当前子系统已接入协同调度平台、二维动态推演、三维态势地图和策略评估。
+            现在的重点是统一状态检测、服务启停和远程接入地址管理。
+          </p>
 
-        <h4 style="margin-top: 20px; font-size: 0.95rem; border-top: 1px dashed #cbd5e1; padding-top: 15px;">🎯 协同策略配置</h4>
-        <select v-model="selectedStrategy" :disabled="isUpdating2D" 
-                style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1; outline: none; cursor: pointer; color: #1e293b; font-weight: bold; background: white;">
-          <option value="slow_down_uav">RCD 逆向推演 (空地同步抵达)</option>
-          <option value="wait">基地待命模式 (无人机延迟起飞)</option>
-          <option value="independent">极速独立模式 (互不等待，各自为战)</option>
-        </select>
-      </div>
-      
-      <div v-show="currentView === '3d'" id="cesiumContainer" class="map-box"></div>
-      
-      <div class="timeline-panel" v-show="currentView === '3d' && maxTimeIndex > 0">
-        <button class="play-btn" @click="togglePlay">{{ isPlaying ? '⏸' : '▶' }}</button>
-        <input type="range" class="time-slider" v-model.number="currentTimeIndex" min="0" :max="maxTimeIndex">
-        <span class="time-label">{{ currentTimeIndex }}s / {{ maxTimeIndex }}s</span>
-      </div>
+          <div class="config-list">
+            <label class="field">
+              <span>控制层地址</span>
+              <div class="field-row">
+                <input v-model.trim="controllerDraft" type="text" placeholder="http://127.0.0.1:18601" />
+                <button class="ghost-btn" @click="saveControllerBaseUrl">保存</button>
+              </div>
+            </label>
 
-      <div class="evaluation-overlay" v-if="showEvaluationPanel">
-        <div class="eval-card">
-          <button class="close-btn" @click="showEvaluationPanel = false">✖ 关闭</button>
-          <h2 class="eval-title">📊 多维空地协同评估</h2>
-          <div class="eval-grid">
-            <div class="eval-box">
-              <p>系统在复杂空间中完美实现了动态自适应重规划，证明了协同机制的优越性。</p>
+            <label class="field">
+              <span>协同调度平台地址</span>
+              <div class="field-row">
+                <input v-model.trim="streamlitDraft" type="text" placeholder="http://127.0.0.1:8501/?embed=true" />
+                <button class="ghost-btn" @click="saveStreamlitUrl">保存</button>
+              </div>
+            </label>
+
+            <label class="field">
+              <span>指挥后端地址</span>
+              <div class="field-row">
+                <input v-model.trim="commandCenterDraft" type="text" placeholder="http://127.0.0.1:5001" />
+                <button class="ghost-btn" @click="saveCommandCenterBaseUrl">保存</button>
+              </div>
+            </label>
+          </div>
+
+          <div class="service-grid">
+            <article class="service-card">
+              <div class="service-top">
+                <div>
+                  <strong>协同响应指挥后端</strong>
+                  <p>{{ resolvedCommandCenterBaseUrl }}</p>
+                </div>
+                <span class="chip" :class="statusChipClass(services.commandCenter)">
+                  {{ commandCenterStatusText }}
+                </span>
+              </div>
+              <div class="action-row">
+                <button
+                  class="cyan-btn"
+                  :disabled="services.commandCenter.pending || !controllerOnline"
+                  @click="toggleManagedService('commandCenter', !services.commandCenter.running)"
+                >
+                  {{ services.commandCenter.running ? '停止服务' : '启动服务' }}
+                </button>
+                <button
+                  class="dark-btn"
+                  :disabled="businessActionPending || !services.commandCenter.online"
+                  @click="generateStrategy"
+                >
+                  生成二维推演
+                </button>
+                <button
+                  class="dark-btn"
+                  :disabled="businessActionPending || !services.commandCenter.online"
+                  @click="generateCesium"
+                >
+                  生成三维态势
+                </button>
+              </div>
+            </article>
+
+            <article class="service-card">
+              <div class="service-top">
+                <div>
+                  <strong>协同调度平台</strong>
+                  <p>{{ resolvedStreamlitUrl }}</p>
+                </div>
+                <span class="chip" :class="statusChipClass(services.streamlit)">
+                  {{ streamlitStatusText }}
+                </span>
+              </div>
+              <div class="action-row">
+                <button
+                  class="purple-btn"
+                  :disabled="services.streamlit.pending || !controllerOnline"
+                  @click="toggleManagedService('streamlit', !services.streamlit.running)"
+                >
+                  {{ services.streamlit.running ? '停止服务' : '启动服务' }}
+                </button>
+                <button class="blue-btn" @click="showStreamlitView">进入协同调度</button>
+                <button class="dark-btn" @click="openEvaluationPanel">查看策略评估</button>
+              </div>
+            </article>
+          </div>
+
+          <p v-if="lastError" class="error-text">最近错误：{{ lastError }}</p>
+        </div>
+      </section>
+
+      <section v-else class="frame-shell">
+        <div v-if="!frameServiceReady" class="frame-state">
+          <h3>{{ frameHintTitle }}</h3>
+          <p>{{ frameHintDescription }}</p>
+          <p v-if="activeViewService?.healthDetail" class="frame-state__meta">
+            最近检测：{{ activeViewService.healthDetail }}
+          </p>
+          <p v-if="lastError" class="frame-state__meta is-error">
+            最近错误：{{ lastError }}
+          </p>
+          <div class="action-row">
+            <button class="blue-btn" :disabled="Boolean(viewLaunchPending)" @click="retryCurrentView">
+              {{ viewLaunchPending ? '启动中...' : '重试进入' }}
+            </button>
+            <button class="ghost-btn" @click="refreshStatus">刷新状态</button>
+            <button class="dark-btn" @click="showHome">返回首页</button>
+          </div>
+        </div>
+
+        <iframe
+          v-else-if="currentView === 'streamlit'"
+          :key="streamlitFrameKey"
+          :src="streamlitFrameSrc"
+          class="frame"
+        ></iframe>
+        <iframe
+          v-else-if="currentView === '2d'"
+          :key="strategyFrameKey"
+          :src="strategyFrameSrc"
+          class="frame"
+        ></iframe>
+        <iframe
+          v-else-if="currentView === '3d'"
+          :key="cesiumFrameKey"
+          :src="cesiumFrameSrc"
+          class="frame"
+        ></iframe>
+      </section>
+
+      <div v-if="showEvaluationPanel" class="overlay">
+        <div class="overlay-card">
+          <button class="close-btn" @click="showEvaluationPanel = false">关闭</button>
+          <h3>协同策略评估</h3>
+          <div class="metrics">
+            <div class="metric">
+              <span>车辆到场时间</span>
+              <strong>{{ metricsDisplay.carTime }}</strong>
             </div>
+            <div class="metric">
+              <span>无人机到场时间</span>
+              <strong>{{ metricsDisplay.uavTime }}</strong>
+            </div>
+            <div class="metric">
+              <span>无人机能耗</span>
+              <strong>{{ metricsDisplay.uavEnergy }}</strong>
+            </div>
+            <div class="metric">
+              <span>协同等待时延</span>
+              <strong>{{ metricsDisplay.delay }}</strong>
+            </div>
+          </div>
+          <p class="overlay-meta">结果状态：{{ evaluation.message || '暂无结果' }}</p>
+          <p class="overlay-meta">最近更新：{{ formatDateTime(evaluation.updatedAt) }}</p>
+          <div class="action-row">
+            <button
+              class="cyan-btn"
+              :disabled="businessActionPending || !services.commandCenter.online"
+              @click="generateStrategy"
+            >
+              重新生成评估
+            </button>
+            <button class="dark-btn" @click="show2DView">查看二维结果</button>
+            <button class="purple-btn" @click="show3DView">查看三维结果</button>
           </div>
         </div>
       </div>
@@ -74,293 +211,803 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import {
+  appendUrlParams,
+  buildCollaborativeApiUrl,
+  buildCommandCenterUrl,
+  getCollaborativeCommandCenterBaseUrl,
+  getCollaborativeControllerBaseUrl,
+  getCollaborativeStreamlitUrl,
+  persistCollaborativeCommandCenterBaseUrl,
+  persistCollaborativeControllerBaseUrl,
+  persistCollaborativeStreamlitUrl,
+} from './service-config'
 
-const isLoading3D = ref(false)
-const isUpdating2D = ref(false) 
-const metrics = ref(null)
-const currentView = ref('2d') 
-const isMetricsVisible = ref(true) 
+const currentView = ref('home')
 const showEvaluationPanel = ref(false)
+const controllerBaseUrl = ref(getCollaborativeControllerBaseUrl())
+const streamlitUrl = ref(getCollaborativeStreamlitUrl())
+const commandCenterBaseUrl = ref(getCollaborativeCommandCenterBaseUrl())
+const controllerDraft = ref(controllerBaseUrl.value)
+const streamlitDraft = ref(streamlitUrl.value)
+const commandCenterDraft = ref(commandCenterBaseUrl.value)
+const controllerOnline = ref(false)
+const controllerChecked = ref(false)
+const lastError = ref('')
+const businessActionPending = ref('')
+const viewLaunchPending = ref('')
+const streamlitFrameSrc = ref('')
+const strategyFrameSrc = ref('')
+const cesiumFrameSrc = ref('')
+const streamlitFrameKey = ref(0)
+const strategyFrameKey = ref(0)
+const cesiumFrameKey = ref(0)
 
-const iframe2DSrc = ref('http://127.0.0.1:3005/wuhan_rescue_optimized.html')
-// 🌟 核心修改 3：定义刷新 key
-const iframeKey = ref(0)
-// 🌟 核心修改 6：定义后端服务状态
-const backendStatus = ref('checking') 
+const services = reactive({
+  commandCenter: createServiceState(),
+  streamlit: createServiceState(),
+})
 
-const hasGroundBlock = ref(true)
-const hasAirSmoke = ref(true)
-const selectedStrategy = ref('slow_down_uav') 
+const evaluation = reactive({
+  message: '尚未读取策略评估结果',
+  metrics: {},
+  updatedAt: '',
+})
 
-let viewer = null
-const currentTimeIndex = ref(0)
-const maxTimeIndex = ref(0)
-const isPlaying = ref(false)
-let playInterval = null
-let savedCarPath = []
-let savedUavPath = []
+let pollingTimer = null
 
-const createIcon = (emoji, glowColor) => {
-  const canvas = document.createElement('canvas');
-  canvas.width = 80; canvas.height = 80;
-  const ctx = canvas.getContext('2d');
-  ctx.font = '50px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.shadowColor = glowColor; ctx.shadowBlur = 15;
-  ctx.fillText(emoji, 40, 40);
-  return canvas.toDataURL('image/png');
-};
-const CAR_ICON = createIcon('🚑', 'rgba(37, 99, 235, 0.8)');
-const UAV_ICON = createIcon('🚁', 'rgba(168, 85, 247, 0.8)');
-
-// 🌟 核心修改 4：统一使用 watch 监听状态变化并发送请求，解决死锁
-watch([hasGroundBlock, hasAirSmoke, selectedStrategy], async () => {
-  if (isUpdating2D.value) return; 
-  console.log(`📡 状态变更拦截！当前策略: ${selectedStrategy.value}`);
-  isUpdating2D.value = true;
-  
-  const url = `http://127.0.0.1:3005/update-2d-map?ugvBlock=${hasGroundBlock.value ? '1' : '0'}&uavSmoke=${hasAirSmoke.value ? '1' : '0'}&strategy=${selectedStrategy.value}`;
-  
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("后端服务报错");
-    
-    // 更新时间戳并强制改变 key 撕裂缓存
-    iframe2DSrc.value = `http://127.0.0.1:3005/wuhan_rescue_optimized.html?t=${new Date().getTime()}`;
-    iframeKey.value += 1; 
-  } catch (error) {
-    console.error("❌ 更新请求失败:", error);
-    alert("地图更新失败，请检查 Node 后端终端的报错信息！");
-  } finally { 
-    isUpdating2D.value = false; 
-  }
-});
-
-onMounted(() => {
-  const initCesium = () => {
-    if (!window.Cesium) return;
-    try {
-      viewer = new window.Cesium.Viewer('cesiumContainer', {
-        imageryProvider: false, animation: false, timeline: false, baseLayerPicker: false, infoBox: true, geocoder: false, homeButton: false, sceneModePicker: false, navigationHelpButton: false
-      });
-      viewer.cesiumWidget.creditContainer.style.display = "none";
-      const gaodeProvider = new window.Cesium.UrlTemplateImageryProvider({ url: 'https://webst02.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}' });
-      viewer.imageryLayers.addImageryProvider(gaodeProvider);
-      viewer.camera.flyTo({ destination: window.Cesium.Cartesian3.fromDegrees(114.4140, 30.5185, 5000), orientation: { heading: 0, pitch: window.Cesium.Math.toRadians(-55), roll: 0.0 }, duration: 2 });
-    } catch (error) {
-        console.error("Cesium初始化报错:", error);
-    }
-  };
-  initCesium();
-  
-  // 🌟 核心修改 7：检查后端服务状态
-  checkBackendStatus();
-});
-
-// 🌟 核心修改 8：检查后端服务状态
-async function checkBackendStatus() {
-  try {
-    const response = await fetch('http://127.0.0.1:3005/wuhan_rescue_optimized.html', { method: 'HEAD' });
-    backendStatus.value = response.ok ? 'online' : 'offline';
-  } catch (error) {
-    console.error("后端服务检查失败:", error);
-    backendStatus.value = 'offline';
+function createServiceState() {
+  return {
+    checked: false,
+    online: false,
+    running: false,
+    managed: false,
+    pending: false,
+    publicUrl: '',
+    healthDetail: '',
+    startConfigured: false,
   }
 }
 
-function showStreamlitView() {
-  // 检查 Streamlit 服务状态
-  fetch('http://localhost:8501/?embed=true', { method: 'HEAD' })
-    .then(response => {
-      if (response.ok) {
-        currentView.value = 'streamlit';
-        showEvaluationPanel.value = false;
-      } else {
-        alert("⚠️ Streamlit 服务未启动，请先运行 Streamlit 服务！");
-      }
+const viewLabel = computed(() => {
+  const labels = {
+    home: '系统首页',
+    streamlit: '协同调度平台',
+    '2d': '二维动态推演',
+    '3d': '三维态势地图',
+  }
+  return labels[currentView.value] || '未知'
+})
+
+const controllerStatusText = computed(() => {
+  if (!controllerChecked.value) return '检测中'
+  return controllerOnline.value ? '在线' : '离线'
+})
+
+const controllerStatusClass = computed(() => {
+  if (!controllerChecked.value) return 'pending'
+  return controllerOnline.value ? 'ok' : 'warn'
+})
+
+const commandCenterStatusText = computed(() => {
+  if (!services.commandCenter.checked) return '检测中'
+  return services.commandCenter.online ? '在线' : '离线'
+})
+
+const commandCenterStatusClass = computed(() => {
+  if (!services.commandCenter.checked) return 'pending'
+  return services.commandCenter.online ? 'ok' : 'warn'
+})
+
+const streamlitStatusText = computed(() => {
+  if (!services.streamlit.checked) return '检测中'
+  return services.streamlit.online ? '在线' : '离线'
+})
+
+const streamlitStatusClass = computed(() => {
+  if (!services.streamlit.checked) return 'pending'
+  return services.streamlit.online ? 'ok' : 'warn'
+})
+
+const resolvedStreamlitUrl = computed(() => services.streamlit.publicUrl || streamlitUrl.value)
+const resolvedCommandCenterBaseUrl = computed(() => services.commandCenter.publicUrl || commandCenterBaseUrl.value)
+
+const activeViewService = computed(() => {
+  if (currentView.value === 'streamlit') return services.streamlit
+  if (currentView.value === '2d' || currentView.value === '3d') return services.commandCenter
+  return null
+})
+
+const activeViewServiceLabel = computed(() => {
+  if (currentView.value === 'streamlit') return '协同调度平台'
+  if (currentView.value === '2d' || currentView.value === '3d') return '协同响应指挥后端'
+  return ''
+})
+
+const frameServiceReady = computed(() => {
+  if (currentView.value === 'home') return true
+  return Boolean(activeViewService.value?.online)
+})
+
+const frameHintTitle = computed(() => {
+  if (viewLaunchPending.value) return '正在拉起远程服务'
+  if (currentView.value === 'streamlit') return '协同调度平台暂未就绪'
+  if (currentView.value === '2d') return '二维动态推演暂未就绪'
+  if (currentView.value === '3d') return '三维态势地图暂未就绪'
+  return '服务暂未就绪'
+})
+
+const frameHintDescription = computed(() => {
+  if (viewLaunchPending.value) {
+    return '正在尝试启动 ' + activeViewServiceLabel.value + '，请稍候刷新状态。'
+  }
+  if (!controllerOnline.value) {
+    return '当前控制层离线，无法远程启动服务。请先运行 start_Collaborative_Response.bat。'
+  }
+  if (!activeViewService.value?.startConfigured) {
+    return activeViewServiceLabel.value + ' 尚未配置启动命令，请检查 service_manager/config.local.json。'
+  }
+  return '当前未检测到 ' + activeViewServiceLabel.value + ' 在线，可尝试自动启动后再进入该界面。'
+})
+
+const metricsDisplay = computed(() => ({
+  carTime: evaluation.metrics.carTime ? evaluation.metrics.carTime + ' s' : '--',
+  uavTime: evaluation.metrics.uavTime ? evaluation.metrics.uavTime + ' s' : '--',
+  uavEnergy: evaluation.metrics.uavEnergy ? evaluation.metrics.uavEnergy + ' Wh' : '--',
+  delay: evaluation.metrics.delay ? evaluation.metrics.delay + ' s' : '--',
+}))
+
+function statusChipClass(service) {
+  if (!service.checked) return 'pending'
+  return service.online ? 'ok' : 'warn'
+}
+
+function formatDateTime(value) {
+  if (!value) return '--'
+  return new Date(value).toLocaleString('zh-CN', { hour12: false })
+}
+
+function updateService(serviceId, payload = {}, fallbackUrl = '') {
+  services[serviceId].checked = true
+  services[serviceId].online = Boolean(payload.reachable ?? payload.running)
+  services[serviceId].running = Boolean(payload.running ?? payload.reachable)
+  services[serviceId].managed = Boolean(payload.managed)
+  services[serviceId].publicUrl = payload.public_url || fallbackUrl
+  services[serviceId].healthDetail = payload.health_detail || ''
+  services[serviceId].startConfigured = Boolean(payload.start_configured)
+}
+
+async function probeDirect(url) {
+  try {
+    const response = await fetch(url, { cache: 'no-store' })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+async function requestJson(url, options = {}) {
+  const response = await fetch(url, options)
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(payload.error || payload.message || 'HTTP ' + response.status)
+  }
+  return payload
+}
+
+async function refreshEvaluation() {
+  try {
+    const payload = await requestJson(
+      buildCommandCenterUrl('api/strategy_metrics', commandCenterBaseUrl.value),
+      { cache: 'no-store' }
+    )
+    evaluation.message = payload.message || '已读取策略评估结果'
+    evaluation.metrics = payload.metrics || {}
+    evaluation.updatedAt = payload.updated_at || ''
+  } catch {
+    evaluation.message = '暂未获取到策略评估结果'
+    evaluation.metrics = {}
+    evaluation.updatedAt = ''
+  }
+}
+
+async function refreshStatus() {
+  try {
+    const payload = await requestJson(
+      buildCollaborativeApiUrl('api/health', controllerBaseUrl.value),
+      { cache: 'no-store' }
+    )
+    controllerOnline.value = Boolean(payload.ok)
+    controllerChecked.value = true
+    updateService('commandCenter', payload.services?.commandCenter, commandCenterBaseUrl.value)
+    updateService('streamlit', payload.services?.streamlit, streamlitUrl.value)
+    lastError.value = ''
+  } catch (error) {
+    controllerOnline.value = false
+    controllerChecked.value = true
+    lastError.value = error instanceof Error ? error.message : '无法连接控制层'
+
+    const [commandCenterOnline, streamlitOnline] = await Promise.all([
+      probeDirect(buildCommandCenterUrl('api/health', commandCenterBaseUrl.value)),
+      probeDirect(streamlitUrl.value),
+    ])
+
+    updateService(
+      'commandCenter',
+      { reachable: commandCenterOnline, running: commandCenterOnline, public_url: commandCenterBaseUrl.value },
+      commandCenterBaseUrl.value
+    )
+    updateService(
+      'streamlit',
+      { reachable: streamlitOnline, running: streamlitOnline, public_url: streamlitUrl.value },
+      streamlitUrl.value
+    )
+  }
+
+  await refreshEvaluation()
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
+async function reloadControllerConfig() {
+  if (!controllerOnline.value) return false
+  try {
+    await requestJson(buildCollaborativeApiUrl('api/reload-config', controllerBaseUrl.value), {
+      method: 'POST',
     })
-    .catch(error => {
-      console.error("Streamlit 服务检查失败:", error);
-      alert("⚠️ Streamlit 服务未启动，请先运行 Streamlit 服务！");
-    });
-}
-
-function show2DView() {
-  // 检查后端服务状态
-  if (backendStatus.value === 'offline') {
-    alert("⚠️ 后端服务未启动，请先运行 Rescue_System_V2/backend 中的 npm start 命令！");
-    return;
-  }
-  currentView.value = '2d';
-  showEvaluationPanel.value = false;
-}
-function toggleMetrics() { showEvaluationPanel.value = true; }
-
-// 🌟 核心修改 5：删除原本多余的 forceUpdateMap 函数，已经用 watch 替代。
-
-function togglePlay() {
-  isPlaying.value = !isPlaying.value;
-  if (isPlaying.value) {
-    if (currentTimeIndex.value >= maxTimeIndex.value) currentTimeIndex.value = 0;
-    playInterval = setInterval(() => {
-      if (currentTimeIndex.value < maxTimeIndex.value) currentTimeIndex.value++;
-      else { clearInterval(playInterval); isPlaying.value = false; }
-    }, 50); 
-  } else { clearInterval(playInterval); }
-}
-
-async function run3DAlgorithm() {
-  currentView.value = '3d';
-  
-  // 🌟 核心修改 9：检查后端服务状态
-  if (backendStatus.value === 'offline') {
-    alert("⚠️ 后端服务未启动，请先运行 Rescue_System_V2/backend 中的 npm start 命令！");
-    return;
-  }
-  
-  if (!viewer) {
-      alert("❌ 3D地图引擎(Cesium)没有加载成功！请检查网络或刷新页面。");
-      return;
-  }
-  
-  try {
-    isLoading3D.value = true;
-    viewer.entities.removeAll(); 
-    showEvaluationPanel.value = false; 
-
-    const url = `http://127.0.0.1:3005/run-algorithm?ugvBlock=${hasGroundBlock.value ? '1' : '0'}&uavSmoke=${hasAirSmoke.value ? '1' : '0'}&strategy=${selectedStrategy.value}`;
-    console.log("准备调用 3D 接口:", url);
-    
-    const response = await fetch(url);
-    if (!response.ok) {
-        throw new Error(`连接 Python 失败！状态码: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log("成功接收到 3D 路径数据:", data);
-    
-    if (!data.car_path || data.car_path.length === 0) {
-        throw new Error("Python 运行结束了，但返回的车辆路径数据是空的！");
-    }
-
-    savedCarPath = data.car_path;
-    savedUavPath = data.uav_path;
-    maxTimeIndex.value = Math.max(savedCarPath.length, savedUavPath.length) - 1;
-    currentTimeIndex.value = 0;
-
-    viewer.entities.add({
-      name: "车辆救援路径",
-      polyline: {
-        positions: window.Cesium.Cartesian3.fromDegreesArrayHeights(savedCarPath.flat()),
-        width: 5,
-        material: window.Cesium.Color.CYAN
-      }
-    });
-
-    viewer.entities.add({
-      name: "无人机飞行路径",
-      polyline: {
-        positions: window.Cesium.Cartesian3.fromDegreesArrayHeights(savedUavPath.flat()),
-        width: 3,
-        material: window.Cesium.Color.MAGENTA
-      }
-    });
-
-    if (data.obstacles && Array.isArray(data.obstacles)) {
-      data.obstacles.forEach(obs => {
-        const safeColor = window.Cesium.Color.fromCssColorString(obs.color || '#ff0000').withAlpha(0.35);
-        if (obs.type === 'cylinder' && obs.center) {
-          viewer.entities.add({
-            position: window.Cesium.Cartesian3.fromDegrees(obs.center[0], obs.center[1], obs.height / 2),
-            cylinder: { length: obs.height, topRadius: obs.radius, bottomRadius: obs.radius, material: safeColor }
-          });
-        } else if (obs.type === 'polygon' && obs.positions) {
-          viewer.entities.add({
-            polygon: { hierarchy: window.Cesium.Cartesian3.fromDegreesArray(obs.positions), material: safeColor, extrudedHeight: 10 }
-          });
-        }
-      });
-    }
-
-    viewer.entities.add({
-      position: new window.Cesium.CallbackProperty(() => {
-        const pt = savedCarPath[Math.min(currentTimeIndex.value, savedCarPath.length - 1)];
-        return pt ? window.Cesium.Cartesian3.fromDegrees(pt[0], pt[1], pt[2] + 5) : undefined;
-      }, false),
-      billboard: { image: CAR_ICON, scale: 0.8, verticalOrigin: window.Cesium.VerticalOrigin.BOTTOM, disableDepthTestDistance: Number.POSITIVE_INFINITY }
-    });
-
-    viewer.entities.add({
-      position: new window.Cesium.CallbackProperty(() => {
-        const pt = savedUavPath[Math.min(currentTimeIndex.value, savedUavPath.length - 1)];
-        return pt ? window.Cesium.Cartesian3.fromDegrees(pt[0], pt[1], pt[2]) : undefined;
-      }, false),
-      billboard: { image: UAV_ICON, scale: 0.8, disableDepthTestDistance: Number.POSITIVE_INFINITY }
-    });
-
-    metrics.value = data.metrics;
-    isMetricsVisible.value = true;
-    
-    viewer.flyTo(viewer.entities); 
-
+    return true
   } catch (error) {
-    console.error("🚨 3D 计算/渲染发生致命错误:", error);
-    alert(`⚠️ 渲染失败，原因: \n${error.message}\n\n请去 Node 后端黑窗口看 Python 报了什么错！`);
-  } finally {
-    isLoading3D.value = false;
+    lastError.value = error instanceof Error ? error.message : '控制层配置重载失败'
+    return false
   }
 }
+
+async function toggleManagedService(serviceId, nextRunning) {
+  if (!controllerOnline.value) {
+    lastError.value = '控制层离线，当前无法远程启停服务'
+    return false
+  }
+
+  services[serviceId].pending = true
+  try {
+    if (nextRunning) {
+      await reloadControllerConfig()
+    }
+
+    const action = nextRunning ? 'start' : 'stop'
+    await requestJson(
+      buildCollaborativeApiUrl('api/services/' + serviceId + '/' + action, controllerBaseUrl.value),
+      { method: 'POST' }
+    )
+    await refreshStatus()
+    return true
+  } catch (error) {
+    lastError.value = error instanceof Error ? error.message : '服务控制失败'
+    return false
+  } finally {
+    services[serviceId].pending = false
+  }
+}
+
+async function ensureServiceReady(serviceId, timeoutMs = 15000) {
+  await refreshStatus()
+  if (services[serviceId].online) return true
+
+  if (!controllerOnline.value) {
+    lastError.value = '控制层离线，无法远程启动服务'
+    return false
+  }
+
+  if (!services[serviceId].startConfigured) {
+    lastError.value = serviceId + ' 未配置启动命令，请检查 config.local.json'
+    return false
+  }
+
+  const started = await toggleManagedService(serviceId, true)
+  if (!started) return false
+
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    await sleep(1000)
+    await refreshStatus()
+    if (services[serviceId].online) return true
+  }
+
+  const serviceLabel = serviceId === 'streamlit' ? '协同调度平台' : '协同响应指挥后端'
+  if (services[serviceId].healthDetail) {
+    lastError.value = serviceLabel + ' 启动超时：' + services[serviceId].healthDetail
+  } else {
+    lastError.value = serviceLabel + ' 启动超时，请检查控制层日志'
+  }
+  return false
+}
+
+async function runCommandCenterAction(path, nextView) {
+  if (!services.commandCenter.online) {
+    const ready = await ensureServiceReady('commandCenter')
+    if (!ready) return
+  }
+
+  businessActionPending.value = path
+  try {
+    const payload = await requestJson(buildCommandCenterUrl(path, commandCenterBaseUrl.value), {
+      cache: 'no-store',
+    })
+    if (payload.ok === false) {
+      throw new Error(payload.message || '业务执行失败')
+    }
+
+    await refreshEvaluation()
+    if (nextView === '2d') await show2DView()
+    if (nextView === '3d') await show3DView()
+  } catch (error) {
+    lastError.value = error instanceof Error ? error.message : '业务计算失败'
+  } finally {
+    businessActionPending.value = ''
+  }
+}
+
+function refreshFrames() {
+  streamlitFrameSrc.value = appendUrlParams(resolvedStreamlitUrl.value, { embed: 'true', t: Date.now() })
+  strategyFrameSrc.value = appendUrlParams(
+    buildCommandCenterUrl('wuhan_rescue_optimized.html', resolvedCommandCenterBaseUrl.value),
+    { t: Date.now() }
+  )
+  cesiumFrameSrc.value = appendUrlParams(
+    buildCommandCenterUrl('cesium_viewer', resolvedCommandCenterBaseUrl.value),
+    { t: Date.now() }
+  )
+  streamlitFrameKey.value += 1
+  strategyFrameKey.value += 1
+  cesiumFrameKey.value += 1
+}
+
+function showHome() {
+  currentView.value = 'home'
+}
+
+async function openManagedView(viewId, serviceId, frameBuilder) {
+  currentView.value = viewId
+  lastError.value = ''
+
+  if (!services[serviceId].online) {
+    viewLaunchPending.value = serviceId
+    const ready = await ensureServiceReady(serviceId)
+    viewLaunchPending.value = ''
+    if (!ready) return
+  }
+
+  frameBuilder()
+}
+
+async function showStreamlitView() {
+  await openManagedView('streamlit', 'streamlit', () => {
+    streamlitFrameSrc.value = appendUrlParams(resolvedStreamlitUrl.value, { embed: 'true', t: Date.now() })
+    streamlitFrameKey.value += 1
+  })
+}
+
+async function show2DView() {
+  await openManagedView('2d', 'commandCenter', () => {
+    strategyFrameSrc.value = appendUrlParams(
+      buildCommandCenterUrl('wuhan_rescue_optimized.html', resolvedCommandCenterBaseUrl.value),
+      { t: Date.now() }
+    )
+    strategyFrameKey.value += 1
+  })
+}
+
+async function show3DView() {
+  await openManagedView('3d', 'commandCenter', () => {
+    cesiumFrameSrc.value = appendUrlParams(
+      buildCommandCenterUrl('cesium_viewer', resolvedCommandCenterBaseUrl.value),
+      { t: Date.now() }
+    )
+    cesiumFrameKey.value += 1
+  })
+}
+
+function retryCurrentView() {
+  if (currentView.value === 'streamlit') {
+    showStreamlitView()
+    return
+  }
+  if (currentView.value === '2d') {
+    show2DView()
+    return
+  }
+  if (currentView.value === '3d') {
+    show3DView()
+  }
+}
+
+function openEvaluationPanel() {
+  refreshEvaluation()
+  showEvaluationPanel.value = true
+}
+
+function generateStrategy() {
+  runCommandCenterAction('api/run_3d_strategy', '2d')
+}
+
+function generateCesium() {
+  runCommandCenterAction('api/run_3d_cesium', '3d')
+}
+
+function saveControllerBaseUrl() {
+  controllerBaseUrl.value = persistCollaborativeControllerBaseUrl(controllerDraft.value)
+  controllerDraft.value = controllerBaseUrl.value
+  refreshStatus()
+}
+
+function saveStreamlitUrl() {
+  streamlitUrl.value = persistCollaborativeStreamlitUrl(streamlitDraft.value)
+  streamlitDraft.value = streamlitUrl.value
+  refreshStatus()
+  refreshFrames()
+}
+
+function saveCommandCenterBaseUrl() {
+  commandCenterBaseUrl.value = persistCollaborativeCommandCenterBaseUrl(commandCenterDraft.value)
+  commandCenterDraft.value = commandCenterBaseUrl.value
+  refreshStatus()
+  refreshFrames()
+}
+
+onMounted(async () => {
+  await refreshStatus()
+  refreshFrames()
+  pollingTimer = window.setInterval(refreshStatus, 5000)
+})
+
+onUnmounted(() => {
+  if (pollingTimer) window.clearInterval(pollingTimer)
+})
 </script>
 
 <style scoped>
-/* 原样式完全保留，未做任何修改 */
-.system-container { display: flex; height: 100vh; width: 100vw; background-color: #0f172a; font-family: sans-serif; overflow: hidden; }
-.sidebar { width: 320px; background-color: #1e293b; color: white; padding: 25px; z-index: 1000; border-right: 2px solid #334155; }
-.title { font-size: 1.25rem; margin-bottom: 30px; color: #f8fafc; text-align: center; }
-.menu-list { display: flex; flex-direction: column; gap: 15px; }
-.menu-btn { padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; transition: 0.2s;}
-.menu-btn:hover { filter: brightness(1.1); }
-.blue { background: linear-gradient(to right, #0284c7, #38bdf8); }
-.purple { background: linear-gradient(to right, #7e22ce, #a855f7); }
-.green { background: linear-gradient(to right, #059669, #10b981); }
-.metrics-panel { margin-top: 30px; background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid #334155; }
-.metric-item { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 8px; }
-.warning { color: #f59e0b; }
-.map-view { flex: 1; position: relative; background: #000; }
-.map-box { width: 100%; height: 100%; }
-.iframe-map { width: 100%; height: 100%; border: none; background-color: #fff; }
-
-.floating-2d-panel {
-  position: absolute; top: 20px; right: 20px;
-  background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px);
-  border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px;
-  z-index: 2000; box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-  color: #1e293b; width: 300px;
+.layout {
+  display: flex;
+  height: 100vh;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: 'Microsoft YaHei', sans-serif;
 }
-.floating-2d-panel h4 { margin: 0 0 15px 0; font-size: 1.05rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; color: #3b82f6;}
-.loading-mask { font-size: 0.8rem; color: #ef4444; margin-bottom: 10px; font-weight: bold; animation: pulse 1.5s infinite;}
-.toggle-container { display: flex; align-items: center; margin-bottom: 15px; cursor: pointer; }
-.toggle-container input { display: none; }
-.toggle-slider { width: 44px; height: 24px; background-color: #cbd5e1; border-radius: 20px; position: relative; transition: 0.3s; margin-right: 12px; flex-shrink: 0;}
-.toggle-slider::before { content: ""; position: absolute; width: 18px; height: 18px; border-radius: 50%; background-color: white; top: 3px; left: 3px; transition: 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.2);}
-.toggle-container input:checked + .toggle-slider { background-color: #ef4444; }
-.toggle-container input:checked + .toggle-slider::before { transform: translateX(20px); }
-.toggle-label { color: #475569; font-size: 0.95rem; font-weight: 500;}
 
-.timeline-panel { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(30, 41, 59, 0.9); padding: 10px 20px; border-radius: 50px; display: flex; align-items: center; gap: 15px; width: 60%; z-index: 1000; }
-.play-btn { background: #3b82f6; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;}
-.time-slider { flex: 1; accent-color: #a855f7; cursor: pointer;}
-.time-label { color: white; font-size: 0.8rem; min-width: 70px; }
-.evaluation-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); z-index: 3000; display: flex; justify-content: center; align-items: center;}
-.eval-card { background: linear-gradient(145deg, #1e293b, #0f172a); border: 1px solid #3b82f6; border-radius: 15px; width: 80%; max-width: 850px; padding: 30px; position: relative; color: white;}
-.close-btn { position: absolute; top: 15px; right: 20px; background: transparent; border: none; color: #94a3b8; font-size: 1.1rem; cursor: pointer; }
-.eval-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.eval-box { background: rgba(255, 255, 255, 0.03); border: 1px solid #334155; border-radius: 10px; padding: 20px; }
-.bar-container { margin-bottom: 15px; }
-.bar-bg { background: #334155; border-radius: 20px; height: 24px; width: 100%; overflow: hidden; }
-.bar-fill { height: 100%; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; font-size: 0.8rem; font-weight: bold; color: white;}
-.bar-fill.red { background: linear-gradient(90deg, #b91c1c, #ef4444); }
-.bar-fill.green { background: linear-gradient(90deg, #047857, #10b981); }
-@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+.sidebar {
+  width: 320px;
+  padding: 24px;
+  background: linear-gradient(180deg, #10223f 0%, #17253a 100%);
+  border-right: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.sidebar h2 {
+  margin: 0 0 20px;
+  font-size: 26px;
+}
+
+.menu {
+  display: grid;
+  gap: 12px;
+}
+
+.menu-btn,
+.blue-btn,
+.cyan-btn,
+.purple-btn,
+.dark-btn,
+.ghost-btn {
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.menu-btn {
+  padding: 14px 16px;
+}
+
+.menu-btn.blue,
+.blue-btn {
+  background: linear-gradient(to right, #2563eb, #38bdf8);
+}
+
+.menu-btn.cyan,
+.cyan-btn {
+  background: linear-gradient(to right, #0891b2, #22d3ee);
+}
+
+.menu-btn.purple,
+.purple-btn {
+  background: linear-gradient(to right, #7c3aed, #a855f7);
+}
+
+.menu-btn.green {
+  background: linear-gradient(to right, #059669, #10b981);
+}
+
+.dark-btn,
+.ghost-btn {
+  background: linear-gradient(to right, #334155, #475569);
+}
+
+.status-box {
+  margin-top: 24px;
+  padding: 18px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.88);
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.status-row:last-child {
+  border-bottom: none;
+}
+
+.ok {
+  color: #34d399;
+}
+
+.warn {
+  color: #f87171;
+}
+
+.pending {
+  color: #facc15;
+}
+
+.content {
+  flex: 1;
+  position: relative;
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.16), transparent 30%),
+    linear-gradient(135deg, #020617 0%, #0f172a 100%);
+}
+
+.panel,
+.frame-shell {
+  width: 100%;
+  height: 100%;
+}
+
+.panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  box-sizing: border-box;
+}
+
+.card {
+  width: min(1080px, 100%);
+  padding: 28px;
+  border-radius: 24px;
+  background: rgba(15, 23, 42, 0.86);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.card h3 {
+  margin: 0 0 14px;
+  font-size: 30px;
+}
+
+.card p {
+  line-height: 1.8;
+  color: #cbd5e1;
+}
+
+.config-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.field span {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.field-row,
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.field input {
+  flex: 1 1 320px;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(2, 11, 22, 0.92);
+  color: #fff;
+}
+
+.ghost-btn,
+.blue-btn,
+.cyan-btn,
+.purple-btn,
+.dark-btn {
+  min-height: 42px;
+  padding: 0 16px;
+}
+
+.service-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.service-card {
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(30, 41, 59, 0.92);
+}
+
+.service-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.service-top p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #93c5fd;
+  word-break: break-all;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.chip.ok {
+  background: rgba(28, 140, 96, 0.2);
+}
+
+.chip.warn {
+  background: rgba(160, 40, 40, 0.18);
+}
+
+.chip.pending {
+  background: rgba(146, 115, 33, 0.18);
+}
+
+.error-text {
+  margin-top: 16px;
+  color: #fda4af;
+}
+
+.frame-shell {
+  position: relative;
+}
+
+.frame-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 32px;
+  background: linear-gradient(180deg, rgba(2, 6, 23, 0.92), rgba(15, 23, 42, 0.88));
+}
+
+.frame-state h3 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.frame-state p {
+  margin: 0;
+  max-width: 720px;
+  line-height: 1.8;
+  color: #cbd5e1;
+}
+
+.frame-state__meta {
+  color: #93c5fd;
+}
+
+.frame-state__meta.is-error {
+  color: #fda4af;
+}
+
+.frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #0b1220;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(8px);
+}
+
+.overlay-card {
+  width: min(760px, calc(100% - 48px));
+  padding: 28px;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #1e293b, #0f172a);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  position: relative;
+}
+
+.close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.metric {
+  padding: 18px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.metric span {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.metric strong {
+  font-size: 22px;
+}
+
+.overlay-meta {
+  margin-top: 16px;
+  color: #cbd5e1;
+}
+
+@media (max-width: 1200px) {
+  .layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

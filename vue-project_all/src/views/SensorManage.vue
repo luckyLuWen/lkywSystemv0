@@ -1,7 +1,8 @@
 <template>
   <div class="sensor-manage-container">
     <iframe
-      src="/sensor-management/index.html"
+      :key="iframeKey"
+      :src="iframeSrc"
       frameborder="0"
       class="sensor-iframe"
       @load="onIframeLoad"
@@ -10,9 +11,24 @@
 </template>
 
 <script setup>
+import { onActivated, ref } from 'vue'
+import { buildSensorManagementIframeSrc } from '../config/subsystems'
+
+const iframeSrc = ref(buildSensorManagementIframeSrc())
+const iframeKey = ref(0)
+
+const refreshIframe = () => {
+  iframeSrc.value = buildSensorManagementIframeSrc()
+  iframeKey.value += 1
+}
+
 const onIframeLoad = () => {
   console.log('Sensor management page loaded')
 }
+
+onActivated(() => {
+  refreshIframe()
+})
 </script>
 
 <style scoped>

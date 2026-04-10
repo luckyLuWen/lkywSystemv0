@@ -1,256 +1,188 @@
-# lkywSystem 项目说明
+# lkywSystem
 
-## 一、项目结构
+## 项目结构
 
-- `vue-project_all`：主程序壳工程，统一入口。
-- `Collaborative_Response`：协同响应子系统，由同事 A 负责。
-- `Constructive simulation`：建构仿真子系统，由同事 B 负责。
-- `Real-time_Detection`：实时检测子系统，由同事 C 负责。
-- `Sensor_Management`：传感器管理子系统，由同事 D 负责。
-- `scripts/sync-subsystems.ps1`：将子系统构建结果同步到 `vue-project_all/public` 的脚本。
+- `vue-project_all`：总系统前端壳，负责首页、路由、状态卡和 iframe 集成。
+- `Collaborative_Response`：协同响应子系统，负责人 `dh`。
+- `Constructive simulation`：建构仿真子系统，负责人 `ysl`。
+- `Real-time_Detection`：实时检测子系统，负责人 `zby`。
+- `Sensor_Management`：真实边缘端传感器管理子系统，负责人 `lb`。
+- `Sensor_Management_sim`：本机模拟边缘网关，用于办公室端联调。
+- `scripts/sync-subsystems.ps1`：将子系统构建结果同步到 `vue-project_all/public`。
 
-## 二、当前仓库约定
+## 当前运行边界
 
-- 四个子系统目录是源码真源。
-- `vue-project_all/public` 只放主程序集成时使用的静态副本。
-- 不要手工直接修改 `vue-project_all/public` 里的子系统页面。
-- 如果子系统改动影响主程序集成页面，应先构建对应子系统，再执行同步脚本。
+- `vue-project_all` 不是四个子系统的统一后端启动器。
+- 它负责接入各子系统前端，并通过状态卡和按钮调用对应后端接口。
+- `lb` 的真实传感器管理后端应部署在边缘设备。
+- 当前仓库内的 `Sensor_Management_sim` 用来在开发电脑上模拟边缘网关。
 
-## 三、为什么保留 scripts
+## 推荐本机联调端口
 
-`scripts` 目录目前只保留了一个脚本：`sync-subsystems.ps1`。
+| 模块 | 地址 |
+| --- | --- |
+| 总系统前端 | `http://127.0.0.1:5173` 或 Vite 实际输出地址 |
+| 模拟传感器网关 | `http://127.0.0.1:18080` |
+| 实时检测后端 | `http://127.0.0.1:5000` |
+| 协同响应控制层 | `http://127.0.0.1:18601` |
+| 协同响应指挥后端 | `http://127.0.0.1:5001` |
+| 协同调度平台 Streamlit | `http://127.0.0.1:8501` |
 
-这个脚本是有必要的，因为当前主程序通过 `iframe` 引用的是 `vue-project_all/public` 下的静态副本，而不是直接读取四个子系统源码目录。
-如果没有这个脚本，后续大家只能手工复制文件，极容易漏拷、错拷、覆盖错误版本。
+总系统首页默认已经按这套端口配置：
 
-结论：
+- 传感器网关默认地址：`http://127.0.0.1:18080`
+- 实时检测默认地址：`http://127.0.0.1:5000`
+- 协同响应控制层默认地址：`http://127.0.0.1:18601`
+- 协同响应指挥后端默认地址：`http://127.0.0.1:5001`
+- 协同调度平台默认地址：`http://127.0.0.1:8501/?embed=true`
 
-- `scripts` 目录保留。
-- 目前没有多余脚本，不再额外删除。
+## Python 环境
 
-## 四、本地运行方式
+当前已验证 `D:\CondaEnvs\yolov11_traffic_dev\python.exe` 具备以下运行条件：
 
-### 1. 只运行主程序壳界面
+- `dh` 协同响应后端与 Streamlit 所需依赖
+- `zby` 实时检测后端所需依赖
+- `Sensor_Management_sim` 所需依赖
 
-适合查看整体菜单、路由跳转、主程序集成页面。
-
-```powershell
-cd vue-project_all
-npm install
-npm run dev
+`zby` 的模型文件路径为：
+```text
+.\liangkeweb\lkywSystem\Real-time_Detection\runs\detect\lkyw_fire_detection\weights\best.pt
 ```
 
-启动后打开终端输出的本地地址，通常类似：
+## 一键启动脚本
+仓库根目录提供 3 个常用脚本 (如需在ubuntu开发，请自行改为相应功能的.sh)。
+
+### 1. 启动模拟传感器网关
+```powershell
+.\start_sensor_gateway.bat
+```
+作用：
+- 使用 `yolov11_traffic_dev` 环境启动 `Sensor_Management_sim`
+- 默认监听 `18080`
+- 默认开启模拟采样
+- 默认关闭视频流
+
+启动成功后可访问：
+```text
+http://127.0.0.1:18080/api/health
+```
+
+### 2. 启动实时检测后端
+```powershell
+.\start_detection_backend.bat
+```
+作用：
+- 使用 `yolov11_traffic_dev` 环境启动 `Real-time_Detection\web_app\backend\app.py`
+- 自动注入 `YOLO11N_MODEL_PATH`
+- 默认监听 `5000`
+
+启动成功后可访问：
 
 ```text
-http://localhost:5173
+http://127.0.0.1:5000/api/health
+```
+
+### 3. 启动协同响应控制层
+```powershell
+.\start_Collaborative_Response.bat
+```
+作用：
+
+- 使用 `yolov11_traffic_dev` 环境启动 `Collaborative_Response\service_manager\server.py`
+- 默认监听 `18601`
+- 由控制层再去拉起 `commandCenter` 和 `streamlit`
+
+启动成功后可访问：
+
+```text
+http://127.0.0.1:18601/api/health
 ```
 
 说明：
+- 这个脚本启动的是控制层，不是直接把协同响应所有页面都起完。
+- 真正的二维推演和三维指挥后端，可以通过总系统首页状态卡或控制层接口继续启动。
 
-- 主程序会直接读取 `vue-project_all/public` 下已经同步好的四个子系统静态页面。
-- 如果只看页面框架，这一步通常已经够了。
+## 完整联调步骤
 
-### 2. 运行完整联调环境
-
-如果你希望不仅看到页面，还希望传感器管理、实时检测等功能真正访问后端，就需要分别启动对应服务。
-
-#### 主程序
-
+### step 1. 启动三个后端
 ```powershell
-cd vue-project_all
+.\start_sensor_gateway.bat
+.\start_detection_backend.bat
+.\start_Collaborative_Response.bat
+```
+
+### step 2. 启动总系统前端
+```powershell
+cd .\vue-project_all
 npm install
 npm run dev
 ```
 
-#### 协同响应子系统
+### 3. 打开总系统首页
+进入浏览器后重点检查：
+- 首页传感器状态卡是否显示 `127.0.0.1:18080` 在线
+- 首页实时检测状态卡是否显示 `127.0.0.1:5000` 在线且模型已就绪
+- 首页协同响应状态卡是否显示控制层 `127.0.0.1:18601` 在线
+然后可以继续：
+- 在首页或传感器管理页点击“开始采集 / 停止采集”
+- 在首页实时检测卡点击“开始检测 / 停止检测”
+- 在首页协同响应卡点击启动 `commandCenter` 或 `streamlit`
 
-```powershell
-cd Collaborative_Response
-npm install
-npm run dev
-```
-
-注意：
-
-- 该子系统源码中还依赖 `http://localhost:8501` 和 `http://127.0.0.1:3005` 相关服务。
-- 如果这些服务没启动，页面可能只能部分显示。
-
-#### 实时检测子系统
-
-后端：
-
-```powershell
-cd Real-time_Detection\web_app\backend
-pip install -r requirements.txt
-python app.py
-```
-
-说明：
-
-- 默认后端地址是 `http://localhost:5000`。
-- 主程序集成页和该子系统前端都依赖这个后端。
-
-前端单独查看时可直接打开：
-
-```text
-Real-time_Detection\web_app\frontend\index.html
-```
-
-#### 传感器管理子系统
-
-后端：
-
-```powershell
-cd Sensor_Management\IOT\backend
-pip install -r requirements.txt
-python main.py
-```
-
-前端开发：
-
-```powershell
-cd Sensor_Management\IOT\frontend
-npm install
-npm run dev
-```
-
-说明：
-
-- 默认后端地址是 `http://localhost:8000`。
-- 前端中也使用了 `ws://localhost:8000/ws`。
-
-#### 建构仿真子系统
-
-该子系统当前是静态页面资源，直接通过主程序加载即可。
-如果单独查看，可以直接打开：
-
-```text
-Constructive simulation\index.html
-```
-
-## 五、子系统改动后如何同步到主程序
-
-如果某个同事改了自己的子系统，并且希望主程序也使用最新页面，需要在仓库根目录执行：
-
+## 子系统改动后同步到总系统
+如果某个子系统前端页面改了，且希望 `vue-project_all/public` 中的集成副本同步更新，执行：
 ```powershell
 .\scripts\sync-subsystems.ps1
 ```
 
-它会刷新以下目录：
+该脚本会刷新：
 
 - `vue-project_all/public/collaborative-response`
 - `vue-project_all/public/constructive-simulation`
 - `vue-project_all/public/realtime-detection`
 - `vue-project_all/public/sensor-management`
 
-## 六、Git 分支模型
+## GitHub 协作方式
+推荐分支模型：
 
-- `main`：稳定发布分支。
-- `develop`：日常集成分支。
-- `feature/<子系统>-<功能>`：每个人从 `develop` 拉出来的功能分支。
-- `hotfix/<问题名>`：线上紧急修复分支。
+- `main`：稳定发布
+- `develop`：日常集成
+- `feature/<module>-<topic>`：个人功能分支
+- `hotfix/<topic>`：线上修复
 
-建议分支命名：
-
-- 同事 A：`feature/collaborative-response-...`
-- 同事 B：`feature/constructive-simulation-...`
-- 同事 C：`feature/realtime-detection-...`
-- 同事 D：`feature/sensor-management-...`
-
-## 七、每个人负责范围
-
-- 同事 A 主要改 `Collaborative_Response/`
-- 同事 B 主要改 `Constructive simulation/`
-- 同事 C 主要改 `Real-time_Detection/`
-- 同事 D 主要改 `Sensor_Management/`
-- 你作为总负责人，主要改 `vue-project_all/` 和跨子系统集成规则
-
-以下内容属于共享区域，改动前最好先沟通：
-
-- `vue-project_all/src/router/`
-- `vue-project_all/src/views/`
-- `vue-project_all/src/components/`
-- `vue-project_all/public/`
-- `scripts/`
-- `.gitignore`
-- `README.md`
-- `CONTRIBUTING.md`
-
-## 八、上传到 GitHub 后的推荐协作方式
-
-### 你如何工作
+### 负责人如何工作
 
 1. 维护 `main` 和 `develop`
-2. 审查四位同事提交到 `develop` 的 Pull Request
-3. 处理跨子系统冲突
-4. 在主程序里完成统一接入和联调
-5. 当 `develop` 稳定后，再合并到 `main`
+2. 审核 `lb / dh / ysl / zby` 提交到 `develop` 的 PR
+3. 处理跨子系统集成
+4. 最终把 `develop` 合并到 `main`
 
-### 同事 A-D 如何工作
+### 四位同事如何工作
 
-每个人都遵循同一套流程：
+- `lb` 主要改 `Sensor_Management/`，必要时也改 `Sensor_Management_sim/`
+- `dh` 主要改 `Collaborative_Response/`
+- `ysl` 主要改 `Constructive simulation/`
+- `zby` 主要改 `Real-time_Detection/`
 
-1. 先切到 `develop`
-2. 拉最新代码
-3. 从 `develop` 新建自己的功能分支
-4. 只修改自己负责的目录，或者经过沟通后再改共享文件
-5. 在自己本机环境下运行、验证
-6. 提交并推送自己的功能分支
-7. 发起到 `develop` 的 Pull Request
-8. 等你 review 后再合并
-
-### 一个模拟示例
-
-假设同事 C 要改实时检测：
+标准流程：
 
 ```powershell
 git switch develop
 git pull origin develop
-git switch -c feature/realtime-detection-camera-page
+git switch -c feature/<module>-<topic>
 ```
 
-然后他只修改：
+开发要求：
 
-- `Real-time_Detection/...`
+- 只改自己负责目录相关代码
+- 在自己操作系统环境下完成运行验证
+- 如果前端改动影响总系统静态集成页，额外执行 `.\scripts\sync-subsystems.ps1`
 
-如果这次改动还影响主程序里显示的静态页面，他再执行：
-
-```powershell
-.\scripts\sync-subsystems.ps1
-```
-
-然后提交：
+提交方式：
 
 ```powershell
 git add .
-git commit -m "feat: 更新实时检测页面与联调资源"
-git push origin feature/realtime-detection-camera-page
+git commit -m "feat: 说明本次改动"
+git push origin feature/<module>-<topic>
 ```
 
-再去 GitHub 上发起：
-
-- 源分支：`feature/realtime-detection-camera-page`
-- 目标分支：`develop`
-
-你审核通过后合并到 `develop`。
-
-## 九、新机器拉代码后的最小操作
-
-如果只是负责某一个子系统，不需要一上来把所有目录都装依赖。
-
-例如你只负责主程序：
-
-```powershell
-cd vue-project_all
-npm install
-```
-
-例如你只负责传感器管理前端：
-
-```powershell
-cd Sensor_Management\IOT\frontend
-npm install
-```
-
-按负责范围安装依赖即可。
+然后发起到 `develop` 的 Pull Request。

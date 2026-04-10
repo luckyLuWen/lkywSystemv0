@@ -197,7 +197,7 @@
             <h2>控制面板</h2>
             <div class="input-group">
                 <label for="rtspUrl">RTSP流地址：</label>
-                <input type="text" id="rtspUrl" value="rtsp://localhost:8554/live" 
+                <input type="text" id="rtspUrl" value="" 
                        placeholder="例如: rtsp://localhost:8554/live">
             </div>
             
@@ -254,9 +254,58 @@
     </div>
     
     <script>
-        const API_BASE = 'http://localhost:5000/api';
+        const DEFAULT_API_BASE = 'http://127.0.0.1:5000/api';
+        const DEFAULT_RTSP_URL = 'rtsp://localhost:8554/live';
+        const API_STORAGE_KEY = 'realtimeDetection.apiBaseUrl';
+        const RTSP_STORAGE_KEY = 'realtimeDetection.rtspUrl';
         const STREAM_ID = 'rtsp_cam_01';
         let updateInterval = null;
+
+        function normalizeBaseUrl(value) {
+            if (!value || typeof value !== 'string') return '';
+            return value.trim().replace(/\/+$/, '');
+        }
+
+        function getQueryValue(name) {
+            try {
+                return new URL(window.location.href).searchParams.get(name) || '';
+            } catch (error) {
+                return '';
+            }
+        }
+
+        function getStorageValue(key) {
+            try {
+                return window.localStorage.getItem(key) || '';
+            } catch (error) {
+                return '';
+            }
+        }
+
+        function persistValue(key, value) {
+            try {
+                if (value) {
+                    window.localStorage.setItem(key, value);
+                } else {
+                    window.localStorage.removeItem(key);
+                }
+            } catch (error) {
+                console.warn('Storage unavailable:', error);
+            }
+        }
+
+        const API_BASE = `${normalizeBaseUrl(
+            getQueryValue('apiBase') ||
+            getQueryValue('realtimeDetectionBase') ||
+            getStorageValue(API_STORAGE_KEY) ||
+            DEFAULT_API_BASE.replace(/\/api$/, '')
+        )}/api`;
+
+        document.getElementById('rtspUrl').value =
+            getQueryValue('rtspUrl') ||
+            getQueryValue('realtimeRtspUrl') ||
+            getStorageValue(RTSP_STORAGE_KEY) ||
+            DEFAULT_RTSP_URL;
         
         function showAlert(message, type = 'success') {
             const alertBox = document.getElementById('alertBox');
@@ -273,6 +322,7 @@
         async function startDetection() {
             const rtspUrl = document.getElementById('rtspUrl').value;
             const cameraName = document.getElementById('cameraName').value;
+            persistValue(RTSP_STORAGE_KEY, rtspUrl.trim());
             
             if (!rtspUrl) {
                 showAlert('请输入RTSP流地址', 'danger');

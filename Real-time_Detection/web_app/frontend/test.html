@@ -2,22 +2,40 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>测试页面</title>
+    <title>检测后端联通性测试</title>
 </head>
 <body>
-    <h1>如果你能看到这个，说明HTML加载正常</h1>
-    <p>后端状态: <span id="status">检测中...</span></p>
-    
+    <h1>如果你能看到这个页面，说明 HTML 已经正常加载</h1>
+    <p>后端状态：<span id="status">检测中...</span></p>
+
     <script>
-        // 测试后端连接
-        fetch('http://localhost:5000/api/health')
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('status').textContent = '✅ ' + data.message;
+        function normalizeBaseUrl(value) {
+            if (!value || typeof value !== 'string') return '';
+            return value.trim().replace(/\/+$/, '');
+        }
+
+        function getQueryValue(name) {
+            try {
+                return new URL(window.location.href).searchParams.get(name) || '';
+            } catch (error) {
+                return '';
+            }
+        }
+
+        const apiBase = normalizeBaseUrl(
+            getQueryValue('apiBase') ||
+            getQueryValue('realtimeDetectionBase') ||
+            'http://127.0.0.1:5000'
+        );
+
+        fetch(`${apiBase}/api/health`)
+            .then((res) => res.json())
+            .then((data) => {
+                document.getElementById('status').textContent = `正常：${data.message}`;
                 document.getElementById('status').style.color = 'green';
             })
-            .catch(err => {
-                document.getElementById('status').textContent = '❌ 无法连接: ' + err.message;
+            .catch((error) => {
+                document.getElementById('status').textContent = `无法连接：${error.message}`;
                 document.getElementById('status').style.color = 'red';
             });
     </script>

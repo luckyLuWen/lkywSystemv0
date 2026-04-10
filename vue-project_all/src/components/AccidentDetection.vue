@@ -2,7 +2,8 @@
   <div class="accident-detection-container">
     <div class="iframe-container">
       <iframe
-        src="/realtime-detection/index.html"
+        :key="iframeKey"
+        :src="iframeSrc"
         frameborder="0"
         class="accident-iframe"
         @load="onIframeLoad"
@@ -12,9 +13,24 @@
 </template>
 
 <script setup>
-const onIframeLoad = () => {
+import { onActivated, ref } from 'vue'
+import { buildRealtimeDetectionIframeSrc } from '../config/subsystems'
+
+const iframeSrc = ref(buildRealtimeDetectionIframeSrc())
+const iframeKey = ref(0)
+
+function refreshIframe() {
+  iframeSrc.value = buildRealtimeDetectionIframeSrc()
+  iframeKey.value += 1
+}
+
+function onIframeLoad() {
   console.log('Realtime detection page loaded')
 }
+
+onActivated(() => {
+  refreshIframe()
+})
 </script>
 
 <style scoped>

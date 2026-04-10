@@ -35,9 +35,11 @@ warnings.filterwarnings('ignore', message='.*Unsupported.*')
 app = Flask(__name__)
 CORS(app)
 
+BASE_DIR = Path(__file__).resolve().parent
+
 # Configuration
-UPLOAD_FOLDER = 'uploads'
-RESULT_FOLDER = 'results'
+UPLOAD_FOLDER = str(BASE_DIR / 'uploads')
+RESULT_FOLDER = str(BASE_DIR / 'results')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'bmp', 'webp', 'mp4', 'avi', 'mov'}
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 
@@ -55,7 +57,10 @@ MODELS = {
 }
 
 MODEL_PATHS = {
-    'yolo11n': '../../runs/detect/lkyw_fire_detection/weights/best.pt'
+    'yolo11n': os.getenv(
+        'YOLO11N_MODEL_PATH',
+        str(BASE_DIR.parent.parent / 'runs' / 'detect' / 'lkyw_fire_detection' / 'weights' / 'best.pt')
+    )
 }
 
 # 类别颜色映射 (BGR格式，OpenCV使用BGR而非RGB)
@@ -69,18 +74,78 @@ CLASS_COLORS = {
 # RTSP检测器管理
 rtsp_detectors = {}
 
+
+def resolve_path(path_value):
+    path_obj = Path(path_value)
+    if path_obj.is_absolute():
+        return path_obj
+    return (BASE_DIR / path_obj).resolve()
+
+
+def get_model_status():
+    items = []
+    for name, raw_path in MODEL_PATHS.items():
+        resolved_path = resolve_path(raw_path)
+        items.append({
+            'name': name,
+            'configured_path': raw_path,
+            'resolved_path': str(resolved_path),
+            'exists': resolved_path.exists(),
+            'loaded': MODELS.get(name) is not None,
+        })
+    return items
+
+
+def load_rtsp_stream_config():
+    config_path = BASE_DIR / 'rtsp_config.json'
+    if not config_path.exists():
+        return []
+
+    with open(config_path, 'r', encoding='utf-8') as file_obj:
+        config = json.load(file_obj)
+
+    return config.get('rtsp_streams', [])
+
+
+def get_default_stream(stream_id=None):
+    streams = load_rtsp_stream_config()
+    if stream_id:
+        for item in streams:
+            if item.get('id') == stream_id:
+                return item
+
+    for item in streams:
+        if item.get('enabled', True):
+            return item
+
+    return streams[0] if streams else None
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def build_safe_upload_name(filename):
+    original_path = Path(filename or '')
+    suffix = original_path.suffix.lower()
+    normalized_stem = secure_filename(original_path.stem)
+
+    if not normalized_stem:
+        normalized_stem = 'upload'
+
+    if suffix.lstrip('.') not in ALLOWED_EXTENSIONS:
+        suffix = ''
+
+    return f"{normalized_stem}{suffix}"
 
 def load_model(model_name):
     """Lazy load model when needed"""
     if MODELS[model_name] is None:
-        model_path = MODEL_PATHS[model_name]
-        if os.path.exists(model_path):
+        model_path = resolve_path(MODEL_PATHS[model_name])
+        if model_path.exists():
             print(f"Loading model: {model_name} from {model_path}")
             try:
                 # 尝试使用标准方式加载
-                MODELS[model_name] = YOLO(model_path)
+                MODELS[model_name] = YOLO(str(model_path))
             except Exception as e:
                 print(f"Standard loading failed: {e}")
                 print("Trying alternative loading method...")
@@ -91,7 +156,7 @@ def load_model(model_name):
                     kwargs['weights_only'] = False
                     return original_load(*args, **kwargs)
                 torch.load = patched_load
-                MODELS[model_name] = YOLO(model_path)
+                MODELS[model_name] = YOLO(str(model_path))
                 torch.load = original_load
             print(f"✓ Model loaded successfully: {model_name}")
         else:
@@ -102,12 +167,13 @@ def load_model(model_name):
 def get_models():
     """Get available models"""
     available_models = []
-    for name, path in MODEL_PATHS.items():
-        if os.path.exists(path):
+    for name, raw_path in MODEL_PATHS.items():
+        model_path = resolve_path(raw_path)
+        if model_path.exists():
             available_models.append({
                 'name': name,
-                'path': path,
-                'size': os.path.getsize(path) / (1024 * 1024)  # Size in MB
+                'path': str(model_path),
+                'size': model_path.stat().st_size / (1024 * 1024)  # Size in MB
             })
     return jsonify({'models': available_models})
 
@@ -131,7 +197,7 @@ def detect_image():
         iou_threshold = float(request.form.get('iou', 0.45))
         
         # Save uploaded file
-        filename = secure_filename(file.filename)
+        filename = build_safe_upload_name(file.filename)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         unique_filename = f"{timestamp}_{filename}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
@@ -217,7 +283,7 @@ def detect_video():
         frame_interval = int(request.form.get('interval', 30))
         
         # Save uploaded file
-        filename = secure_filename(file.filename)
+        filename = build_safe_upload_name(file.filename)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         unique_filename = f"{timestamp}_{filename}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
@@ -466,7 +532,16 @@ def get_result(filename):
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
-    return jsonify({'status': 'ok', 'message': 'YOLO Web API is running'})
+    model_status = get_model_status()
+    return jsonify({
+        'status': 'ok',
+        'message': 'YOLO Web API is running',
+        'service': 'real-time-detection',
+        'backend_base': request.host_url.rstrip('/'),
+        'models': model_status,
+        'model_ready': any(item['exists'] for item in model_status),
+        'active_streams': len(rtsp_detectors)
+    })
 
 
 # ==================== RTSP实时流检测接口 ====================
@@ -475,19 +550,10 @@ def health_check():
 def get_rtsp_streams():
     """获取所有RTSP流配置"""
     try:
-        config_path = os.path.join(os.path.dirname(__file__), 'rtsp_config.json')
-        if os.path.exists(config_path):
-            with open(config_path, 'r', encoding='utf-8') as f:
-                config = json.load(f)
-                return jsonify({
-                    'success': True,
-                    'streams': config.get('rtsp_streams', [])
-                })
-        else:
-            return jsonify({
-                'success': True,
-                'streams': []
-            })
+        return jsonify({
+            'success': True,
+            'streams': load_rtsp_stream_config()
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -497,9 +563,10 @@ def start_rtsp_detection():
     """启动RTSP流检测"""
     try:
         data = request.get_json()
-        stream_id = data.get('stream_id')
-        rtsp_url = data.get('rtsp_url')
-        camera_name = data.get('camera_name', 'RTSP Camera')
+        stream_id = data.get('stream_id') or 'rtsp_cam_01'
+        default_stream = get_default_stream(stream_id)
+        rtsp_url = data.get('rtsp_url') or (default_stream or {}).get('url')
+        camera_name = data.get('camera_name') or (default_stream or {}).get('name') or 'RTSP Camera'
         
         if not rtsp_url:
             return jsonify({'error': 'RTSP URL is required'}), 400
@@ -513,7 +580,7 @@ def start_rtsp_detection():
             })
         
         # 创建并启动检测器
-        model_path = MODEL_PATHS.get('yolo11n', '../../yolo11n.pt')
+        model_path = str(resolve_path(MODEL_PATHS.get('yolo11n', '../../yolo11n.pt')))
         detector = RTSPDetector(
             model_path=model_path,
             rtsp_url=rtsp_url,
@@ -617,7 +684,8 @@ def get_rtsp_status():
         return jsonify({
             'success': True,
             'active_streams': len(rtsp_detectors),
-            'streams': status
+            'streams': status,
+            'model_ready': any(item['exists'] for item in get_model_status())
         })
         
     except Exception as e:
@@ -626,7 +694,8 @@ def get_rtsp_status():
 if __name__ == '__main__':
     print("Starting YOLO Web API...")
     print("Available models:")
-    for name, path in MODEL_PATHS.items():
-        if os.path.exists(path):
-            print(f"  - {name}: {path}")
+    for name, raw_path in MODEL_PATHS.items():
+        model_path = resolve_path(raw_path)
+        if model_path.exists():
+            print(f"  - {name}: {model_path}")
     app.run(host='0.0.0.0', port=5000, debug=True)

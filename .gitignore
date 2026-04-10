@@ -20,10 +20,25 @@ coverage/
 **/__pycache__/
 *.pyc
 *.pyo
+**/.venv/
+**/venv/
+**/env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.python-version
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
 
 # 本地数据与媒体文件
 *.db
 *.mp4
+*.pt
+*.onnx
+*.engine
 
 # 编辑器文件
 .DS_Store

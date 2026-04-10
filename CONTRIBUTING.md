@@ -49,7 +49,6 @@
 改之前最好先在群里说一声。
 
 ## 五、推荐工作流
-
 ```powershell
 git switch develop
 git pull origin develop
@@ -57,7 +56,6 @@ git switch -c feature/你的子系统-你的任务
 ```
 
 开发完成后：
-
 ```powershell
 git add .
 git commit -m "feat: 说明你的改动"
@@ -65,14 +63,12 @@ git push origin feature/你的子系统-你的任务
 ```
 
 然后在 GitHub 上发起：
-
 - 源分支：你的功能分支
 - 目标分支：`develop`
 
 ## 六、总负责人职责
-
 - 维护 `main` 和 `develop`
-- 审核同事 A-D 的 Pull Request
+- 审核同事 dh、ysl、lb、zby 的 Pull Request
 - 处理共享文件冲突
 - 负责主程序 `vue-project_all` 的统一集成
 - 在适合发布时把 `develop` 合并到 `main`

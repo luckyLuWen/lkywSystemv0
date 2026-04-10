@@ -1,6 +1,13 @@
 <template>
   <div class="dashboard-container">
-    <Header @change-menu="handleMenuChange" />
+    <button
+      v-if="route.path !== '/'"
+      type="button"
+      class="return-home-btn"
+      @click="router.push('/')"
+    >
+      返回首页
+    </button>
 
     <main class="module-container">
       <router-view v-slot="{ Component }">
@@ -15,42 +22,13 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
-import Header from './components/Header.vue'
+import { useRoute, useRouter } from 'vue-router'
 
-// 1. 实例化路由工具
 const router = useRouter()
-
-// 2. 处理导航栏点击事件，改为路由跳转
-const handleMenuChange = (key) => {
-  // 根据你 Header 组件传回来的 key，决定跳转到哪个网址
-  switch (key) {
-    case 'home':
-      router.push('/') // 首页
-      break
-    case 'realtime':
-      router.push('/realtime') // 实时检测页面，显示系统大屏界面
-      break
-    case 'sensor':
-      router.push('/sensor-manage') // 跳转到我们刚才配置的传感器管理子系统
-      break
-    case 'modeling':
-      router.push('/modeling') // 精细建模
-      break
-    case 'coordination':
-      router.push('/coordination') // 协同响应
-      break
-    case 'simulation':
-      router.push('/simulation') // 仿真推演
-      break
-    default:
-      router.push('/') // 默认兜底回到首页
-  }
-}
+const route = useRoute()
 </script>
 
 <style>
-/* 全局变量与基础样式 (无需修改，保持原样) */
 :root {
   --primary-color: #00e5ff;
   --text-color: #ffffff;
@@ -73,32 +51,55 @@ body {
 </style>
 
 <style scoped>
-/* 局部样式 (无需修改，保持原样) */
 .dashboard-container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  padding: 20px;
-  box-sizing: border-box;
   position: relative;
+  height: 100vh;
+  overflow: hidden;
 }
-
-
 
 .module-container {
-  flex: 1;
-  display: flex;
   width: 100%;
+  height: 100%;
   position: relative;
-  z-index: 10;
-  /* 移除 pointer-events: none; 允许鼠标事件传递到子元素 */
+  z-index: 1;
 }
 
-/* 模块切换动画 */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.4s ease, transform 0.4s ease;
+.return-home-btn {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 30;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 229, 255, 0.18);
+  background: rgba(2, 10, 22, 0.62);
+  color: #e6faff;
+  font-size: 14px;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  box-shadow:
+    inset 0 0 12px rgba(0, 229, 255, 0.06),
+    0 8px 22px rgba(0, 0, 0, 0.18);
+  transition: 0.18s ease;
 }
-.fade-enter-from, .fade-leave-to {
+
+.return-home-btn:hover {
+  color: var(--primary-color);
+  border-color: rgba(0, 229, 255, 0.3);
+  background: rgba(0, 229, 255, 0.08);
+  box-shadow:
+    inset 0 0 12px rgba(0, 229, 255, 0.08),
+    0 0 16px rgba(0, 229, 255, 0.12);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
   transform: translateY(10px);
 }

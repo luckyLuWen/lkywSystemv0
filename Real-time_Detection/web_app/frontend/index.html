@@ -545,8 +545,9 @@
                         
                         <div style="margin-bottom: 20px;">
                             <label style="display: block; margin-bottom: 5px; font-weight: bold;">RTSP流地址:</label>
-                            <input type="text" id="rtsp-url-input" value="rtsp://localhost:8554/live" 
+                            <input type="text" id="rtsp-url-input" value="" 
                                    style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px; font-size: 14px;">
+                            <p id="api-base-hint" style="margin-top: 8px; font-size: 12px; color: #64748b;"></p>
                         </div>
                         
                         <div style="text-align: center;">
@@ -601,7 +602,65 @@
     </div>
 
     <script>
-        const API_URL = 'http://localhost:5000';
+        const DEFAULT_API_URL = 'http://127.0.0.1:5000';
+        const DEFAULT_RTSP_URL = 'rtsp://localhost:8554/live';
+        const API_STORAGE_KEY = 'realtimeDetection.apiBaseUrl';
+        const RTSP_STORAGE_KEY = 'realtimeDetection.rtspUrl';
+
+        function normalizeBaseUrl(value) {
+            if (!value || typeof value !== 'string') return '';
+            return value.trim().replace(/\/+$/, '');
+        }
+
+        function getQueryValue(name) {
+            try {
+                return new URL(window.location.href).searchParams.get(name) || '';
+            } catch (error) {
+                return '';
+            }
+        }
+
+        function getStorageValue(key) {
+            try {
+                return window.localStorage.getItem(key) || '';
+            } catch (error) {
+                return '';
+            }
+        }
+
+        function persistValue(key, value) {
+            try {
+                if (value) {
+                    window.localStorage.setItem(key, value);
+                } else {
+                    window.localStorage.removeItem(key);
+                }
+            } catch (error) {
+                console.warn('Storage unavailable:', error);
+            }
+        }
+
+        function resolveApiUrl() {
+            return normalizeBaseUrl(
+                getQueryValue('apiBase') ||
+                getQueryValue('realtimeDetectionBase') ||
+                getStorageValue(API_STORAGE_KEY) ||
+                DEFAULT_API_URL
+            ) || DEFAULT_API_URL;
+        }
+
+        function resolveRtspUrl() {
+            return (
+                getQueryValue('rtspUrl') ||
+                getQueryValue('realtimeRtspUrl') ||
+                getStorageValue(RTSP_STORAGE_KEY) ||
+                DEFAULT_RTSP_URL
+            ).trim();
+        }
+
+        const API_URL = resolveApiUrl();
+        const DEFAULT_RTSP_INPUT_VALUE = resolveRtspUrl();
+        persistValue(API_STORAGE_KEY, API_URL);
         let settings = {
             model: 'yolo11n',
             conf: 0.25,
@@ -617,6 +676,48 @@
         // RTSP相关变量
         const RTSP_STREAM_ID = 'rtsp_cam_01';
         let rtspUpdateInterval = null;
+        const rtspUrlInput = document.getElementById('rtsp-url-input');
+        if (rtspUrlInput) {
+            rtspUrlInput.value = DEFAULT_RTSP_INPUT_VALUE;
+        }
+
+        const apiBaseHint = document.getElementById('api-base-hint');
+        if (apiBaseHint) {
+            apiBaseHint.textContent = `当前检测后端：${API_URL}`;
+        }
+        const statusElement = document.querySelector('.status');
+
+        function setBackendStatus(isOnline, detail = '') {
+            if (!statusElement) return;
+
+            if (isOnline) {
+                statusElement.innerHTML = `
+                    <p>系统状态</p>
+                    <p><span class="status-dot"></span> 在线运行</p>
+                    <p style="font-size: 12px; color: #dbeafe; margin-top: 5px;">检测后端：${API_URL}${detail ? ` · ${detail}` : ''}</p>
+                `;
+                return;
+            }
+
+            statusElement.innerHTML = `
+                <p>系统状态</p>
+                <p style="color: #f87171;"><span class="status-dot" style="background: #f87171;"></span> 检测后端不可达</p>
+                <p style="font-size: 12px; color: #9ca3af; margin-top: 5px;">${detail || `请确认 ${API_URL} 已启动并可访问`}</p>
+            `;
+        }
+
+        function buildFetchErrorMessage(error) {
+            const rawMessage = error && error.message ? error.message : String(error || '未知错误');
+            if (rawMessage.includes('Failed to fetch') || rawMessage.includes('NetworkError')) {
+                return `无法连接检测后端 ${API_URL}，请确认 start_detection_backend.bat 已启动并监听该地址`;
+            }
+            return rawMessage;
+        }
+
+        function isNetworkFetchError(error) {
+            const rawMessage = error && error.message ? error.message : String(error || '');
+            return rawMessage.includes('Failed to fetch') || rawMessage.includes('NetworkError');
+        }
         let currentDetectionSource = 'webcam'; // 'webcam' 或 'rtsp'
 
         // Tab switching
@@ -938,36 +1039,38 @@
         // Check backend status on load
         window.addEventListener('load', async () => {
             try {
-                const response = await fetch(`${API_URL}/api/health`);
+                const response = await fetch(`${API_URL}/api/health`, { cache: 'no-store' });
                 const data = await response.json();
                 console.log('Backend status:', data);
+                const detail = data && data.model_ready === false ? '模型未就绪' : '模型已就绪';
+                setBackendStatus(true, detail);
             } catch (error) {
                 console.error('Backend not available:', error);
-                // 显示友好的提示信息，而不是弹出警告
-                const statusElement = document.querySelector('.status');
-                if (statusElement) {
-                    statusElement.innerHTML = `
-                        <p>系统状态</p>
-                        <p style="color: #f87171;"><span class="status-dot" style="background: #f87171;"></span> 后端服务未启动</p>
-                        <p style="font-size: 12px; color: #9ca3af; margin-top: 5px;">请先运行 backend/app.py</p>
-                    `;
-                }
+                setBackendStatus(false, buildFetchErrorMessage(error));
             }
         });
 
-        // 优雅处理后端服务不可用的情况
         async function safeFetch(url, options = {}) {
             try {
                 const response = await fetch(url, options);
+                const contentType = response.headers.get('content-type') || '';
+                const payload = contentType.includes('application/json')
+                    ? await response.json().catch(() => ({}))
+                    : { error: await response.text().catch(() => '') };
+
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    throw new Error(payload.error || payload.message || `请求失败（HTTP ${response.status}）`);
                 }
-                return await response.json();
+                return payload;
             } catch (error) {
                 console.error('API request failed:', error);
-                // 显示友好的错误提示
-                alert('后端服务未启动，请先运行 backend/app.py');
-                return { success: false, error: error.message };
+                const message = buildFetchErrorMessage(error);
+                if (isNetworkFetchError(error)) {
+                    setBackendStatus(false, message);
+                } else {
+                    setBackendStatus(true, '接口返回异常');
+                }
+                throw new Error(message);
             }
         }
         
@@ -998,6 +1101,8 @@
                 return;
             }
             
+            persistValue(RTSP_STORAGE_KEY, rtspUrl.trim());
+
             try {
                 const data = await safeFetch(`${API_URL}/api/rtsp/start`, {
                     method: 'POST',
