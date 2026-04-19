@@ -2,8 +2,11 @@
   <div class="home-dashboard">
     <div class="globe-layer">
       <HomeCesiumGlobe
+        ref="globeRef"
         :phases="timelinePhases"
         :active-phase-index="activePhaseIndex"
+        :focused-point-id="currentFocusedPoint"
+        @accident-picked="onAccidentPickedOnGlobe"
       />
     </div>
 
@@ -56,32 +59,21 @@
       </div>
     </aside>
 
-    <aside class="right-panel">
-      <div class="weather-card">
-        <div class="card-title">气象预警</div>
-        <div class="weather-box">
-          <div v-for="item in weatherItems" :key="item.date" class="weather-item">
-            <span class="date">{{ item.date }}</span>
-            <span class="temp">{{ item.temperature }}</span>
-            <span>{{ item.weather }}</span>
-            <span class="range">{{ item.range }}</span>
-          </div>
-        </div>
-      </div>
-    </aside>
-
     <footer class="bottom-timeline">
       <HomeTimeProgress
         v-model="activePhaseIndex"
+        v-model:accident-index="activeAccidentIndex"
         :phases="timelinePhases"
+        :accidents="accidentPoints"
+        @locate="handleLocate"
       />
     </footer>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import CollaborativeResponseCard from '../components/CollaborativeResponseCard.vue'
 import RealtimeDetectionCard from '../components/RealtimeDetectionCard.vue'
 import SensorGatewayCard from '../components/SensorGatewayCard.vue'
@@ -89,9 +81,14 @@ import HomeCesiumGlobe from '../components/home/HomeCesiumGlobe.vue'
 import HomeTimeProgress from '../components/home/HomeTimeProgress.vue'
 
 const router = useRouter()
+const route = useRoute()
 const activeServiceId = ref('')
 const activePhaseIndex = ref(0)
-const activeMenuKey = ref(readStoredMenuKey())
+const activeMenuKey = ref('')
+const globeRef = ref(null)
+
+const activeAccidentIndex = ref(0)
+const currentFocusedPoint = ref('')
 
 const topMenus = [
   { key: 'sensor', label: '传感器管理', path: '/sensor-manage' },
@@ -101,27 +98,16 @@ const topMenus = [
   { key: 'simulation', label: '仿真推演', path: '/simulation' },
 ]
 
-const servicePanels = [
+const accidentPoints = [
   {
-    id: 'collaborative',
-    theme: 'collaborative',
-    owner: 'dh',
-    title: '协同响应服务',
-    description: '控制层、二维推演、三维态势地图与策略评估接入。',
+    id: 'rear-end',
+    title: '货车追尾事故',
+    focusPoint: 'accident_blue',
   },
   {
-    id: 'sensor',
-    theme: 'sensor',
-    owner: 'lb',
-    title: '边缘传感器网关',
-    description: '办公室端查看边缘状态，控制采集并承接现场数据。',
-  },
-  {
-    id: 'realtime',
-    theme: 'realtime',
-    owner: 'zby',
-    title: '实时检测服务',
-    description: '模型状态、RTSP 推理任务与检测联动控制。',
+    id: 'leakage',
+    title: '油罐车泄露事故',
+    focusPoint: 'accident_red',
   },
 ]
 
@@ -198,9 +184,28 @@ const timelinePhases = [
   },
 ]
 
-const weatherItems = [
-  { date: '2026/04/09', temperature: '25°C', weather: '多云', range: '11-25 °C' },
-  { date: '2026/04/10', temperature: '26°C', weather: '晴', range: '20-26 °C' },
+const servicePanels = [
+  {
+    id: 'collaborative',
+    theme: 'collaborative',
+    owner: 'dh',
+    title: '协同响应服务',
+    description: '控制层、二维推演、三维态势地图与策略评估接入。',
+  },
+  {
+    id: 'sensor',
+    theme: 'sensor',
+    owner: 'lb',
+    title: '边缘传感器网关',
+    description: '办公室端查看边缘状态，控制采集并承接现场数据。',
+  },
+  {
+    id: 'realtime',
+    theme: 'realtime',
+    owner: 'zby',
+    title: '实时检测服务',
+    description: '模型状态、RTSP 推理任务与检测联动控制。',
+  },
 ]
 
 function readStoredMenuKey() {
@@ -215,7 +220,7 @@ function persistMenuKey(value) {
   try {
     window.localStorage.setItem('lkyw.homeActiveMenuKey', value)
   } catch {
-    // ignore storage failures
+    // ignore
   }
 }
 
@@ -228,6 +233,42 @@ function goTo(item) {
   persistMenuKey(item.key)
   router.push(item.path)
 }
+
+function onAccidentPickedOnGlobe(entityId) {
+  const index = accidentPoints.findIndex((acc) => acc.focusPoint === entityId)
+  if (index !== -1) {
+    activeAccidentIndex.value = index
+    currentFocusedPoint.value = entityId
+  }
+}
+
+function handleLocate() {
+  if (globeRef.value) {
+    const accident = accidentPoints[activeAccidentIndex.value]
+    if (accident) {
+      currentFocusedPoint.value = accident.focusPoint
+      globeRef.value.zoomToPoint(accident.focusPoint)
+    }
+  }
+}
+
+watch(activeAccidentIndex, () => {
+  activePhaseIndex.value = 0
+  currentFocusedPoint.value = ''
+})
+
+watch(
+  () => route.path,
+  (newPath) => {
+    if (newPath === '/') {
+      activeMenuKey.value = ''
+    }
+  }
+)
+
+onMounted(() => {
+  activeMenuKey.value = ''
+})
 </script>
 
 <style scoped>
@@ -381,7 +422,6 @@ function goTo(item) {
 }
 
 .left-panel,
-.right-panel,
 .bottom-timeline {
   position: absolute;
   z-index: 4;
@@ -399,15 +439,6 @@ function goTo(item) {
   padding-right: 4px;
 }
 
-.right-panel {
-  top: 88px;
-  right: 20px;
-  width: min(260px, calc(100vw - 40px));
-  max-height: calc(100% - 210px);
-  overflow: auto;
-  padding-right: 4px;
-}
-
 .bottom-timeline {
   left: 50%;
   bottom: 18px;
@@ -415,8 +446,7 @@ function goTo(item) {
   transform: translateX(-50%);
 }
 
-.accordion-item,
-.weather-card {
+.accordion-item {
   position: relative;
   border-radius: 18px;
   border: 1px solid rgba(0, 229, 255, 0.12);
@@ -425,10 +455,10 @@ function goTo(item) {
     inset 0 0 22px rgba(0, 229, 255, 0.06),
     0 12px 32px rgba(0, 0, 0, 0.16);
   backdrop-filter: blur(14px);
+  overflow: hidden;
 }
 
-.accordion-item::before,
-.weather-card::before {
+.accordion-item::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -447,10 +477,6 @@ function goTo(item) {
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
-}
-
-.accordion-item {
-  overflow: hidden;
 }
 
 .accordion-item.is-collaborative {
@@ -548,45 +574,6 @@ function goTo(item) {
   border-radius: 14px;
 }
 
-.weather-card {
-  padding: 20px 22px;
-}
-
-.card-title {
-  margin-bottom: 18px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(0, 229, 255, 0.12);
-  color: var(--primary-color);
-  font-size: 20px;
-}
-
-.weather-box {
-  display: grid;
-  gap: 12px;
-}
-
-.weather-item {
-  padding: 14px 14px 12px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  display: grid;
-  gap: 4px;
-  color: rgba(255, 255, 255, 0.78);
-}
-
-.weather-item .temp {
-  color: #ffb84d;
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.weather-item .range,
-.weather-item .date {
-  color: rgba(255, 255, 255, 0.52);
-  font-size: 12px;
-}
-
 .accordion-enter-active,
 .accordion-leave-active {
   transition: all 0.22s ease;
@@ -598,19 +585,16 @@ function goTo(item) {
   transform: translateY(-8px);
 }
 
-.left-panel::-webkit-scrollbar,
-.right-panel::-webkit-scrollbar {
+.left-panel::-webkit-scrollbar {
   width: 6px;
 }
 
-.left-panel::-webkit-scrollbar-track,
-.right-panel::-webkit-scrollbar-track {
+.left-panel::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.04);
   border-radius: 999px;
 }
 
-.left-panel::-webkit-scrollbar-thumb,
-.right-panel::-webkit-scrollbar-thumb {
+.left-panel::-webkit-scrollbar-thumb {
   background: rgba(0, 229, 255, 0.28);
   border-radius: 999px;
 }
@@ -641,7 +625,6 @@ function goTo(item) {
 
 @media (max-width: 1080px) {
   .left-panel,
-  .right-panel,
   .bottom-timeline {
     position: static;
     width: auto;

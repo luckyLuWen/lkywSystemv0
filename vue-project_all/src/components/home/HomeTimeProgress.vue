@@ -1,10 +1,28 @@
 <template>
   <section class="timeline-shell">
-    <div class="timeline-current">
-      <span class="current-kicker">时间进度</span>
-      <strong class="current-label">
-        {{ phases[modelValue]?.time || '--:--' }} · {{ phases[modelValue]?.title || '联动流程' }}
-      </strong>
+    <div class="accident-header">
+      <span class="accident-kicker">事故点</span>
+
+      <div class="accident-select-box">
+        <span class="status-dot"></span>
+        <select :value="accidentIndex" @change="onAccidentChange" class="accident-native-select">
+          <option v-for="(acc, index) in accidents" :key="acc.id" :value="index">
+            {{ acc.title }}
+          </option>
+        </select>
+        <span class="select-arrow">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M7 10l5 5 5-5z" />
+          </svg>
+        </span>
+      </div>
+
+      <button class="locate-btn" type="button" @click="handleLocate">
+        <svg class="pin-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+        </svg>
+        定位
+      </button>
     </div>
 
     <div class="timeline-bar">
@@ -31,17 +49,29 @@
 import { computed } from 'vue'
 
 const props = defineProps({
+  // 下方时间线数据
   phases: {
     type: Array,
     default: () => [],
   },
+  // 当前时间线索引
   modelValue: {
     type: Number,
     default: 0,
   },
+  // 上方事故点数据
+  accidents: {
+    type: Array,
+    default: () => [],
+  },
+  // 当前事故点索引
+  accidentIndex: {
+    type: Number,
+    default: 0,
+  }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'update:accidentIndex', 'locate'])
 
 const progressWidth = computed(() => {
   if (!props.phases.length) return '0%'
@@ -52,11 +82,19 @@ const progressWidth = computed(() => {
 function selectPhase(index) {
   emit('update:modelValue', index)
 }
+
+function onAccidentChange(event) {
+  emit('update:accidentIndex', Number(event.target.value))
+}
+
+function handleLocate() {
+  emit('locate')
+}
 </script>
 
 <style scoped>
 .timeline-shell {
-  padding: 16px 20px 14px;
+  padding: 20px 24px;
   border-radius: 20px;
   border: 1px solid rgba(255, 184, 77, 0.18);
   background: linear-gradient(180deg, rgba(12, 18, 8, 0.72) 0%, rgba(15, 20, 8, 0.88) 100%);
@@ -66,36 +104,112 @@ function selectPhase(index) {
   backdrop-filter: blur(12px);
 }
 
-.timeline-current {
+.accident-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 16px;
+  margin-bottom: 22px;
 }
 
-.current-kicker {
+.accident-kicker {
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
-  padding: 0 10px;
+  min-height: 28px;
+  padding: 0 14px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 184, 77, 0.18);
-  background: rgba(255, 184, 77, 0.08);
-  color: rgba(255, 214, 142, 0.92);
-  font-size: 11px;
-  letter-spacing: 0.1em;
+  border: 1px solid rgba(255, 184, 77, 0.22);
+  background: rgba(64, 48, 24, 0.6);
+  color: #ffd68e;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
 }
 
-.current-label {
-  color: #fff4d7;
+.accident-select-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 180px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 229, 255, 0.6);
+  background: rgba(0, 229, 255, 0.04);
+  transition: all 0.2s ease;
+}
+
+.accident-select-box:hover {
+  border-color: #00e5ff;
+  background: rgba(0, 229, 255, 0.08);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00e5ff;
+  box-shadow: 0 0 8px #00e5ff;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.accident-native-select {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #00e5ff;
   font-size: 15px;
-  line-height: 1.4;
+  font-weight: 500;
+  appearance: none;
+  outline: none;
+  cursor: pointer;
+  padding-right: 20px;
+}
+
+.accident-native-select option {
+  background: #0c1208;
+  color: #00e5ff;
+}
+
+.select-arrow {
+  position: absolute;
+  right: 10px;
+  pointer-events: none;
+  color: #00e5ff;
+  display: flex;
+}
+
+.locate-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 107, 107, 0.32);
+  background: rgba(255, 107, 107, 0.06);
+  color: #ff9b9b;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.locate-btn:hover {
+  background: rgba(255, 107, 107, 0.12);
+  border-color: rgba(255, 107, 107, 0.5);
+  box-shadow: 0 0 14px rgba(255, 107, 107, 0.15);
+}
+
+.pin-icon {
+  color: #ff4d4d;
+  filter: drop-shadow(0 0 4px rgba(255, 77, 77, 0.4));
 }
 
 .timeline-bar {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px;
   padding-top: 18px;
 }
