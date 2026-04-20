@@ -101,12 +101,12 @@ const topMenus = [
 const accidentPoints = [
   {
     id: 'rear-end',
-    title: '货车追尾事故',
+    title: '货车追尾现场',
     focusPoint: 'accident_blue',
   },
   {
     id: 'leakage',
-    title: '油罐车泄露事故',
+    title: '油罐车泄露现场',
     focusPoint: 'accident_red',
   },
 ]
@@ -119,12 +119,9 @@ const timelinePhases = [
     title: '早期风险预警',
     systems: ['边缘网关', '总系统首页'],
     focusPoint: 'gateway',
-    focusLabel: '武汉边缘采集区',
     focusHeading: 6,
     areaRadiusMinor: 120000,
     areaRadiusMajor: 170000,
-    popupOffsetX: 110,
-    popupOffsetY: -56,
   },
   {
     id: 'confirm',
@@ -133,12 +130,9 @@ const timelinePhases = [
     title: '现场火情确认',
     systems: ['实时检测', '边缘网关'],
     focusPoint: 'detection',
-    focusLabel: '现场检测区域',
     focusHeading: 18,
     areaRadiusMinor: 110000,
     areaRadiusMajor: 150000,
-    popupOffsetX: 110,
-    popupOffsetY: -56,
   },
   {
     id: 'dispatch',
@@ -147,12 +141,9 @@ const timelinePhases = [
     title: '协同联动调度',
     systems: ['协同响应', '实时检测'],
     focusPoint: 'command',
-    focusLabel: '办公室指挥中心',
     focusHeading: -10,
     areaRadiusMinor: 150000,
     areaRadiusMajor: 210000,
-    popupOffsetX: -210,
-    popupOffsetY: -46,
   },
   {
     id: 'response',
@@ -161,12 +152,9 @@ const timelinePhases = [
     title: '现场协同处置',
     systems: ['协同响应', '边缘网关'],
     focusPoint: 'response',
-    focusLabel: '武汉协同处置区',
     focusHeading: 26,
     areaRadiusMinor: 130000,
     areaRadiusMajor: 180000,
-    popupOffsetX: 110,
-    popupOffsetY: -56,
   },
   {
     id: 'recover',
@@ -175,12 +163,9 @@ const timelinePhases = [
     title: '恢复与复盘评估',
     systems: ['总系统首页', '协同响应'],
     focusPoint: 'gateway',
-    focusLabel: '恢复评估区',
     focusHeading: 10,
     areaRadiusMinor: 180000,
     areaRadiusMajor: 240000,
-    popupOffsetX: 110,
-    popupOffsetY: -56,
   },
 ]
 
