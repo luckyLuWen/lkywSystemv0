@@ -202,7 +202,7 @@ def main():
             for i, fac in enumerate(facilities_basic):
                 dest = ox.nearest_nodes(G, fac['coords'][1], fac['coords'][0])
                 try:
-                    # 🔥 修复 3：调换计算方向。救援应当从 救援站(dest) 出发，前往 事故点(orig_node_acc)
+                    # 🔥 修复 3：调换计算方向。救援应当从 救援站(dest) 出发，前往 事故点(orig_node_acc)111
                     dist_safe = nx.shortest_path_length(G_safe, dest, orig_node_acc, weight='length')
                     try:
                         dist_orig = nx.shortest_path_length(G, dest, orig_node_acc, weight='length')
