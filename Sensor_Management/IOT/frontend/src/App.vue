@@ -136,7 +136,7 @@ onUnmounted(() => {
 
         <div class="nav-group">
           <div class="nav-item group-title" @click="toggleNode1">
-            <span>无人车 A (219)</span>
+            <span>监测点 A (ip:219)</span>
             <span class="arrow">{{ isNode1Open ? '▼' : '▶' }}</span>
           </div>
           <div v-if="isNode1Open" class="sub-menu">
@@ -148,7 +148,7 @@ onUnmounted(() => {
 
         <div class="nav-group">
           <div class="nav-item group-title" @click="toggleNode2">
-            <span>无人车 B (241)</span>
+            <span>监测点 B (ip:241)</span>
             <span class="arrow">{{ isNode2Open ? '▼' : '▶' }}</span>
           </div>
           <div v-if="isNode2Open" class="sub-menu">
@@ -159,12 +159,12 @@ onUnmounted(() => {
         </div>
 
         <router-link to="/node3" class="nav-item group-title link-style">
-          <span>固定杆 (71)</span>
+          <span>气象站 (ip:71)</span>
           <span class="arrow">→</span>
         </router-link>
 
         <router-link to="/drone" class="nav-item group-title link-style-drone">
-          <span>无人机侦查</span>
+          <span>无人机实时侦察影像</span>
           <span class="arrow">→</span>
         </router-link>
       </nav>
