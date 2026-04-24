@@ -1,28 +1,62 @@
 <template>
   <section class="timeline-shell">
-    <div class="timeline-current">
-      <span class="current-kicker">时间进度</span>
-      <strong class="current-label">
-        {{ phases[modelValue]?.time || '--:--' }} · {{ phases[modelValue]?.title || '联动流程' }}
-      </strong>
+    <div class="accident-header">
+      <span class="accident-kicker">事故点</span>
+
+      <div class="accident-select-box">
+        <span class="status-dot"></span>
+        <select :value="accidentIndex" @change="onAccidentChange" class="accident-native-select">
+          <option v-for="(acc, index) in accidents" :key="acc.id" :value="index">
+            {{ acc.title }}
+          </option>
+        </select>
+        <span class="select-arrow">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M7 10l5 5 5-5z" />
+          </svg>
+        </span>
+      </div>
+
+      <button class="locate-btn" type="button" @click="handleLocate">
+        <svg class="pin-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+        </svg>
+        定位
+      </button>
     </div>
 
-    <div class="timeline-bar">
-      <div class="progress-track"></div>
-      <div class="progress-fill" :style="{ width: progressWidth }"></div>
+    <div class="timeline-bar-wrapper">
+      <div class="timeline-bar">
+        <div class="progress-track"></div>
+        
+        <!-- 游标指示器 -->
+        <div class="timeline-cursor" :style="{ left: cursorOffset }">
+          <div class="cursor-arrow">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="#8cf7c5">
+              <path d="M7 10l5 5 5-5z" />
+            </svg>
+          </div>
+          <div class="cursor-line"></div>
+        </div>
 
-      <button
-        v-for="(phase, index) in phases"
-        :key="phase.id"
-        type="button"
-        class="phase-step"
-        :class="{ active: index === modelValue, passed: index < modelValue }"
-        @click="selectPhase(index)"
-      >
-        <span class="phase-dot"></span>
-        <span class="phase-time">{{ phase.time }}</span>
-        <span class="phase-name">{{ phase.shortLabel }}</span>
-      </button>
+        <button
+          v-for="(phase, index) in phases"
+          :key="phase.id"
+          type="button"
+          class="phase-step"
+          :class="{ active: index === modelValue }"
+          :style="{ left: getPhaseOffset(index) }"
+          @click="selectPhase(index)"
+        >
+          <div class="phase-label-pill">{{ phase.shortLabel }}</div>
+          <span class="phase-dot"></span>
+        </button>
+      </div>
+    </div>
+    
+    <div class="simulation-status">
+      <span class="status-icon">||</span>
+      仿真已暂停
     </div>
   </section>
 </template>
@@ -31,162 +65,207 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  phases: {
-    type: Array,
-    default: () => [],
-  },
-  modelValue: {
-    type: Number,
-    default: 0,
-  },
+  phases: { type: Array, default: () => [] },
+  modelValue: { type: Number, default: 0 },
+  accidents: { type: Array, default: () => [] },
+  accidentIndex: { type: Number, default: 0 }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'update:accidentIndex', 'locate'])
 
-const progressWidth = computed(() => {
-  if (!props.phases.length) return '0%'
-  if (props.phases.length === 1) return '100%'
-  return `${(props.modelValue / (props.phases.length - 1)) * 100}%`
+// 左右预留 40px 的边距，游标和阶段点在这个范围内移动
+const cursorOffset = computed(() => {
+  return getPhaseOffset(props.modelValue)
 })
+
+function getPhaseOffset(index) {
+  if (!props.phases.length) return '40px'
+  if (props.phases.length === 1) return '50%'
+  // 使用 (index / (length - 1)) 确保第一个点在最左侧(40px)，最后一个点在最右侧(100%-40px)
+  const percent = (index / (props.phases.length - 1)) * 100
+  return `calc(40px + (100% - 80px) * ${percent / 100})`
+}
 
 function selectPhase(index) {
   emit('update:modelValue', index)
+}
+
+function onAccidentChange(event) {
+  emit('update:accidentIndex', Number(event.target.value))
+}
+
+function handleLocate() {
+  emit('locate')
 }
 </script>
 
 <style scoped>
 .timeline-shell {
-  padding: 16px 20px 14px;
+  padding: 24px;
   border-radius: 20px;
-  border: 1px solid rgba(255, 184, 77, 0.18);
-  background: linear-gradient(180deg, rgba(12, 18, 8, 0.72) 0%, rgba(15, 20, 8, 0.88) 100%);
-  box-shadow:
-    inset 0 0 24px rgba(255, 184, 77, 0.08),
-    0 10px 26px rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 15, 24, 0.85);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
 }
 
-.timeline-current {
+.accident-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 16px;
+  margin-bottom: 30px;
 }
 
-.current-kicker {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 0 10px;
+.accident-kicker {
+  padding: 4px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 184, 77, 0.18);
-  background: rgba(255, 184, 77, 0.08);
-  color: rgba(255, 214, 142, 0.92);
-  font-size: 11px;
-  letter-spacing: 0.1em;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 13px;
 }
 
-.current-label {
-  color: #fff4d7;
-  font-size: 15px;
-  line-height: 1.4;
+.accident-select-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 180px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.status-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: #00e5ff; margin-right: 10px;
+}
+
+.accident-native-select {
+  flex: 1; background: transparent; border: none; color: #fff; font-size: 14px; outline: none; cursor: pointer;
+}
+
+.locate-btn {
+  display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 16px; border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(255, 255, 255, 0.05); color: #fff; cursor: pointer;
+}
+
+.timeline-bar-wrapper {
+  padding: 0 10px;
+  margin-bottom: 25px;
 }
 
 .timeline-bar {
   position: relative;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
-  padding-top: 18px;
-}
-
-.progress-track,
-.progress-fill {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 8px;
-  height: 4px;
-  border-radius: 999px;
+  height: 90px;
 }
 
 .progress-track {
-  background: rgba(255, 255, 255, 0.1);
+  position: absolute;
+  left: 40px;
+  right: 40px;
+  bottom: 12px;
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.15);
 }
 
-.progress-fill {
-  right: auto;
-  background: linear-gradient(90deg, #ffb84d 0%, #ffe18c 100%);
-  box-shadow: 0 0 16px rgba(255, 184, 77, 0.32);
+.timeline-cursor {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 78px;
+  transform: translateX(-50%);
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.cursor-arrow {
+  position: absolute;
+  top: 45px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.cursor-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  border-left: 2px dashed #8cf7c5;
+  opacity: 0.8;
 }
 
 .phase-step {
-  position: relative;
-  display: grid;
-  gap: 4px;
-  padding: 12px 10px 10px;
-  border: none;
+  position: absolute;
+  bottom: 0;
+  transform: translateX(-50%);
   background: transparent;
-  color: rgba(255, 255, 255, 0.72);
-  text-align: center;
+  border: none;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100px;
+  padding: 0;
+  z-index: 2;
+}
+
+.phase-label-pill {
+  padding: 4px 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 14px;
+  margin-bottom: 34px;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+}
+
+.phase-step.active .phase-label-pill {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #8cf7c5;
+  box-shadow: 0 0 15px rgba(140, 247, 197, 0.2);
 }
 
 .phase-dot {
-  position: absolute;
-  top: -4px;
-  left: 50%;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  transform: translateX(-50%);
-  border: 2px solid rgba(255, 255, 255, 0.18);
-  background: #161308;
+  background: #777;
+  position: absolute;
+  bottom: 11px;
+  transition: all 0.3s ease;
 }
 
-.phase-step.passed .phase-dot,
 .phase-step.active .phase-dot {
-  border-color: rgba(255, 184, 77, 0.46);
-  background: #ffb84d;
-  box-shadow: 0 0 12px rgba(255, 184, 77, 0.35);
+  background: #fff;
+  box-shadow: 0 0 10px #fff;
+  transform: scale(1.2);
 }
 
-.phase-step.active {
-  color: #fff4d7;
+.simulation-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+  margin-top: 10px;
 }
 
-.phase-time {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.58);
-}
-
-.phase-name {
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.35;
+.status-icon {
+  font-family: monospace;
+  font-weight: bold;
+  letter-spacing: -2px;
+  margin-right: 5px;
 }
 
 @media (max-width: 1080px) {
-  .timeline-bar {
-    grid-template-columns: 1fr;
-    padding-top: 0;
-  }
-
-  .progress-track,
-  .progress-fill {
-    display: none;
-  }
-
-  .phase-step {
-    padding: 10px 12px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.04);
-    text-align: left;
-  }
-
-  .phase-dot {
-    display: none;
-  }
+  .phase-step { width: 80px; }
+  .phase-label-pill { padding: 4px 10px; font-size: 12px; }
 }
 </style>

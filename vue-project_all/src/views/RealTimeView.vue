@@ -2,8 +2,11 @@
   <div class="home-dashboard">
     <div class="globe-layer">
       <HomeCesiumGlobe
+        ref="globeRef"
         :phases="timelinePhases"
         :active-phase-index="activePhaseIndex"
+        :focused-point-id="currentFocusedPoint"
+        @accident-picked="onAccidentPickedOnGlobe"
       />
     </div>
 
@@ -56,32 +59,21 @@
       </div>
     </aside>
 
-    <aside class="right-panel">
-      <div class="weather-card">
-        <div class="card-title">气象预警</div>
-        <div class="weather-box">
-          <div v-for="item in weatherItems" :key="item.date" class="weather-item">
-            <span class="date">{{ item.date }}</span>
-            <span class="temp">{{ item.temperature }}</span>
-            <span>{{ item.weather }}</span>
-            <span class="range">{{ item.range }}</span>
-          </div>
-        </div>
-      </div>
-    </aside>
-
     <footer class="bottom-timeline">
       <HomeTimeProgress
         v-model="activePhaseIndex"
+        v-model:accident-index="activeAccidentIndex"
         :phases="timelinePhases"
+        :accidents="accidentPoints"
+        @locate="handleLocate"
       />
     </footer>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import CollaborativeResponseCard from '../components/CollaborativeResponseCard.vue'
 import RealtimeDetectionCard from '../components/RealtimeDetectionCard.vue'
 import SensorGatewayCard from '../components/SensorGatewayCard.vue'
@@ -89,9 +81,14 @@ import HomeCesiumGlobe from '../components/home/HomeCesiumGlobe.vue'
 import HomeTimeProgress from '../components/home/HomeTimeProgress.vue'
 
 const router = useRouter()
+const route = useRoute()
 const activeServiceId = ref('')
 const activePhaseIndex = ref(0)
-const activeMenuKey = ref(readStoredMenuKey())
+const activeMenuKey = ref('')
+const globeRef = ref(null)
+
+const activeAccidentIndex = ref(0)
+const currentFocusedPoint = ref('')
 
 const topMenus = [
   { key: 'sensor', label: '传感器管理', path: '/sensor-manage' },
@@ -99,6 +96,88 @@ const topMenus = [
   { key: 'coordination', label: '协同响应', path: '/coordination' },
   { key: 'modeling', label: '精细建模', path: '/modeling' },
   { key: 'simulation', label: '仿真推演', path: '/simulation' },
+]
+
+const accidentPoints = [
+  {
+    id: 'rear-end',
+    title: '货车追尾现场',
+    focusPoint: 'accident_blue',
+  },
+  {
+    id: 'leakage',
+    title: '油罐车泄露现场',
+    focusPoint: 'accident_red',
+  },
+]
+
+const timelinePhases = [
+  {
+    id: 'start',
+    time: '14:00',
+    shortLabel: '仿真开始',
+    title: '仿真推演开始',
+    systems: ['总系统首页'],
+    focusPoint: 'gateway',
+    focusHeading: 0,
+    areaRadiusMinor: 150000,
+    areaRadiusMajor: 200000,
+  },
+  {
+    id: 'normal',
+    time: '14:05',
+    shortLabel: '正常行驶',
+    title: '车辆正常行驶阶段',
+    systems: ['边缘网关', '总系统首页'],
+    focusPoint: 'gateway',
+    focusHeading: 6,
+    areaRadiusMinor: 120000,
+    areaRadiusMajor: 170000,
+  },
+  {
+    id: 'accident',
+    time: '14:12',
+    shortLabel: '事故发生',
+    title: '货车追尾事故瞬间',
+    systems: ['实时检测', '边缘网关'],
+    focusPoint: 'detection',
+    focusHeading: 18,
+    areaRadiusMinor: 110000,
+    areaRadiusMajor: 150000,
+  },
+  {
+    id: 'smoke',
+    time: '14:18',
+    shortLabel: '烟雾阶段',
+    title: '事故现场产生大量烟雾',
+    systems: ['协同响应', '实时检测'],
+    focusPoint: 'command',
+    focusHeading: -10,
+    areaRadiusMinor: 150000,
+    areaRadiusMajor: 210000,
+  },
+  {
+    id: 'fire',
+    time: '14:26',
+    shortLabel: '起火阶段',
+    title: '事故车辆开始起火',
+    systems: ['协同响应', '边缘网关'],
+    focusPoint: 'response',
+    focusHeading: 26,
+    areaRadiusMinor: 130000,
+    areaRadiusMajor: 180000,
+  },
+  {
+    id: 'spread',
+    time: '14:40',
+    shortLabel: '大火蔓延',
+    title: '火势进一步扩大蔓延',
+    systems: ['总系统首页', '协同响应'],
+    focusPoint: 'gateway',
+    focusHeading: 10,
+    areaRadiusMinor: 180000,
+    areaRadiusMajor: 240000,
+  },
 ]
 
 const servicePanels = [
@@ -125,84 +204,6 @@ const servicePanels = [
   },
 ]
 
-const timelinePhases = [
-  {
-    id: 'warning',
-    time: '14:05',
-    shortLabel: '风险预警',
-    title: '早期风险预警',
-    systems: ['边缘网关', '总系统首页'],
-    focusPoint: 'gateway',
-    focusLabel: '武汉边缘采集区',
-    focusHeading: 6,
-    areaRadiusMinor: 120000,
-    areaRadiusMajor: 170000,
-    popupOffsetX: 110,
-    popupOffsetY: -56,
-  },
-  {
-    id: 'confirm',
-    time: '14:12',
-    shortLabel: '火情确认',
-    title: '现场火情确认',
-    systems: ['实时检测', '边缘网关'],
-    focusPoint: 'detection',
-    focusLabel: '现场检测区域',
-    focusHeading: 18,
-    areaRadiusMinor: 110000,
-    areaRadiusMajor: 150000,
-    popupOffsetX: 110,
-    popupOffsetY: -56,
-  },
-  {
-    id: 'dispatch',
-    time: '14:18',
-    shortLabel: '联动调度',
-    title: '协同联动调度',
-    systems: ['协同响应', '实时检测'],
-    focusPoint: 'command',
-    focusLabel: '办公室指挥中心',
-    focusHeading: -10,
-    areaRadiusMinor: 150000,
-    areaRadiusMajor: 210000,
-    popupOffsetX: -210,
-    popupOffsetY: -46,
-  },
-  {
-    id: 'response',
-    time: '14:26',
-    shortLabel: '现场处置',
-    title: '现场协同处置',
-    systems: ['协同响应', '边缘网关'],
-    focusPoint: 'response',
-    focusLabel: '武汉协同处置区',
-    focusHeading: 26,
-    areaRadiusMinor: 130000,
-    areaRadiusMajor: 180000,
-    popupOffsetX: 110,
-    popupOffsetY: -56,
-  },
-  {
-    id: 'recover',
-    time: '14:40',
-    shortLabel: '恢复评估',
-    title: '恢复与复盘评估',
-    systems: ['总系统首页', '协同响应'],
-    focusPoint: 'gateway',
-    focusLabel: '恢复评估区',
-    focusHeading: 10,
-    areaRadiusMinor: 180000,
-    areaRadiusMajor: 240000,
-    popupOffsetX: 110,
-    popupOffsetY: -56,
-  },
-]
-
-const weatherItems = [
-  { date: '2026/04/09', temperature: '25°C', weather: '多云', range: '11-25 °C' },
-  { date: '2026/04/10', temperature: '26°C', weather: '晴', range: '20-26 °C' },
-]
-
 function readStoredMenuKey() {
   try {
     return window.localStorage.getItem('lkyw.homeActiveMenuKey') || ''
@@ -215,7 +216,7 @@ function persistMenuKey(value) {
   try {
     window.localStorage.setItem('lkyw.homeActiveMenuKey', value)
   } catch {
-    // ignore storage failures
+    // ignore
   }
 }
 
@@ -228,6 +229,42 @@ function goTo(item) {
   persistMenuKey(item.key)
   router.push(item.path)
 }
+
+function onAccidentPickedOnGlobe(entityId) {
+  const index = accidentPoints.findIndex((acc) => acc.focusPoint === entityId)
+  if (index !== -1) {
+    activeAccidentIndex.value = index
+    currentFocusedPoint.value = entityId
+  }
+}
+
+function handleLocate() {
+  if (globeRef.value) {
+    const accident = accidentPoints[activeAccidentIndex.value]
+    if (accident) {
+      currentFocusedPoint.value = accident.focusPoint
+      globeRef.value.zoomToPoint(accident.focusPoint)
+    }
+  }
+}
+
+watch(activeAccidentIndex, () => {
+  activePhaseIndex.value = 0
+  currentFocusedPoint.value = ''
+})
+
+watch(
+  () => route.path,
+  (newPath) => {
+    if (newPath === '/') {
+      activeMenuKey.value = ''
+    }
+  }
+)
+
+onMounted(() => {
+  activeMenuKey.value = ''
+})
 </script>
 
 <style scoped>
@@ -381,7 +418,6 @@ function goTo(item) {
 }
 
 .left-panel,
-.right-panel,
 .bottom-timeline {
   position: absolute;
   z-index: 4;
@@ -399,15 +435,6 @@ function goTo(item) {
   padding-right: 4px;
 }
 
-.right-panel {
-  top: 88px;
-  right: 20px;
-  width: min(260px, calc(100vw - 40px));
-  max-height: calc(100% - 210px);
-  overflow: auto;
-  padding-right: 4px;
-}
-
 .bottom-timeline {
   left: 50%;
   bottom: 18px;
@@ -415,8 +442,7 @@ function goTo(item) {
   transform: translateX(-50%);
 }
 
-.accordion-item,
-.weather-card {
+.accordion-item {
   position: relative;
   border-radius: 18px;
   border: 1px solid rgba(0, 229, 255, 0.12);
@@ -425,10 +451,10 @@ function goTo(item) {
     inset 0 0 22px rgba(0, 229, 255, 0.06),
     0 12px 32px rgba(0, 0, 0, 0.16);
   backdrop-filter: blur(14px);
+  overflow: hidden;
 }
 
-.accordion-item::before,
-.weather-card::before {
+.accordion-item::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -447,10 +473,6 @@ function goTo(item) {
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
-}
-
-.accordion-item {
-  overflow: hidden;
 }
 
 .accordion-item.is-collaborative {
@@ -548,45 +570,6 @@ function goTo(item) {
   border-radius: 14px;
 }
 
-.weather-card {
-  padding: 20px 22px;
-}
-
-.card-title {
-  margin-bottom: 18px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(0, 229, 255, 0.12);
-  color: var(--primary-color);
-  font-size: 20px;
-}
-
-.weather-box {
-  display: grid;
-  gap: 12px;
-}
-
-.weather-item {
-  padding: 14px 14px 12px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  display: grid;
-  gap: 4px;
-  color: rgba(255, 255, 255, 0.78);
-}
-
-.weather-item .temp {
-  color: #ffb84d;
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.weather-item .range,
-.weather-item .date {
-  color: rgba(255, 255, 255, 0.52);
-  font-size: 12px;
-}
-
 .accordion-enter-active,
 .accordion-leave-active {
   transition: all 0.22s ease;
@@ -598,19 +581,16 @@ function goTo(item) {
   transform: translateY(-8px);
 }
 
-.left-panel::-webkit-scrollbar,
-.right-panel::-webkit-scrollbar {
+.left-panel::-webkit-scrollbar {
   width: 6px;
 }
 
-.left-panel::-webkit-scrollbar-track,
-.right-panel::-webkit-scrollbar-track {
+.left-panel::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.04);
   border-radius: 999px;
 }
 
-.left-panel::-webkit-scrollbar-thumb,
-.right-panel::-webkit-scrollbar-thumb {
+.left-panel::-webkit-scrollbar-thumb {
   background: rgba(0, 229, 255, 0.28);
   border-radius: 999px;
 }
@@ -641,7 +621,6 @@ function goTo(item) {
 
 @media (max-width: 1080px) {
   .left-panel,
-  .right-panel,
   .bottom-timeline {
     position: static;
     width: auto;
