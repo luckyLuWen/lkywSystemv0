@@ -4,7 +4,17 @@
     
     <!-- 临时微调控件：货车追尾现场 -->
     <div class="debug-panel" v-if="focusedPointId === 'accident_blue'">
-      <h3>货车模型微调</h3>
+      <h3>货车事故分段控制</h3>
+      <div class="debug-row">
+        <span>当前阶段: {{ phases[activePhaseIndex]?.shortLabel }}</span>
+        <div class="phase-indicator">
+          <span v-for="i in 6" :key="i" :class="{ active: (i-1) === activePhaseIndex }"></span>
+        </div>
+      </div>
+      <div class="debug-row" style="margin-top: 10px;">
+        <button class="play-btn" @click="replayCurrentPhase">重播当前动画</button>
+      </div>
+      <hr style="border: 0; border-top: 1px solid rgba(0,229,255,0.2); margin: 15px 0;" />
       <div class="debug-row">
         <span>比例: {{ truckAdjust.scale }}</span>
         <input type="range" v-model.number="truckAdjust.scale" min="0.01" max="5" step="0.01" />
@@ -31,16 +41,8 @@
         <input type="range" v-model.number="tankerAdjust.scale" min="0.01" max="5" step="0.01" />
       </div>
       <div class="debug-row">
-        <span>旋转: {{ tankerAdjust.heading }}°</span>
-        <input type="range" v-model.number="tankerAdjust.heading" min="0" max="360" step="1" />
-      </div>
-      <div class="debug-row">
         <span>经度:</span>
         <input type="number" v-model.number="tankerAdjust.lng" step="0.000001" />
-      </div>
-      <div class="debug-row">
-        <span>纬度:</span>
-        <input type="number" v-model.number="tankerAdjust.lat" step="0.000001" />
       </div>
     </div>
 
@@ -61,7 +63,15 @@ const props = defineProps({
 
 const emit = defineEmits(['accident-picked'])
 
-// 货车微调状态
+// 货车事故分段模型配置
+const truckModelSequence = [
+  { id: 'truck_p1', uri: '/Dashboard/models/Normal_Drive.glb', label: '正常行驶' },
+  { id: 'truck_p2', uri: '/Dashboard/models/', label: '事故发生' },
+  { id: 'truck_p3', uri: '/Dashboard/models/', label: '烟雾阶段' }, 
+  { id: 'truck_p4', uri: '/Dashboard/models/', label: '起火阶段' }, 
+  { id: 'truck_p5', uri: '/Dashboard/models/', label: '大火蔓延' }  
+]
+
 const truckAdjust = reactive({
   scale: 0.82,
   heading: 17,
@@ -69,7 +79,6 @@ const truckAdjust = reactive({
   lat: 30.385469
 })
 
-// 油罐车微调状态
 const tankerAdjust = reactive({
   scale: 0.04,
   heading: 36,
@@ -89,9 +98,12 @@ let focusAreaEntity = null
 let popupEntity = null
 let isFlying = false
 let tankerEntity = null
-let truckEntity = null
+let truckEntities = [] 
 let animationCheckTimer = null
-let smokePrimitives = [] // 保存烟雾粒子系统
+
+// 粒子系统实例
+let smokeParticle = null
+let fireParticle = null
 
 const scenarioPoints = {
   command: { id: 'command', label: '远程指挥中心', longitude: 114.3055, latitude: 30.5928, color: '#67b8ff' },
@@ -104,10 +116,6 @@ const scenarioPoints = {
 
 function toCesiumColor(color, alpha = 1) {
   return Cesium.Color.fromCssColorString(color).withAlpha(alpha)
-}
-
-function getOrbitTarget() {
-  return Cesium.Cartesian3.fromDegrees(108, 31, 0)
 }
 
 function applyOrbitView() {
@@ -130,9 +138,14 @@ function applyOrbitView() {
   }
 
   const target = Cesium.Cartesian3.fromDegrees(lng, lat, 0)
-  const range = isFocused ? 2500 : 18000000
+  const range = isFocused ? 400 : 18000000
   const pitch = isFocused ? Cesium.Math.toRadians(-45) : Cesium.Math.toRadians(-34)
   viewer.camera.lookAt(target, new Cesium.HeadingPitchRange(orbitHeading, pitch, range))
+  
+  // 如果没有在自动旋转，则立即解除锁定，允许鼠标自由操作
+  if (!spinCallback) {
+    viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY)
+  }
 }
 
 function startAutoRotate() {
@@ -150,9 +163,7 @@ function startAutoRotate() {
 }
 
 function stopAutoRotate() {
-  if (viewer && spinCallback) {
-    viewer.clock.onTick.removeEventListener(spinCallback)
-  }
+  if (viewer && spinCallback) viewer.clock.onTick.removeEventListener(spinCallback)
   spinCallback = null
   if (viewer) {
     const position = viewer.camera.position.clone()
@@ -165,97 +176,48 @@ function stopAutoRotate() {
   }
 }
 
-// 核心函数：创建烟雾粒子系统
-function createSmoke(lng, lat, id) {
-  if (!viewer) return null
-  
-  const modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(
-    Cesium.Cartesian3.fromDegrees(lng, lat, 0.0)
-  );
-
-  const particleSystem = viewer.scene.primitives.add(new Cesium.ParticleSystem({
+// 创建烟雾
+function createSmokeSystem(lng, lat) {
+  return new Cesium.ParticleSystem({
     image: '/Dashboard/images/smoke.png',
     startColor: Cesium.Color.LIGHTGRAY.withAlpha(0.7),
     endColor: Cesium.Color.WHITE.withAlpha(0.0),
     startScale: 0.5,
     endScale: 2.0,
-    minimumParticleLife: 1.2,
-    maximumParticleLife: 2.5,
+    minimumParticleLife: 1.5,
+    maximumParticleLife: 3.0,
     minimumSpeed: 1.0,
     maximumSpeed: 4.0,
     imageSize: new Cesium.Cartesian2(15, 15),
     emissionRate: 20.0,
     lifetime: 16.0,
-    emitter: new Cesium.CircleEmitter(1.0),
-    modelMatrix: modelMatrix,
+    emitter: new Cesium.CircleEmitter(2.0),
+    modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(lng, lat, 0.0)),
     sizeInMeters: true,
-    show: false // 初始隐藏
-  }));
-
-  particleSystem.id = `smoke-${id}`
-  return particleSystem
+    show: false
+  });
 }
 
-// 核心函数：创建火焰粒子系统
-function createFire(lng, lat, id) {
-  if (!viewer) return null
-  
-  const modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(
-    Cesium.Cartesian3.fromDegrees(lng, lat, 0.0)
-  );
-
-  const particleSystem = viewer.scene.primitives.add(new Cesium.ParticleSystem({
+// 创建火焰
+function createFireSystem(lng, lat) {
+  return new Cesium.ParticleSystem({
     image: '/Dashboard/images/fire.png',
-    startColor: Cesium.Color.ORANGE.withAlpha(0.9),
-    endColor: Cesium.Color.RED.withAlpha(0.3),
-    startScale: 0.2,
-    endScale: 0.8,
-    minimumParticleLife: 0.5,
+    startColor: Cesium.Color.ORANGE.withAlpha(0.8),
+    endColor: Cesium.Color.RED.withAlpha(0.2),
+    startScale: 0.3,
+    endScale: 1.2,
+    minimumParticleLife: 0.6,
     maximumParticleLife: 1.5,
     minimumSpeed: 2.0,
-    maximumSpeed: 5.0,
-    imageSize: new Cesium.Cartesian2(10, 10),
-    emissionRate: 30.0,
-    lifetime: 16.0,
-    emitter: new Cesium.CircleEmitter(0.5),
-    modelMatrix: modelMatrix,
-    sizeInMeters: true,
-    show: false // 初始隐藏
-  }));
-
-  particleSystem.id = `fire-${id}`
-  return particleSystem
-}
-
-// 核心函数：创建油罐车泄露效果
-function createLeak(lng, lat, id) {
-  if (!viewer) return null
-  
-  const modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(
-    Cesium.Cartesian3.fromDegrees(lng, lat, 0.0)
-  );
-
-  const particleSystem = viewer.scene.primitives.add(new Cesium.ParticleSystem({
-    image: '/Dashboard/images/fog01.png',
-    startColor: Cesium.Color.LIGHTBLUE.withAlpha(0.6),
-    endColor: Cesium.Color.LIGHTBLUE.withAlpha(0.1),
-    startScale: 0.4,
-    endScale: 1.5,
-    minimumParticleLife: 2.0,
-    maximumParticleLife: 4.0,
-    minimumSpeed: 0.5,
-    maximumSpeed: 2.0,
+    maximumSpeed: 6.0,
     imageSize: new Cesium.Cartesian2(12, 12),
-    emissionRate: 15.0,
+    emissionRate: 35.0,
     lifetime: 16.0,
-    emitter: new Cesium.CircleEmitter(0.6),
-    modelMatrix: modelMatrix,
+    emitter: new Cesium.CircleEmitter(1.0),
+    modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(lng, lat, 0.0)),
     sizeInMeters: true,
-    show: false // 初始隐藏
-  }));
-
-  particleSystem.id = `leak-${id}`
-  return particleSystem
+    show: false
+  });
 }
 
 async function initViewer() {
@@ -267,8 +229,6 @@ async function initViewer() {
       timeline: false, shouldAnimate: true, skyAtmosphere: false,
     })
     viewer.scene.globe.enableLighting = true
-    viewer.scene.globe.showGroundAtmosphere = true
-    viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#010811')
     viewer.cesiumWidget.creditContainer.style.display = 'none'
 
     viewer.imageryLayers.removeAll()
@@ -279,20 +239,12 @@ async function initViewer() {
 
     addEventEntities()
     
-    // 初始化烟雾
-    smokePrimitives.push(createSmoke(truckAdjust.lng, truckAdjust.lat, 'blue'))
-    smokePrimitives.push(createSmoke(tankerAdjust.lng, tankerAdjust.lat, 'red'))
-    
-    // 初始化火焰
-    smokePrimitives.push(createFire(truckAdjust.lng, truckAdjust.lat, 'blue'))
-    smokePrimitives.push(createFire(tankerAdjust.lng, tankerAdjust.lat, 'red'))
-    
-    // 初始化油罐车泄露效果
-    smokePrimitives.push(createLeak(tankerAdjust.lng, tankerAdjust.lat, 'red'))
+    // 初始化粒子系统
+    smokeParticle = viewer.scene.primitives.add(createSmokeSystem(truckAdjust.lng, truckAdjust.lat))
+    fireParticle = viewer.scene.primitives.add(createFireSystem(truckAdjust.lng, truckAdjust.lat))
 
     applyOrbitView()
     updatePhaseScene(props.activePhaseIndex)
-    startAutoRotate()
     loading.value = false
   } catch (error) {
     errorMessage.value = '三维地球初始化失败'
@@ -300,21 +252,48 @@ async function initViewer() {
   }
 }
 
-function playTankerAnimation() {
-  if (!viewer || !viewer.scene || !tankerEntity) return
+function updateTruckSequence(phaseIndex) {
+  if (!viewer) return
+  // 如果是第0阶段(仿真开始)或第1阶段(正常行驶)，都显示第一个模型(Normal_Drive)
+  const activeModelIdx = phaseIndex === 0 ? 0 : phaseIndex - 1
+  
+  truckEntities.forEach((entity, index) => {
+    const isVisible = index === activeModelIdx
+    entity.show = isVisible
+    if (isVisible) playEntityAnimation(entity)
+  })
+
+  // 粒子效果控制
+  // 3: 烟雾阶段, 4: 起火阶段, 5: 大火蔓延
+  if (smokeParticle) {
+    smokeParticle.show = (phaseIndex >= 3 && props.focusedPointId === 'accident_blue');
+  }
+  if (fireParticle) {
+    fireParticle.show = (phaseIndex >= 4 && props.focusedPointId === 'accident_blue');
+  }
+}
+
+function playEntityAnimation(entity) {
   const primitives = viewer.scene.primitives
   for (let i = 0; i < primitives.length; i++) {
     const p = primitives.get(i)
-    if (p.id === tankerEntity && p.activeAnimations) {
-      p.activeAnimations.removeAll()
-      p.activeAnimations.add({
-        index: 0,
+    if (p.id === entity && p.activeAnimations) {
+      if (p.activeAnimations.length > 0) p.activeAnimations.removeAll()
+      p.activeAnimations.addAll({
         loop: Cesium.ModelAnimationLoop.NONE,
-        multiplier: 0.2,
-        startTime: viewer.clock.currentTime
+        multiplier: 1.0,
+        startTime: viewer.clock.currentTime,
+        removeOnStop: false
       })
       break
     }
+  }
+}
+
+function replayCurrentPhase() {
+  if (props.activePhaseIndex > 0) {
+    const entity = truckEntities[props.activePhaseIndex - 1]
+    if (entity) playEntityAnimation(entity)
   }
 }
 
@@ -340,23 +319,25 @@ function addEventEntities() {
     },
   })
 
-  truckEntity = viewer.entities.add({
-    id: 'accident_blue',
-    position: new Cesium.CallbackProperty(() => Cesium.Cartesian3.fromDegrees(truckAdjust.lng, truckAdjust.lat, 0), false),
-    orientation: new Cesium.CallbackProperty(() => {
-      const position = Cesium.Cartesian3.fromDegrees(truckAdjust.lng, truckAdjust.lat, 0);
-      const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(truckAdjust.heading), 0, 0);
-      return Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
-    }, false),
-    point: {
-      pixelSize: 12, color: Cesium.Color.fromCssColorString('#00e5ff'), outlineColor: Cesium.Color.WHITE,
-      outlineWidth: 2, heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY,
-    },
-    model: {
-      uri: '/Dashboard/models/truck rear-ended_1.glb',
-      scale: new Cesium.CallbackProperty(() => truckAdjust.scale, false),
-      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-    }
+  truckModelSequence.forEach((config, index) => {
+    const entity = viewer.entities.add({
+      id: `truck_sequence_${index}`,
+      name: config.label,
+      show: false,
+      position: new Cesium.CallbackProperty(() => Cesium.Cartesian3.fromDegrees(truckAdjust.lng, truckAdjust.lat, 0), false),
+      orientation: new Cesium.CallbackProperty(() => {
+        const position = Cesium.Cartesian3.fromDegrees(truckAdjust.lng, truckAdjust.lat, 0);
+        const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(truckAdjust.heading), 0, 0);
+        return Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
+      }, false),
+      model: {
+        uri: config.uri,
+        scale: new Cesium.CallbackProperty(() => truckAdjust.scale, false),
+        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+        runAnimations: false
+      }
+    })
+    truckEntities.push(entity)
   })
 
   tankerEntity = viewer.entities.add({
@@ -367,10 +348,6 @@ function addEventEntities() {
       const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(tankerAdjust.heading), 0, 0);
       return Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
     }, false),
-    point: {
-      pixelSize: 12, color: Cesium.Color.fromCssColorString('#ffb84d'), outlineColor: Cesium.Color.WHITE,
-      outlineWidth: 2, heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY,
-    },
     model: {
       uri: '/Dashboard/models/tanker_leak_scene.2.glb',
       scale: new Cesium.CallbackProperty(() => tankerAdjust.scale, false),
@@ -379,148 +356,81 @@ function addEventEntities() {
     },
   })
 
-  animationCheckTimer = setInterval(() => {
-    if (!viewer || !viewer.scene) return
-    const primitives = viewer.scene.primitives
-    for (let i = 0; i < primitives.length; i++) {
-      const p = primitives.get(i)
-      if (p.id === tankerEntity && p.activeAnimations) {
-        playTankerAnimation()
-        clearInterval(animationCheckTimer)
-        break
-      }
-    }
-  }, 1000)
-
-  viewer.screenSpaceEventHandler.setInputAction(function onLeftClick(movement) {
+  viewer.screenSpaceEventHandler.setInputAction((movement) => {
     const pickedObject = viewer.scene.pick(movement.position);
     if (Cesium.defined(pickedObject) && pickedObject.id) {
       const entityId = pickedObject.id.id;
-      if (entityId === 'accident_blue' || entityId === 'accident_red') {
-        emit('accident-picked', entityId);
-        zoomToPoint(entityId);
+      if (entityId.includes('truck_sequence') || entityId === 'accident_red') {
+        const emitId = entityId.includes('truck_sequence') ? 'accident_blue' : 'accident_red'
+        emit('accident-picked', emitId);
+        zoomToPoint(emitId);
       }
     }
   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 }
 
-function formatPopupText(phase, point) {
-  const systemsText = (phase.systems || []).join(' / ')
-  return `${phase.title}\n位置：${point.label}\n时间：${phase.time}\n联动：${systemsText}`
-}
-
 function updatePhaseScene(index) {
   if (!viewer || !props.phases.length || !focusAreaEntity) return
   const phase = props.phases[index] || props.phases[0]
-  if (!phase) return
   const pointId = props.focusedPointId || phase.focusPoint || 'gateway'
   const point = scenarioPoints[pointId] || scenarioPoints.gateway
-  const pointColor = point.color || '#00e5ff'
   
   let lng = point.longitude, lat = point.latitude;
   if (pointId === 'accident_blue') {
     lng = truckAdjust.lng; lat = truckAdjust.lat;
+    updateTruckSequence(index)
   } else if (pointId === 'accident_red') {
     lng = tankerAdjust.lng; lat = tankerAdjust.lat;
+    truckEntities.forEach(e => e.show = false)
+    if (smokeParticle) smokeParticle.show = false;
+    if (fireParticle) fireParticle.show = false;
+  } else {
+    truckEntities.forEach(e => e.show = false)
+    if (smokeParticle) smokeParticle.show = false;
+    if (fireParticle) fireParticle.show = false;
   }
 
-  const pointPosition = Cesium.Cartesian3.fromDegrees(lng, lat, 0)
-  focusAreaEntity.position = pointPosition
-  focusAreaEntity.ellipse.material = toCesiumColor(pointColor, 0.08)
-  focusAreaEntity.ellipse.outlineColor = toCesiumColor(pointColor, 0.36)
-  focusAreaEntity.ellipse.semiMinorAxis = phase.areaRadiusMinor || 150000
-  focusAreaEntity.ellipse.semiMajorAxis = phase.areaRadiusMajor || 190000
-
+  focusAreaEntity.position = Cesium.Cartesian3.fromDegrees(lng, lat, 0)
   if (popupEntity) {
     popupEntity.position = Cesium.Cartesian3.fromDegrees(lng, lat, 500)
-    popupEntity.label.text = formatPopupText(phase, point)
-    popupEntity.label.backgroundColor = toCesiumColor('#061628', 0.9)
+    popupEntity.label.text = `${phase.title}\n位置：${point.label}\n联动：${(phase.systems || []).join('/')}`
   }
-
-  // 烟雾、火焰和泄露效果显隐控制：进入现场才显示对应的效果
-  smokePrimitives.forEach(particle => {
-    if (particle) {
-      const isFire = particle.id.includes('fire');
-      const isLeak = particle.id.includes('leak');
-      const isBlue = particle.id.includes('blue');
-      const isRed = particle.id.includes('red');
-      
-      if (isFire) {
-        // 火焰只在货车追尾现场显示
-        particle.show = !!props.focusedPointId && pointId === 'accident_blue' && isBlue;
-      } else if (isLeak) {
-        // 泄露效果只在油罐车泄露现场显示
-        particle.show = !!props.focusedPointId && pointId === 'accident_red' && isRed;
-      } else {
-        // 烟雾在两个事故点都显示
-        particle.show = !!props.focusedPointId && particle.id.includes(pointId === 'accident_blue' ? 'blue' : 'red');
-      }
-    }
-  })
 
   if (!spinCallback && props.focusedPointId && !isFlying) applyOrbitView()
 }
 
 function zoomToPoint(pointId) {
   if (!viewer || isFlying) return
-  const point = scenarioPoints[pointId] || scenarioPoints.gateway
-  let lng = point.longitude, lat = point.latitude;
-  if (pointId === 'accident_blue') {
-    lng = truckAdjust.lng; lat = truckAdjust.lat;
-  } else if (pointId === 'accident_red') {
-    lng = tankerAdjust.lng; lat = tankerAdjust.lat;
-  }
-
+  const point = scenarioPoints[pointId]
   stopAutoRotate()
-  viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY)
   isFlying = true
   viewer.camera.flyTo({
-    destination: Cesium.Cartesian3.fromDegrees(lng, lat, 2500),
+    destination: Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude, 2500),
     orientation: { heading: 0, pitch: Cesium.Math.toRadians(-45), roll: 0.0 },
     duration: 1.5,
     complete: () => {
       isFlying = false
       if (props.focusedPointId) applyOrbitView()
-      if (pointId === 'accident_red') playTankerAnimation()
-    },
-    cancel: () => { isFlying = false }
+      if (pointId === 'accident_blue') updateTruckSequence(props.activePhaseIndex)
+    }
   })
 }
 
-function zoomToPhase(index) {
-  const phase = props.phases[index]
-  if (phase) zoomToPoint(phase.focusPoint)
-}
-
-defineExpose({ zoomToPhase, zoomToPoint })
-watch(() => props.activePhaseIndex, (nextValue) => updatePhaseScene(nextValue))
-watch(() => props.focusedPointId, () => updatePhaseScene(props.activePhaseIndex))
-
-// 监听微调值的变化
-watch([() => truckAdjust.lng, () => truckAdjust.lat, () => tankerAdjust.lng, () => tankerAdjust.lat], () => {
-  if (!isFlying && props.focusedPointId) applyOrbitView();
-  
-  // 同步更新烟雾、火焰和泄露效果位置
-  smokePrimitives.forEach(particle => {
-    if (!particle) return;
-    const isBlue = particle.id.includes('blue');
-    const lng = isBlue ? truckAdjust.lng : tankerAdjust.lng;
-    const lat = isBlue ? truckAdjust.lat : tankerAdjust.lat;
-    particle.modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(
-      Cesium.Cartesian3.fromDegrees(lng, lat, 0.0)
-    );
-  });
+// 监听微调值的变化同步更新粒子位置
+watch([() => truckAdjust.lng, () => truckAdjust.lat], () => {
+  const matrix = Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(truckAdjust.lng, truckAdjust.lat, 0.0));
+  if (smokeParticle) smokeParticle.modelMatrix = matrix;
+  if (fireParticle) fireParticle.modelMatrix = matrix;
 });
+
+defineExpose({ zoomToPoint })
+watch(() => props.activePhaseIndex, (next) => updatePhaseScene(next))
+watch(() => props.focusedPointId, () => updatePhaseScene(props.activePhaseIndex))
 
 onMounted(() => initViewer())
 onBeforeUnmount(() => {
-  if (animationCheckTimer) clearInterval(animationCheckTimer)
   stopAutoRotate()
-  if (viewer) {
-    viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY)
-    viewer.destroy()
-    viewer = null
-  }
+  if (viewer) viewer.destroy()
 })
 </script>
 
@@ -529,17 +439,18 @@ onBeforeUnmount(() => {
 .globe-shell { position: relative; }
 .globe-mask {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(circle at center, rgba(0, 229, 255, 0.08) 0%, rgba(0, 229, 255, 0) 44%), rgba(2, 10, 22, 0.88);
-  color: rgba(255, 255, 255, 0.78); font-size: 14px; letter-spacing: 0.08em;
+  background: rgba(2, 10, 22, 0.88); color: rgba(255, 255, 255, 0.78);
 }
-.globe-mask.is-error { color: #ff9b9b; }
-
 .debug-panel {
-  position: absolute; top: 100px; right: 20px; z-index: 9999;
+  position: absolute; top: 100px; right: 20px; z-index: 999;
   background: rgba(0, 0, 0, 0.8); padding: 15px; border-radius: 8px; border: 1px solid #00e5ff; color: white; width: 220px;
 }
 .debug-row { margin-bottom: 10px; display: flex; flex-direction: column; }
 .debug-panel h3 { margin: 0 0 15px 0; color: #00e5ff; font-size: 16px; }
-.debug-row span { font-size: 12px; margin-bottom: 5px; }
-.debug-row input { background: #333; color: white; border: 1px solid #555; padding: 4px; }
+.phase-indicator { display: flex; gap: 4px; margin-top: 8px; }
+.phase-indicator span { flex: 1; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; }
+.phase-indicator span.active { background: #00e5ff; box-shadow: 0 0 8px #00e5ff; }
+.play-btn {
+  background: #00e5ff; color: #061628; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold;
+}
 </style>
