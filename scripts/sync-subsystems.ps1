@@ -54,7 +54,12 @@ function Convert-ViteIndexToRelative {
 }
 
 $targets = @(
-   @{
+  @{
+    Name = 'collaborative-response'
+    Source = Join-Path $root 'Collaborative_Response\dist'
+    Type = 'vite'
+  },
+  @{
     Name = 'constructive-simulation'
     Source = Join-Path $root 'Constructive simulation'
     Type = 'static'
