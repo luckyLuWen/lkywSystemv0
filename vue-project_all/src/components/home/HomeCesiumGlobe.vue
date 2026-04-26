@@ -63,14 +63,22 @@ const props = defineProps({
 
 const emit = defineEmits(['accident-picked'])
 
-// 货车事故分段模型配置
-const truckModelSequence = [
-  { id: 'truck_p1', uri: '/Dashboard/models/Normal_Drive.glb', label: '正常行驶' },
-  { id: 'truck_p2', uri: '/Dashboard/models/', label: '事故发生' },
-  { id: 'truck_p3', uri: '/Dashboard/models/', label: '烟雾阶段' }, 
-  { id: 'truck_p4', uri: '/Dashboard/models/', label: '起火阶段' }, 
-  { id: 'truck_p5', uri: '/Dashboard/models/', label: '大火蔓延' }  
+// 货车事故分段模型配置 (去重，仅保留唯一物理模型)
+const truckModelConfigs = [
+  { id: 'model_normal', uri: '/Dashboard/models/Normal_Drive.glb', label: '正常行驶' },
+  { id: 'model_accident', uri: '/Dashboard/models/Accident_Occur1.glb', label: '事故阶段' }
 ]
+
+// 阶段索引到模型ID的映射
+const phaseToModelMap = {
+  1: 'model_normal',
+  2: 'model_accident',
+  3: 'model_accident',
+  4: 'model_accident',
+  5: 'model_accident'
+}
+
+let currentActiveModelId = null // 用于防止重复触发相同模型的动画逻辑
 
 const truckAdjust = reactive({
   scale: 0.82,
@@ -104,6 +112,7 @@ let animationCheckTimer = null
 // 粒子系统实例
 let smokeParticle = null
 let fireParticle = null
+let leakParticle = null
 
 const scenarioPoints = {
   command: { id: 'command', label: '远程指挥中心', longitude: 114.3055, latitude: 30.5928, color: '#67b8ff' },
@@ -220,6 +229,28 @@ function createFireSystem(lng, lat) {
   });
 }
 
+// 创建油罐车泄露效果
+function createLeakSystem(lng, lat) {
+  return new Cesium.ParticleSystem({
+    image: '/Dashboard/images/fog01.png',
+    startColor: Cesium.Color.LIGHTBLUE.withAlpha(0.6),
+    endColor: Cesium.Color.LIGHTBLUE.withAlpha(0.1),
+    startScale: 0.4,
+    endScale: 1.5,
+    minimumParticleLife: 2.0,
+    maximumParticleLife: 4.0,
+    minimumSpeed: 0.5,
+    maximumSpeed: 2.0,
+    imageSize: new Cesium.Cartesian2(12, 12),
+    emissionRate: 15.0,
+    lifetime: 16.0,
+    emitter: new Cesium.CircleEmitter(0.6),
+    modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(lng, lat, 0.0)),
+    sizeInMeters: true,
+    show: false
+  });
+}
+
 async function initViewer() {
   if (!containerRef.value || viewer) return
   try {
@@ -242,6 +273,7 @@ async function initViewer() {
     // 初始化粒子系统
     smokeParticle = viewer.scene.primitives.add(createSmokeSystem(truckAdjust.lng, truckAdjust.lat))
     fireParticle = viewer.scene.primitives.add(createFireSystem(truckAdjust.lng, truckAdjust.lat))
+    leakParticle = viewer.scene.primitives.add(createLeakSystem(tankerAdjust.lng, tankerAdjust.lat))
 
     applyOrbitView()
     updatePhaseScene(props.activePhaseIndex)
@@ -254,45 +286,79 @@ async function initViewer() {
 
 function updateTruckSequence(phaseIndex) {
   if (!viewer) return
-  // 如果是第0阶段(仿真开始)或第1阶段(正常行驶)，都显示第一个模型(Normal_Drive)
-  const activeModelIdx = phaseIndex === 0 ? 0 : phaseIndex - 1
   
-  truckEntities.forEach((entity, index) => {
-    const isVisible = index === activeModelIdx
-    entity.show = isVisible
-    if (isVisible) playEntityAnimation(entity)
+  const targetModelId = phaseToModelMap[phaseIndex] || null
+  
+  // 1. 物理显隐状态：始终同步。确保无论从哪个区域切回来，模型都能按当前阶段显示
+  truckEntities.forEach((entity) => {
+    entity.show = (entity.id === targetModelId)
   })
 
-  // 粒子效果控制
-  // 3: 烟雾阶段, 4: 起火阶段, 5: 大火蔓延
+  // 2. 动画触发逻辑：只有当物理模型文件真正发生变化时（如从正常行驶模型切到事故模型），才触发播放
+  if (targetModelId && targetModelId !== currentActiveModelId) {
+    const entity = truckEntities.find(e => e.id === targetModelId)
+    if (entity) playEntityAnimation(entity)
+  }
+  
+  currentActiveModelId = targetModelId
+
+  // 粒子效果控制：针对货车追尾现场
+  const isAccidentArea = props.focusedPointId === 'accident_blue' || 
+                        (props.phases[phaseIndex]?.focusPoint === 'accident_blue');
+
+  // 5: 大火蔓延阶段，将效果放大
+  const isBigFire = (phaseIndex === 5);
+  const smokeScaleBase = isBigFire ? 2.8 : 1.0; 
+  const fireScaleBase = isBigFire ? 2.0 : 1.0;
+
   if (smokeParticle) {
-    smokeParticle.show = (phaseIndex >= 3 && props.focusedPointId === 'accident_blue');
+    smokeParticle.show = (phaseIndex >= 3 && isAccidentArea);
+    smokeParticle.startScale = 0.5 * smokeScaleBase;
+    smokeParticle.endScale = 2.0 * smokeScaleBase;
   }
   if (fireParticle) {
-    fireParticle.show = (phaseIndex >= 4 && props.focusedPointId === 'accident_blue');
+    fireParticle.show = (phaseIndex >= 4 && isAccidentArea);
+    fireParticle.startScale = 0.3 * fireScaleBase;
+    fireParticle.endScale = 1.2 * fireScaleBase;
   }
 }
 
 function playEntityAnimation(entity) {
-  const primitives = viewer.scene.primitives
-  for (let i = 0; i < primitives.length; i++) {
-    const p = primitives.get(i)
-    if (p.id === entity && p.activeAnimations) {
-      if (p.activeAnimations.length > 0) p.activeAnimations.removeAll()
-      p.activeAnimations.addAll({
-        loop: Cesium.ModelAnimationLoop.NONE,
-        multiplier: 1.0,
-        startTime: viewer.clock.currentTime,
-        removeOnStop: false
-      })
-      break
+  let attempts = 0;
+  const maxAttempts = 50; 
+
+  const tryPlay = () => {
+    if (!viewer || !entity) return;
+    const primitives = viewer.scene.primitives;
+    let found = false;
+    
+    for (let i = 0; i < primitives.length; i++) {
+      const p = primitives.get(i);
+      if (p.id === entity && p.activeAnimations) {
+        found = true;
+        p.activeAnimations.removeAll();
+        p.activeAnimations.addAll({
+          loop: Cesium.ModelAnimationLoop.NONE,
+          multiplier: 1.0,
+          startTime: viewer.clock.currentTime, 
+          removeOnStop: false
+        });
+        break;
+      }
     }
-  }
+
+    if (!found && attempts < maxAttempts) {
+      attempts++;
+      setTimeout(tryPlay, 100);
+    }
+  };
+
+  tryPlay();
 }
 
 function replayCurrentPhase() {
-  if (props.activePhaseIndex > 0) {
-    const entity = truckEntities[props.activePhaseIndex - 1]
+  if (currentActiveModelId) {
+    const entity = truckEntities.find(e => e.id === currentActiveModelId)
     if (entity) playEntityAnimation(entity)
   }
 }
@@ -319,9 +385,23 @@ function addEventEntities() {
     },
   })
 
-  truckModelSequence.forEach((config, index) => {
+  // 改用 truckModelConfigs
+  viewer.entities.add({
+    id: 'yellow-target-point',
+    position: Cesium.Cartesian3.fromDegrees(113.104833, 30.385469, 0),
+    point: {
+      pixelSize: 10,
+      color: Cesium.Color.YELLOW,
+      outlineColor: Cesium.Color.BLACK,
+      outlineWidth: 2,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY
+    }
+  })
+
+  truckModelConfigs.forEach((config) => {
     const entity = viewer.entities.add({
-      id: `truck_sequence_${index}`,
+      id: config.id,
       name: config.label,
       show: false,
       position: new Cesium.CallbackProperty(() => Cesium.Cartesian3.fromDegrees(truckAdjust.lng, truckAdjust.lat, 0), false),
@@ -334,7 +414,7 @@ function addEventEntities() {
         uri: config.uri,
         scale: new Cesium.CallbackProperty(() => truckAdjust.scale, false),
         heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-        runAnimations: false
+        runAnimations: false // 关键修改：禁用自动播放，防止内部循环
       }
     })
     truckEntities.push(entity)
@@ -352,7 +432,7 @@ function addEventEntities() {
       uri: '/Dashboard/models/tanker_leak_scene.2.glb',
       scale: new Cesium.CallbackProperty(() => tankerAdjust.scale, false),
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-      runAnimations: true
+      runAnimations: true // 油罐车可以保持自动播放（如果有持续效果的话）
     },
   })
 
@@ -384,10 +464,12 @@ function updatePhaseScene(index) {
     truckEntities.forEach(e => e.show = false)
     if (smokeParticle) smokeParticle.show = false;
     if (fireParticle) fireParticle.show = false;
+    if (leakParticle) leakParticle.show = true;
   } else {
     truckEntities.forEach(e => e.show = false)
     if (smokeParticle) smokeParticle.show = false;
     if (fireParticle) fireParticle.show = false;
+    if (leakParticle) leakParticle.show = false;
   }
 
   focusAreaEntity.position = Cesium.Cartesian3.fromDegrees(lng, lat, 0)
@@ -423,6 +505,12 @@ watch([() => truckAdjust.lng, () => truckAdjust.lat], () => {
   if (fireParticle) fireParticle.modelMatrix = matrix;
 });
 
+// 监听油罐车位置变化同步更新泄露效果位置
+watch([() => tankerAdjust.lng, () => tankerAdjust.lat], () => {
+  const matrix = Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(tankerAdjust.lng, tankerAdjust.lat, 0.0));
+  if (leakParticle) leakParticle.modelMatrix = matrix;
+});
+
 defineExpose({ zoomToPoint })
 watch(() => props.activePhaseIndex, (next) => updatePhaseScene(next))
 watch(() => props.focusedPointId, () => updatePhaseScene(props.activePhaseIndex))
@@ -430,7 +518,12 @@ watch(() => props.focusedPointId, () => updatePhaseScene(props.activePhaseIndex)
 onMounted(() => initViewer())
 onBeforeUnmount(() => {
   stopAutoRotate()
-  if (viewer) viewer.destroy()
+  if (viewer) {
+    if (smokeParticle) viewer.scene.primitives.remove(smokeParticle)
+    if (fireParticle) viewer.scene.primitives.remove(fireParticle)
+    if (leakParticle) viewer.scene.primitives.remove(leakParticle)
+    viewer.destroy()
+  }
 })
 </script>
 
