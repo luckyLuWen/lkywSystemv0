@@ -7,6 +7,7 @@
         :active-phase-index="activePhaseIndex"
         :focused-point-id="currentFocusedPoint"
         @accident-picked="onAccidentPickedOnGlobe"
+        @models-ready="onModelsReady"
       />
     </div>
 
@@ -65,6 +66,7 @@
         v-model:accident-index="activeAccidentIndex"
         :phases="timelinePhases"
         :accidents="accidentPoints"
+        :phases-ready="phasesReady"
         @locate="handleLocate"
       />
     </footer>
@@ -72,7 +74,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import CollaborativeResponseCard from '../components/CollaborativeResponseCard.vue'
 import RealtimeDetectionCard from '../components/RealtimeDetectionCard.vue'
@@ -83,12 +85,31 @@ import HomeTimeProgress from '../components/home/HomeTimeProgress.vue'
 const router = useRouter()
 const route = useRoute()
 const activeServiceId = ref('')
-const activePhaseIndex = ref(0)
 const activeMenuKey = ref('')
 const globeRef = ref(null)
 
 const activeAccidentIndex = ref(0)
 const currentFocusedPoint = ref('')
+const modelsReadyStatus = ref({})
+
+// 为每个事故点维护独立的进度状态
+const accidentPhaseIndices = ref({
+  'rear-end': 0,
+  'leakage': 0
+})
+
+// 计算当前事故点的 ID
+const currentAccidentId = computed(() => {
+  return accidentPoints[activeAccidentIndex.value]?.id || ''
+})
+
+// 计算并控制当前显示的阶段索引
+const activePhaseIndex = computed({
+  get: () => accidentPhaseIndices.value[currentAccidentId.value] || 0,
+  set: (val) => {
+    accidentPhaseIndices.value[currentAccidentId.value] = val
+  }
+})
 
 const topMenus = [
   { key: 'sensor', label: '传感器管理', path: '/sensor-manage' },
@@ -103,82 +124,73 @@ const accidentPoints = [
     id: 'rear-end',
     title: '货车追尾现场',
     focusPoint: 'accident_blue',
+    phases: [
+      { id: 't-start', time: '14:00', shortLabel: '仿真开始', title: '仿真推演开始', systems: ['总系统首页'], focusPoint: 'accident_blue' },
+      { id: 't-normal', time: '14:05', shortLabel: '正常行驶', title: '车辆正常行驶阶段', systems: ['边缘网关'], focusPoint: 'accident_blue' },
+      { id: 't-accident', time: '14:12', shortLabel: '事故发生', title: '货车追尾事故瞬间', systems: ['实时检测'], focusPoint: 'detection' },
+      { id: 't-smoke', time: '14:18', shortLabel: '次生灾害（烟雾）', title: '事故现场产生大量烟雾', systems: ['协同响应'], focusPoint: 'command' },
+      { id: 't-fire', time: '14:26', shortLabel: '次生灾害（起火）', title: '事故车辆开始起火', systems: ['协同响应'], focusPoint: 'response' },
+      { id: 't-spread', time: '14:40', shortLabel: '次生灾害（大火）', title: '火势进一步扩大蔓延', systems: ['总系统首页'], focusPoint: 'gateway' },
+      { id: 't-uav-start', time: '14:45', shortLabel: '无人装备出动', title: '无人装备协同出动', systems: ['协同响应'], focusPoint: 'accident_blue' },
+      { id: 't-uav-deploy', time: '14:50', shortLabel: '无人感知部署', title: '无人感知节点部署', systems: ['实时检测'], focusPoint: 'accident_blue' },
+      { id: 't-uav-exec', time: '14:55', shortLabel: '无人感知执行', title: '无人感知任务执行', systems: ['协同响应'], focusPoint: 'accident_blue' },
+    ]
   },
   {
     id: 'leakage',
     title: '油罐车泄露现场',
     focusPoint: 'accident_red',
+    phases: [
+      { id: 'l-start', time: '15:00', shortLabel: '仿真开始', title: '油罐车仿真推演开始', systems: ['总系统首页'], focusPoint: 'accident_red' },
+      { id: 'l-normal', time: '15:05', shortLabel: '正常行驶', title: '油罐车正常行驶阶段', systems: ['边缘网关'], focusPoint: 'accident_red' },
+      { id: 'l-accident', time: '15:12', shortLabel: '事故发生（侧翻）', title: '油罐车发生侧翻事故', systems: ['实时检测'], focusPoint: 'accident_red' },
+      { id: 'l-leak', time: '15:20', shortLabel: '次生灾害（泄露）', title: '罐体受损开始发生化学品泄露', systems: ['实时检测', '协同响应'], focusPoint: 'accident_red' },
+      { id: 'l-fill', time: '15:35', shortLabel: '次生灾害（弥漫）', title: '泄露液体开始向四周大面积弥漫', systems: ['协同响应'], focusPoint: 'accident_red' },
+      { id: 'l-spread', time: '15:50', shortLabel: '次生灾害（扩散）', title: '挥发气体随风向周边区域扩散', systems: ['总系统首页', '协同响应'], focusPoint: 'accident_red' },
+      { id: 'l-uav-start', time: '15:55', shortLabel: '无人装备出动', title: '无人装备协同出动', systems: ['协同响应'], focusPoint: 'accident_red' },
+      { id: 'l-uav-deploy', time: '16:00', shortLabel: '无人感知部署', title: '无人感知节点部署', systems: ['实时检测'], focusPoint: 'accident_red' },
+      { id: 'l-uav-exec', time: '16:05', shortLabel: '无人感知执行', title: '无人感知任务执行', systems: ['协同响应'], focusPoint: 'accident_red' },
+    ]
   },
 ]
 
-const timelinePhases = [
-  {
-    id: 'start',
-    time: '14:00',
-    shortLabel: '仿真开始',
-    title: '仿真推演开始',
-    systems: ['总系统首页'],
-    focusPoint: 'gateway',
-    focusHeading: 0,
-    areaRadiusMinor: 150000,
-    areaRadiusMajor: 200000,
-  },
-  {
-    id: 'normal',
-    time: '14:05',
-    shortLabel: '正常行驶',
-    title: '车辆正常行驶阶段',
-    systems: ['边缘网关', '总系统首页'],
-    focusPoint: 'gateway',
-    focusHeading: 6,
-    areaRadiusMinor: 120000,
-    areaRadiusMajor: 170000,
-  },
-  {
-    id: 'accident',
-    time: '14:12',
-    shortLabel: '事故发生',
-    title: '货车追尾事故瞬间',
-    systems: ['实时检测', '边缘网关'],
-    focusPoint: 'detection',
-    focusHeading: 18,
-    areaRadiusMinor: 110000,
-    areaRadiusMajor: 150000,
-  },
-  {
-    id: 'smoke',
-    time: '14:18',
-    shortLabel: '烟雾阶段',
-    title: '事故现场产生大量烟雾',
-    systems: ['协同响应', '实时检测'],
-    focusPoint: 'command',
-    focusHeading: -10,
-    areaRadiusMinor: 150000,
-    areaRadiusMajor: 210000,
-  },
-  {
-    id: 'fire',
-    time: '14:26',
-    shortLabel: '起火阶段',
-    title: '事故车辆开始起火',
-    systems: ['协同响应', '边缘网关'],
-    focusPoint: 'response',
-    focusHeading: 26,
-    areaRadiusMinor: 130000,
-    areaRadiusMajor: 180000,
-  },
-  {
-    id: 'spread',
-    time: '14:40',
-    shortLabel: '大火蔓延',
-    title: '火势进一步扩大蔓延',
-    systems: ['总系统首页', '协同响应'],
-    focusPoint: 'gateway',
-    focusHeading: 10,
-    areaRadiusMinor: 180000,
-    areaRadiusMajor: 240000,
-  },
-]
+// 计算当前显示的阶段
+const timelinePhases = computed(() => {
+  return accidentPoints[activeAccidentIndex.value]?.phases || []
+})
+
+const phaseToModelMap = {
+  1: 'model_normal',
+  2: 'model_accident',
+  3: 'model_accident',
+  4: 'model_accident',
+  5: 'model_accident',
+  6: 'model_accident',
+  7: 'model_accident',
+  8: 'model_accident'
+}
+
+const tankerPhaseToModelMap = {
+  1: 'tanker_normal',
+  2: 'tanker_accident',
+  3: 'tanker_accident',
+  4: 'tanker_accident',
+  5: 'tanker_accident',
+  6: 'tanker_accident',
+  7: 'tanker_accident',
+  8: 'tanker_accident'
+}
+
+const phasesReady = computed(() => {
+  if (timelinePhases.value.length === 0) return []
+  const isTruck = timelinePhases.value[0]?.id.startsWith('t-')
+  const map = isTruck ? phaseToModelMap : tankerPhaseToModelMap
+  return timelinePhases.value.map((p, idx) => {
+    const mid = map[idx]
+    if (!mid) return true // 不需要模型的阶段视为就绪
+    return !!modelsReadyStatus.value[mid]
+  })
+})
 
 const servicePanels = [
   {
@@ -248,8 +260,12 @@ function handleLocate() {
   }
 }
 
+function onModelsReady(status) {
+  modelsReadyStatus.value = status
+}
+
 watch(activeAccidentIndex, () => {
-  activePhaseIndex.value = 0
+  // 切换事故点时不再重置 activePhaseIndex.value = 0，使其保持各自的进度
   currentFocusedPoint.value = ''
 })
 
@@ -437,8 +453,8 @@ onMounted(() => {
 
 .bottom-timeline {
   left: 50%;
-  bottom: 18px;
-  width: min(1120px, calc(100vw - 120px));
+  bottom: 12px; /* 略微下移，更贴合底部 */
+  width: min(1600px, calc(100vw - 120px)); /* 显著增加宽度上限 (从1120调到1600) */
   transform: translateX(-50%);
 }
 
