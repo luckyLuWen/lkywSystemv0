@@ -230,7 +230,7 @@ def run_3d_cesium():
         )
 
     return success_response(
-        "三维态势地图已刷新",
+        "三维态势地图已刷新",生成新版本
         url="/cesium_viewer",
         mission=file_info(MISSION_PATH),
     )
