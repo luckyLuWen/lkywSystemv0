@@ -2,53 +2,226 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>重大交通事故智能决策与救援系统</title>
+    <title>协同指挥调度中心</title>
     <style>
-        body { margin: 0; font-family: 'Microsoft YaHei', sans-serif; display: flex; height: 100vh; background-color: #0f172a; color: white; overflow: hidden;}
-        
-        /* 左侧导航栏 */
-        .sidebar { width: 280px; background-color: #1e293b; padding: 20px; display: flex; flex-direction: column; gap: 15px; box-shadow: 2px 0 15px rgba(0,0,0,0.5); z-index: 10; }
-        .sidebar h2 { font-size: 1.3rem; margin-bottom: 20px; color: #38bdf8; text-align: center; border-bottom: 1px solid #334155; padding-bottom: 15px;}
-        
-        /* 炫酷按钮样式 */
-        .btn { padding: 15px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.3s; color: white; display: flex; align-items: center; gap: 10px;}
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none;}
-        
-        .btn-2d { background: linear-gradient(135deg, #2563eb, #3b82f6); }
-        .btn-3d { background: linear-gradient(135deg, #7c3aed, #8b5cf6); }
-        .btn-folium { background: linear-gradient(135deg, #059669, #10b981); }
-        
-        /* 状态提示信息 */
-        #status-bar { margin-top: 20px; padding: 15px; background: #0f172a; border-radius: 8px; font-size: 0.9rem; color: #94a3b8; border: 1px solid #334155; word-wrap: break-word;}
-        .loading { color: #f59e0b !important; font-weight: bold;}
-        .success { color: #10b981 !important; font-weight: bold;}
-        .error { color: #ef4444 !important; font-weight: bold;}
+        :root {
+            --blue-deep: #0a0f23;
+            --blue-panel: #0f1a33;
+            --blue-card: rgba(16, 25, 50, 0.9);
+            --blue-accent: #4a9eff;
+            --blue-accent-dim: rgba(74, 158, 255, 0.6);
+            --gold: #c9a84c;
+            --text-primary: #e8edf5;
+            --text-secondary: rgba(200, 210, 225, 0.65);
+            --border: rgba(74, 158, 255, 0.18);
+            --border-light: rgba(255,255,255,0.06);
+        }
 
-        /* 右侧展示区 */
-        .main-content { flex: 1; display: flex; position: relative; background-color: #ffffff;}
-        iframe { width: 100%; height: 100%; border: none; }
-        
-        /* 加载动画遮罩层 */
-        #loader-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.9); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 20;}
-        .spinner { border: 5px solid #334155; border-top: 5px solid #38bdf8; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 20px;}
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+            display: flex;
+            height: 100vh;
+            background: var(--blue-deep);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+
+        /* ---- sidebar ---- */
+        .sidebar {
+            width: 272px;
+            padding: 30px 20px 24px;
+            background:
+                linear-gradient(180deg, #111d3a 0%, #0d1630 40%, #0a1025 100%);
+            border-right: 1px solid rgba(74, 158, 255, 0.15);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 10;
+            position: relative;
+        }
+
+        .sidebar::after {
+            content: '';
+            position: absolute;
+            right: -1px; top: 0; bottom: 0;
+            width: 1px;
+            background: linear-gradient(180deg,
+                transparent 0%,
+                rgba(74,158,255,0.35) 20%,
+                rgba(74,158,255,0.35) 80%,
+                transparent 100%);
+            pointer-events: none;
+        }
+
+        .sidebar h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin: 0 0 8px;
+            color: #ffffff;
+            text-align: center;
+            letter-spacing: 0.06em;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(74,158,255,0.18);
+            position: relative;
+        }
+
+        .sidebar h2::after {
+            content: '';
+            position: absolute;
+            bottom: -1px; left: 50%;
+            transform: translateX(-50%);
+            width: 48px;
+            height: 2px;
+            background: var(--blue-accent);
+            border-radius: 2px;
+        }
+
+        /* ---- menu buttons ---- */
+        .btn {
+            min-height: 44px;
+            padding: 0 16px;
+            border-radius: 6px;
+            border: 1px solid transparent;
+            background: rgba(255,255,255,0.04);
+            color: var(--text-primary);
+            font-size: 13.5px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: inherit;
+            letter-spacing: 0.03em;
+        }
+
+        .btn::before {
+            content: '';
+            width: 4px; height: 4px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            flex-shrink: 0;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: rgba(74,158,255,0.1);
+            border-color: rgba(74,158,255,0.3);
+            color: #ffffff;
+        }
+        .btn:hover::before { background: var(--blue-accent); }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            background: rgba(255,255,255,0.02);
+        }
+        .btn:disabled::before { background: rgba(255,255,255,0.15); }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            border: none;
+            color: #fff;
+            font-weight: 600;
+            box-shadow: 0 2px 12px rgba(37,99,235,0.3);
+        }
+        .btn-primary::before {
+            background: rgba(255,255,255,0.8);
+            width: 6px; height: 6px;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #1d4ed8, #2563eb);
+            color: #fff;
+            box-shadow: 0 4px 18px rgba(37,99,235,0.45);
+        }
+
+        /* ---- status bar ---- */
+        #status-bar {
+            margin-top: auto;
+            padding: 14px;
+            border-radius: 6px;
+            background: rgba(12, 22, 45, 0.7);
+            border: 1px solid var(--border-light);
+            font-size: 12.5px;
+            color: var(--text-secondary);
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        #status-bar.loading { color: var(--blue-accent) !important; }
+        #status-bar.success { color: #5ec76e !important; }
+        #status-bar.error { color: #e8915c !important; }
+
+        /* ---- main content ---- */
+        .main-content {
+            flex: 1;
+            display: flex;
+            position: relative;
+            background:
+                radial-gradient(ellipse at 40% 30%, rgba(30,60,120,0.15) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 70%, rgba(15,35,70,0.1) 0%, transparent 50%),
+                var(--blue-deep);
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* ---- loader ---- */
+        #loader-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(8, 14, 30, 0.94);
+            backdrop-filter: blur(6px);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+        }
+
+        .spinner {
+            width: 44px; height: 44px;
+            border: 3px solid rgba(74,158,255,0.12);
+            border-top-color: var(--blue-accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 22px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        #loader-text {
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 0.04em;
+        }
+
+        @media (max-width: 860px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; max-height: 340px; }
+        }
     </style>
 </head>
 <body>
-
     <div class="sidebar">
-        <h2>🚨 两客一危路径规划决策总系统</h2>
-        <button class="btn btn-2d" id="btn1" onclick="launchApp('/api/run_2d', 'btn1', false)">📊 多类场景调度救援</button>
-        <button class="btn btn-3d" id="btn2" onclick="launchApp('/api/run_3d_cesium', 'btn2', true)">🌍 三维视景cesium动态推演</button>
-        <button class="btn btn-folium" id="btn3" onclick="launchApp('/api/run_3d_strategy', 'btn3', true)">📈 无人机/车协同策略路径规划</button>
-        <div id="status-bar">就绪。请选择左侧模块启动系统。</div>
+        <h2>协同指挥调度中心</h2>
+        <button class="btn" id="btn1" onclick="launchApp('/api/run_2d', 'btn1', false)">协同调度平台</button>
+        <button class="btn" id="btn2" onclick="launchApp('/api/run_3d_cesium', 'btn2', true)">三维态势地图</button>
+        <button class="btn btn-primary" id="btn3" onclick="launchApp('/api/run_3d_strategy', 'btn3', true)">协同策略路径规划</button>
+        <div id="status-bar">就绪，请选择模块启动系统。</div>
     </div>
 
     <div class="main-content">
         <div id="loader-overlay">
             <div class="spinner"></div>
-            <h3 style="color: #38bdf8;" id="loader-text">底层算法正在解算中，请耐心等待 (约需10-20秒)...</h3>
+            <h3 id="loader-text">算法正在解算中，请耐心等待（约需 10-20 秒）...</h3>
         </div>
         <iframe id="display-screen" src="about:blank"></iframe>
     </div>
@@ -59,27 +232,23 @@
             const screen = document.getElementById('display-screen');
             const loader = document.getElementById('loader-overlay');
             const btns = document.querySelectorAll('.btn');
-            
-            // 锁定按钮防止重复点击
+
             btns.forEach(b => b.disabled = true);
             statusBar.className = "loading";
             statusBar.innerText = "正在向后端发送调度指令...";
-            
-            if(showLoader) loader.style.display = "flex";
 
-            // 通过 Fetch API 调用 Python 后端
+            if (showLoader) loader.style.display = "flex";
+
             fetch(apiEndpoint)
                 .then(response => response.json())
                 .then(data => {
-                    if(data.status === 'success') {
+                    if (data.status === 'success') {
                         statusBar.className = "success";
                         statusBar.innerText = data.msg;
-                        
-                        // 针对 Streamlit 需要稍微等几秒让其启动
-                        if(apiEndpoint === '/api/run_2d') {
+                        if (apiEndpoint === '/api/run_2d') {
                             setTimeout(() => { screen.src = data.url; }, 3000);
                         } else {
-                            screen.src = data.url; // 注入生成的 HTML 或 Cesium
+                            screen.src = data.url;
                         }
                     } else {
                         statusBar.className = "error";
@@ -88,11 +257,11 @@
                 })
                 .catch(error => {
                     statusBar.className = "error";
-                    statusBar.innerText = "网络通信中断，请检查 server.py 是否运行。";
+                    statusBar.innerText = "网络通信中断，请检查服务器是否运行。";
                 })
                 .finally(() => {
                     btns.forEach(b => b.disabled = false);
-                    if(showLoader) loader.style.display = "none";
+                    if (showLoader) loader.style.display = "none";
                 });
         }
     </script>

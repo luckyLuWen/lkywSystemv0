@@ -21,12 +21,55 @@
             z-index: 10;
             max-width: 380px;
             padding: 12px 14px;
-            border-radius: 12px;
-            background: rgba(2, 6, 23, 0.82);
-            color: #e2e8f0;
-            font: 14px/1.6 "Microsoft YaHei", sans-serif;
-            border: 1px solid rgba(148, 163, 184, 0.22);
-            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            background: rgba(12, 20, 40, 0.88);
+            color: rgba(200, 210, 225, 0.7);
+            font: 13px/1.6 "Microsoft YaHei", "PingFang SC", sans-serif;
+            border: 1px solid rgba(74, 158, 255, 0.18);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+        }
+
+        .layerPicker {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            z-index: 10;
+            background: rgba(12, 20, 40, 0.92);
+            border-radius: 8px;
+            border: 1px solid rgba(74, 158, 255, 0.2);
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        }
+
+        .layerPicker button {
+            display: block;
+            width: 160px;
+            padding: 10px 14px;
+            border: none;
+            background: transparent;
+            color: rgba(200, 210, 225, 0.8);
+            font: 12px/1.5 "Microsoft YaHei", "PingFang SC", sans-serif;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+        }
+
+        .layerPicker button:hover {
+            background: rgba(74, 158, 255, 0.15);
+            color: #fff;
+        }
+
+        .layerPicker button.active {
+            background: rgba(74, 158, 255, 0.25);
+            color: #4a9eff;
+        }
+
+        .layerPicker .title {
+            padding: 8px 14px;
+            font-size: 11px;
+            color: rgba(200, 210, 225, 0.4);
+            border-bottom: 1px solid rgba(74, 158, 255, 0.1);
         }
     </style>
     <script>
@@ -38,6 +81,14 @@
 <body>
     <div class="hint">
         三维态势地图使用本地 Cesium 资源包。若当前未看到路径动画，请先通过协同响应页执行一次“三维态势生成”。
+    </div>
+    <div class="layerPicker">
+        <div class="title">底图选择</div>
+        <button id="layer1" class="active">🌍 地形底图</button>
+        <button id="layer2">🗺️ 街道地图</button>
+        <button id="layer3">🛰️ 卫星影像</button>
+        <button id="layer4">🏔️ 地形+c:\Users\Administrator\lkywSystemv0\Collaborative_Response\backend\command_center\cesium_viewer.html
+
     </div>
     <div id="cesiumContainer"></div>
     <script>
@@ -52,9 +103,42 @@
             sceneModePicker: false,
             navigationHelpButton: false,
             infoBox: true,
+            terrainProvider: Cesium.createWorldTerrain(),
         });
 
         viewer.cesiumWidget.creditContainer.style.display = "none";
+
+        // 定义不同的底图图层
+        const baseLayers = {
+            terrain: new Cesium.ImageryLayer(Cesium.createWorldImagery()),
+            street: new Cesium.ImageryLayer(new Cesium.OpenStreetMapImageryProvider({
+                url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+            })),
+            satellite: new Cesium.ImageryLayer(new Cesium.ArcGisMapServerImageryProvider({
+                url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
+            })),
+            hybrid: new Cesium.ImageryLayer(new Cesium.ArcGisMapServerImageryProvider({
+                url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
+            })),
+            dark: new Cesium.ImageryLayer(new Cesium.OpenStreetMapImageryProvider({
+                url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+            }))
+        };
+
+        function setBaseLayer(layerKey) {
+            viewer.imageryLayers.removeAll();
+            viewer.imageryLayers.add(baseLayers[layerKey]);
+            
+            // 更新按钮状态
+            document.querySelectorAll('.layerPicker button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        document.getElementById('layer1').addEventListener('click', () => setBaseLayer('terrain'));
+        document.getElementById('layer2').addEventListener('click', () => setBaseLayer('street'));
+        document.getElementById('layer3').addEventListener('click', () => setBaseLayer('satellite'));
+        document.getElementById('layer4').addEventListener('click', () => setBaseLayer('hybrid'));
+        document.getElementById('layer5').addEventListener('click', () => setBaseLayer('dark'));
 
         async function addBuildings() {
             try {

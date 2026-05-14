@@ -13,17 +13,35 @@ from datetime import datetime, time
 from graph_utils import load_drive_graph_from_local_or_osm
 
 # ==================== 1. 页面配置 ====================
-st.set_page_config(layout="wide", page_title="灾害动态路径规划系统 (五大多主体)", page_icon="🚧")
+st.set_page_config(layout="wide", page_title="协同调度平台", page_icon="")
 
 st.markdown("""
 <style>
     .block-container { padding-top: 5rem !important; max-width: 100% !important; }
-    .info-card { background-color: #ffffff; border: 1px solid #e0e0e0; border-left: 6px solid #6c757d; border-radius: 8px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    .info-card.best { border-left-color: #28a745; background-color: #f4fff4; }
-    .info-card.selected { border-left-color: #007bff; background-color: #f0f7ff; }
-    .info-card.warn { border-left-color: #dc3545; background-color: #fff5f5; }
-    .dashboard-container { background-color: #f1f3f5; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; margin-top: 20px; }
-    .metric-small { font-size: 0.9rem; color: #666; }
+    header[data-testid="stHeader"] { background: transparent !important; }
+    [data-testid="stToolbar"] { display: none !important; }
+    .stApp { background: radial-gradient(ellipse at 40% 25%, rgba(30,60,120,0.10) 0%, transparent 55%), radial-gradient(ellipse at 70% 70%, rgba(15,35,70,0.06) 0%, transparent 50%), #0a0f23; }
+    [data-testid="stSidebar"] { background: linear-gradient(180deg, #111d3a 0%, #0d1630 40%, #0a1025 100%) !important; border-right: 1px solid rgba(74,158,255,0.12) !important; }
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h1 { color: #ffffff !important; font-size: 1.2rem !important; font-weight: 700 !important; letter-spacing: 0.06em !important; padding-bottom: 14px !important; border-bottom: 1px solid rgba(74,158,255,0.16) !important; }
+    [data-testid="stSidebar"] label { color: rgba(200,210,225,0.7) !important; font-size: 0.8rem !important; font-weight: 500 !important; }
+    [data-testid="stSidebar"] hr { border-color: rgba(74,158,255,0.1) !important; }
+    [data-testid="stSidebar"] button[kind="primary"] { background: linear-gradient(135deg, #2563eb, #3b82f6) !important; border: none !important; color: #fff !important; font-weight: 600 !important; letter-spacing: 0.04em !important; border-radius: 6px !important; box-shadow: 0 2px 12px rgba(37,99,235,0.25) !important; }
+    .stApp h1 { color: #ffffff !important; font-size: 1.8rem !important; font-weight: 700 !important; letter-spacing: 0.04em !important; }
+    .stApp h3 { color: #e8edf5 !important; font-weight: 600 !important; }
+    [data-testid="stExpander"] { background: rgba(16,25,50,0.4) !important; border: 1px solid rgba(74,158,255,0.12) !important; border-radius: 8px !important; }
+    [data-testid="stExpander"] summary { color: #e8edf5 !important; font-weight: 600 !important; }
+    [data-testid="stTabs"] [data-baseweb="tab-list"] { border-bottom: 1px solid rgba(74,158,255,0.12) !important; }
+    [data-testid="stTabs"] button[role="tab"] { color: rgba(200,210,225,0.6) !important; }
+    [data-testid="stTabs"] button[role="tab"][aria-selected="true"] { color: #4a9eff !important; border-bottom-color: #4a9eff !important; }
+    [data-testid="stMetricValue"] { color: #ffffff !important; font-weight: 700 !important; }
+    [data-testid="stMetricLabel"] { color: rgba(200,210,225,0.55) !important; font-size: 0.8rem !important; }
+    .stProgress > div > div { background-color: #4a9eff !important; }
+    .info-card { background: rgba(16,25,50,0.85); border: 1px solid rgba(74,158,255,0.16); border-left: 4px solid #3b82f6; border-radius: 8px; padding: 15px; margin-bottom: 10px; color: #e8edf5; }
+    .info-card.best { border-left-color: #5ec76e; background: rgba(94,199,110,0.06); }
+    .info-card.selected { border-left-color: #4a9eff; background: rgba(74,158,255,0.06); }
+    .info-card.warn { border-left-color: #e8915c; background: rgba(232,145,92,0.06); }
+    .dashboard-container { background: rgba(16,25,50,0.6); padding: 20px; border-radius: 8px; border: 1px solid rgba(74,158,255,0.14); margin-top: 20px; }
+    .metric-small { font-size: 0.85rem; color: rgba(200,210,225,0.5); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -146,7 +164,7 @@ def calculate_score(distance_m, traffic_f, weather_f, attr, config):
 
 # ==================== 4. 主程序 ====================
 def main():
-    st.sidebar.title("🛠️ 联合指挥应急控制台")
+    st.sidebar.title("联合指挥控制台")
     
     task_options = {
         "人员伤亡 (医疗急救)": {"mode": "medical", "tag": "hospital", "color": "green", "icon": "user-md"},
@@ -243,7 +261,7 @@ def main():
             st.session_state.dispatched = True
 
     # --- 主界面 ---
-    st.title(f"🚑 灾害动态路径规划系统 ({mode.upper()})")
+    st.title(f"灾害动态路径规划系统 ({mode.upper()})")
     col_map, col_data = st.columns([3, 1.2])
 
     with col_map:

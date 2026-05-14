@@ -33,8 +33,8 @@ const handleMenuChange = (key) => {
     case 'sensor':
       router.push('/sensor-manage') // 跳转到传感器管理子系统
       break
-    case 'response':
-      router.push('/response') // 预留：协同响应
+    case 'coordination':
+      window.location.href = 'http://localhost:5174' // 协同响应
       break
     case 'modeling':
       router.push('/modeling') // 预留：精细建模

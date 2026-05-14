@@ -293,24 +293,22 @@ def create_visualization(car_df, uav_df, raw_uav_df, congestion_polygon, car_int
         transition_time=1000, loop=True, auto_play=True
     ).add_to(m)
 
-    # UI 面板 (中文)
     params_html = f"""
-    <div style="font-size:12px; line-height:1.5;">
-        <b>🚗 车辆速度:</b> {CAR_SPEED * 3.6:.1f} km/h<br>
-        <b>🚁 无人机速度:</b> {UAV_SPEED * 3.6:.1f} km/h<br>
-        <b>📏 最小离地:</b> {MIN_GROUND_CLEARANCE} m<br>
-        <b>⚙️ 协同策略:</b> 自动延迟同步 (Auto-Sync)
+    <div style="font-size:12px; line-height:1.7;">
+        <b>车辆速度:</b> {CAR_SPEED * 3.6:.1f} km/h<br>
+        <b>无人机速度:</b> {UAV_SPEED * 3.6:.1f} km/h<br>
+        <b>最小离地:</b> {MIN_GROUND_CLEARANCE} m<br>
+        <b>协同策略:</b> 自动延迟同步
     </div>
     """
-    
+
     ui_html = f'''
-    <div style="position: fixed; top: 10px; left: 50px; z-index: 1000; width: 250px; background: white; padding: 10px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.3);">
-        <h4 style="margin: 0 0 5px; text-align: center;">🚁 空地协同救援仿真</h4>
-        <hr style="margin: 5px 0;">
+    <div style="position: fixed; top: 16px; left: 50px; z-index: 1000; width: 250px; background: rgba(16, 25, 50, 0.94); padding: 14px; border-radius: 8px; border: 1px solid rgba(74, 158, 255, 0.2); box-shadow: 0 12px 36px rgba(0,0,0,0.3); font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; color: #e8edf5; backdrop-filter: blur(8px);">
+        <h4 style="margin: 0 0 8px; text-align: center; color: #4a9eff; font-size: 13px; font-weight: 700; letter-spacing: 0.05em;">空地协同救援仿真</h4>
+        <hr style="margin: 8px 0; border: 0; border-top: 1px solid rgba(74,158,255,0.12);">
         {params_html}
-        <div style="margin-top:5px; color:gray; font-size:10px;">
-            * 黑色虚线: 原始 A* 路径<br>
-            * 洋红实线: B-Spline 优化路径
+        <div style="margin-top:8px; color:rgba(200,210,225,0.4); font-size:10px;">
+            虚线: 原始A*路径 &nbsp; 实线: B-Spline优化路径
         </div>
     </div>
     '''

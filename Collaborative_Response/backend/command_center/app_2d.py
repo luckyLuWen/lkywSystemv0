@@ -13,39 +13,177 @@ from datetime import datetime, time
 from graph_utils import load_drive_graph_from_local_or_osm
 
 # ==================== 1. 页面配置 ====================
-st.set_page_config(layout="wide", page_title="灾害动态路径规划系统 (五大多主体)", page_icon="🚧")
+st.set_page_config(layout="wide", page_title="协同调度平台", page_icon="")
 
 st.markdown("""
 <style>
-    /* 将 padding-top 增加到 5rem，确保标题完全显示 */
+    /* ---- base layout ---- */
     .block-container {
         padding-top: 5rem !important;
         max-width: 100% !important;
     }
-    
-    /* 卡片样式 */
+
+    /* ---- hide Streamlit default header toolbar ---- */
+    header[data-testid="stHeader"] {
+        background: transparent !important;
+    }
+    [data-testid="stToolbar"] { display: none !important; }
+
+    /* ---- main app background ---- */
+    .stApp {
+        background:
+            radial-gradient(ellipse at 40% 25%, rgba(30, 60, 120, 0.10) 0%, transparent 55%),
+            radial-gradient(ellipse at 70% 70%, rgba(15, 35, 70, 0.06) 0%, transparent 50%),
+            #0a0f23;
+    }
+
+    /* ---- sidebar ---- */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #111d3a 0%, #0d1630 40%, #0a1025 100%) !important;
+        border-right: 1px solid rgba(74, 158, 255, 0.12) !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h1 {
+        color: #ffffff !important;
+        font-size: 1.2rem !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.06em !important;
+        padding-bottom: 14px !important;
+        border-bottom: 1px solid rgba(74,158,255,0.16) !important;
+    }
+    [data-testid="stSidebar"] label {
+        color: rgba(200,210,225,0.7) !important;
+        font-size: 0.8rem !important;
+        font-weight: 500 !important;
+    }
+    [data-testid="stSidebar"] .stSelectbox > div,
+    [data-testid="stSidebar"] .stSlider > div {
+        font-size: 0.85rem !important;
+    }
+    [data-testid="stSidebar"] hr {
+        border-color: rgba(74,158,255,0.1) !important;
+    }
+    [data-testid="stSidebar"] button[kind="primary"] {
+        background: linear-gradient(135deg, #2563eb, #3b82f6) !important;
+        border: none !important;
+        color: #fff !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.04em !important;
+        border-radius: 6px !important;
+        box-shadow: 0 2px 12px rgba(37,99,235,0.25) !important;
+    }
+    [data-testid="stSidebar"] button[kind="primary"]:hover {
+        background: linear-gradient(135deg, #1d4ed8, #2563eb) !important;
+    }
+    [data-testid="stSidebar"] .stRadio label {
+        color: #e8edf5 !important;
+    }
+    [data-testid="stSidebar"] .st-cb,
+    [data-testid="stSidebar"] .st-ci,
+    [data-testid="stSidebar"] .st-cj {
+        background: rgba(16,25,50,0.6) !important;
+        border-color: rgba(74,158,255,0.2) !important;
+        color: #e8edf5 !important;
+    }
+
+    /* ---- sidebar warning box ---- */
+    [data-testid="stSidebar"] [data-testid="stNotification"] {
+        background: rgba(232,145,92,0.1) !important;
+        border: 1px solid rgba(232,145,92,0.2) !important;
+        border-radius: 6px !important;
+        color: #e8c09a !important;
+    }
+
+    /* ---- main title ---- */
+    .stApp h1 {
+        color: #ffffff !important;
+        font-size: 1.8rem !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.04em !important;
+    }
+    .stApp h3 {
+        color: #e8edf5 !important;
+        font-weight: 600 !important;
+    }
+
+    /* ---- expander ---- */
+    [data-testid="stExpander"] {
+        background: rgba(16,25,50,0.4) !important;
+        border: 1px solid rgba(74,158,255,0.12) !important;
+        border-radius: 8px !important;
+    }
+    [data-testid="stExpander"] summary {
+        color: #e8edf5 !important;
+        font-weight: 600 !important;
+    }
+
+    /* ---- tabs ---- */
+    [data-testid="stTabs"] [data-baseweb="tab-list"] {
+        border-bottom: 1px solid rgba(74,158,255,0.12) !important;
+    }
+    [data-testid="stTabs"] button[role="tab"] {
+        color: rgba(200,210,225,0.6) !important;
+    }
+    [data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+        color: #4a9eff !important;
+        border-bottom-color: #4a9eff !important;
+    }
+
+    /* ---- metrics ---- */
+    [data-testid="stMetricValue"] {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+    }
+    [data-testid="stMetricLabel"] {
+        color: rgba(200,210,225,0.55) !important;
+        font-size: 0.8rem !important;
+    }
+    [data-testid="stMetricDelta"] {
+        color: #e8915c !important;
+    }
+
+    /* ---- info / warning / success boxes ---- */
+    [data-testid="stNotification"] {
+        border-radius: 6px !important;
+    }
+
+    /* ---- progress bar ---- */
+    .stProgress > div > div {
+        background-color: #4a9eff !important;
+    }
+
+    /* ---- captions / small ---- */
+    .stApp small, .stApp caption {
+        color: rgba(200,210,225,0.45) !important;
+    }
+
+    /* ---- custom cards ---- */
     .info-card {
-        background-color: #ffffff;
-        border: 1px solid #e0e0e0;
-        border-left: 6px solid #6c757d;
+        background: rgba(16, 25, 50, 0.85);
+        border: 1px solid rgba(74, 158, 255, 0.16);
+        border-left: 4px solid #3b82f6;
         border-radius: 8px;
         padding: 15px;
         margin-bottom: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        color: #e8edf5;
     }
-    .info-card.best { border-left-color: #28a745; background-color: #f4fff4; }
-    .info-card.selected { border-left-color: #007bff; background-color: #f0f7ff; }
-    .info-card.warn { border-left-color: #dc3545; background-color: #fff5f5; }
+    .info-card.best { border-left-color: #5ec76e; background: rgba(94,199,110,0.06); }
+    .info-card.selected { border-left-color: #4a9eff; background: rgba(74,158,255,0.06); }
+    .info-card.warn { border-left-color: #e8915c; background: rgba(232,145,92,0.06); }
 
-    /* 底部仪表盘样式 */
     .dashboard-container {
-        background-color: #f1f3f5;
+        background: rgba(16, 25, 50, 0.6);
         padding: 20px;
         border-radius: 8px;
-        border: 1px solid #dee2e6;
+        border: 1px solid rgba(74, 158, 255, 0.14);
         margin-top: 20px;
     }
-    .metric-small { font-size: 0.9rem; color: #666; }
+    .metric-small { font-size: 0.85rem; color: rgba(200,210,225,0.5); }
+
+    /* ---- folium map container ---- */
+    .element-container iframe {
+        border-radius: 8px !important;
+        border: 1px solid rgba(74,158,255,0.14) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -192,7 +330,7 @@ def calculate_score(distance_m, traffic_f, weather_f, attr, config):
 # ==================== 4. 主程序 ====================
 
 def main():
-    st.sidebar.title("🛠️ 联合指挥应急控制台")
+    st.sidebar.title("联合指挥控制台")
     
     # 1. 任务设置 (扩展为5个模块)
     task_options = {
@@ -218,12 +356,12 @@ def main():
     st.sidebar.caption("环境参数")
     col_t1, col_t2 = st.sidebar.columns(2)
     sim_time = col_t1.time_input("时间", time(8, 30))
-    weather = col_t2.selectbox("天气", ["☀️ 晴朗", "🌧️ 小雨", "⛈️ 暴雨", "🌫️ 大雾", "❄️ 积雪"])
+    weather = col_t2.selectbox("天气", ["晴朗", "小雨", "暴雨", "大雾", "积雪"])
     
     # 3. 互动模式
     st.sidebar.divider()
-    st.sidebar.subheader("🚧 灾害模拟交互")
-    inter_mode = st.sidebar.radio("地图点击功能：", ["🔍 查看站点详情", "🚫 添加道路阻断"], index=0)
+    st.sidebar.subheader("灾害模拟交互")
+    inter_mode = st.sidebar.radio("地图点击功能：", ["查看站点详情", "添加道路阻断"], index=0)
     st.session_state.interaction_mode = 'block' if "添加" in inter_mode else 'view'
     
     if st.session_state.obstacles:
@@ -239,7 +377,7 @@ def main():
     facilities_basic = simulate_attributes(raw_facs, mode)
 
     # 4. 规划按钮
-    if st.sidebar.button("🚀 开始动态规划联合解算", type="primary", use_container_width=True):
+    if st.sidebar.button("开始动态规划联合解算", type="primary", use_container_width=True):
         bar = st.sidebar.progress(0, text="初始化 GIS 引擎...")
         G = load_graph()
         
@@ -296,13 +434,13 @@ def main():
             st.session_state.best_route = None
             st.session_state.route_comparison = {}
         
-        bar.progress(100, text="✅ 解算完成")
+        bar.progress(100, text="解算完成")
         time_lib.sleep(0.5)
         bar.empty()
         st.session_state.dispatched = True
 
     # --- 主界面 ---
-    st.title(f"🚑 灾害动态路径规划系统 ({mode.upper()})")
+    st.title(f"灾害动态路径规划系统 ({mode.upper()})")
     col_map, col_data = st.columns([3, 1.2])
 
     with col_map:
@@ -311,12 +449,12 @@ def main():
         folium.Marker(ACCIDENT_POINT, popup="事故点", icon=folium.Icon(color='red', icon='warning', prefix='fa')).add_to(m)
 
         for obs in st.session_state.obstacles:
-            folium.Circle(location=obs, radius=150, color='red', fill=True, fill_opacity=0.5, popup="🚫 阻断").add_to(m)
+            folium.Circle(location=obs, radius=150, color='red', fill=True, fill_opacity=0.5, popup="阻断").add_to(m)
 
         if st.session_state.dispatched and st.session_state.best_route:
             AntPath(st.session_state.best_route, color=theme_color, weight=5, opacity=0.8, delay=800).add_to(m)
         elif st.session_state.dispatched:
-            st.error("🚨 目标不可达！")
+            st.error("目标不可达！")
 
         current_list = st.session_state.calculation_results if st.session_state.dispatched else facilities_basic
         best_name = current_list[0]['name'] if st.session_state.dispatched and current_list else ""
@@ -338,14 +476,14 @@ def main():
                 st.rerun()
 
     with col_data:
-        with st.expander("🌍 环境与灾情感知", expanded=True):
+        with st.expander("环境与灾情感知", expanded=True):
             ec1, ec2 = st.columns(2)
             ec1.metric("天气", weather)
             w_rate = get_weather_impact(weather)
             ec2.metric("通行效率", f"{w_rate*100:.0f}%", delta=f"-{(1-w_rate)*100:.0f}%" if w_rate<1 else None)
-            mode_style = "background-color:#dc3545; color:white;" if st.session_state.interaction_mode == 'block' else "background-color:#007bff; color:white;"
-            mode_text = "🚧 点击地图添加障碍" if st.session_state.interaction_mode == 'block' else "🔍 点击站点查看详情"
-            st.markdown(f'<div style="{mode_style} padding:10px; border-radius:5px; text-align:center; margin-top:10px;">当前模式：{mode_text}</div>', unsafe_allow_html=True)
+            mode_style = "background:rgba(232,145,92,0.12); color:#e8915c; border:1px solid rgba(232,145,92,0.22);" if st.session_state.interaction_mode == 'block' else "background:rgba(74,158,255,0.1); color:#4a9eff; border:1px solid rgba(74,158,255,0.18);"
+            mode_text = "点击地图添加障碍" if st.session_state.interaction_mode == 'block' else "点击站点查看详情"
+            st.markdown(f'<div style="{mode_style} padding:10px; border-radius:10px; text-align:center; margin-top:10px;">{mode_text}</div>', unsafe_allow_html=True)
 
         selected = None
         if st.session_state.interaction_mode == 'view' and map_output['last_object_clicked']:
@@ -360,9 +498,9 @@ def main():
         if selected:
             is_best = st.session_state.dispatched and (selected['name'] == st.session_state.calculation_results[0]['name'])
             is_unreachable = st.session_state.dispatched and selected.get('score', 0) > 9000
-            title_pre = "🏆 最佳调度方案" if is_best else "📍 选中单位"
+            title_pre = "最佳调度方案" if is_best else "选中单位"
             card_class = "info-card best" if is_best else "info-card selected"
-            if is_unreachable: card_class, title_pre = "info-card warn", "🚫 不符合条件 / 不可达"
+            if is_unreachable: card_class, title_pre = "info-card warn", "不符合条件 / 不可达"
 
             st.markdown(f"""<div class="{card_class}"><div style="color:#666; font-size:0.8rem;">{title_pre}</div><h3 style="margin:5px 0;">{selected['name']}</h3><span style="background:#eee; padding:2px 6px; font-size:0.8rem;">{selected['level']}</span></div>""", unsafe_allow_html=True)
 
@@ -382,21 +520,21 @@ def main():
                 st.caption(f"床位使用情况: {selected['available_beds']}/{selected['total_beds']}")
                 st.progress(1 - selected['available_beds']/selected['total_beds'])
             elif mode == 'fire':
-                st.write(f"🚒 **状态:** {selected['status']} | **可调派消防车:** {selected.get('trucks',0)}辆")
+                st.write(f"状态: {selected['status']} | 可调派消防车: {selected.get('trucks',0)}辆")
             elif mode == 'police':
-                st.write(f"🚓 **警力状态:** {selected['status']} | **可调用警车:** {selected.get('patrol_cars',0)}辆")
+                st.write(f"警力状态: {selected['status']} | 可调用警车: {selected.get('patrol_cars',0)}辆")
             elif mode == 'hazmat':
-                st.write(f"☣️ **状态:** {selected['status']} | **洗消剂储备:** {selected.get('neutralizer','未知')}")
+                st.write(f"状态: {selected['status']} | 洗消剂储备: {selected.get('neutralizer','未知')}")
             elif mode == 'road':
-                st.write(f"🏗️ **状态:** {selected['status']} | **重型吊车:** {selected.get('heavy_cranes',0)}台 | **清障拖车:** {selected.get('tow_trucks',0)}台")
+                st.write(f"状态: {selected['status']} | 重型吊车: {selected.get('heavy_cranes',0)}台 | 清障拖车: {selected.get('tow_trucks',0)}台")
         else:
-            st.info("👈 在 [查看模式] 下点击地图图标查看详情")
+            st.info("在 [查看模式] 下点击地图图标查看详情")
 
-    # === 🔥 底部重构：灾害救援路径效能评估系统 ===
-    st.markdown("### 📊 灾害空间协同调度效能评估")
+    # === 灾害救援路径效能评估系统 ===
+    st.markdown("### 灾害空间协同调度效能评估")
     with st.container():
         st.markdown('<div class="dashboard-container">', unsafe_allow_html=True)
-        tab1, tab2, tab3 = st.tabs(["🛣️ 路径损耗评估", "🚧 道路阻断详情", "📡 算法执行监控"])
+        tab1, tab2, tab3 = st.tabs(["路径损耗评估", "道路阻断详情", "算法执行监控"])
         
         # Tab 1: 路径损耗 (核心：对比灾害前后的距离)
         with tab1:
@@ -420,8 +558,8 @@ def main():
                 ).properties(height=150)
                 st.altair_chart(chart, use_container_width=True)
                 
-                if delta > 0: st.warning(f"⚠️ 受 {comp['obstacles']} 处障碍物影响，目标单位 {comp['name']} 被迫绕行，时效性受到影响。")
-                else: st.success("✅ 当前目标单位规划路径未受阻断影响，保持最佳通行效率。")
+                if delta > 0: st.warning(f"受 {comp['obstacles']} 处障碍物影响，目标单位 {comp['name']} 被迫绕行，时效性受到影响。")
+                else: st.success("当前目标单位规划路径未受阻断影响，保持最佳通行效率。")
             else:
                 st.info("待执行动态规划后查看对比分析。")
 

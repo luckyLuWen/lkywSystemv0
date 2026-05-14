@@ -260,13 +260,16 @@ async function initViewer() {
       timeline: false, shouldAnimate: true, skyAtmosphere: false,
     })
     viewer.scene.globe.enableLighting = true
-    viewer.cesiumWidget.creditContainer.style.display = 'none'
+            viewer.cesiumWidget.creditContainer.style.display = 'none'
+    Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyYTUwYmE4Zi01ZjZlLTQ0MjAtYWMwNS0yYjBkZGFiM2RmOTUiLCJpZCI6MzU4MzQ0LCJpYXQiOjE3NjI1Nzc2NjR9.q9QoG-_99QZ2R2TlUYjiWGhn0-S5I22FFGuou_NAE3Q"
 
     viewer.imageryLayers.removeAll()
-    const imagery = await Cesium.ArcGisMapServerImageryProvider.fromUrl(
-      'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
+    viewer.imageryLayers.addImageryProvider(
+      new Cesium.UrlTemplateImageryProvider({
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        maximumLevel: 19,
+      })
     )
-    viewer.imageryLayers.addImageryProvider(imagery)
 
     addEventEntities()
     

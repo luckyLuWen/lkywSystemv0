@@ -93,7 +93,7 @@ const currentFocusedPoint = ref('')
 const topMenus = [
   { key: 'sensor', label: '传感器管理', path: '/sensor-manage' },
   { key: 'realtime', label: '实时检测', path: '/realtime' },
-  { key: 'coordination', label: '协同响应', path: '/coordination' },
+  { key: 'coordination', label: '协同响应', path: 'http://localhost:5174' },
   { key: 'modeling', label: '精细建模', path: '/modeling' },
   { key: 'simulation', label: '仿真推演', path: '/simulation' },
 ]
@@ -227,7 +227,11 @@ function toggleServicePanel(serviceId) {
 function goTo(item) {
   activeMenuKey.value = item.key
   persistMenuKey(item.key)
-  router.push(item.path)
+  if (item.path.startsWith('http')) {
+    window.location.href = item.path
+  } else {
+    router.push(item.path)
+  }
 }
 
 function onAccidentPickedOnGlobe(entityId) {

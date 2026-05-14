@@ -2,7 +2,15 @@
   "permissions": {
     "allow": [
       "Bash(taskkill //PID 12076 //F)",
-      "Bash(taskkill //PID 22948 //F)"
+      "Bash(taskkill //PID 22948 //F)",
+      "Bash(start http://127.0.0.1:8501)",
+      "Bash(ls -la \"D:/CondaEnvs/yolov11_traffic_dev/python.exe\" 2>/dev/null && echo \"Conda Python found\" || which python)",
+      "Read(//d/CondaEnvs/yolov11_traffic_dev/**)",
+      "Bash(python -c \"import flask; print\\('flask OK'\\)\")",
+      "Bash(python -c \"import flask_cors; print\\('flask_cors OK'\\)\")",
+      "Bash(curl -s http://127.0.0.1:5173)",
+      "Bash(curl -sv http://127.0.0.1:5173)",
+      "Bash(curl -s --connect-timeout 10 \"https://api.cesium.com/v1/assets/1/endpoint?access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyYTUwYmE4Zi01ZjZlLTQ0MjAtYWMwNS0yYjBkZGFiM2RmOTUiLCJpZCI6MzU4MzQ0LCJpYXQiOjE3NjI1Nzc2NjR9.q9QoG-_99QZ2R2TlUYjiWGhn0-S5I22FFGuou_NAE3Q\")"
     ]
   }
 }
