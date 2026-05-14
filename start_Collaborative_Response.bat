@@ -3,7 +3,7 @@ setlocal
 
 :: 1. Setup paths
 set "REPO_DIR=%~dp0"
-set "TARGET_DIR=%REPO_DIR%Collaborative_Response\service_manager"
+set "TARGET_DIR=%REPO_DIR%Collaborative_Response\backend\command_center"
 
 :: 2. Resolve Python
 set "PYTHON_EXE=%LKYW_PYTHON_EXE%"
@@ -43,9 +43,11 @@ if %ERRORLEVEL% neq 0 (
 set "PYTHONIOENCODING=utf-8"
 
 :: 6. Execution
-echo Starting DH Collaborative Response Control Layer...
+echo Starting Collaborative Response Command Center...
 echo Working Dir: %CD%
 echo Python Path: %PYTHON_EXE%
+echo   Health:  http://127.0.0.1:5001/api/health
+echo   Services: http://127.0.0.1:5001/api/services
 echo.
 
 "%PYTHON_EXE%" server.py

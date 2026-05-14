@@ -2,7 +2,6 @@ const DEFAULT_SENSOR_GATEWAY_BASE_URL = 'http://127.0.0.1:18080'
 const LEGACY_SENSOR_GATEWAY_BASE_URL = 'http://192.168.2.111:8000'
 const DEFAULT_REALTIME_DETECTION_BASE_URL = 'http://127.0.0.1:5000'
 const DEFAULT_REALTIME_RTSP_URL = 'rtsp://localhost:8554/live'
-const DEFAULT_COLLABORATIVE_CONTROLLER_BASE_URL = 'http://127.0.0.1:18601'
 const DEFAULT_COLLABORATIVE_STREAMLIT_URL = 'http://127.0.0.1:8501/?embed=true'
 const DEFAULT_COLLABORATIVE_COMMAND_CENTER_BASE_URL = 'http://127.0.0.1:5001'
 
@@ -10,10 +9,8 @@ const STORAGE_KEYS = {
   sensorGatewayBaseUrl: 'lkyw.sensorGatewayBaseUrl',
   realtimeDetectionBaseUrl: 'lkyw.realtimeDetectionBaseUrl',
   realtimeDetectionRtspUrl: 'lkyw.realtimeDetectionRtspUrl',
-  collaborativeControllerBaseUrl: 'lkyw.collaborativeControllerBaseUrl',
   collaborativeStreamlitUrl: 'lkyw.collaborativeStreamlitUrl',
   collaborativeCommandCenterBaseUrl: 'lkyw.collaborativeCommandCenterBaseUrl',
-  legacyCollaborativeSimulationUrl: 'lkyw.collaborativeSimulationUrl',
 }
 
 export function normalizeBaseUrl(value) {
@@ -116,26 +113,6 @@ export function buildSensorManagementIframeSrc(baseUrl = getSensorGatewayBaseUrl
   return `/sensor-management/index.html?edgeBase=${encodeURIComponent(normalizedBase)}`
 }
 
-export function getCollaborativeControllerBaseUrl() {
-  return (
-    normalizeBaseUrl(getQueryValue('controllerBase')) ||
-    normalizeBaseUrl(getStorageValue(STORAGE_KEYS.collaborativeControllerBaseUrl)) ||
-    getEnvValue('VITE_COLLABORATIVE_CONTROLLER_BASE_URL') ||
-    DEFAULT_COLLABORATIVE_CONTROLLER_BASE_URL
-  )
-}
-
-export function persistCollaborativeControllerBaseUrl(value) {
-  const normalized = normalizeBaseUrl(value) || DEFAULT_COLLABORATIVE_CONTROLLER_BASE_URL
-  persistValue(STORAGE_KEYS.collaborativeControllerBaseUrl, normalized)
-  return normalized
-}
-
-export function resetCollaborativeControllerBaseUrl() {
-  resetValue(STORAGE_KEYS.collaborativeControllerBaseUrl)
-  return DEFAULT_COLLABORATIVE_CONTROLLER_BASE_URL
-}
-
 export function getCollaborativeStreamlitUrl() {
   return (
     normalizeUrl(getQueryValue('streamlitUrl')) ||
@@ -156,27 +133,11 @@ export function resetCollaborativeStreamlitUrl() {
   return DEFAULT_COLLABORATIVE_STREAMLIT_URL
 }
 
-function deriveBaseUrl(value) {
-  const normalized = normalizeUrl(value)
-  if (!normalized) return ''
-  try {
-    const resolved = new URL(
-      normalized,
-      typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1'
-    )
-    return `${resolved.protocol}//${resolved.host}`
-  } catch {
-    return normalizeBaseUrl(normalized)
-  }
-}
-
 export function getCollaborativeCommandCenterBaseUrl() {
   return (
     normalizeBaseUrl(getQueryValue('commandCenterBase')) ||
     normalizeBaseUrl(getStorageValue(STORAGE_KEYS.collaborativeCommandCenterBaseUrl)) ||
     getEnvValue('VITE_COLLABORATIVE_COMMAND_CENTER_BASE_URL') ||
-    deriveBaseUrl(getQueryValue('simulationUrl')) ||
-    deriveBaseUrl(getStorageValue(STORAGE_KEYS.legacyCollaborativeSimulationUrl)) ||
     DEFAULT_COLLABORATIVE_COMMAND_CENTER_BASE_URL
   )
 }
@@ -193,23 +154,11 @@ export function resetCollaborativeCommandCenterBaseUrl() {
   return DEFAULT_COLLABORATIVE_COMMAND_CENTER_BASE_URL
 }
 
-export function buildCollaborativeApiUrl(
-  path = '',
-  baseUrl = getCollaborativeControllerBaseUrl()
-) {
-  const normalizedPath = String(path).replace(/^\/+/, '')
-  const apiBaseUrl = normalizeBaseUrl(baseUrl)
-  return normalizedPath ? `${apiBaseUrl}/${normalizedPath}` : apiBaseUrl
-}
-
 export function buildCollaborativeResponseIframeSrc(
-  controllerBaseUrl = getCollaborativeControllerBaseUrl(),
   streamlitUrl = getCollaborativeStreamlitUrl(),
   commandCenterBaseUrl = getCollaborativeCommandCenterBaseUrl()
 ) {
-  return `/collaborative-response/index.html?controllerBase=${encodeURIComponent(
-    normalizeBaseUrl(controllerBaseUrl) || DEFAULT_COLLABORATIVE_CONTROLLER_BASE_URL
-  )}&streamlitUrl=${encodeURIComponent(
+  return `/collaborative-response/index.html?streamlitUrl=${encodeURIComponent(
     normalizeUrl(streamlitUrl) || DEFAULT_COLLABORATIVE_STREAMLIT_URL
   )}&commandCenterBase=${encodeURIComponent(
     normalizeBaseUrl(commandCenterBaseUrl) || DEFAULT_COLLABORATIVE_COMMAND_CENTER_BASE_URL
@@ -278,7 +227,6 @@ export {
   DEFAULT_SENSOR_GATEWAY_BASE_URL,
   DEFAULT_REALTIME_DETECTION_BASE_URL,
   DEFAULT_REALTIME_RTSP_URL,
-  DEFAULT_COLLABORATIVE_CONTROLLER_BASE_URL,
   DEFAULT_COLLABORATIVE_STREAMLIT_URL,
   DEFAULT_COLLABORATIVE_COMMAND_CENTER_BASE_URL,
 }

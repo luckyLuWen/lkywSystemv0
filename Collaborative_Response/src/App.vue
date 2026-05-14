@@ -17,10 +17,6 @@
           <strong>{{ viewLabel }}</strong>
         </div>
         <div class="status-row">
-          <span>控制层</span>
-          <strong :class="controllerStatusClass">{{ controllerStatusText }}</strong>
-        </div>
-        <div class="status-row">
           <span>指挥后端</span>
           <strong :class="commandCenterStatusClass">{{ commandCenterStatusText }}</strong>
         </div>
@@ -37,18 +33,10 @@
           <h3>协同响应子系统接入面板</h3>
           <p>
             当前子系统已接入协同调度平台、二维动态推演、三维态势地图和策略评估。
-            现在的重点是统一状态检测、服务启停和远程接入地址管理。
+            所有服务由指挥后端统一管理，支持一键启停和远程接入地址管理。
           </p>
 
           <div class="config-list">
-            <label class="field">
-              <span>控制层地址</span>
-              <div class="field-row">
-                <input v-model.trim="controllerDraft" type="text" placeholder="http://127.0.0.1:18601" />
-                <button class="ghost-btn" @click="saveControllerBaseUrl">保存</button>
-              </div>
-            </label>
-
             <label class="field">
               <span>协同调度平台地址</span>
               <div class="field-row">
@@ -79,13 +67,6 @@
               </div>
               <div class="action-row">
                 <button
-                  class="cyan-btn"
-                  :disabled="services.commandCenter.pending || !controllerOnline"
-                  @click="toggleManagedService('commandCenter', !services.commandCenter.running)"
-                >
-                  {{ services.commandCenter.running ? '停止服务' : '启动服务' }}
-                </button>
-                <button
                   class="dark-btn"
                   :disabled="businessActionPending || !services.commandCenter.online"
                   @click="generateStrategy"
@@ -115,7 +96,7 @@
               <div class="action-row">
                 <button
                   class="purple-btn"
-                  :disabled="services.streamlit.pending || !controllerOnline"
+                  :disabled="services.streamlit.pending || !services.commandCenter.online"
                   @click="toggleManagedService('streamlit', !services.streamlit.running)"
                 >
                   {{ services.streamlit.running ? '停止服务' : '启动服务' }}
@@ -214,26 +195,19 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import {
   appendUrlParams,
-  buildCollaborativeApiUrl,
   buildCommandCenterUrl,
   getCollaborativeCommandCenterBaseUrl,
-  getCollaborativeControllerBaseUrl,
   getCollaborativeStreamlitUrl,
   persistCollaborativeCommandCenterBaseUrl,
-  persistCollaborativeControllerBaseUrl,
   persistCollaborativeStreamlitUrl,
 } from './service-config'
 
 const currentView = ref('home')
 const showEvaluationPanel = ref(false)
-const controllerBaseUrl = ref(getCollaborativeControllerBaseUrl())
 const streamlitUrl = ref(getCollaborativeStreamlitUrl())
 const commandCenterBaseUrl = ref(getCollaborativeCommandCenterBaseUrl())
-const controllerDraft = ref(controllerBaseUrl.value)
 const streamlitDraft = ref(streamlitUrl.value)
 const commandCenterDraft = ref(commandCenterBaseUrl.value)
-const controllerOnline = ref(false)
-const controllerChecked = ref(false)
 const lastError = ref('')
 const businessActionPending = ref('')
 const viewLaunchPending = ref('')
@@ -278,16 +252,6 @@ const viewLabel = computed(() => {
     '3d': '三维态势地图',
   }
   return labels[currentView.value] || '未知'
-})
-
-const controllerStatusText = computed(() => {
-  if (!controllerChecked.value) return '检测中'
-  return controllerOnline.value ? '在线' : '离线'
-})
-
-const controllerStatusClass = computed(() => {
-  if (!controllerChecked.value) return 'pending'
-  return controllerOnline.value ? 'ok' : 'warn'
 })
 
 const commandCenterStatusText = computed(() => {
@@ -342,11 +306,11 @@ const frameHintDescription = computed(() => {
   if (viewLaunchPending.value) {
     return '正在尝试启动 ' + activeViewServiceLabel.value + '，请稍候刷新状态。'
   }
-  if (!controllerOnline.value) {
-    return '当前控制层离线，无法远程启动服务。请先运行 start_Collaborative_Response.bat。'
+  if (!services.commandCenter.online) {
+    return '指挥后端离线，无法启动任何服务。请先运行 start_Collaborative_Response.bat 启动指挥后端。'
   }
   if (!activeViewService.value?.startConfigured) {
-    return activeViewServiceLabel.value + ' 尚未配置启动命令，请检查 service_manager/config.local.json。'
+    return activeViewServiceLabel.value + ' 由指挥后端统一管理，当前不可用。'
   }
   return '当前未检测到 ' + activeViewServiceLabel.value + ' 在线，可尝试自动启动后再进入该界面。'
 })
@@ -415,29 +379,17 @@ async function refreshEvaluation() {
 async function refreshStatus() {
   try {
     const payload = await requestJson(
-      buildCollaborativeApiUrl('api/health', controllerBaseUrl.value),
+      buildCommandCenterUrl('api/health', commandCenterBaseUrl.value),
       { cache: 'no-store' }
     )
-    controllerOnline.value = Boolean(payload.ok)
-    controllerChecked.value = true
     updateService('commandCenter', payload.services?.commandCenter, commandCenterBaseUrl.value)
     updateService('streamlit', payload.services?.streamlit, streamlitUrl.value)
     lastError.value = ''
   } catch (error) {
-    controllerOnline.value = false
-    controllerChecked.value = true
-    lastError.value = error instanceof Error ? error.message : '无法连接控制层'
+    updateService('commandCenter', {}, commandCenterBaseUrl.value)
+    lastError.value = error instanceof Error ? error.message : '无法连接指挥后端'
 
-    const [commandCenterOnline, streamlitOnline] = await Promise.all([
-      probeDirect(buildCommandCenterUrl('api/health', commandCenterBaseUrl.value)),
-      probeDirect(streamlitUrl.value),
-    ])
-
-    updateService(
-      'commandCenter',
-      { reachable: commandCenterOnline, running: commandCenterOnline, public_url: commandCenterBaseUrl.value },
-      commandCenterBaseUrl.value
-    )
+    const streamlitOnline = await probeDirect(streamlitUrl.value)
     updateService(
       'streamlit',
       { reachable: streamlitOnline, running: streamlitOnline, public_url: streamlitUrl.value },
@@ -454,34 +406,12 @@ function sleep(ms) {
   })
 }
 
-async function reloadControllerConfig() {
-  if (!controllerOnline.value) return false
-  try {
-    await requestJson(buildCollaborativeApiUrl('api/reload-config', controllerBaseUrl.value), {
-      method: 'POST',
-    })
-    return true
-  } catch (error) {
-    lastError.value = error instanceof Error ? error.message : '控制层配置重载失败'
-    return false
-  }
-}
-
 async function toggleManagedService(serviceId, nextRunning) {
-  if (!controllerOnline.value) {
-    lastError.value = '控制层离线，当前无法远程启停服务'
-    return false
-  }
-
   services[serviceId].pending = true
   try {
-    if (nextRunning) {
-      await reloadControllerConfig()
-    }
-
     const action = nextRunning ? 'start' : 'stop'
     await requestJson(
-      buildCollaborativeApiUrl('api/services/' + serviceId + '/' + action, controllerBaseUrl.value),
+      buildCommandCenterUrl('api/services/' + serviceId + '/' + action, commandCenterBaseUrl.value),
       { method: 'POST' }
     )
     await refreshStatus()
@@ -498,13 +428,18 @@ async function ensureServiceReady(serviceId, timeoutMs = 15000) {
   await refreshStatus()
   if (services[serviceId].online) return true
 
-  if (!controllerOnline.value) {
-    lastError.value = '控制层离线，无法远程启动服务'
+  if (serviceId === 'commandCenter') {
+    lastError.value = '指挥后端离线，无法远程启动。请先运行 start_Collaborative_Response.bat。'
+    return false
+  }
+
+  if (!services.commandCenter.online) {
+    lastError.value = '指挥后端离线，无法远程启动' + (serviceId === 'streamlit' ? '协同调度平台' : serviceId)
     return false
   }
 
   if (!services[serviceId].startConfigured) {
-    lastError.value = serviceId + ' 未配置启动命令，请检查 config.local.json'
+    lastError.value = serviceId + ' 未配置启动命令'
     return false
   }
 
@@ -518,11 +453,11 @@ async function ensureServiceReady(serviceId, timeoutMs = 15000) {
     if (services[serviceId].online) return true
   }
 
-  const serviceLabel = serviceId === 'streamlit' ? '协同调度平台' : '协同响应指挥后端'
+  const serviceLabel = serviceId === 'streamlit' ? '协同调度平台' : serviceId
   if (services[serviceId].healthDetail) {
     lastError.value = serviceLabel + ' 启动超时：' + services[serviceId].healthDetail
   } else {
-    lastError.value = serviceLabel + ' 启动超时，请检查控制层日志'
+    lastError.value = serviceLabel + ' 启动超时，请检查后端日志'
   }
   return false
 }
@@ -637,12 +572,6 @@ function generateStrategy() {
 
 function generateCesium() {
   runCommandCenterAction('api/run_3d_cesium', '3d')
-}
-
-function saveControllerBaseUrl() {
-  controllerBaseUrl.value = persistCollaborativeControllerBaseUrl(controllerDraft.value)
-  controllerDraft.value = controllerBaseUrl.value
-  refreshStatus()
 }
 
 function saveStreamlitUrl() {

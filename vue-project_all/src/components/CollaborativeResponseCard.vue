@@ -3,21 +3,11 @@
     <div class="card-head">
       <div>
         <h3 class="card-title">协同响应服务</h3>
-        <p class="card-subtitle">{{ controllerBaseUrl }}</p>
+        <p class="card-subtitle">{{ commandCenterBaseUrl }}</p>
       </div>
-      <span class="status-badge" :class="controllerOnline ? 'online' : 'offline'">
-        {{ controllerOnline ? '控制层在线' : '控制层离线' }}
+      <span class="status-badge" :class="services.commandCenter.online ? 'online' : 'offline'">
+        {{ services.commandCenter.online ? '指挥后端在线' : '指挥后端离线' }}
       </span>
-    </div>
-
-    <div class="config-row">
-      <input
-        v-model.trim="controllerDraft"
-        type="text"
-        class="config-input"
-        placeholder="例如：http://127.0.0.1:18601"
-      />
-      <button class="action-btn secondary" @click="saveControllerBaseUrl">保存控制层</button>
     </div>
 
     <div class="config-row">
@@ -25,7 +15,7 @@
         v-model.trim="commandCenterDraft"
         type="text"
         class="config-input"
-        placeholder="例如：http://127.0.0.1:5000"
+        placeholder="例如：http://127.0.0.1:5001"
       />
       <button class="action-btn secondary" @click="saveCommandCenterBaseUrl">保存指挥后端</button>
     </div>
@@ -61,22 +51,11 @@
     </div>
 
     <div class="service-row">
-      <span class="service-label">指挥后端启停</span>
-      <button
-        class="action-btn primary"
-        :disabled="services.commandCenter.pending || !controllerOnline"
-        @click="toggleService('commandCenter', !services.commandCenter.running)"
-      >
-        {{ services.commandCenter.running ? '停止服务' : '启动服务' }}
-      </button>
-    </div>
-
-    <div class="service-row">
       <span class="service-label">协同调度启停</span>
       <button
         class="action-btn primary"
-        :disabled="services.streamlit.pending || !controllerOnline"
-        @click="toggleService('streamlit', !services.streamlit.running)"
+        :disabled="services.streamlit.pending || !services.commandCenter.online"
+        @click="toggleStreamlit(!services.streamlit.running)"
       >
         {{ services.streamlit.running ? '停止服务' : '启动服务' }}
       </button>
@@ -95,23 +74,17 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  buildCollaborativeApiUrl,
   getCollaborativeCommandCenterBaseUrl,
-  getCollaborativeControllerBaseUrl,
   getCollaborativeStreamlitUrl,
   persistCollaborativeCommandCenterBaseUrl,
-  persistCollaborativeControllerBaseUrl,
   persistCollaborativeStreamlitUrl,
 } from '../config/subsystems'
 
 const router = useRouter()
-const controllerBaseUrl = ref(getCollaborativeControllerBaseUrl())
 const commandCenterBaseUrl = ref(getCollaborativeCommandCenterBaseUrl())
 const streamlitUrl = ref(getCollaborativeStreamlitUrl())
-const controllerDraft = ref(controllerBaseUrl.value)
 const commandCenterDraft = ref(commandCenterBaseUrl.value)
 const streamlitDraft = ref(streamlitUrl.value)
-const controllerOnline = ref(false)
 const lastError = ref('')
 
 const services = reactive({
@@ -150,52 +123,45 @@ async function probeDirectService(url) {
   }
 }
 
+function buildApiUrl(path = '', baseUrl = commandCenterBaseUrl.value) {
+  const normalizedPath = String(path).replace(/^\/+/, '')
+  const resolvedBase = baseUrl.trim().replace(/\/+$/, '')
+  return normalizedPath ? `${resolvedBase}/${normalizedPath}` : resolvedBase
+}
+
 async function refreshStatus() {
   try {
-    const response = await fetch(buildCollaborativeApiUrl('api/health', controllerBaseUrl.value), {
-      cache: 'no-store',
-    })
+    const response = await fetch(buildApiUrl('api/health'), { cache: 'no-store' })
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
     const payload = await response.json()
-    controllerOnline.value = Boolean(payload.ok)
     updateService('commandCenter', payload.services?.commandCenter, commandCenterBaseUrl.value)
     updateService('streamlit', payload.services?.streamlit, streamlitUrl.value)
     lastError.value = ''
-    return
   } catch (error) {
-    controllerOnline.value = false
-    lastError.value = error instanceof Error ? error.message : '无法连接控制层'
+    updateService('commandCenter', {}, commandCenterBaseUrl.value)
+    lastError.value = error instanceof Error ? error.message : '无法连接指挥后端'
+
+    const streamlitOnline = await probeDirectService(streamlitUrl.value)
+    updateService(
+      'streamlit',
+      { reachable: streamlitOnline, running: streamlitOnline, public_url: streamlitUrl.value },
+      streamlitUrl.value
+    )
   }
-
-  const [commandCenterOnline, streamlitOnline] = await Promise.all([
-    probeDirectService(`${commandCenterBaseUrl.value}/api/health`),
-    probeDirectService(streamlitUrl.value),
-  ])
-
-  updateService(
-    'commandCenter',
-    { reachable: commandCenterOnline, running: commandCenterOnline, public_url: commandCenterBaseUrl.value },
-    commandCenterBaseUrl.value
-  )
-  updateService(
-    'streamlit',
-    { reachable: streamlitOnline, running: streamlitOnline, public_url: streamlitUrl.value },
-    streamlitUrl.value
-  )
 }
 
-async function toggleService(serviceId, nextRunning) {
-  if (!controllerOnline.value) {
-    lastError.value = '控制层离线，无法远程启停服务'
+async function toggleStreamlit(nextRunning) {
+  if (!services.commandCenter.online) {
+    lastError.value = '指挥后端离线，无法远程启停服务'
     return
   }
 
-  services[serviceId].pending = true
+  services.streamlit.pending = true
   try {
     const action = nextRunning ? 'start' : 'stop'
     const response = await fetch(
-      buildCollaborativeApiUrl(`api/services/${serviceId}/${action}`, controllerBaseUrl.value),
+      buildApiUrl(`api/services/streamlit/${action}`),
       { method: 'POST' }
     )
     const payload = await response.json().catch(() => ({}))
@@ -204,14 +170,8 @@ async function toggleService(serviceId, nextRunning) {
   } catch (error) {
     lastError.value = error instanceof Error ? error.message : '服务控制失败'
   } finally {
-    services[serviceId].pending = false
+    services.streamlit.pending = false
   }
-}
-
-function saveControllerBaseUrl() {
-  controllerBaseUrl.value = persistCollaborativeControllerBaseUrl(controllerDraft.value)
-  controllerDraft.value = controllerBaseUrl.value
-  refreshStatus()
 }
 
 function saveCommandCenterBaseUrl() {
