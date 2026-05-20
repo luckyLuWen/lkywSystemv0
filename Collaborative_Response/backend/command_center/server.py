@@ -143,19 +143,15 @@ def load_strategy_metrics() -> dict[str, Any]:
 
 
 def build_streamlit_service_status() -> dict[str, Any]:
-    running = streamlit_running()
-    if running:
-        reachable, health_detail = probe_url(STREAMLIT_HEALTH_URL)
-    else:
-        reachable = False
-        health_detail = "进程未运行"
+    managed = streamlit_running()
+    reachable, health_detail = probe_url(STREAMLIT_HEALTH_URL)
 
     return {
         "id": "streamlit",
         "label": "协同调度平台",
         "reachable": reachable,
-        "running": running or reachable,
-        "managed": running,
+        "running": managed or reachable,
+        "managed": managed,
         "public_url": STREAMLIT_PUBLIC_URL,
         "health_url": STREAMLIT_HEALTH_URL,
         "health_detail": health_detail,

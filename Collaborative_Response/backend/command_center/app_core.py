@@ -315,13 +315,14 @@ def main():
             selected = st.session_state.calculation_results[0]
 
         if selected:
+            level_bg, level_color = ("#fef3c7", "#92400e") if selected.get('level') == '三甲医院' else ("#e5e7eb", "#374151")
             is_best = st.session_state.dispatched and (selected['name'] == st.session_state.calculation_results[0]['name'])
             is_unreachable = st.session_state.dispatched and selected.get('score', 0) > 90000
             title_pre = "🏆 最佳调度方案" if is_best else "📍 选中单位"
             card_class = "info-card best" if is_best else "info-card selected"
             if is_unreachable: card_class, title_pre = "info-card warn", "🚫 不符合条件 / 路线断联"
 
-            st.markdown(f"""<div class="{card_class}"><div style="color:#666; font-size:0.8rem;">{title_pre}</div><h3 style="margin:5px 0;">{selected['name']}</h3><span style="background:#eee; padding:2px 6px; font-size:0.8rem;">{selected['level']}</span></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class="{card_class}"><div style="color:#94a3b8; font-size:0.8rem;">{title_pre}</div><h3 style="margin:5px 0; color:#e8edf5;">{selected['name']}</h3><span style="background:{level_bg}; color:{level_color}; padding:2px 8px; border-radius:3px; font-size:0.8rem; font-weight:600;">{selected['level']}</span></div>""", unsafe_allow_html=True)
 
             if st.session_state.dispatched and not is_unreachable:
                 c1, c2 = st.columns(2)

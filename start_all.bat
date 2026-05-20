@@ -7,13 +7,13 @@ setlocal enabledelayedexpansion
 :: ===========================
 
 set "REPO_DIR=%~dp0"
-set "FRONTEND_DIR=%REPO_DIR%Collaborative_Response"
+set "MAIN_APP_DIR=%REPO_DIR%vue-project_all"
 set "BACKEND_DIR=%REPO_DIR%Collaborative_Response\backend\command_center"
 
 echo [INFO] 协同响应系统 - 一键启动
 echo.
-echo 前端目录: %FRONTEND_DIR%
-echo 后端目录: %BACKEND_DIR%
+echo 主应用目录: %MAIN_APP_DIR%
+echo 后端目录:   %BACKEND_DIR%
 echo.
 
 :: 检查 Node.js
@@ -34,17 +34,17 @@ if %errorlevel% neq 0 (
     pause
     exit /b 1
 )
-for /f "tokens=*" %%I in ('python --version') do echo [OK] %%I
+for /f "tokens=*" %%I in ('python --version 2^>^&1') do echo [OK] %%I
 
-:: 检查 npm 依赖
+:: 检查主应用 npm 依赖
 echo.
-echo [SETUP] 检查 npm 依赖...
-cd /d "%FRONTEND_DIR%"
+echo [SETUP] 检查主应用 npm 依赖...
+cd /d "%MAIN_APP_DIR%"
 if not exist "node_modules" (
-    echo [INSTALL] 安装前端依赖 (仅首次)...
+    echo [INSTALL] 安装主应用依赖 (仅首次，可能较慢)...
     call npm install
 ) else (
-    echo [OK] 前端依赖已就位
+    echo [OK] 主应用依赖已就位
 )
 
 :: 检查 Python 依赖
@@ -52,7 +52,7 @@ echo.
 echo [SETUP] 检查 Python 依赖...
 cd /d "%BACKEND_DIR%"
 if exist "requirements.txt" (
-    python -m pip list | find "streamlit" >nul 2>&1
+    python -m pip list 2>nul | find "streamlit" >nul 2>&1
     if %errorlevel% neq 0 (
         echo [INSTALL] 安装后端依赖...
         python -m pip install -q -r requirements.txt
@@ -61,29 +61,74 @@ if exist "requirements.txt" (
     )
 )
 
-:: 启动后端
+:: ── 智能检测端口 ───────────────────────────────────────────────
+set "BACKEND_RUNNING=0"
+set "FRONTEND_RUNNING=0"
+
 echo.
-echo [START] 启动后端服务 (Streamlit 应用)...
-cd /d "%BACKEND_DIR%"
-start "Collaborative_Response - Backend" cmd /k ^
-    "title Collaborative Response Backend & python -m streamlit run app_2d.py --server.port 8501 --server.headless false"
+echo [DETECT] 检测服务状态...
 
-:: 等待后端初始化
-timeout /t 3 /nobreak
+:: 检测后端 5001
+curl -s http://127.0.0.1:5001/api/health 2>nul | find "ok" >nul
+if %errorlevel% equ 0 (
+    echo [OK] 后端已在运行 (端口 5001)
+    set "BACKEND_RUNNING=1"
+) else (
+    echo [--] 后端未运行
+)
 
-:: 启动前端
-echo [START] 启动前端服务 (Vue DevServer)...
-cd /d "%FRONTEND_DIR%"
-start "Collaborative_Response - Frontend" cmd /k ^
-    "title Collaborative Response Frontend & npm run dev"
+:: 检测前端 5173
+curl -s http://127.0.0.1:5173 2>nul | find "app" >nul
+if %errorlevel% equ 0 (
+    echo [OK] 前端已在运行 (端口 5173)
+    set "FRONTEND_RUNNING=1"
+) else (
+    echo [--] 前端未运行
+)
 
-:: 提示信息
+:: ── 启动后端 ──────────────────────────────────────────────────
+if %BACKEND_RUNNING% equ 1 (
+    echo.
+    echo [1/3] 后端已运行, 跳过启动
+) else (
+    echo.
+    echo [1/3] 启动后端服务 (端口 5001)...
+    cd /d "%BACKEND_DIR%"
+    start "协同响应-指挥后端" cmd /k ^
+        "title 协同响应指挥后端 && python server.py"
+    echo       等待后端初始化 (3s)...
+    timeout /t 3 /nobreak >nul
+)
+
+:: ── 启动前端 ──────────────────────────────────────────────────
+if %FRONTEND_RUNNING% equ 1 (
+    echo.
+    echo [2/3] 前端已运行, 跳过启动
+) else (
+    echo.
+    echo [2/3] 启动主应用前端 (端口 5173)...
+    cd /d "%MAIN_APP_DIR%"
+    start "协同响应-前端" cmd /k ^
+        "title 协同响应前端 && npx vite --port 5173 --host"
+    echo       等待前端编译 (6s)...
+    timeout /t 6 /nobreak >nul
+)
+
+:: ── 打开浏览器 ────────────────────────────────────────────────
+echo.
+echo [3/3] 打开协同响应面板...
+start "" http://localhost:5173/coordination
+
+:: ── 完成 ──────────────────────────────────────────────────────
 echo.
 echo ===== 启动完成 =====
-echo 前端 DevServer: http://127.0.0.1:5174
-echo 后端 Streamlit:  http://127.0.0.1:8501
 echo.
-echo 提示: 关闭任意窗口后需手动关闭另一个窗口
+echo   协同响应面板:   http://localhost:5173/coordination
+echo   指挥后端 API:   http://127.0.0.1:5001
+echo   健康检查:       http://127.0.0.1:5001/api/health
+echo   协同调度平台:   http://127.0.0.1:8501
+echo.
+echo   关闭方式: 关闭 "协同响应-指挥后端" 和 "协同响应-前端" 两个窗口
 echo.
 
 endlocal

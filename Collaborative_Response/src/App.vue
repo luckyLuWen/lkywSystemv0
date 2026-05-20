@@ -429,7 +429,14 @@ async function ensureServiceReady(serviceId, timeoutMs = 15000) {
   if (services[serviceId].online) return true
 
   if (serviceId === 'commandCenter') {
-    lastError.value = '指挥后端离线，无法远程启动。请先运行 start_Collaborative_Response.bat。'
+    // 指挥后端无法远程启动，但可能只是响应慢，先重试几次
+    const deadline = Date.now() + 8000
+    while (Date.now() < deadline) {
+      await sleep(1000)
+      await refreshStatus()
+      if (services.commandCenter.online) return true
+    }
+    lastError.value = '指挥后端离线，无法远程启动。请先运行 start_all.bat 启动指挥后端。'
     return false
   }
 

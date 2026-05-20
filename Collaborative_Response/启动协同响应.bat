@@ -3,7 +3,7 @@ chcp 65001 >nul
 
 :: ═══════════════════════════════════════════════════════════════
 ::  协同响应系统 — 一键启动脚本
-::  后端: Flask (端口 5001)  +  前端: Vite (端口 5173)
+::  后端: Flask (端口 5001)  +  前端: Vite (端口 5174)
 :: ═══════════════════════════════════════════════════════════════
 
 set "ROOT=%~dp0"
@@ -48,14 +48,14 @@ echo        等待后端初始化 (3s)...
 timeout /t 3 >nul
 
 :: ── 启动前端 ────────────────────────────────────────────────
-echo [2/2] 启动前端开发服务器 (端口 5173)...
+echo [2/2] 启动前端开发服务器 (端口 5174, 独立开发模式)...
 cd /d "%FRONTEND_DIR%"
-start "🎨 协同响应前端" cmd /k "npx vite --port 5173 --host"
+start "🎨 协同响应前端" cmd /k "npx vite --port 5174 --host"
 
 :: ── 等待前端就绪后打开浏览器 ─────────────────────────────────
 echo        等待前端编译 (5s)...
 timeout /t 5 >nul
-start "" http://localhost:5173
+start "" http://localhost:5174/collaborative-response/
 
 :: ── 完成 ────────────────────────────────────────────────────
 echo.
@@ -67,7 +67,7 @@ echo    📡 指挥后端:    http://localhost:5001
 echo       健康检查:    http://localhost:5001/api/health
 echo       服务管理:    http://localhost:5001/api/services
 echo.
-echo    🎨 协同响应前端: http://localhost:5173
+echo    🎨 协同响应前端: http://localhost:5174/collaborative-response/
 echo.
 echo    📊 协同调度平台: 在前端页面中点击"启动服务"一键拉起
 echo                     (Streamlit, 端口 8501)

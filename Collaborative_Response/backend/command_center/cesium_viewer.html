@@ -73,96 +73,100 @@
         }
     </style>
     <script>
-        window.CESIUM_BASE_URL = "/Cesium/";
+        window.CESIUM_BASE_URL = "https://cesium.com/downloads/cesiumjs/releases/1.107/Build/Cesium/";
     </script>
-    <script src="/Cesium/Cesium.js"></script>
-    <link href="/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.107/Build/Cesium/Cesium.js"></script>
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.107/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
 </head>
 <body>
     <div class="hint">
-        三维态势地图使用本地 Cesium 资源包。若当前未看到路径动画，请先通过协同响应页执行一次“三维态势生成”。
+        三维态势地图 - 使用武汉光谷区域数据。若未看到路径动画，请先执行一次"生成三维态势"。
     </div>
     <div class="layerPicker">
         <div class="title">底图选择</div>
-        <button id="layer1" class="active">🌍 地形底图</button>
-        <button id="layer2">🗺️ 街道地图</button>
-        <button id="layer3">🛰️ 卫星影像</button>
-        <button id="layer4">🏔️ 地形+c:\Users\Administrator\lkywSystemv0\Collaborative_Response\backend\command_center\cesium_viewer.html
-
+        <button id="layer1" class="active">🗺 街道地图</button>
+        <button id="layer2">🛰 卫星影像</button>
+        <button id="layer3">🌙 暗色地图</button>
     </div>
     <div id="cesiumContainer"></div>
     <script>
-        Cesium.Ion.defaultAccessToken =
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyYTUwYmE4Zi01ZjZlLTQ0MjAtYWMwNS0yYjBkZGFiM2RmOTUiLCJpZCI6MzU4MzQ0LCJpYXQiOjE3NjI1Nzc2NjR9.q9QoG-_99QZ2R2TlUYjiWGhn0-S5I22FFGuou_NAE3Q";
+        Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIxYzJmMGMwOC0xMzk0LTQ4MzUtYjEzOS1jY2Y5MDcxMmM1MjMiLCJpZCI6MzU4MzQ0LCJzdWIiOiJ3YXRlcjI3MzcwODYzNTEiLCJpc3MiOiJodHRwczovL2lvbi5jZXNpdW0uY29tIiwiYXVkIjoiVW50aXRsZWQiLCJpYXQiOjE3NzkyNjA4MDN9.h0Dj98rzNnqOnqdI7cZw1cF44TpuY4qWvx7KAaLMyY0";
 
-        const viewer = new Cesium.Viewer("cesiumContainer", {
+        var viewer = new Cesium.Viewer("cesiumContainer", {
             animation: true,
             timeline: true,
             baseLayerPicker: false,
             geocoder: false,
             sceneModePicker: false,
             navigationHelpButton: false,
-            infoBox: true,
-            terrainProvider: Cesium.createWorldTerrain(),
+            infoBox: true
         });
 
         viewer.cesiumWidget.creditContainer.style.display = "none";
 
-        // 定义不同的底图图层
-        const baseLayers = {
-            terrain: new Cesium.ImageryLayer(Cesium.createWorldImagery()),
+        var baseLayers = {
             street: new Cesium.ImageryLayer(new Cesium.OpenStreetMapImageryProvider({
-                url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             })),
             satellite: new Cesium.ImageryLayer(new Cesium.ArcGisMapServerImageryProvider({
-                url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
-            })),
-            hybrid: new Cesium.ImageryLayer(new Cesium.ArcGisMapServerImageryProvider({
-                url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
+                url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer"
             })),
             dark: new Cesium.ImageryLayer(new Cesium.OpenStreetMapImageryProvider({
-                url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+                url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
             }))
         };
 
-        function setBaseLayer(layerKey) {
+        viewer.imageryLayers.removeAll();
+        viewer.imageryLayers.add(baseLayers.street);
+
+        function setBaseLayer(layerKey, clickEvent) {
             viewer.imageryLayers.removeAll();
             viewer.imageryLayers.add(baseLayers[layerKey]);
-            
-            // 更新按钮状态
-            document.querySelectorAll('.layerPicker button').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+            var buttons = document.querySelectorAll(".layerPicker button");
+            for (var i = 0; i < buttons.length; i++) {
+                buttons[i].classList.remove("active");
+            }
+            if (clickEvent && clickEvent.target) {
+                clickEvent.target.classList.add("active");
+            }
         }
 
-        document.getElementById('layer1').addEventListener('click', () => setBaseLayer('terrain'));
-        document.getElementById('layer2').addEventListener('click', () => setBaseLayer('street'));
-        document.getElementById('layer3').addEventListener('click', () => setBaseLayer('satellite'));
-        document.getElementById('layer4').addEventListener('click', () => setBaseLayer('hybrid'));
-        document.getElementById('layer5').addEventListener('click', () => setBaseLayer('dark'));
+        function bindLayerButton(id, layerKey) {
+            var btn = document.getElementById(id);
+            if (btn) {
+                btn.addEventListener("click", function(e) {
+                    setBaseLayer(layerKey, e);
+                });
+            }
+        }
+
+        bindLayerButton("layer1", "street");
+        bindLayerButton("layer2", "satellite");
+        bindLayerButton("layer3", "dark");
 
         async function addBuildings() {
             try {
-                const buildings = await Cesium.createOsmBuildingsAsync();
+                var buildings = await Cesium.createOsmBuildingsAsync();
                 viewer.scene.primitives.add(buildings);
                 buildings.style = new Cesium.Cesium3DTileStyle({
-                    color: "color('#ffffff', 0.72)",
+                    color: "color('#ffffff', 0.72)"
                 });
             } catch (error) {
-                console.warn("OSM 建筑加载失败，将继续显示轨迹场景", error);
+                console.warn("OSM building load failed, continuing with path display", error);
             }
         }
 
         async function loadMission() {
-            const dataSource = await Cesium.CzmlDataSource.load("/mission.czml");
+            var dataSource = await Cesium.CzmlDataSource.load("/mission.czml");
             viewer.dataSources.add(dataSource);
-            await viewer.flyTo(dataSource, {
-                offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-30), 1600),
+            viewer.flyTo(dataSource, {
+                offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-30), 1600)
             });
         }
 
         addBuildings();
-        loadMission().catch((error) => {
-            console.error("CZML 加载失败", error);
+        loadMission().catch(function(error) {
+            console.error("CZML load failed", error);
         });
     </script>
 </body>
