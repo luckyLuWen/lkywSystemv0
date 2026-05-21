@@ -2,17 +2,87 @@
   <div class="cesium-wrapper">
     <div id="cesiumContainer" ref="containerRef" class="cesium-container"></div>
     
-    <!-- 临时微调控件：货车追尾现场 (已隐藏)
-    <div class="debug-panel" v-if="focusedPointId === 'accident_blue'">
-      ...
+    <!-- 模型调整控制面板 -->
+    <div class="debug-panel" v-if="false">
+      <!-- 场景切换按钮 -->
+      <div class="scene-switcher">
+        <h4>场景选择</h4>
+        <div class="switch-buttons">
+          <button 
+            :class="{ active: currentScene === 'truck' }" 
+            @click="currentScene = 'truck'"
+          >
+            🚛 货车追尾现场
+          </button>
+          <button 
+            :class="{ active: currentScene === 'tanker' }" 
+            @click="currentScene = 'tanker'"
+          >
+            ⛽ 油罐车泄露现场
+          </button>
+        </div>
+      </div>
+      
+      <hr style="margin: 8px 0; border-color: #333;" />
+      
+      <!-- 无人机微调控件 -->
+      <h4>无人机微调控件</h4>
+      <div>
+        <label>经度 (X): <input type="number" v-model.number="currentUavAdjust.lng" step="0.00001" /></label>
+      </div>
+      <div>
+        <label>纬度 (Y): <input type="number" v-model.number="currentUavAdjust.lat" step="0.00001" /></label>
+      </div>
+      <div>
+        <label>高度 (Z): <input type="number" v-model.number="currentUavAdjust.height" step="0.5" /></label>
+      </div>
+      <div>
+        <label>模型大小: <input type="number" v-model.number="currentUavAdjust.scale" step="1.0" /></label>
+      </div>
+      <div>
+        <label>旋转角度: <input type="number" v-model.number="currentUavAdjust.heading" step="0.5" /></label>
+      </div>
+      
+      <hr style="margin: 8px 0; border-color: #333;" />
+      
+      <!-- 事故车辆微调 -->
+      <h4>事故车辆微调</h4>
+      <div>
+        <label>经度 (X): <input type="number" v-model.number="currentTruckAdjust.lng" step="0.00001" /></label>
+      </div>
+      <div>
+        <label>纬度 (Y): <input type="number" v-model.number="currentTruckAdjust.lat" step="0.00001" /></label>
+      </div>
+      <div>
+        <label>高度 (Z): <input type="number" v-model.number="currentTruckAdjust.height" step="0.1" /></label>
+      </div>
+      <div>
+        <label>模型大小: <input type="number" v-model.number="currentTruckAdjust.scale" step="0.01" /></label>
+      </div>
+      <div>
+        <label>旋转角度: <input type="number" v-model.number="currentTruckAdjust.heading" step="1" /></label>
+      </div>
+      
+      <hr style="margin: 8px 0; border-color: #333;" />
+      
+      <!-- 救援车微调 -->
+      <h4>救援车微调</h4>
+      <div>
+        <label>经度 (X): <input type="number" v-model.number="currentRescueCarAdjust.lng" step="0.00001" /></label>
+      </div>
+      <div>
+        <label>纬度 (Y): <input type="number" v-model.number="currentRescueCarAdjust.lat" step="0.00001" /></label>
+      </div>
+      <div>
+        <label>高度 (Z): <input type="number" v-model.number="currentRescueCarAdjust.height" step="0.5" /></label>
+      </div>
+      <div>
+        <label>模型大小: <input type="number" v-model.number="currentRescueCarAdjust.scale" step="0.1" /></label>
+      </div>
+      <div>
+        <label>旋转角度: <input type="number" v-model.number="currentRescueCarAdjust.heading" step="5" /></label>
+      </div>
     </div>
-    -->
-
-    <!-- 临时微调控件：油罐车泄露现场 (已隐藏)
-    <div class="debug-panel" v-if="focusedPointId === 'accident_red'">
-      ...
-    </div>
-    -->
 
     <div v-if="loading" class="globe-mask">三维地球加载中...</div>
     <div v-else-if="errorMessage" class="globe-mask is-error">{{ errorMessage }}</div>
@@ -20,8 +90,24 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref, watch, reactive } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch, reactive, computed } from 'vue'
 import * as Cesium from 'cesium'
+
+// 当前选中的场景
+const currentScene = ref('truck')
+
+// 计算属性：根据当前场景返回对应的参数对象
+const currentUavAdjust = computed(() => {
+  return currentScene.value === 'truck' ? uavAdjust : tankerUavAdjust
+})
+
+const currentTruckAdjust = computed(() => {
+  return currentScene.value === 'truck' ? truckAdjust : tankerAdjust
+})
+
+const currentRescueCarAdjust = computed(() => {
+  return currentScene.value === 'truck' ? rescueCarAdjust : tankerRescueCarAdjust
+})
 
 const props = defineProps({
   phases: { type: Array, default: () => [] },
@@ -76,20 +162,83 @@ const truckAdjust = reactive({
   scale: 0.82,
   heading: 17,
   lng: 113.104833,
-  lat: 30.385469
+  lat: 30.385469,
+  height: -1.2 // 手动微调高度以贴合地面
 })
 
 const tankerAdjust = reactive({
   scale: 0.26,
   heading: 36,
   lng: 113.070226,
-  lat: 30.238683
+  lat: 30.238683,
+  height: -1.2 // 手动微调高度以贴合地面
 })
 
 const tankerPointAdjust = reactive({
   lng: 113.067999,
   lat: 30.2401
 })
+
+// 无人机配置
+const uavModelConfigs = [
+  { id: 'uav_model', uri: '/Dashboard/models/drone_all7.glb', label: '出动无人机' },
+  { id: 'uav_model_move', uri: '/Dashboard/models/drone_all7.glb', label: '感知部署无人机' }
+]
+
+// 救援车配置
+const rescueCarModelConfigs = [
+  { id: 'rescue_car_model', uri: '/Dashboard/models/recure%20car.glb', label: '救援车' }
+]
+
+// 油罐车场景救援车配置
+const tankerRescueCarModelConfigs = [
+  { id: 'tanker_rescue_car_model', uri: '/Dashboard/models/recure%20car_2.glb', label: '油罐车救援车' }
+]
+
+// 无人机位置调整（在货车追尾现场附近，稍微偏移中心点防止重叠）
+const uavAdjust = reactive({
+  scale: 6,
+  heading: 18,
+  lng: 113.1072,
+  lat: 30.38493,
+  height: 18.5
+});
+
+const rescueCarAdjust = reactive({
+  scale: 250.7,
+  heading: 195,
+  lng: 113.1073,
+  lat: 30.3849,
+  height: -1.5
+});
+
+let uavEntities = []
+let rescueCarEntities = []
+let phase7StartTime = 0
+let lastUavPhaseIndex = -1
+
+// 油罐车场景的无人机和救援车配置（独立控制）
+const tankerUavAdjust = reactive({
+  scale: 6,
+  heading: 34,
+  lng: 113.06925,
+  lat: 30.23928,
+  height: 11.5
+});
+
+const tankerRescueCarAdjust = reactive({
+  scale: 250,
+  heading: 215,
+  lng: 113.06929,
+  lat: 30.2393,
+  height: -1.5
+});
+
+// 油罐车场景的无人机和救援车实体数组
+let tankerUavEntities = []
+let tankerRescueCarEntities = []
+let tankerPhase7StartTime = 0
+let lastTankerUavPhaseIndex = -1
 
 const containerRef = ref(null)
 const loading = ref(true)
@@ -110,8 +259,10 @@ let isFlying = false
 let truckEntities = [] 
 let tankerEntities = [] 
 let animationCheckTimer = null
-const modelsReadyStatus = reactive({})
-let lastEmitTime = 0
+const modelsReadyStatus = reactive({});
+let lastEmitTime = 0;
+const primitiveCache = new Map(); // 缓存找到的 primitive，避免重复递归搜索
+let readyCheckFrameCounter = 0; // 帧计数器，用于节流
 
 // 递归查找原始模型对象
 function findModelPrimitive(collection, entity) {
@@ -146,17 +297,31 @@ function findModelPrimitive(collection, entity) {
 }
 
 function updateModelsReadyStatus() {
-  if (!viewer) return
-  let changed = false
-  const allEntities = [...truckEntities, ...tankerEntities]
+  if (!viewer) return;
+  
+  // 节流：每 20 帧检查一次，不需要每帧都进行昂贵的递归搜索
+  readyCheckFrameCounter++;
+  if (readyCheckFrameCounter % 20 !== 0) return;
+
+  let changed = false;
+  const allEntities = [...truckEntities, ...tankerEntities, ...uavEntities, ...tankerUavEntities];
   
   allEntities.forEach(entity => {
-    if (modelsReadyStatus[entity.id]) return
+    if (modelsReadyStatus[entity.id]) return;
     
-    // 同时在普通 primitives 和 groundPrimitives 中查找
-    let p = findModelPrimitive(viewer.scene.primitives, entity)
+    // 先从缓存找
+    let p = primitiveCache.get(entity.id);
+    
     if (!p) {
-      p = findModelPrimitive(viewer.scene.groundPrimitives, entity)
+      // 缓存没中，再进行搜索
+      p = findModelPrimitive(viewer.scene.primitives, entity);
+      if (!p) {
+        p = findModelPrimitive(viewer.scene.groundPrimitives, entity);
+      }
+      if (p) {
+        primitiveCache.set(entity.id, p);
+        console.log(`[Cesium] 已找到并缓存实体 primitive: ${entity.id}`);
+      }
     }
 
     if (p) {
@@ -164,25 +329,25 @@ function updateModelsReadyStatus() {
       const isReady = p.ready || 
                       (p.readyPromise && p.readyPromise.state === 'fulfilled') || 
                       p._ready ||
-                      (p.model && p.model.ready)
+                      (p.model && p.model.ready);
       
       if (isReady) {
-        modelsReadyStatus[entity.id] = true
-        changed = true
-        console.log(`[Cesium] 检测到模型就绪: ${entity.id}`)
+        modelsReadyStatus[entity.id] = true;
+        changed = true;
+        console.log(`[Cesium] 检测到模型就绪: ${entity.id}`);
       }
     }
-  })
+  });
 
-  const now = Date.now()
+  const now = Date.now();
   // 如果有变化，或者距离上次发送超过 1 秒，就发送一次全量状态
   if (changed || (now - lastEmitTime > 1000)) {
-    const statusCopy = {}
+    const statusCopy = {};
     for (const key in modelsReadyStatus) {
-      statusCopy[key] = modelsReadyStatus[key]
+      statusCopy[key] = modelsReadyStatus[key];
     }
-    emit('models-ready', statusCopy)
-    lastEmitTime = now
+    emit('models-ready', statusCopy);
+    lastEmitTime = now;
   }
 }
 
@@ -227,41 +392,42 @@ function applyOrbitView() {
   try {
     const target = Cesium.Cartesian3.fromDegrees(lng, lat, 0)
     
-    // 默认视角参数
-    let range = isFocused ? 400 : 18000000
-    let pitch = isFocused ? Cesium.Math.toRadians(-45) : Cesium.Math.toRadians(-34)
+    // 默认视角参数 - 使用无人装备出动阶段的视角作为默认视角
+    let range = isFocused ? (props.focusedPointId === 'accident_red' ? 480 : 480) : 18000000
+    let pitch = isFocused ? (props.focusedPointId === 'accident_red' ? Cesium.Math.toRadians(-32) : Cesium.Math.toRadians(-38)) : Cesium.Math.toRadians(-34)
 
     if (isFocused) {
       if (props.activePhaseIndex <= 1) {
         // 仿真开始及正常行驶阶段：全景拉远
         range = 1200
-        pitch = Cesium.Math.toRadians(-45)
+        pitch = Cesium.Math.toRadians(-45);
       } else if (props.activePhaseIndex === 2) {
         // 事故发生瞬间：货车保持特写，油罐车保持全景
         if (props.focusedPointId === 'accident_red') {
           range = 1200
-          pitch = Cesium.Math.toRadians(-45)
+          pitch = Cesium.Math.toRadians(-45);
         } else {
           range = 80
           pitch = Cesium.Math.toRadians(-22)
         }
       } else if (props.activePhaseIndex === 3 || props.activePhaseIndex === 4) {
-        // 泄露与弥漫阶段：油罐车保持拉近特写
-        if (props.focusedPointId === 'accident_red') {
-          range = 100
-          pitch = Cesium.Math.toRadians(-25)
-        } else {
-          range = 220
-          pitch = Cesium.Math.toRadians(-65)
-        }
-      } else if (props.activePhaseIndex >= 5) {
-        // 扩散阶段：油罐车中近距离视角，确保能看清大面积扩散细节
+        range = props.focusedPointId === 'accident_red' ? 100 : 220;
+        pitch = props.focusedPointId === 'accident_red' 
+          ? Cesium.Math.toRadians(-25) 
+          : Cesium.Math.toRadians(-65);
+      } else if (props.activePhaseIndex === 5) {
+        // 大火与弥漫扩散阶段：油罐车中近距离视角，确保能看清大面积扩散细节
         if (props.focusedPointId === 'accident_red') {
           range = 300
           pitch = Cesium.Math.toRadians(-30)
         } else {
           range = 220
           pitch = Cesium.Math.toRadians(-65)
+        }
+      } else if (props.activePhaseIndex >= 6) {
+        if (props.focusedPointId === 'accident_red') {
+          range = 450
+          pitch = Cesium.Math.toRadians(-25)
         }
       }
     }
@@ -507,7 +673,7 @@ function updateTruckSequence(phaseIndex) {
   const isModelChanged = targetModelId !== currentActiveModelId
   const isInitialSwitch = (phaseIndex <= 1 && lastPhaseIndex <= 1 && phaseIndex !== lastPhaseIndex)
   
-  if (targetModelId && (isModelChanged || isInitialSwitch)) {
+  if (targetModelId) {
     truckEntities.forEach(entity => {
       const isTarget = entity.id === targetModelId
       if (isTarget) {
@@ -516,9 +682,13 @@ function updateTruckSequence(phaseIndex) {
         entity.show = !modelsReadyStatus[entity.id]
       }
     })
-    const entity = truckEntities.find(e => e.id === targetModelId)
-    if (entity) {
-      playEntityAnimation(entity, false)
+    
+    // 无人机阶段（阶段6、7、8）不播放动画，保持事故发生后的最后一帧
+    if (phaseIndex < 6 && (isModelChanged || isInitialSwitch)) {
+      const entity = truckEntities.find(e => e.id === targetModelId)
+      if (entity) {
+        playEntityAnimation(entity, false)
+      }
     }
   }
   
@@ -598,31 +768,60 @@ function updateTankerSequence(phaseIndex) {
   }
 }
 
-function playEntityAnimation(entity, loop = false) {
+function playEntityAnimation(entity, loop = false, duration = 0, speedMultiplier = 1.0) {
   if (!viewer || !entity) return;
 
-  try {
-    const primitives = viewer.scene.primitives;
-    for (let i = 0; i < primitives.length; i++) {
-      const p = primitives.get(i);
-      if (p.id === entity && p.activeAnimations && typeof p.activeAnimations.addAll === 'function') {
+  const tryPlay = (attemptsLeft) => {
+    if (attemptsLeft <= 0) {
+      console.warn(`[Cesium] 播放动画超时，模型未能及时就绪: ${entity.id}`);
+      return;
+    }
+
+    try {
+      let p = primitiveCache.get(entity.id);
+      if (!p) p = findModelPrimitive(viewer.scene.primitives, entity);
+      if (!p) p = findModelPrimitive(viewer.scene.groundPrimitives, entity);
+
+      // 检查模型是否完全加载就绪
+      const isReady = p && (
+        p.ready || 
+        (p.readyPromise && p.readyPromise.state === 'fulfilled') || 
+        p._ready || 
+        (p.model && p.model.ready)
+      );
+
+      if (p && isReady && p.activeAnimations && typeof p.activeAnimations.addAll === 'function') {
+        console.log(`[Cesium] 成功找到模型且已就绪，开始强制播放全轨道动画: ${entity.id}`);
         try {
           p.activeAnimations.removeAll();
-          p.activeAnimations.addAll({
+          const options = {
             loop: loop ? Cesium.ModelAnimationLoop.REPEAT : Cesium.ModelAnimationLoop.NONE,
-            multiplier: 1.0,
+            multiplier: speedMultiplier, // 使用动态控制的播放倍速
             startTime: viewer.clock.currentTime,
-            removeOnStop: false
-          });
+            removeOnStop: false // 停止时保留在最后一帧状态
+          };
+          
+          if (duration > 0) {
+            options.stopTime = Cesium.JulianDate.addSeconds(viewer.clock.currentTime, duration, new Cesium.JulianDate());
+          }
+          
+          // 核心：调用 addAll 强制激活模型内所有的 animation tracks
+          p.activeAnimations.addAll(options);
+          console.log(`[Cesium] 动画播放指令已成功下发: duration = ${duration}s, 播放倍速 = ${speedMultiplier}`);
         } catch (animError) {
           console.warn('播放动画时出现警告:', animError.message);
         }
-        break;
+      } else {
+        // 如果未找到或未就绪，等待 200ms 后重试
+        setTimeout(() => tryPlay(attemptsLeft - 1), 200);
       }
+    } catch (error) {
+      console.warn('查找实体时出现警告:', error.message);
     }
-  } catch (error) {
-    console.warn('查找实体时出现警告:', error.message);
-  }
+  };
+
+  // 启动轮询检查，最多重试 50 次 (约 10 秒)
+  tryPlay(50);
 }
 
 function replayCurrentPhase() {
@@ -633,6 +832,7 @@ function replayCurrentPhase() {
 }
 
 function addEventEntities() {
+  let sharedTankerRescueCarPosition = null;
   focusAreaEntity = viewer.entities.add({
     id: 'event-area',
     position: Cesium.Cartesian3.fromDegrees(114.35, 30.55, 0),
@@ -654,7 +854,6 @@ function addEventEntities() {
     },
   })
 
-  // 创建连接线（用于无人机响应阶段）
   connectionLineEntity = viewer.entities.add({
     polyline: {
       positions: new Cesium.CallbackProperty(() => {
@@ -675,7 +874,6 @@ function addEventEntities() {
     }
   })
 
-  // 仅显示两个核心事故点标记，保持画面简洁
   Object.values(scenarioPoints).filter(p => p.id.startsWith('accident_')).forEach(point => {
     viewer.entities.add({
       id: `marker-${point.id}`,
@@ -695,10 +893,10 @@ function addEventEntities() {
       id: config.id,
       name: config.label,
       show: false,
-      position: new Cesium.CallbackProperty(() => Cesium.Cartesian3.fromDegrees(truckAdjust.lng, truckAdjust.lat, 0), false),
+      position: new Cesium.CallbackProperty(() => Cesium.Cartesian3.fromDegrees(Number(truckAdjust.lng)||0, Number(truckAdjust.lat)||0, Number(truckAdjust.height)||0), false),
       orientation: new Cesium.CallbackProperty(() => {
-        const position = Cesium.Cartesian3.fromDegrees(truckAdjust.lng, truckAdjust.lat, 0);
-        const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(truckAdjust.heading), 0, 0);
+        const position = Cesium.Cartesian3.fromDegrees(Number(truckAdjust.lng)||0, Number(truckAdjust.lat)||0, Number(truckAdjust.height)||0);
+        const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(Number(truckAdjust.heading)||0), 0, 0);
         return Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
       }, false),
       model: {
@@ -710,8 +908,9 @@ function addEventEntities() {
           return 0.001
         }, false),
         minimumPixelSize: 1, // 关键：强制 Cesium 始终渲染该模型，从而触发加载
-        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-        runAnimations: true
+        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, // 使用 Cesium 原生贴地
+        // 关闭原生动画循环，交由 updateTruckSequence 和 playEntityAnimation 手动控制只播一次并定格
+        runAnimations: false
       }
     })
     entity.show = true // 强制开启显示以触发加载
@@ -723,10 +922,10 @@ function addEventEntities() {
       id: config.id,
       name: config.label,
       show: false,
-      position: new Cesium.CallbackProperty(() => Cesium.Cartesian3.fromDegrees(tankerAdjust.lng, tankerAdjust.lat, 0), false),
+      position: new Cesium.CallbackProperty(() => Cesium.Cartesian3.fromDegrees(Number(tankerAdjust.lng)||0, Number(tankerAdjust.lat)||0, Number(tankerAdjust.height)||0), false),
       orientation: new Cesium.CallbackProperty(() => {
-        const position = Cesium.Cartesian3.fromDegrees(tankerAdjust.lng, tankerAdjust.lat, 0);
-        const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(tankerAdjust.heading), 0, 0);
+        const position = Cesium.Cartesian3.fromDegrees(Number(tankerAdjust.lng)||0, Number(tankerAdjust.lat)||0, Number(tankerAdjust.height)||0);
+        const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(Number(tankerAdjust.heading)||0), 0, 0);
         return Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
       }, false),
       model: {
@@ -737,20 +936,261 @@ function addEventEntities() {
           return 0.001
         }, false),
         minimumPixelSize: 1, // 关键：强制加载
-        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-        runAnimations: true
+        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, // 使用 Cesium 原生贴地
+        // 关闭原生动画循环，手动控制
+        runAnimations: false
       }
     })
     entity.show = true
     tankerEntities.push(entity)
   })
 
+  // 初始化无人机模型（用于货车追尾现场的无人装备出动阶段）
+  uavModelConfigs.forEach((config) => {
+    console.log(`[Cesium] 正在初始化无人机实体: ${config.id}, 路径: ${config.uri}`);
+
+    const uavPosition = new Cesium.CallbackProperty(() => {
+      const startLng = Number(uavAdjust.lng) || 113.1072;
+      const startLat = Number(uavAdjust.lat) || 30.38493;
+      const startHeight = Number(uavAdjust.height) || 18.5;
+
+      // 终点位置设在货车事故点 (113.104833, 30.385469) 正上方悬停，高度保持一致
+      const targetLng = Number(truckAdjust.lng) || 113.104833;
+      const targetLat = Number(truckAdjust.lat) || 30.385469;
+      const targetHeight = startHeight; // 保持在原先的高度高空悬停
+
+      if (props.activePhaseIndex < 7) {
+        return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
+      } else if (props.activePhaseIndex === 7) {
+        if (!phase7StartTime) {
+          phase7StartTime = Date.now();
+        }
+        const elapsed = Date.now() - phase7StartTime;
+        const duration = 6000; // 6秒内平滑飞过
+        const t = Math.min(elapsed / duration, 1.0);
+        // 使用 EaseInOutQuad 缓动函数
+        const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+        const lng = startLng + (targetLng - startLng) * easeT;
+        const lat = startLat + (targetLat - startLat) * easeT;
+        const height = startHeight + (targetHeight - startHeight) * easeT;
+        return Cesium.Cartesian3.fromDegrees(lng, lat, height);
+      } else {
+        // 阶段 >= 8 停留在事故点上方
+        return Cesium.Cartesian3.fromDegrees(targetLng, targetLat, targetHeight);
+      }
+    }, false);
+
+    const uavOrientation = new Cesium.CallbackProperty(() => {
+      const pos = uavPosition.getValue(viewer.clock.currentTime);
+      if (!pos) return undefined;
+      const headingDeg = Number(uavAdjust.heading) || 18;
+      const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(headingDeg), 0, 0);
+      return Cesium.Transforms.headingPitchRollQuaternion(pos, hpr);
+    }, false);
+
+    const entity = viewer.entities.add({
+      id: config.id,
+      name: config.label,
+      show: false, // 初始隐藏
+      position: uavPosition,
+      orientation: uavOrientation,
+      model: {
+        uri: config.uri,
+        scale: new Cesium.CallbackProperty(() => uavAdjust.scale > 0 ? uavAdjust.scale : 0.1, false),
+        minimumPixelSize: 64, 
+        heightReference: Cesium.HeightReference.NONE,
+        // 关闭 Entity 自带的动画调度，避免与手动 addAll 产生冲突
+        runAnimations: false
+      }
+    });
+    uavEntities.push(entity);
+  });
+
+  // 初始化救援车
+  rescueCarModelConfigs.forEach((config) => {
+    console.log(`[Cesium] 正在初始化救援车实体: ${config.id}, 路径: ${config.uri}`);
+
+    const rescueCarPosition = new Cesium.CallbackProperty(() => {
+      const startLng = Number(rescueCarAdjust.lng) || 113.1073;
+      const startLat = Number(rescueCarAdjust.lat) || 30.3849;
+      const startHeight = Number(rescueCarAdjust.height) || -1.5;
+
+      const accidentLng = Number(truckAdjust.lng) || 113.104833;
+      const accidentLat = Number(truckAdjust.lat) || 30.385469;
+
+      // 投影计算：沿着起火点和初始坐标所在的这条马路车道直线前进，保证绝对不换道或发生偏航，在距离车祸点约60米的前方停车 (f = 0.78)
+      const targetLng = startLng + 0.78 * (accidentLng - startLng);
+      const targetLat = startLat + 0.78 * (accidentLat - startLat);
+      const targetHeight = -1.5; // 保持与起点的 Z 轴高度一致，防止陷车
+
+      if (props.activePhaseIndex < 7) {
+        return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
+      } else if (props.activePhaseIndex === 7) {
+        if (!phase7StartTime) {
+          phase7StartTime = Date.now();
+        }
+        const elapsed = Date.now() - phase7StartTime;
+        const duration = 6000; // 6秒内平滑开到事故现场
+        const t = Math.min(elapsed / duration, 1.0);
+        // 使用 EaseInOutQuad 缓动函数，让启动和停止更自然
+        const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        
+        const lng = startLng + (targetLng - startLng) * easeT;
+        const lat = startLat + (targetLat - startLat) * easeT;
+        const height = startHeight + (targetHeight - startHeight) * easeT;
+        return Cesium.Cartesian3.fromDegrees(lng, lat, height);
+      } else {
+        // 阶段 >= 8：停留在现场终点
+        return Cesium.Cartesian3.fromDegrees(targetLng, targetLat, targetHeight);
+      }
+    }, false);
+
+    const rescueCarOrientation = new Cesium.CallbackProperty(() => {
+      const pos = rescueCarPosition.getValue(viewer.clock.currentTime);
+      if (!pos) return undefined;
+      const headingDeg = Number(rescueCarAdjust.heading) || 195;
+      const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(headingDeg), 0, 0);
+      return Cesium.Transforms.headingPitchRollQuaternion(pos, hpr);
+    }, false);
+
+    const entity = viewer.entities.add({
+      id: config.id,
+      name: config.label,
+      show: false,
+      position: rescueCarPosition,
+      orientation: rescueCarOrientation,
+      model: {
+        uri: config.uri,
+        scale: new Cesium.CallbackProperty(() => Number(rescueCarAdjust.scale) || 1.0, false),
+        minimumPixelSize: 16, // 保底 16 像素，防止模型物理尺寸过小导致完全不可见，但不至于像 64 那样完全覆盖微调效果
+        heightReference: Cesium.HeightReference.NONE, // 移除自动贴地，完全由用户通过 Z 轴微调高度，防止模型原点错误导致深埋地下
+        runAnimations: true
+      }
+    });
+    rescueCarEntities.push(entity);
+  });
+
+  // 初始化油罐车场景的无人机模型
+  uavModelConfigs.forEach((config) => {
+    console.log(`[Cesium] 正在初始化油罐车场景无人机实体: ${config.id}, 路径: ${config.uri}`);
+
+    const tankerUavPosition = new Cesium.CallbackProperty(() => {
+      const startHeight = Number(tankerUavAdjust.height) || 11.5;
+      if (sharedTankerRescueCarPosition) {
+        const carPos = sharedTankerRescueCarPosition.getValue(viewer.clock.currentTime);
+        if (carPos) {
+          const cartographic = Cesium.Cartographic.fromCartesian(carPos);
+          const lng = Cesium.Math.toDegrees(cartographic.longitude);
+          const lat = Cesium.Math.toDegrees(cartographic.latitude);
+          return Cesium.Cartesian3.fromDegrees(lng, lat, startHeight);
+        }
+      }
+      
+      const startLng = Number(tankerRescueCarAdjust.lng) || 113.06929;
+      const startLat = Number(tankerRescueCarAdjust.lat) || 30.2393;
+      return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
+    }, false);
+
+    const tankerUavOrientation = new Cesium.CallbackProperty(() => {
+      const pos = tankerUavPosition.getValue(viewer.clock.currentTime);
+      if (!pos) return undefined;
+      const headingDeg = Number(tankerUavAdjust.heading) || 18;
+      const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(headingDeg), 0, 0);
+      return Cesium.Transforms.headingPitchRollQuaternion(pos, hpr);
+    }, false);
+
+    const entity = viewer.entities.add({
+      id: config.id + '_tanker',
+      name: config.label + ' (油罐车)',
+      show: false,
+      position: tankerUavPosition,
+      orientation: tankerUavOrientation,
+      model: {
+        uri: config.uri,
+        scale: new Cesium.CallbackProperty(() => tankerUavAdjust.scale > 0 ? tankerUavAdjust.scale : 0.1, false),
+        minimumPixelSize: 64,
+        heightReference: Cesium.HeightReference.NONE,
+        runAnimations: false
+      }
+    });
+    tankerUavEntities.push(entity);
+  });
+
+  // 初始化油罐车场景的救援车
+  tankerRescueCarModelConfigs.forEach((config) => {
+    console.log(`[Cesium] 正在初始化油罐车场景救援车实体: ${config.id}, 路径: ${config.uri}`);
+
+    const tankerRescueCarPosition = new Cesium.CallbackProperty(() => {
+      const startLng = Number(tankerRescueCarAdjust.lng) || 113.06929;
+      const startLat = Number(tankerRescueCarAdjust.lat) || 30.2393;
+      const startHeight = Number(tankerRescueCarAdjust.height) || -1.5;
+
+      const targetLng = Number(tankerPointAdjust.lng) || 113.067999;
+      const targetLat = Number(tankerPointAdjust.lat) || 30.2401;
+      const targetHeight = startHeight;
+
+      if (props.activePhaseIndex < 7) {
+        return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
+      } else if (props.activePhaseIndex === 7) {
+        if (!tankerPhase7StartTime) {
+          tankerPhase7StartTime = Date.now();
+        }
+        const elapsed = Date.now() - tankerPhase7StartTime;
+        const duration = 6000;
+        const t = Math.min(elapsed / duration, 1.0);
+        const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+        const stopFactor = 0.55;
+        const actualTargetLng = startLng + stopFactor * (targetLng - startLng);
+        const actualTargetLat = startLat + stopFactor * (targetLat - startLat);
+
+        const lng = startLng + (actualTargetLng - startLng) * easeT;
+        const lat = startLat + (actualTargetLat - startLat) * easeT;
+        const height = startHeight + (targetHeight - startHeight) * easeT;
+        return Cesium.Cartesian3.fromDegrees(lng, lat, height);
+      } else {
+        const stopFactor = 0.55;
+        const actualTargetLng = startLng + stopFactor * (targetLng - startLng);
+        const actualTargetLat = startLat + stopFactor * (targetLat - startLat);
+        return Cesium.Cartesian3.fromDegrees(actualTargetLng, actualTargetLat, startHeight);
+      }
+    }, false);
+
+    const tankerRescueCarOrientation = new Cesium.CallbackProperty(() => {
+      const pos = tankerRescueCarPosition.getValue(viewer.clock.currentTime);
+      if (!pos) return undefined;
+      const headingDeg = Number(tankerRescueCarAdjust.heading) || 215;
+      const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(headingDeg), 0, 0);
+      return Cesium.Transforms.headingPitchRollQuaternion(pos, hpr);
+    }, false);
+
+    sharedTankerRescueCarPosition = tankerRescueCarPosition;
+
+    const entity = viewer.entities.add({
+      id: config.id,
+      name: config.label + ' (油罐车)',
+      show: false,
+      position: tankerRescueCarPosition,
+      orientation: tankerRescueCarOrientation,
+      model: {
+        uri: config.uri,
+        scale: new Cesium.CallbackProperty(() => Number(tankerRescueCarAdjust.scale) || 1.0, false),
+        minimumPixelSize: 16,
+        heightReference: Cesium.HeightReference.NONE,
+        runAnimations: true
+      }
+    });
+    tankerRescueCarEntities.push(entity);
+  });
+
   viewer.screenSpaceEventHandler.setInputAction((movement) => {
     const pickedObject = viewer.scene.pick(movement.position);
     if (Cesium.defined(pickedObject) && pickedObject.id) {
       const entityId = pickedObject.id.id;
-      if (entityId.includes('truck_sequence') || entityId === 'accident_red') {
-        const emitId = entityId.includes('truck_sequence') ? 'accident_blue' : 'accident_red'
+      // 检查点击的是否是货车模型或油罐车
+      if (entityId.includes('model_') || entityId.includes('tanker_') || entityId === 'accident_red' || entityId === 'accident_blue') {
+        const emitId = (entityId.includes('model_') || entityId === 'accident_blue') ? 'accident_blue' : 'accident_red'
         emit('accident-picked', emitId);
         zoomToPoint(emitId);
       }
@@ -790,28 +1230,84 @@ function updatePhaseScene(index) {
 
     focusAreaEntity.position = Cesium.Cartesian3.fromDegrees(lng, lat, 0)
     if (popupEntity) {
-      // 仅在无人机响应阶段 (6, 7, 8) 显示这种形式的悬浮窗
+      // 隐藏悬浮窗和连接线（根据用户要求取消显示）
+      popupEntity.show = false
+      if (connectionLineEntity) connectionLineEntity.show = false
+
       if (index >= 6) {
-        popupEntity.show = true
-        connectionLineEntity.show = true // 显示连接线
-        popupEntity.position = Cesium.Cartesian3.fromDegrees(lng, lat, 30)
-        
-        if (index === 6) {
-          popupEntity.label.text = `        【 无人装备出动 】        \n 装备名称：   工业无人机-01 \n 载荷类型：   高清变焦相机 \n 当前状态：   已从机库起飞 `
-          popupEntity.label.backgroundColor = toCesiumColor('#b59400', 0.95)
-        } else if (index === 7) {
-          popupEntity.label.text = `        【 无人感知部署 】        \n 监测范围：   事故中心区域 \n 感知设备：   激光雷达/红外 \n 部署进度：   正在展开部署 `
-          popupEntity.label.backgroundColor = toCesiumColor('#0084b5', 0.95)
-        } else if (index === 8) {
-          popupEntity.label.text = `        【 无人感知执行 】        \n 识别结果：   发现核心火源 \n 坐标定位：   113.104, 30.385 \n 识别精度：   98.4% 就绪     `
-          popupEntity.label.backgroundColor = toCesiumColor('#00b56a', 0.95)
+        // 在货车追尾现场的无人机阶段显示无人机模型和救援车并隐藏所有粒子效果
+        if (pointId === 'accident_blue') {
+          uavEntities.forEach(entity => {
+            const isTarget = (index === 6 && entity.id === 'uav_model') || (index >= 7 && entity.id === 'uav_model_move');
+            if (isTarget) {
+              const needsAnimation = !entity.show || (entity.id === 'uav_model_move' && index === 7 && lastUavPhaseIndex !== 7);
+              entity.show = true;
+              if (needsAnimation) {
+                // 两个阶段的无人机螺旋桨都需要持续高速旋转
+                playEntityAnimation(entity, true, 0, 6.0);
+              }
+            } else {
+              entity.show = false;
+            }
+          });
+          rescueCarEntities.forEach(entity => { entity.show = true });
+          
+          // 隐藏油罐车场景的无人机和救援车
+          tankerUavEntities.forEach(entity => { entity.show = false })
+          tankerRescueCarEntities.forEach(entity => { entity.show = false })
+          
+          // 隐藏所有粒子效果，只保留模型
+          if (smokeParticle) smokeParticle.show = false
+          if (fireParticle) fireParticle.show = false
+          if (leakParticle) leakParticle.show = false
+          if (diffusionParticle) diffusionParticle.show = false
+        } else if (pointId === 'accident_red') {
+          // 在油罐车泄露现场的无人机阶段显示无人机模型和救援车并隐藏所有粒子效果
+          tankerUavEntities.forEach(entity => {
+            const isTarget = (index === 6 && entity.id === 'uav_model_tanker') || (index >= 7 && entity.id === 'uav_model_move_tanker');
+            if (isTarget) {
+              const needsAnimation = !entity.show || (entity.id === 'uav_model_move_tanker' && index === 7 && lastTankerUavPhaseIndex !== 7);
+              entity.show = true;
+              if (needsAnimation) {
+                // 两个阶段的无人机螺旋桨都需要持续高速旋转
+                playEntityAnimation(entity, true, 0, 6.0);
+              }
+            } else {
+              entity.show = false;
+            }
+          });
+          tankerRescueCarEntities.forEach(entity => { entity.show = true });
+          
+          // 隐藏货车场景的无人机和救援车
+          uavEntities.forEach(entity => { entity.show = false })
+          rescueCarEntities.forEach(entity => { entity.show = false })
+          
+          // 隐藏所有粒子效果，只保留模型
+          if (smokeParticle) smokeParticle.show = false
+          if (fireParticle) fireParticle.show = false
+          if (leakParticle) leakParticle.show = false
+          if (diffusionParticle) diffusionParticle.show = false
+        } else {
+          // 如果视角切换到其他地方，隐藏所有无人机和救援车
+          uavEntities.forEach(entity => { entity.show = false })
+          rescueCarEntities.forEach(entity => { entity.show = false })
+          tankerUavEntities.forEach(entity => { entity.show = false })
+          tankerRescueCarEntities.forEach(entity => { entity.show = false })
         }
       } else {
         // 前置阶段隐藏悬浮窗和连接线
         popupEntity.show = false
         if (connectionLineEntity) connectionLineEntity.show = false
+        // 隐藏所有无人机模型和救援车
+        uavEntities.forEach(entity => { entity.show = false })
+        rescueCarEntities.forEach(entity => { entity.show = false })
+        tankerUavEntities.forEach(entity => { entity.show = false })
+        tankerRescueCarEntities.forEach(entity => { entity.show = false })
       }
     }
+
+    lastUavPhaseIndex = index;
+    lastTankerUavPhaseIndex = index;
 
     if (!spinCallback && props.focusedPointId && !isFlying) applyOrbitView()
   } catch (error) {
@@ -836,23 +1332,90 @@ function zoomToPoint(pointId) {
   })
 }
 
-// 监听微调值的变化同步更新粒子位置
-watch([() => truckAdjust.lng, () => truckAdjust.lat], () => {
-  const matrix = Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(truckAdjust.lng, truckAdjust.lat, 0.0));
+// 监听微调值的变化同步更新模型与粒子位置
+watch([() => truckAdjust.lng, () => truckAdjust.lat, () => truckAdjust.heading, () => truckAdjust.height], () => {
+  if (typeof truckAdjust.lng !== 'number' || typeof truckAdjust.lat !== 'number' || typeof truckAdjust.height !== 'number' || typeof truckAdjust.heading !== 'number') return;
+  const position = Cesium.Cartesian3.fromDegrees(truckAdjust.lng, truckAdjust.lat, truckAdjust.height);
+  const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(truckAdjust.heading), 0, 0);
+  const orientation = Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
+  
+  truckEntities.forEach(entity => {
+    entity.position = position;
+    entity.orientation = orientation;
+  });
+
+  const matrix = Cesium.Transforms.eastNorthUpToFixedFrame(position);
   if (smokeParticle) smokeParticle.modelMatrix = matrix;
   if (fireParticle) fireParticle.modelMatrix = matrix;
 });
 
+// 监听油罐车微调变化
+watch([() => tankerAdjust.lng, () => tankerAdjust.lat, () => tankerAdjust.heading, () => tankerAdjust.height], () => {
+  if (typeof tankerAdjust.lng !== 'number' || typeof tankerAdjust.lat !== 'number' || typeof tankerAdjust.height !== 'number' || typeof tankerAdjust.heading !== 'number') return;
+  const position = Cesium.Cartesian3.fromDegrees(tankerAdjust.lng, tankerAdjust.lat, tankerAdjust.height);
+  const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(tankerAdjust.heading), 0, 0);
+  const orientation = Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
+  
+  tankerEntities.forEach(entity => {
+    entity.position = position;
+    entity.orientation = orientation;
+  });
+});
+
+// 监听救援车微调变化 (位置、角度和缩放已完全由 CallbackProperty 接管，此处无需手动更新 Entity 属性)
+
 // 监听油罐车事故点位置变化同步更新泄露与弥漫效果位置
 watch([() => tankerPointAdjust.lng, () => tankerPointAdjust.lat], () => {
+  if (typeof tankerPointAdjust.lng !== 'number' || typeof tankerPointAdjust.lat !== 'number') return;
   const matrix = Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(tankerPointAdjust.lng, tankerPointAdjust.lat, 0.0));
   if (leakParticle) leakParticle.modelMatrix = matrix;
   if (diffusionParticle) diffusionParticle.modelMatrix = matrix;
 });
 
-defineExpose({ zoomToPoint })
-watch(() => props.activePhaseIndex, (next) => updatePhaseScene(next))
-watch(() => props.focusedPointId, () => updatePhaseScene(props.activePhaseIndex))
+// 监听无人机微调变化 (位置和角度已完全由 CallbackProperty 接管，此处无需手动更新 Entity 属性)
+
+// 无人机控制函数
+function showUav() {
+  uavEntities.forEach(entity => { entity.show = true })
+  console.log('无人机已显示')
+}
+
+function hideUav() {
+  uavEntities.forEach(entity => { entity.show = false })
+  console.log('无人机已隐藏')
+}
+
+function flyToUav() {
+  if (!viewer) return
+  const position = Cesium.Cartesian3.fromDegrees(uavAdjust.lng, uavAdjust.lat, uavAdjust.height)
+  viewer.camera.flyTo({
+    destination: position,
+    orientation: {
+      heading: Cesium.Math.toRadians(uavAdjust.heading),
+      pitch: Cesium.Math.toRadians(-30),
+      roll: 0.0
+    },
+    duration: 2.0
+  })
+  console.log('正在飞往无人机位置')
+}
+
+defineExpose({ zoomToPoint });
+
+watch(() => props.activePhaseIndex, (next, prev) => {
+  if (next === 7 && prev !== 7) {
+    phase7StartTime = Date.now();
+    tankerPhase7StartTime = Date.now();
+  } else if (next < 7) {
+    phase7StartTime = 0;
+    tankerPhase7StartTime = 0;
+  }
+  updatePhaseScene(next);
+});
+
+watch(() => props.focusedPointId, () => {
+  updatePhaseScene(props.activePhaseIndex);
+});
 
 onMounted(() => initViewer())
 onBeforeUnmount(() => {
@@ -869,15 +1432,54 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.globe-shell, .globe-viewer { width: 100%; height: 100%; }
-.globe-shell { position: relative; }
+.cesium-wrapper, .cesium-container { width: 100%; height: 100%; position: relative; }
 .globe-mask {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   background: rgba(2, 10, 22, 0.88); color: rgba(255, 255, 255, 0.78);
 }
 .debug-panel {
   position: absolute; top: 100px; right: 20px; z-index: 999;
-  background: rgba(0, 0, 0, 0.8); padding: 15px; border-radius: 8px; border: 1px solid #00e5ff; color: white; width: 220px;
+  background: rgba(0, 0, 0, 0.85); padding: 15px; border-radius: 8px; border: 1px solid #00e5ff; color: white; width: 220px;
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.3);
+}
+.debug-panel h4 {
+  margin: 0 0 12px 0; color: #00e5ff; font-size: 14px; text-align: center;
+}
+.debug-panel div {
+  margin-bottom: 8px;
+}
+.debug-panel label {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px;
+}
+.debug-panel input {
+  width: 80px; padding: 4px; border: 1px solid #333; border-radius: 4px;
+  background: rgba(255,255,255,0.1); color: white; font-size: 12px;
+}
+.scene-switcher .switch-buttons {
+  display: flex; gap: 6px;
+}
+.scene-switcher .switch-buttons button {
+  flex: 1; padding: 6px 8px; border: 1px solid #333; border-radius: 4px;
+  background: rgba(255,255,255,0.1); color: white; font-size: 11px;
+  cursor: pointer; transition: all 0.2s;
+}
+.scene-switcher .switch-buttons button:hover {
+  background: rgba(0, 229, 255, 0.2);
+}
+.scene-switcher .switch-buttons button.active {
+  background: linear-gradient(135deg, #00e5ff, #0080ff);
+  color: #061628;
+  font-weight: bold;
+  border-color: #00e5ff;
+}
+.debug-panel button {
+  width: 100%; margin-top: 5px; padding: 6px; border: none; border-radius: 4px;
+  background: linear-gradient(135deg, #00e5ff, #0080ff); color: #061628;
+  font-size: 12px; font-weight: bold; cursor: pointer;
+}
+.debug-panel button:hover {
+  opacity: 0.9;
 }
 .debug-row { margin-bottom: 10px; display: flex; flex-direction: column; }
 .debug-panel h3 { margin: 0 0 15px 0; color: #00e5ff; font-size: 16px; }

@@ -1,75 +1,157 @@
 <template>
   <div class="home-dashboard">
-    <div class="globe-layer">
-      <HomeCesiumGlobe
-        ref="globeRef"
-        :phases="timelinePhases"
-        :active-phase-index="activePhaseIndex"
-        :focused-point-id="currentFocusedPoint"
-        @accident-picked="onAccidentPickedOnGlobe"
-        @models-ready="onModelsReady"
-      />
-    </div>
-
-    <div class="globe-overlay"></div>
-    <div class="globe-decor" aria-hidden="true">
-      <span class="orbit orbit-a"></span>
-      <span class="orbit orbit-b"></span>
-    </div>
-
-    <header class="top-nav">
-      <span class="nav-wing nav-wing-left"></span>
-      <nav class="top-nav-links">
+    <!-- Top Nav / Toolbar -->
+    <header class="top-nav-desktop">
+      <div class="toolbar">
         <button
           v-for="item in topMenus"
           :key="item.key"
           type="button"
-          class="nav-link"
+          class="toolbar-btn"
           :class="{ active: activeMenuKey === item.key }"
           @click="goTo(item)"
         >
           {{ item.label }}
         </button>
-      </nav>
-      <span class="nav-wing nav-wing-right"></span>
+      </div>
     </header>
 
-    <aside class="left-panel">
-      <div
-        v-for="item in servicePanels"
-        :key="item.id"
-        class="accordion-item"
-        :class="[`is-${item.theme}`, { open: activeServiceId === item.id }]"
-      >
-        <button class="accordion-trigger" type="button" @click="toggleServicePanel(item.id)">
-          <div class="trigger-copy">
-            <span class="trigger-kicker">{{ item.owner }}</span>
-            <h2 class="trigger-title">{{ item.title }}</h2>
-            <p class="trigger-description">{{ item.description }}</p>
-          </div>
-          <span class="trigger-indicator">{{ activeServiceId === item.id ? '收起' : '展开' }}</span>
-        </button>
+    <div class="main-layout">
+      <!-- Left Sidebar (White) -->
+      <aside class="left-sidebar">
+        <div class="sidebar-header">
+          <h2 class="sidebar-title">工作目录 / 服务中心</h2>
+          <span class="sidebar-subtitle">Service Center</span>
+        </div>
+        <div class="sidebar-content">
+          <div
+            v-for="item in servicePanels"
+            :key="item.id"
+            class="accordion-item-light"
+            :class="{ open: activeServiceId === item.id }"
+          >
+            <button class="accordion-trigger-light" type="button" @click="toggleServicePanel(item.id)">
+              <div class="trigger-copy">
+                <span class="trigger-kicker">{{ item.owner.toUpperCase() }} SERVICE</span>
+                <h3 class="trigger-title">{{ item.title }}</h3>
+              </div>
+              <span class="trigger-indicator">{{ activeServiceId === item.id ? '收起' : '展开' }}</span>
+            </button>
 
-        <transition name="accordion">
-          <div v-if="activeServiceId === item.id" class="accordion-body">
-            <CollaborativeResponseCard v-if="item.id === 'collaborative'" />
-            <SensorGatewayCard v-else-if="item.id === 'sensor'" />
-            <RealtimeDetectionCard v-else />
+            <transition name="accordion">
+              <div v-if="activeServiceId === item.id" class="accordion-body-light">
+                <CollaborativeResponseCard v-if="item.id === 'collaborative'" />
+                <SensorGatewayCard v-else-if="item.id === 'sensor'" />
+                <RealtimeDetectionCard v-else />
+              </div>
+            </transition>
           </div>
-        </transition>
-      </div>
-    </aside>
+        </div>
+      </aside>
 
-    <footer class="bottom-timeline">
-      <HomeTimeProgress
-        v-model="activePhaseIndex"
-        v-model:accident-index="activeAccidentIndex"
-        :phases="timelinePhases"
-        :accidents="accidentPoints"
-        :phases-ready="phasesReady"
-        @locate="handleLocate"
-      />
-    </footer>
+      <!-- Center Viewport (Cesium Map) -->
+      <main class="center-viewport-container">
+        <div class="viewport-header">
+          <div class="viewport-title-left">
+            <span class="viewport-icon">🗺️</span>
+            <span class="viewport-title-text">View 1 (Cesium 三维态势图)</span>
+          </div>
+          <div class="viewport-controls">
+            <button class="win-btn">➖</button>
+            <button class="win-btn">🔳</button>
+            <button class="win-btn">❌</button>
+          </div>
+        </div>
+        
+        <div class="viewport-body">
+          <div class="globe-layer">
+            <HomeCesiumGlobe
+              ref="globeRef"
+              :phases="timelinePhases"
+              :active-phase-index="activePhaseIndex"
+              :focused-point-id="currentFocusedPoint"
+              @accident-picked="onAccidentPickedOnGlobe"
+              @models-ready="onModelsReady"
+            />
+          </div>
+          
+          <!-- Bottom Timeline embedded inside center body for containment -->
+          <div class="timeline-container" :style="{ bottom: timelineBottom + 'px' }">
+            <HomeTimeProgress
+              v-model="activePhaseIndex"
+              v-model:accident-index="activeAccidentIndex"
+              :phases="timelinePhases"
+              :accidents="accidentPoints"
+              :phases-ready="phasesReady"
+              @locate="handleLocate"
+            />
+          </div>
+        </div>
+      </main>
+
+      <!-- Right Sidebar (White) -->
+      <aside class="right-sidebar">
+        <div class="sidebar-header">
+          <h2 class="sidebar-title">处理参数与当前状态</h2>
+          <span class="sidebar-subtitle">Processing Parameters</span>
+        </div>
+        <div class="sidebar-content">
+          <div class="parameter-table">
+            <div class="table-header">
+              <span class="col-param">参数</span>
+              <span class="col-val">当前状态/值</span>
+            </div>
+            <div class="table-body">
+              <div class="table-row">
+                <span class="col-param font-medium">当前事故场景</span>
+                <span class="col-val text-blue font-semibold">{{ currentAccidentId === 'rear-end' ? '货车追尾现场' : '油罐车泄露现场' }}</span>
+              </div>
+              <div class="table-row">
+                <span class="col-param font-medium">推演阶段</span>
+                <span class="col-val font-semibold">{{ timelinePhases[activePhaseIndex]?.shortLabel || '未开始' }}</span>
+              </div>
+              <div class="table-row">
+                <span class="col-param font-medium">仿真当前时间</span>
+                <span class="col-val text-amber font-semibold">{{ timelinePhases[activePhaseIndex]?.time || '00:00' }}</span>
+              </div>
+              <div class="table-row">
+                <span class="col-param font-medium">网关与检测</span>
+                <span class="col-val text-green font-semibold">系统协同联动中</span>
+              </div>
+              <div class="table-row">
+                <span class="col-param font-medium">三维地图引擎</span>
+                <span class="col-val">Cesium 3D Globe</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="action-card-right">
+            <h3 class="action-card-title">场景重置与交互操作</h3>
+            <p class="action-card-desc">您可以点击下方按钮对当前选中的事故点进行视角定位或将仿真阶段重置。</p>
+            <div class="action-card-btns">
+              <button class="action-btn-desktop primary" @click="handleLocate">定位到事故点</button>
+              <button class="action-btn-desktop secondary" @click="activePhaseIndex = 0">重置当前阶段</button>
+            </div>
+          </div>
+
+          <div class="action-card-right" style="margin-top: 12px;">
+            <h3 class="action-card-title">时间轴垂直位置微调</h3>
+            <p class="action-card-desc">拉动滑块实时手动调整底部时间轴的垂直高度：</p>
+            <div class="slider-control-row">
+              <input
+                type="range"
+                v-model.number="timelineBottom"
+                min="-10"
+                max="100"
+                step="1"
+                class="desktop-slider"
+              />
+              <span class="slider-val">{{ timelineBottom }}px</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
   </div>
 </template>
 
@@ -91,6 +173,7 @@ const globeRef = ref(null)
 const activeAccidentIndex = ref(0)
 const currentFocusedPoint = ref('')
 const modelsReadyStatus = ref({})
+const timelineBottom = ref(18)
 
 // 为每个事故点维护独立的进度状态
 const accidentPhaseIndices = ref({
@@ -284,306 +367,479 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Main Layout structure */
 .home-dashboard {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: #020813;
-}
-
-.globe-layer,
-.globe-overlay,
-.globe-decor {
-  position: absolute;
-  inset: 0;
-}
-
-.globe-layer {
-  z-index: 1;
-}
-
-.globe-overlay {
-  z-index: 2;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0) 0%, rgba(2, 8, 19, 0.18) 54%, rgba(2, 8, 19, 0.56) 100%),
-    linear-gradient(180deg, rgba(1, 7, 16, 0.62) 0%, rgba(1, 7, 16, 0.18) 20%, rgba(1, 7, 16, 0.26) 100%);
-}
-
-.globe-decor {
-  z-index: 3;
-  pointer-events: none;
-}
-
-.orbit {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 229, 255, 0.18);
-  box-shadow:
-    0 0 18px rgba(0, 229, 255, 0.1),
-    inset 0 0 18px rgba(0, 229, 255, 0.04);
-  transform: translate(-50%, -50%);
-}
-
-.orbit-a {
-  width: min(64vw, 820px);
-  height: min(64vw, 820px);
-  opacity: 0.28;
-}
-
-.orbit-b {
-  width: min(76vw, 980px);
-  height: min(46vw, 590px);
-  opacity: 0.22;
-  border-color: rgba(255, 184, 77, 0.18);
-  box-shadow:
-    0 0 18px rgba(255, 184, 77, 0.1),
-    inset 0 0 18px rgba(255, 184, 77, 0.04);
-}
-
-.top-nav {
-  position: absolute;
-  top: 18px;
-  left: 50%;
-  z-index: 4;
-  transform: translateX(-50%);
-  padding: 10px 18px;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 229, 255, 0.16);
-  background: rgba(2, 10, 22, 0.54);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 0 24px rgba(0, 229, 255, 0.1);
-  overflow: hidden;
-}
-
-.top-nav::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(
-    90deg,
-    rgba(0, 229, 255, 0.36) 0%,
-    rgba(255, 184, 77, 0.18) 45%,
-    rgba(0, 229, 255, 0.36) 100%
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
-
-.top-nav-links {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.nav-wing {
-  position: absolute;
-  top: 50%;
-  width: 76px;
-  height: 20px;
-  transform: translateY(-50%);
-  background: linear-gradient(90deg, rgba(255, 184, 77, 0.16) 0%, rgba(0, 229, 255, 0.08) 100%);
-  opacity: 0.85;
-  pointer-events: none;
-}
-
-.nav-wing-left {
-  left: -58px;
-  clip-path: polygon(100% 0, 18% 0, 0 50%, 18% 100%, 100% 100%, 86% 50%);
-}
-
-.nav-wing-right {
-  right: -58px;
-  transform: translateY(-50%) scaleX(-1);
-  clip-path: polygon(100% 0, 18% 0, 0 50%, 18% 100%, 100% 100%, 86% 50%);
-}
-
-.nav-link {
-  min-height: 38px;
-  padding: 0 16px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.84);
-  font-size: 14px;
-  cursor: pointer;
-  transition: 0.2s ease;
-}
-
-.nav-link:hover,
-.nav-link.active {
-  color: var(--primary-color);
-  border-color: rgba(0, 229, 255, 0.16);
-  background: rgba(0, 229, 255, 0.08);
-  box-shadow: 0 0 14px rgba(0, 229, 255, 0.12);
-}
-
-.nav-link.active {
-  color: #03111d;
-  background: linear-gradient(90deg, rgba(0, 229, 255, 0.92) 0%, rgba(142, 247, 255, 0.94) 100%);
-  border-color: rgba(0, 229, 255, 0.26);
-}
-
-.left-panel,
-.bottom-timeline {
-  position: absolute;
-  z-index: 4;
-}
-
-.left-panel {
-  top: 88px;
-  left: 20px;
-  width: min(360px, calc(100vw - 40px));
-  max-height: calc(100% - 210px);
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  overflow: auto;
-  padding-right: 4px;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #eaedf1;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #334155;
 }
 
-.bottom-timeline {
-  left: 50%;
-  bottom: 12px; /* 略微下移，更贴合底部 */
-  width: min(1600px, calc(100vw - 120px)); /* 显著增加宽度上限 (从1120调到1600) */
-  transform: translateX(-50%);
-}
-
-.accordion-item {
-  position: relative;
-  border-radius: 18px;
-  border: 1px solid rgba(0, 229, 255, 0.12);
-  background: linear-gradient(180deg, rgba(5, 16, 31, 0.82) 0%, rgba(3, 10, 21, 0.92) 100%);
-  box-shadow:
-    inset 0 0 22px rgba(0, 229, 255, 0.06),
-    0 12px 32px rgba(0, 0, 0, 0.16);
-  backdrop-filter: blur(14px);
+.main-layout {
+  display: flex;
+  flex: 1;
+  height: 0;
+  width: 100%;
   overflow: hidden;
 }
 
-.accordion-item::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.08) 0%,
-    rgba(0, 229, 255, 0.22) 38%,
-    rgba(255, 184, 77, 0.18) 68%,
-    rgba(255, 255, 255, 0.08) 100%
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
+/* Top Nav Desktop (Menu bar + Toolbar) */
+.top-nav-desktop {
+  background: #f8fafc;
+  border-bottom: 1px solid #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
 }
 
-.accordion-item.is-collaborative {
-  border-color: rgba(96, 165, 250, 0.22);
+.menu-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 6px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+  color: #475569;
 }
 
-.accordion-item.is-sensor {
-  border-color: rgba(0, 229, 255, 0.2);
+.app-logo {
+  font-weight: 700;
+  color: #1e3a8a;
+  margin-right: 12px;
+  font-size: 14px;
+  letter-spacing: 0.5px;
 }
 
-.accordion-item.is-realtime {
-  border-color: rgba(255, 184, 77, 0.24);
+.menu-item {
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
 }
 
-.accordion-trigger {
+.menu-item:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.menu-item.active {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #f8fafc;
+}
+
+.toolbar-btn {
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.toolbar-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.toolbar-btn.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+}
+
+/* Left & Right Sidebars */
+.left-sidebar,
+.right-sidebar {
+  width: 380px;
+  height: 100%;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.left-sidebar {
+  border-right: 1px solid #cbd5e1;
+}
+
+.right-sidebar {
+  border-left: 1px solid #cbd5e1;
+}
+
+.sidebar-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.sidebar-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.sidebar-subtitle {
+  font-size: 10px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sidebar-content::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 99px;
+}
+
+/* Accordion Items - Light/White theme */
+.accordion-item-light {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  transition: all 0.2s ease;
+}
+
+.accordion-item-light.open {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-color: #cbd5e1;
+}
+
+.accordion-trigger-light {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 18px 20px;
+  padding: 14px 16px;
   border: none;
-  background: transparent;
-  text-align: left;
+  background: #f8fafc;
   cursor: pointer;
+  text-align: left;
+  border-bottom: 1px solid transparent;
 }
 
-.trigger-copy {
-  min-width: 0;
+.accordion-item-light.open .accordion-trigger-light {
+  border-bottom-color: #e2e8f0;
 }
 
 .trigger-kicker {
-  display: inline-flex;
-  align-items: center;
-  min-height: 22px;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.68);
-  font-size: 11px;
-  letter-spacing: 0.12em;
+  font-size: 9px;
+  color: #94a3b8;
+  font-weight: 600;
+  letter-spacing: 1px;
 }
 
 .trigger-title {
-  margin: 10px 0 8px;
-  color: #f4fbff;
-  font-size: 28px;
-  line-height: 1.04;
-}
-
-.trigger-description {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.68);
+  margin: 4px 0 0;
   font-size: 13px;
-  line-height: 1.6;
+  font-weight: 600;
+  color: #334155;
 }
 
 .trigger-indicator {
-  flex: 0 0 auto;
-  display: inline-flex;
+  font-size: 11px;
+  color: #64748b;
+  background: #ffffff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-weight: 500;
+}
+
+.accordion-body-light {
+  padding: 12px;
+  background: #ffffff;
+}
+
+/* Deep overrides to skin inner dark cards as premium white */
+.left-sidebar :deep(.collaborative-response-card),
+.left-sidebar :deep(.sensor-gateway-card),
+.left-sidebar :deep(.realtime-detection-card) {
+  background: #ffffff !important;
+  color: #334155 !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
+  padding: 12px !important;
+}
+
+.left-sidebar :deep(.card-title) {
+  color: #0f172a !important;
+  font-size: 14px !important;
+}
+
+.left-sidebar :deep(.card-subtitle),
+.left-sidebar :deep(.tip-text) {
+  color: #64748b !important;
+}
+
+.left-sidebar :deep(.config-input),
+.left-sidebar :deep(.gateway-input) {
+  background: #f8fafc !important;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.left-sidebar :deep(.status-item),
+.left-sidebar :deep(.service-row) {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.left-sidebar :deep(.status-label),
+.left-sidebar :deep(.service-label) {
+  color: #64748b !important;
+}
+
+.left-sidebar :deep(.status-badge.online),
+.left-sidebar :deep(.node-chip.online),
+.left-sidebar :deep(.status-value.ok) {
+  color: #15803d !important;
+  background: #dcfce7 !important;
+  border-color: #bbf7d0 !important;
+}
+
+.left-sidebar :deep(.status-badge.offline),
+.left-sidebar :deep(.node-chip.offline),
+.left-sidebar :deep(.status-value.warn) {
+  color: #b91c1c !important;
+  background: #fee2e2 !important;
+  border-color: #fca5a5 !important;
+}
+
+.left-sidebar :deep(.action-btn.secondary) {
+  color: #2563eb !important;
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+}
+
+.left-sidebar :deep(.action-btn.primary) {
+  color: #ffffff !important;
+  background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%) !important;
+}
+
+.left-sidebar :deep(.action-btn.ghost) {
+  color: #475569 !important;
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Center Viewport (The GIS View Window) */
+.center-viewport-container {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #e2e8f0;
+  border-right: 1px solid #cbd5e1;
+  position: relative;
+}
+
+.viewport-header {
+  height: 38px;
+  background: #1e293b;
+  color: #f8fafc;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  min-width: 72px;
-  min-height: 36px;
-  padding: 0 12px;
-  border-radius: 999px;
+  justify-content: space-between;
+  padding: 0 16px;
+  font-size: 12px;
+  font-weight: 500;
+  user-select: none;
+}
+
+.viewport-title-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.viewport-title-text {
+  letter-spacing: 0.5px;
+}
+
+.viewport-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.win-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.win-btn:hover {
+  background: #334155;
+  color: #ffffff;
+}
+
+.viewport-body {
+  flex: 1;
+  position: relative;
+  height: 0;
+}
+
+.globe-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* Floating Timeline floating beautifully above the globe */
+.timeline-container {
+  position: absolute;
+  bottom: 20px; /* 往上移动一点，贴近视口 */
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 40px);
+  max-width: 1400px;
+  background: rgba(15, 23, 42, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 13px;
+  border-radius: 10px;
+  padding: 12px 20px;
+  z-index: 5;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
 }
 
-.accordion-item.is-collaborative .trigger-title,
-.accordion-item.is-collaborative .trigger-indicator {
-  color: #bfdcff;
+/* Right Sidebar elements */
+.parameter-table {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 11px;
 }
 
-.accordion-item.is-sensor .trigger-title,
-.accordion-item.is-sensor .trigger-indicator {
-  color: var(--primary-color);
+.table-header {
+  background: #f8fafc;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 8px 12px;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
 }
 
-.accordion-item.is-realtime .trigger-title,
-.accordion-item.is-realtime .trigger-indicator {
-  color: #ffd68e;
+.table-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  align-items: center;
 }
 
-.accordion-body {
-  padding: 0 14px 14px;
+.table-row:last-child {
+  border-bottom: none;
 }
 
-.accordion-body :deep(.collaborative-response-card),
-.accordion-body :deep(.sensor-gateway-card),
-.accordion-body :deep(.realtime-detection-card) {
-  border-radius: 14px;
+.font-medium {
+  font-weight: 500;
+}
+.font-semibold {
+  font-weight: 600;
+}
+.text-blue {
+  color: #2563eb;
+}
+.text-amber {
+  color: #d97706;
+}
+.text-green {
+  color: #16a34a;
+}
+
+.action-card-right {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  background: #f8fafc;
+}
+
+.action-card-title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.action-card-desc {
+  margin: 0 0 14px;
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.action-card-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.action-btn-desktop {
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.action-btn-desktop.primary {
+  background: #2563eb;
+  color: #ffffff;
+}
+.action-btn-desktop.primary:hover {
+  background: #1d4ed8;
+}
+
+.action-btn-desktop.secondary {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+.action-btn-desktop.secondary:hover {
+  background: #f1f5f9;
 }
 
 .accordion-enter-active,
@@ -597,74 +853,31 @@ onMounted(() => {
   transform: translateY(-8px);
 }
 
-.left-panel::-webkit-scrollbar {
-  width: 6px;
+/* Slider Controls */
+.slider-control-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
 }
 
-.left-panel::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 999px;
+.desktop-slider {
+  flex: 1;
+  height: 5px;
+  border-radius: 99px;
+  background: #e2e8f0;
+  outline: none;
+  cursor: pointer;
+  accent-color: #2563eb;
+  border: none;
+  padding: 0;
 }
 
-.left-panel::-webkit-scrollbar-thumb {
-  background: rgba(0, 229, 255, 0.28);
-  border-radius: 999px;
-}
-
-@media (max-width: 1320px) {
-  .top-nav {
-    width: calc(100vw - 40px);
-  }
-
-  .top-nav-links {
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .left-panel {
-    width: 320px;
-  }
-
-  .bottom-timeline {
-    width: calc(100vw - 80px);
-  }
-
-  .orbit-a {
-    width: min(72vw, 760px);
-    height: min(72vw, 760px);
-  }
-}
-
-@media (max-width: 1080px) {
-  .left-panel,
-  .bottom-timeline {
-    position: static;
-    width: auto;
-    transform: none;
-  }
-
-  .home-dashboard {
-    display: flex;
-    flex-direction: column;
-    overflow: auto;
-    padding: 84px 16px 16px;
-    box-sizing: border-box;
-    gap: 16px;
-  }
-
-  .globe-layer,
-  .globe-overlay,
-  .globe-decor {
-    position: fixed;
-  }
-
-  .top-nav {
-    top: 12px;
-    width: calc(100vw - 32px);
-  }
-
-  .nav-wing {
-    display: none;
-  }
+.slider-val {
+  font-size: 11px;
+  font-weight: 600;
+  color: #334155;
+  min-width: 32px;
+  text-align: right;
 }
 </style>
