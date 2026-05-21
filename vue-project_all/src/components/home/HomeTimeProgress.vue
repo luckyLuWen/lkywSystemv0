@@ -27,7 +27,9 @@
 
     <div class="timeline-bar-wrapper">
       <div class="timeline-bar">
-        <div class="progress-track"></div>
+        <div class="progress-track">
+          <div class="progress-fill" :style="{ width: fillWidth }"></div>
+        </div>
         
         <!-- 游标指示器 -->
         <div class="timeline-cursor" :style="{ left: cursorOffset }">
@@ -114,6 +116,14 @@ watch(() => props.phasesReady, (newVal) => {
 // 左右预留 40px 的边距，游标和阶段点在这个范围内移动
 const cursorOffset = computed(() => {
   return getPhaseOffset(props.modelValue)
+})
+
+// 计算已播放部分的进度条宽度
+const fillWidth = computed(() => {
+  if (!props.phases.length) return '0%'
+  if (props.phases.length === 1) return '0%'
+  const percent = (props.modelValue / (props.phases.length - 1)) * 100
+  return `${percent}%`
 })
 
 function getPhaseOffset(index) {
@@ -264,6 +274,15 @@ onBeforeUnmount(() => {
   height: 10px;
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 5px;
+  background: linear-gradient(90deg, #00e5ff, #8cf7c5);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.6);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .timeline-cursor {
