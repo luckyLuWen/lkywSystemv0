@@ -8,6 +8,7 @@
 - `Real-time_Detection`：实时检测子系统，负责人 `zby`。
 - `Sensor_Management`：真实边缘端传感器管理子系统，负责人 `lb`。
 - `Sensor_Management_sim`：本机模拟边缘网关，用于办公室端联调。
+- `Integration_Hub`：总系统业务事件入口，当前使用 Redis Streams 承载事件流。
 - `scripts/sync-subsystems.ps1`：将子系统构建结果同步到 `vue-project_all/public`。
 
 ## 当前运行边界
@@ -27,6 +28,7 @@
 | 协同响应控制层 | `http://127.0.0.1:18601` |
 | 协同响应指挥后端 | `http://127.0.0.1:5001` |
 | 协同调度平台 Streamlit | `http://127.0.0.1:8501` |
+| Integration Hub | `http://127.0.0.1:18701` |
 
 总系统首页默认已经按这套端口配置：
 
@@ -98,14 +100,32 @@ http://127.0.0.1:5000/api/health
 http://127.0.0.1:18601/api/health
 ```
 
+### 4. 启动总系统事件入口
+先启动本机 Redis：
+```powershell
+docker run --name lkyw-redis -p 6379:6379 -d redis:7
+```
+
+再启动 Integration Hub：
+```powershell
+.\start_integration_hub.bat
+```
+
+启动成功后可访问：
+
+```text
+http://127.0.0.1:18701/api/health
+```
+
 说明：
 - 这个脚本启动的是控制层，不是直接把协同响应所有页面都起完。
 - 真正的二维推演和三维指挥后端，可以通过总系统首页状态卡或控制层接口继续启动。
 
 ## 完整联调步骤
 
-### step 1. 启动三个后端
+### step 1. 启动事件入口和三个后端
 ```powershell
+.\start_integration_hub.bat
 .\start_sensor_gateway.bat
 .\start_detection_backend.bat
 .\start_Collaborative_Response.bat

@@ -124,6 +124,8 @@
               </div>
             </div>
           </div>
+
+          <IntegrationEventMonitor />
           
           <div class="action-card-right">
             <h3 class="action-card-title">场景重置与交互操作</h3>
@@ -161,6 +163,7 @@ import { useRouter, useRoute } from 'vue-router'
 import CollaborativeResponseCard from '../components/CollaborativeResponseCard.vue'
 import RealtimeDetectionCard from '../components/RealtimeDetectionCard.vue'
 import SensorGatewayCard from '../components/SensorGatewayCard.vue'
+import IntegrationEventMonitor from '../components/IntegrationEventMonitor.vue'
 import HomeCesiumGlobe from '../components/home/HomeCesiumGlobe.vue'
 import HomeTimeProgress from '../components/home/HomeTimeProgress.vue'
 
