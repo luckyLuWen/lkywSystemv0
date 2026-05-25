@@ -10,7 +10,7 @@ import numpy as np
 
 
 class RTSPDetector:
-    def __init__(self, model_path, rtsp_url, camera_id="RTSP-01"):
+    def __init__(self, model_path, rtsp_url, camera_id="RTSP-01", on_detection=None):
         """
         初始化RTSP检测器
         
@@ -22,6 +22,7 @@ class RTSPDetector:
         self.model = YOLO(model_path)
         self.rtsp_url = rtsp_url
         self.camera_id = camera_id
+        self.on_detection = on_detection
         
         self.cap = None
         self.is_running = False
@@ -110,6 +111,8 @@ class RTSPDetector:
                 detection_info = self._extract_detection_info(results[0])
                 
                 # 更新当前帧和检测结果
+                notify_detection = False
+                stats_snapshot = None
                 with self.lock:
                     self.current_frame = annotated_frame
                     self.detection_result = detection_info
@@ -119,6 +122,22 @@ class RTSPDetector:
                     # 统计火灾检测次数
                     if detection_info.get('has_fire', False):
                         self.fire_count += 1
+                        notify_detection = True
+
+                    stats_snapshot = {
+                        'camera_id': self.camera_id,
+                        'rtsp_url': self.rtsp_url,
+                        'is_running': self.is_running,
+                        'frame_count': self.frame_count,
+                        'fire_count': self.fire_count,
+                        'last_detection_time': self.last_detection_time
+                    }
+
+                if notify_detection and self.on_detection:
+                    try:
+                        self.on_detection(detection_info, stats_snapshot)
+                    except Exception as callback_error:
+                        print(f"⚠️ RTSP检测事件回调失败: {callback_error}")
                 
                 # 控制帧率，避免CPU占用过高和画面闪烁
                 time.sleep(0.1)  # 约10fps，更稳定
