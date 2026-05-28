@@ -595,4 +595,11 @@ if __name__ == "__main__":
     print(f"协同响应指挥后端已启动: http://127.0.0.1:{COMMAND_CENTER_PORT}")
     print(f"  API 健康检查: http://127.0.0.1:{COMMAND_CENTER_PORT}/api/health")
     print(f"  服务管理:     http://127.0.0.1:{COMMAND_CENTER_PORT}/api/services")
+
+    try:
+        manager.start_service("streamlit")
+        print(f"  协同调度平台:  http://127.0.0.1:{STREAMLIT_PORT}/?embed=true")
+    except Exception as exc:
+        print(f"  [WARN] Streamlit 自启动失败: {exc}")
+
     app.run(host=COMMAND_CENTER_HOST, port=COMMAND_CENTER_PORT, threaded=True)
