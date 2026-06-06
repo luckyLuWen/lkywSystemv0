@@ -259,6 +259,7 @@ const rescueCarAdjust = reactive({
 let uavEntities = []
 let rescueCarEntities = []
 let phase7StartTime = 0
+let diffusionStartTime = 0
 let lastUavPhaseIndex = -1
 
 // 油罐车场景的无人机和救援车配置（独立控制）
@@ -456,8 +457,8 @@ function applyOrbitView() {
         }
       } else if (props.activePhaseIndex === 3 || props.activePhaseIndex === 4) {
         if (props.focusedPointId === 'accident_red') {
-          range = props.activePhaseIndex === 3 ? 135 : 100;
-          pitch = props.activePhaseIndex === 3 ? Cesium.Math.toRadians(-32) : Cesium.Math.toRadians(-25);
+          range = 100; // 统一为以次生灾害弥漫为主的 100 米范围视角
+          pitch = Cesium.Math.toRadians(-25); // 统一为以次生灾害弥漫为主的 -25 度俯仰角
         } else {
           range = 220;
           pitch = Cesium.Math.toRadians(-65);
@@ -488,11 +489,6 @@ function applyOrbitView() {
     
     if (isFocused && shouldRotate) {
       finalHeading += Cesium.Math.toRadians(165)
-    }
-
-    // 如果是油罐车泄露现场的“次生灾害（泄露）”阶段，使用定制的用户视角航向角
-    if (props.focusedPointId === 'accident_red' && props.activePhaseIndex === 3) {
-      finalHeading = Cesium.Math.toRadians(95);
     }
 
     viewer.camera.lookAt(target, new Cesium.HeadingPitchRange(finalHeading, pitch, range))
@@ -640,31 +636,76 @@ function createLeakSystem(lng, lat) {
   });
 }
 
-// 创建弥漫效果系统 (使用 fart00.png) - 优化版，防止效果过大
+// 创建弥漫效果系统 (使用 whitePuff00.png) - 统一为与泄露一致的圆形粒子喷射散开效果，并支持随时间渐进向外扩散 (已微调减小)
 function createDiffusionSystem(lng, lat) {
+  const center = Cesium.Cartesian3.fromDegrees(lng, lat, 0.8);
+  
+  // 计算卡车所在位置的局部 ENU (东-北-上) 坐标轴向量，用于在地球世界坐标系中进行方向纠正
+  const enuMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(center);
+  const eastVec = Cesium.Matrix4.getColumn(enuMatrix, 0, new Cesium.Cartesian3());
+  const northVec = Cesium.Matrix4.getColumn(enuMatrix, 1, new Cesium.Cartesian3());
+  const upVec = Cesium.Matrix4.getColumn(enuMatrix, 2, new Cesium.Cartesian3());
+
   return new Cesium.ParticleSystem({
-    image: '/Dashboard/images/fart00.png',
-    startColor: new Cesium.Color(0.85, 0.95, 0.9, 0.28), // 优化透明度，使其更自然
-    endColor: new Cesium.Color(0.9, 0.95, 1.0, 0.0),
-    startScale: 1.0,
-    endScale: 5.5, // 适当缩减最大膨胀比例，防止近景穿帮
-    minimumParticleLife: 5.0,
-    maximumParticleLife: 10.0,
-    minimumSpeed: 0.2,
-    maximumSpeed: 0.8,
-    imageSize: new Cesium.Cartesian2(16, 16), // 调整原始尺寸为 16x16，既保证远景可见又避免近景过大
-    emissionRate: 35.0, 
+    image: '/Dashboard/images/whitePuff00.png',
+    startColor: new Cesium.Color(0.35, 0.8, 0.35, 0.45), // 绿色半透明圆形粒子
+    endColor: new Cesium.Color(0.45, 0.85, 0.45, 0.0),       // 渐变至完全透明
+    startScale: 0.8,
+    endScale: 8.0, // 在生命周期中逐渐膨胀变大
+    minimumParticleLife: 4.0,
+    maximumParticleLife: 6.5, // 微调粒子寿命，适度减小扩散半径
+    minimumSpeed: 2.0,
+    maximumSpeed: 5.5, // 适度调低喷出初速度
+    imageSize: new Cesium.Cartesian2(9, 9), // 基础尺寸调整为 9x9 (原为12x12)，更显精细与克制
+    emissionRate: 120.0, // 保持发射率以维持连贯的团雾质感
     lifetime: 16.0,
-    emitter: new Cesium.SphereEmitter(3.0), // 缩小发射半径，使初始聚拢更自然
-    modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(lng, lat, 0.0)),
+    emitter: new Cesium.SphereEmitter(2.5), // 发射器半径调整为 2.5 (原为3.5)
+    modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(center),
     sizeInMeters: true,
     show: false,
     updateCallback: (particle, dt) => {
-      // 模拟缓慢的空气漂浮
-      const gravityScratch = new Cesium.Cartesian3();
-      Cesium.Cartesian3.normalize(particle.position, gravityScratch);
-      Cesium.Cartesian3.multiplyByScalar(gravityScratch, 0.05 * dt, gravityScratch); 
-      Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
+      // 1. 真实局部向上浮力 (Z轴向上，使整个弥漫气云升空)
+      const buoyancy = new Cesium.Cartesian3();
+      Cesium.Cartesian3.multiplyByScalar(upVec, 0.5 * dt, buoyancy); 
+      Cesium.Cartesian3.add(particle.velocity, buoyancy, particle.velocity);
+      
+      // 2. 真实地理风向漂移：沿局部东向和北向缓缓漂移
+      const windEast = new Cesium.Cartesian3();
+      Cesium.Cartesian3.multiplyByScalar(eastVec, 0.5 * dt, windEast);
+      Cesium.Cartesian3.add(particle.velocity, windEast, particle.velocity);
+      
+      const windNorth = new Cesium.Cartesian3();
+      Cesium.Cartesian3.multiplyByScalar(northVec, 0.25 * dt, windNorth);
+      Cesium.Cartesian3.add(particle.velocity, windNorth, particle.velocity);
+
+      // 3. 随仿真阶段时间推移的“渐进式向外二次大范围膨胀扩散”
+      const offset = Cesium.Cartesian3.subtract(particle.position, center, new Cesium.Cartesian3());
+      const dist = Cesium.Cartesian3.magnitude(offset);
+      if (dist > 0.01) {
+        const dir = new Cesium.Cartesian3();
+        Cesium.Cartesian3.normalize(offset, dir);
+        
+        // 根据阶段持续运行时间 (15 秒内渐进增强)
+        const elapsed = diffusionStartTime ? (Date.now() - diffusionStartTime) / 1000 : 0;
+        const systemTimeRatio = Math.min(elapsed / 15.0, 1.0);
+        
+        // 随着阶段进行，粒子向四周放射膨胀的速度适度增加
+        const extraForce = (4.0 + 12.0 * systemTimeRatio) * dt;
+        const expansion = new Cesium.Cartesian3();
+        Cesium.Cartesian3.multiplyByScalar(dir, extraForce, expansion);
+        Cesium.Cartesian3.add(particle.velocity, expansion, particle.velocity);
+        
+        // 动态调控粒子大小：远端的粒子适度膨胀
+        const ageRatio = particle.age / particle.life;
+        const currentEndScale = 8.0 + 8.0 * systemTimeRatio; // 最大可膨胀到 16.0 倍 (原为22.0)
+        particle.scale = 0.8 + (currentEndScale - 0.8) * ageRatio;
+      }
+
+      // 4. 空气阻力：阻力从 0.978 调整到 0.96，使扩散边界略微收拢，防止过度散开
+      const dragFactor = Math.pow(0.96, dt * 60);
+      particle.velocity.x *= dragFactor;
+      particle.velocity.y *= dragFactor;
+      particle.velocity.z *= dragFactor;
     }
   });
 }
@@ -837,9 +878,9 @@ function updateTankerSequence(phaseIndex, pointId = '') {
     diffusionParticle.show = isTankerFocus && (phaseIndex >= 4);
     // 阶段4（弥漫）开始产生，阶段5（扩散）显著增强
     if (phaseIndex === 4) {
-      diffusionParticle.emissionRate = 30.0;
+      diffusionParticle.emissionRate = 100.0; // 提升初始浓度
     } else if (phaseIndex >= 5) {
-      diffusionParticle.emissionRate = 80.0; // 显著增强
+      diffusionParticle.emissionRate = 180.0; // 显著增强，提供大范围浓烈雾气效果
     } else {
       diffusionParticle.emissionRate = 0.0;
     }
@@ -1582,6 +1623,12 @@ watch(() => props.activePhaseIndex, (next, prev) => {
   } else if (next < 7) {
     phase7StartTime = 0;
     tankerPhase7StartTime = 0;
+  }
+  
+  if (next >= 4 && (prev < 4 || !diffusionStartTime)) {
+    diffusionStartTime = Date.now();
+  } else if (next < 4) {
+    diffusionStartTime = 0;
   }
   updatePhaseScene(next);
 });

@@ -18,7 +18,10 @@
 
     <div class="main-layout">
       <!-- Left Sidebar (White) -->
-      <aside class="left-sidebar">
+      <aside class="left-sidebar" :class="{ collapsed: isLeftCollapsed }">
+        <button class="toggle-btn toggle-btn-left" type="button" @click="isLeftCollapsed = !isLeftCollapsed">
+          {{ isLeftCollapsed ? '▶' : '◀' }}
+        </button>
         <div class="sidebar-header">
           <h2 class="sidebar-title">工作目录 / 服务中心</h2>
           <span class="sidebar-subtitle">Service Center</span>
@@ -90,7 +93,10 @@
       </main>
 
       <!-- Right Sidebar (White) -->
-      <aside class="right-sidebar">
+      <aside class="right-sidebar" :class="{ collapsed: isRightCollapsed }">
+        <button class="toggle-btn toggle-btn-right" type="button" @click="isRightCollapsed = !isRightCollapsed">
+          {{ isRightCollapsed ? '◀' : '▶' }}
+        </button>
         <div class="sidebar-header">
           <h2 class="sidebar-title">处理参数与当前状态</h2>
           <span class="sidebar-subtitle">Processing Parameters</span>
@@ -172,6 +178,9 @@ const route = useRoute()
 const activeServiceId = ref('')
 const activeMenuKey = ref('')
 const globeRef = ref(null)
+
+const isLeftCollapsed = ref(false)
+const isRightCollapsed = ref(false)
 
 const activeAccidentIndex = ref(0)
 const currentFocusedPoint = ref('')
@@ -388,6 +397,7 @@ onMounted(() => {
   height: 0;
   width: 100%;
   overflow: hidden;
+  position: relative;
 }
 
 /* Top Nav Desktop (Menu bar + Toolbar) */
@@ -473,20 +483,72 @@ onMounted(() => {
 .left-sidebar,
 .right-sidebar {
   width: 380px;
-  height: 100%;
-  background: #ffffff;
+  height: calc(100% - 32px);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  overflow: visible;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 12px;
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .left-sidebar {
-  border-right: 1px solid #cbd5e1;
+  left: 16px;
+  z-index: 10;
+}
+
+.left-sidebar.collapsed {
+  transform: translateX(calc(-100% - 20px));
 }
 
 .right-sidebar {
-  border-left: 1px solid #cbd5e1;
+  right: 16px;
+  z-index: 10;
+}
+
+.right-sidebar.collapsed {
+  transform: translateX(calc(100% + 20px));
+}
+
+/* Sidebar Toggle Buttons */
+.toggle-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 50px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 11px;
+  transition: all 0.2s;
+  z-index: 11;
+  padding: 0;
+}
+.toggle-btn:hover {
+  color: #2563eb;
+  background: #f8fafc;
+}
+.toggle-btn-left {
+  right: -20px;
+  border-radius: 0 8px 8px 0;
+  border-left: none;
+}
+.toggle-btn-right {
+  left: -20px;
+  border-radius: 8px 0 0 8px;
+  border-right: none;
 }
 
 .sidebar-header {
@@ -667,7 +729,6 @@ onMounted(() => {
   flex-direction: column;
   overflow: hidden;
   background: #e2e8f0;
-  border-right: 1px solid #cbd5e1;
   position: relative;
 }
 
