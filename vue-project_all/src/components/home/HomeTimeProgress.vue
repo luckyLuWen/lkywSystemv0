@@ -175,11 +175,12 @@ watch([isPlaying, () => props.modelValue], ([playing, currentIdx]) => {
       // 货车专属逻辑 (保持用户原有设置)
       if (currentIdx === 1 || currentIdx === 2) duration = 3000
       else if (currentIdx >= 3 && currentIdx <= 5) duration = 3000 // 烟火灾害改为 3 秒
-      else if (currentIdx >= 6) duration = 3000 // 无人机阶段 3 秒
+      else if (currentIdx === 7) duration = 7000 // 无人感知部署阶段设为 7 秒，保证 6 秒飞行及停靠动画完整播放
+      else if (currentIdx >= 6) duration = 3000 // 其他无人机阶段 3 秒
     } else {
       // 油罐车专属逻辑 (完全分离)
-      // 目前全部设为 3 秒，后续可按需调整
-      duration = 3000
+      if (currentIdx === 7) duration = 7000 // 无人感知部署阶段设为 7 秒
+      else duration = 3000
     }
 
     playbackTimer = setTimeout(() => {
