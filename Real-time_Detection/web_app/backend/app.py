@@ -17,6 +17,9 @@ import json
 from pathlib import Path
 import warnings
 from rtsp_detector import RTSPDetector
+from database import save_detection
+from history_routes import history_bp
+from stats_routes import stats_bp
 
 
 
@@ -34,6 +37,8 @@ warnings.filterwarnings('ignore', message='.*Unsupported.*')
 
 app = Flask(__name__)
 CORS(app)
+app.register_blueprint(history_bp)
+app.register_blueprint(stats_bp)
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -272,22 +277,155 @@ def detect_image():
         result_filename = f"result_{unique_filename}"
         result_path = os.path.join(app.config['RESULT_FOLDER'], result_filename)
         cv2.imwrite(result_path, img)
-        
+
         # Convert to base64 for response
         _, buffer = cv2.imencode('.jpg', img)
         img_base64 = base64.b64encode(buffer).decode('utf-8')
-        
+
+        # Save to detection history
+        try:
+            save_detection(
+                timestamp=datetime.now().isoformat(),
+                model_name=model_name,
+                original_filename=filename,
+                saved_filename=unique_filename,
+                result_filename=result_filename,
+                detection_count=len(detections),
+                detections_json=json.dumps(detections),
+                inference_time_s=round(inference_time, 3),
+                conf_threshold=conf_threshold,
+                iou_threshold=iou_threshold,
+                source_type='image'
+            )
+        except Exception as e:
+            print(f"Failed to save detection history: {e}")
+
         return jsonify({
             'success': True,
             'detections': detections,
             'count': len(detections),
             'image': f"data:image/jpeg;base64,{img_base64}",
             'result_file': result_filename,
-            'inference_time': round(inference_time * 1000, 2)  # 转换为毫秒
+            'inference_time': round(inference_time, 3)
         })
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/detect/batch', methods=['POST'])
+def detect_batch():
+    """Detect objects in multiple uploaded images"""
+    try:
+        files = request.files.getlist('files')
+        if not files:
+            return jsonify({'error': 'No files provided'}), 400
+
+        available_models = list(MODEL_PATHS.keys())
+        default_model = available_models[0] if available_models else 'yolo11n'
+        model_name = request.form.get('model', default_model)
+        if model_name not in MODEL_PATHS:
+            model_name = default_model
+        conf_threshold = float(request.form.get('conf', 0.25))
+        iou_threshold = float(request.form.get('iou', 0.45))
+
+        model = load_model(model_name)
+        import time
+        total_start = time.time()
+        results_list = []
+
+        for file in files:
+            if file.filename == '' or not allowed_file(file.filename):
+                results_list.append({
+                    'filename': file.filename or 'unknown',
+                    'success': False,
+                    'error': 'Invalid file'
+                })
+                continue
+
+            try:
+                filename = build_safe_upload_name(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+                unique_filename = f"{timestamp}_{filename}"
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                file.save(filepath)
+
+                file_start = time.time()
+                results = model.predict(
+                    source=filepath, conf=conf_threshold,
+                    iou=iou_threshold, save=False
+                )
+                file_inference = time.time() - file_start
+
+                result = results[0]
+                img = cv2.imread(filepath)
+                detections = []
+                for box in result.boxes:
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                    conf = float(box.conf[0])
+                    cls = int(box.cls[0])
+                    class_name = result.names[cls]
+                    color = CLASS_COLORS.get(class_name, (0, 255, 0))
+                    cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
+                    label = f"{class_name} {conf:.2f}"
+                    cv2.putText(img, label, (x1, y1 - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                    detections.append({
+                        'class': class_name, 'confidence': conf,
+                        'bbox': [x1, y1, x2, y2]
+                    })
+
+                result_filename = f"result_{unique_filename}"
+                result_path = os.path.join(app.config['RESULT_FOLDER'], result_filename)
+                cv2.imwrite(result_path, img)
+
+                _, buffer = cv2.imencode('.jpg', img)
+                img_base64 = base64.b64encode(buffer).decode('utf-8')
+
+                try:
+                    save_detection(
+                        timestamp=datetime.now().isoformat(),
+                        model_name=model_name,
+                        original_filename=filename,
+                        saved_filename=unique_filename,
+                        result_filename=result_filename,
+                        detection_count=len(detections),
+                        detections_json=json.dumps(detections),
+                        inference_time_s=round(file_inference, 3),
+                        conf_threshold=conf_threshold,
+                        iou_threshold=iou_threshold,
+                        source_type='batch'
+                    )
+                except Exception as e:
+                    print(f"Failed to save batch detection history: {e}")
+
+                results_list.append({
+                    'filename': file.filename,
+                    'success': True,
+                    'detections': detections,
+                    'count': len(detections),
+                    'image': f"data:image/jpeg;base64,{img_base64}",
+                    'result_file': result_filename,
+                    'inference_time': round(file_inference, 3)
+                })
+            except Exception as file_err:
+                results_list.append({
+                    'filename': file.filename or 'unknown',
+                    'success': False,
+                    'error': str(file_err)
+                })
+
+        total_inference = time.time() - total_start
+        return jsonify({
+            'success': True,
+            'total_files': len(files),
+            'results': results_list,
+            'total_inference_time': round(total_inference, 3)
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/detect/video', methods=['POST'])
 def detect_video():
@@ -428,7 +566,7 @@ def detect_video():
         
         avg_frame_time = 0
         if len(sampled_frames) > 0:
-            avg_frame_time = round((total_inference_time / len(sampled_frames)) * 1000, 2)
+            avg_frame_time = round(total_inference_time / len(sampled_frames), 3)
         
         return jsonify({
             'success': True,
@@ -511,6 +649,12 @@ def get_result(filename):
     """Serve result files"""
     return send_from_directory(app.config['RESULT_FOLDER'], filename)
 
+
+@app.route('/api/uploads/<filename>')
+def get_upload(filename):
+    """Serve original uploaded files"""
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
@@ -524,6 +668,70 @@ def health_check():
         'model_ready': any(item['exists'] for item in model_status),
         'active_streams': len(rtsp_detectors)
     })
+
+
+@app.route('/api/system/info', methods=['GET'])
+def system_info():
+    """Real system metrics for telemetry dashboard"""
+    import subprocess
+    info = {
+        'gpu_name': 'N/A',
+        'cuda_version': 'N/A',
+        'vram_total_gb': 0,
+        'vram_used_gb': 0,
+        'vram_free_gb': 0,
+        'gpu_temp': 0,
+        'gpu_util': 0,
+        'model_loaded': False,
+        'model_name': '',
+        'total_detections_today': 0,
+        'uptime_seconds': 0,
+        'python_version': '',
+    }
+    try:
+        # GPU info via nvidia-smi
+        result = subprocess.run([
+            'nvidia-smi', '--query-gpu=name,temperature.gpu,utilization.gpu,memory.total,memory.used,memory.free',
+            '--format=csv,noheader,nounits'
+        ], capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            parts = [x.strip() for x in result.stdout.strip().split(',')]
+            if len(parts) >= 6:
+                info['gpu_name'] = parts[0]
+                info['gpu_temp'] = int(parts[1])
+                info['gpu_util'] = int(parts[2])
+                info['vram_total_gb'] = round(int(parts[3]) / 1024, 1)
+                info['vram_used_gb'] = round(int(parts[4]) / 1024, 1)
+                info['vram_free_gb'] = round(int(parts[5]) / 1024, 1)
+    except Exception:
+        pass
+
+    try:
+        info['cuda_version'] = torch.version.cuda or 'N/A'
+        info['python_version'] = sys.version.split()[0]
+    except Exception:
+        pass
+
+    try:
+        # Check loaded models
+        loaded = [name for name, model in MODELS.items() if model is not None]
+        info['model_loaded'] = len(loaded) > 0
+        info['model_name'] = loaded[0] if loaded else ''
+    except Exception:
+        pass
+
+    try:
+        from database import get_db
+        conn = get_db()
+        today = conn.execute(
+            "SELECT COUNT(*) FROM detections WHERE date(timestamp) = date('now')"
+        ).fetchone()[0]
+        conn.close()
+        info['total_detections_today'] = today
+    except Exception:
+        pass
+
+    return jsonify({'success': True, 'info': info})
 
 @app.route('/api/rtsp/start', methods=['POST'])
 def start_rtsp_detection():

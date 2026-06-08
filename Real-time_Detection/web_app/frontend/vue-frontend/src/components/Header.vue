@@ -25,7 +25,9 @@ defineProps({
 const tabs = [
   { id: 'image', label: '图片检测', icon: '📷' },
   { id: 'video', label: '视频检测', icon: '🎬' },
-  { id: 'webcam', label: '实时检测', icon: '📹' }
+  { id: 'webcam', label: '实时检测', icon: '📹' },
+  { id: 'history', label: '历史记录', icon: '📋' },
+  { id: 'stats', label: '统计仪表板', icon: '📊' }
 ]
 </script>
 
@@ -35,7 +37,7 @@ const tabs = [
   top: 0;
   left: 0;
   right: 0;
-  height: 80px;
+  height: 120px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -46,21 +48,21 @@ const tabs = [
 .nav-container {
   pointer-events: auto;
   display: flex;
-  gap: 10px;
+  gap: 12px;
   background: rgba(6, 26, 46, 0.8);
-  padding: 6px;
-  border-radius: 40px;
+  padding: 10px;
+  border-radius: 44px;
   border: 1px solid var(--border-cyan);
   backdrop-filter: blur(15px);
   box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
 .nav-pill {
-  padding: 8px 24px;
-  border-radius: 30px;
+  padding: 16px 36px;
+  border-radius: 34px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   cursor: pointer;
   transition: all 0.3s;
   color: var(--text-dim);
@@ -80,11 +82,11 @@ const tabs = [
 }
 
 .pill-icon {
-  font-size: 16px;
+  font-size: 26px;
 }
 
 .pill-label {
-  font-size: 14px;
+  font-size: 22px;
   font-weight: 500;
   letter-spacing: 1px;
 }
