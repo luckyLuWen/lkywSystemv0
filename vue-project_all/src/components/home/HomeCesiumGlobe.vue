@@ -2,6 +2,21 @@
   <div class="cesium-wrapper">
     <div id="cesiumContainer" ref="containerRef" class="cesium-container"></div>
     
+    <!-- 飞行动画照片 -->
+    <div
+      v-for="photo in flyingPhotos"
+      :key="photo.id"
+      class="flying-photo"
+      :style="{
+        left: photo.x + 'px',
+        top: photo.y + 'px',
+        width: photo.width + 'px',
+        height: photo.height + 'px',
+        opacity: photo.opacity,
+        backgroundImage: `url(${photo.src})`
+      }"
+    ></div>
+    
     <!-- 模型调整控制面板 -->
     <div class="debug-panel" v-if="false">
       <!-- 场景切换按钮 -->
@@ -113,6 +128,66 @@
       </table>
       <div class="shelter-popup-arrow"></div>
     </div>
+
+    <!-- 无人机现场侦察照片悬浮窗 -->
+    <div 
+      v-if="props.activePhaseIndex === 8" 
+      class="uav-photo-panel"
+    >
+      <div class="uav-photo-header">
+        <span class="uav-photo-icon">📸</span>
+        <span class="uav-photo-title">多角度现场侦察拍图 ({{ capturedCount }}/4)</span>
+        <span class="uav-status-tag" :class="{ 'status-done': capturedCount === 4 }">
+          {{ capturedCount === 4 ? '拍摄完成' : '侦察拍摄中...' }}
+        </span>
+      </div>
+      
+      <div class="uav-photo-content">
+        <!-- 主图区域 -->
+        <div class="uav-main-photo-wrapper">
+          <img 
+            v-if="activePhotoIndex !== null"
+            :src="currentPhotoSrc" 
+            :class="['uav-photo-img', 'photo-angle-' + activePhotoIndex]" 
+            alt="无人机侦察照片" 
+          />
+          <div v-else class="uav-photo-placeholder">
+            <div class="radar-scan"></div>
+            <span>等待无人机到达拍照位置...</span>
+          </div>
+          
+          <div class="uav-photo-overlay" v-if="activePhotoIndex !== null">
+            <div class="uav-photo-timestamp">REC ● {{ currentTimeStr }}</div>
+            <div class="uav-photo-coords">{{ getAngleName(activePhotoIndex) }} ({{ props.phases[0]?.id.startsWith('t-') ? '113.1048°E, 30.3855°N' : '113.0680°E, 30.2401°N' }})</div>
+          </div>
+        </div>
+        
+        <!-- 4张缩略图列表 -->
+        <div class="uav-thumbnails-row">
+          <div 
+            v-for="i in [0, 1, 2, 3]" 
+            :key="i"
+            class="uav-thumb-box"
+            :class="{ 
+              'is-captured': capturedPhotos[i], 
+              'is-active': activePhotoIndex === i 
+            }"
+            @click="selectThumb(i)"
+          >
+            <div class="uav-thumb-inner" v-if="capturedPhotos[i]">
+              <img 
+                :src="currentPhotoSrc" 
+                :class="['uav-thumb-img', 'photo-angle-' + i]" 
+              />
+              <div class="thumb-badge">角 {{ i+1 }}</div>
+            </div>
+            <div class="uav-thumb-lock" v-else>
+              <span class="lock-icon">🔒</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -122,6 +197,84 @@ import * as Cesium from 'cesium'
 
 // 当前选中的场景
 const currentScene = ref('truck')
+
+// 无人机视频/图像时间戳更新
+const currentTimeStr = ref('')
+const updateTime = () => {
+  const now = new Date()
+  const pad = (num) => String(num).padStart(2, '0')
+  currentTimeStr.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+}
+let timeInterval = null
+
+// 无人机多角度照片拍摄状态
+const capturedPhotos = ref([false, false, false, false])
+const activePhotoIndex = ref(null)
+
+const capturedCount = computed(() => {
+  return capturedPhotos.value.filter(Boolean).length
+})
+
+const getAngleName = (index) => {
+  const names = ['东北角视角', '东南角视角', '西南角视角', '西北角视角']
+  return names[index] || ''
+}
+
+const selectThumb = (index) => {
+  if (capturedPhotos.value[index]) {
+    activePhotoIndex.value = index
+  }
+}
+
+const currentPhotoSrc = computed(() => {
+  const isTruck = props.phases[0]?.id.startsWith('t-')
+  return isTruck ? '/Dashboard/images/uav_aerial_photo.png' : '/Dashboard/images/tanker_aerial_photo.png'
+})
+
+const flyingPhotos = ref([]);
+
+function triggerPhotoAnimation(index, cartesianPos) {
+  if (!viewer) return;
+  const windowPos = Cesium.SceneTransforms.worldToWindowCoordinates(viewer.scene, cartesianPos);
+  if (!windowPos) return;
+
+  const photoId = Date.now() + '-' + index;
+  const photo = reactive({
+    id: photoId,
+    index: index,
+    src: currentPhotoSrc.value,
+    x: windowPos.x - 20,
+    y: windowPos.y - 15,
+    width: 40,
+    height: 30,
+    opacity: 1
+  });
+  flyingPhotos.value.push(photo);
+
+  setTimeout(() => {
+    const thumbs = document.querySelectorAll('.sidebar-thumb-box, .uav-thumb-box');
+    const targetEl = thumbs[index];
+    if (targetEl) {
+      const rect = targetEl.getBoundingClientRect();
+      photo.x = rect.left;
+      photo.y = rect.top;
+      photo.width = rect.width;
+      photo.height = rect.height;
+    } else {
+      photo.x = window.innerWidth - 100;
+      photo.y = window.innerHeight / 2;
+      photo.width = 60;
+      photo.height = 40;
+    }
+  }, 50);
+
+  setTimeout(() => {
+    const idx = flyingPhotos.value.findIndex(p => p.id === photoId);
+    if (idx !== -1) {
+      flyingPhotos.value.splice(idx, 1);
+    }
+  }, 900);
+}
 
 
 
@@ -259,6 +412,7 @@ const rescueCarAdjust = reactive({
 let uavEntities = []
 let rescueCarEntities = []
 let phase7StartTime = 0
+let uavOrbitStartTime = 0
 let diffusionStartTime = 0
 let lastUavPhaseIndex = -1
 
@@ -283,6 +437,7 @@ const tankerRescueCarAdjust = reactive({
 let tankerUavEntities = []
 let tankerRescueCarEntities = []
 let tankerPhase7StartTime = 0
+let tankerUavOrbitStartTime = 0
 let lastTankerUavPhaseIndex = -1
 
 const containerRef = ref(null)
@@ -431,15 +586,16 @@ function applyOrbitView() {
       lat = scenarioPoints[pointId].latitude;
     }
   } else {
-    lng = 108; lat = 31;
+    // 湖北省中心点 (微调经纬度，使地图在视觉上避开左侧边栏和底部时间线)
+    lng = 112.5; lat = 30.6;
   }
 
   try {
     const target = Cesium.Cartesian3.fromDegrees(lng, lat, 0)
     
-    // 默认视角参数 - 使用无人装备出动阶段的视角作为默认视角
-    let range = isFocused ? (props.focusedPointId === 'accident_red' ? 480 : 480) : 18000000
-    let pitch = isFocused ? (props.focusedPointId === 'accident_red' ? Cesium.Math.toRadians(-32) : Cesium.Math.toRadians(-38)) : Cesium.Math.toRadians(-34)
+    // 默认视角参数 - 使用正上方向下看 (-90度) 展示完整的湖北省，并拉大高度以避免被UI遮挡
+    let range = isFocused ? (props.focusedPointId === 'accident_red' ? 480 : 480) : 1200000
+    let pitch = isFocused ? (props.focusedPointId === 'accident_red' ? Cesium.Math.toRadians(-32) : Cesium.Math.toRadians(-38)) : Cesium.Math.toRadians(-90)
 
     if (isFocused) {
       if (props.activePhaseIndex <= 1) {
@@ -722,6 +878,86 @@ function updatePopupPosition() {
   }
 }
 
+// 辅助方法：将经纬度数组转换为 Cesium.Cartesian3 数组
+const convertCoordsToCartesians = (coords) => {
+  const degrees = [];
+  coords.forEach(pt => {
+    degrees.push(pt[0], pt[1]);
+  });
+  return Cesium.Cartesian3.fromDegreesArray(degrees);
+};
+
+// 绘制湖北省行政边界外框线 (霓虹发光材质)
+function drawBoundaryLine(coords) {
+  if (!viewer) return;
+  const positions = convertCoordsToCartesians(coords);
+  viewer.entities.add({
+    name: '湖北省行政边界',
+    polyline: {
+      positions: positions,
+      width: 4.5,
+      material: new Cesium.PolylineGlowMaterialProperty({
+        glowPower: 0.22,
+        color: Cesium.Color.fromCssColorString('#00ffff') // 蓝绿色发光边界
+      }),
+      clampToGround: true
+    }
+  });
+}
+
+// 异步加载湖北省行政区划边界数据，并建立反向蒙版 (遮罩层)
+async function loadHubeiMask() {
+  if (!viewer) return;
+  try {
+    const response = await fetch('/Dashboard/hubei.json');
+    if (!response.ok) throw new Error('读取 hubei.json 失败');
+    const geojson = await response.json();
+
+    const holes = [];
+    geojson.features.forEach(feature => {
+      const geometry = feature.geometry;
+      if (geometry.type === 'Polygon') {
+        const outerRing = convertCoordsToCartesians(geometry.coordinates[0]);
+        holes.push(new Cesium.PolygonHierarchy(outerRing));
+        drawBoundaryLine(geometry.coordinates[0]);
+      } else if (geometry.type === 'MultiPolygon') {
+        geometry.coordinates.forEach(polygon => {
+          const outerRing = convertCoordsToCartesians(polygon[0]);
+          holes.push(new Cesium.PolygonHierarchy(outerRing));
+          drawBoundaryLine(polygon[0]);
+        });
+      }
+    });
+
+    // 建立一个安全的大范围外圈多边形（避免南北极和经度 180 度折叠/纠缠造成的渲染失败）
+    const worldPolygonHierarchy = new Cesium.PolygonHierarchy(
+      Cesium.Cartesian3.fromDegreesArray([
+        50, 65,
+        160, 65,
+        160, 5,
+        50, 5
+      ]),
+      holes
+    );
+
+    // 将湖北省作为“空洞”添加到这个多边形中，实现反向遮罩：
+    // 湖北省外区域被深蓝黑色（匹配大屏底色）遮盖，仅有湖北省内部保持透明以显示遥感地图与地形
+    viewer.entities.add({
+      id: 'hubei-mask',
+      name: '湖北省行政边界反向遮罩',
+      polygon: {
+        hierarchy: worldPolygonHierarchy,
+        material: Cesium.Color.fromCssColorString('#070b19').withAlpha(0.96), // 贴合大屏的极简深邃蓝底色
+        classificationType: Cesium.ClassificationType.BOTH,
+        outline: false
+      }
+    });
+
+  } catch (error) {
+    console.error('加载湖北省行政边界蒙版时出错:', error);
+  }
+}
+
 async function initViewer() {
   if (!containerRef.value || viewer) return
   try {
@@ -731,7 +967,18 @@ async function initViewer() {
       timeline: false, shouldAnimate: true, skyAtmosphere: false,
     })
     window.viewer = viewer
-    viewer.scene.globe.enableLighting = true
+    
+    // 关闭地球物理光照（防止因为时差导致场景处于黑夜）
+    viewer.scene.globe.enableLighting = false
+    
+    // 关键修复：添加“相机头灯”，将环境光强制绑定到相机视角前方，这样不管什么角度看模型，模型都是被照亮的
+    viewer.scene.light = new Cesium.DirectionalLight({
+      direction: viewer.camera.direction
+    })
+    viewer.scene.preRender.addEventListener(function(scene, time) {
+      scene.light.direction = Cesium.Cartesian3.clone(scene.camera.directionWC, scene.light.direction)
+    })
+
     viewer.cesiumWidget.creditContainer.style.display = 'none'
 
     viewer.imageryLayers.removeAll()
@@ -739,6 +986,13 @@ async function initViewer() {
       'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
     )
     viewer.imageryLayers.addImageryProvider(imagery)
+
+    // 加载湖北省行政边界反向蒙版
+    try {
+      await loadHubeiMask()
+    } catch (e) {
+      console.warn('初始化湖北省遮罩蒙版时出现警告:', e.message)
+    }
 
     try {
       addEventEntities()
@@ -954,6 +1208,7 @@ function addEventEntities() {
   let sharedTankerRescueCarPosition = null;
   focusAreaEntity = viewer.entities.add({
     id: 'event-area',
+    show: false,
     position: Cesium.Cartesian3.fromDegrees(114.35, 30.55, 0),
     ellipse: {
       semiMinorAxis: 150000, semiMajorAxis: 190000, material: toCesiumColor('#00e5ff', 0.06),
@@ -1120,16 +1375,71 @@ function addEventEntities() {
         const height = startHeight + (targetHeight - startHeight) * easeT;
         return Cesium.Cartesian3.fromDegrees(lng, lat, height);
       } else {
-        // 阶段 >= 8 停留在事故点上方
-        return Cesium.Cartesian3.fromDegrees(targetLng, targetLat, targetHeight);
+        // 阶段 >= 8：无人机围绕事故点做圆周绕飞拍照 (绕远一点，且只绕一圈)
+        if (!uavOrbitStartTime) {
+          uavOrbitStartTime = Date.now();
+        }
+        const elapsed = Date.now() - uavOrbitStartTime;
+        const period = 12000; // 12秒绕一圈
+        const rawAngle = (elapsed / period) * 2.0 * Math.PI;
+        const angle = Math.min(rawAngle, 2.0 * Math.PI); // 限制只绕一圈
+        
+        // 绕飞半径调大 (绕远一点，约 50 米)
+        const radiusLng = 0.00055;
+        const radiusLat = 0.00045;
+        
+        const currentLng = targetLng + radiusLng * Math.cos(angle);
+        const currentLat = targetLat + radiusLat * Math.sin(angle);
+
+        // 触发多角度照片拍摄状态 (在圆周飞行不同弧度时拍照)
+        if (angle >= 0.5 * Math.PI && !capturedPhotos.value[0]) {
+          capturedPhotos.value[0] = true;
+          activePhotoIndex.value = 0;
+          triggerPhotoAnimation(0, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, targetHeight));
+        }
+        if (angle >= 1.0 * Math.PI && !capturedPhotos.value[1]) {
+          capturedPhotos.value[1] = true;
+          activePhotoIndex.value = 1;
+          triggerPhotoAnimation(1, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, targetHeight));
+        }
+        if (angle >= 1.5 * Math.PI && !capturedPhotos.value[2]) {
+          capturedPhotos.value[2] = true;
+          activePhotoIndex.value = 2;
+          triggerPhotoAnimation(2, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, targetHeight));
+        }
+        if (angle >= 2.0 * Math.PI && !capturedPhotos.value[3]) {
+          capturedPhotos.value[3] = true;
+          activePhotoIndex.value = 3;
+          triggerPhotoAnimation(3, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, targetHeight));
+        }
+
+        return Cesium.Cartesian3.fromDegrees(currentLng, currentLat, targetHeight);
       }
     }, false);
 
     const uavOrientation = new Cesium.CallbackProperty(() => {
       const pos = uavPosition.getValue(viewer.clock.currentTime);
       if (!pos) return undefined;
-      const headingDeg = Number(uavAdjust.heading) || 18;
-      const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(headingDeg), 0, 0);
+
+      let headingRad;
+      if (props.activePhaseIndex >= 8) {
+        // 计算无人机当前位置指向事故中心的朝向角度，使其镜头始终对准事故车拍照
+        const targetLng = Number(truckAdjust.lng) || 113.104833;
+        const targetLat = Number(truckAdjust.lat) || 30.385469;
+        
+        // 从当前位置转换出经纬度
+        const carto = Cesium.Cartographic.fromCartesian(pos);
+        const currentLng = Cesium.Math.toDegrees(carto.longitude);
+        const currentLat = Cesium.Math.toDegrees(carto.latitude);
+        
+        // 朝向目标点的弧度：Cesium 航向角 0 度为正北，顺时针方向增加
+        headingRad = Math.PI / 2 - Math.atan2(targetLat - currentLat, targetLng - currentLng);
+      } else {
+        const headingDeg = Number(uavAdjust.heading) || 18;
+        headingRad = Cesium.Math.toRadians(headingDeg);
+      }
+
+      const hpr = new Cesium.HeadingPitchRoll(headingRad, 0, 0);
       return Cesium.Transforms.headingPitchRollQuaternion(pos, hpr);
     }, false);
 
@@ -1221,26 +1531,133 @@ function addEventEntities() {
 
     const tankerUavPosition = new Cesium.CallbackProperty(() => {
       const startHeight = Number(tankerUavAdjust.height) || 11.5;
-      if (sharedTankerRescueCarPosition) {
-        const carPos = sharedTankerRescueCarPosition.getValue(viewer.clock.currentTime);
-        if (carPos) {
-          const cartographic = Cesium.Cartographic.fromCartesian(carPos);
-          const lng = Cesium.Math.toDegrees(cartographic.longitude);
-          const lat = Cesium.Math.toDegrees(cartographic.latitude);
+      const targetLng = Number(tankerPointAdjust.lng) || 113.067999;
+      const targetLat = Number(tankerPointAdjust.lat) || 30.2401;
+
+      if (props.activePhaseIndex <= 7) {
+        if (sharedTankerRescueCarPosition) {
+          const carPos = sharedTankerRescueCarPosition.getValue(viewer.clock.currentTime);
+          if (carPos) {
+            const cartographic = Cesium.Cartographic.fromCartesian(carPos);
+            const lng = Cesium.Math.toDegrees(cartographic.longitude);
+            const lat = Cesium.Math.toDegrees(cartographic.latitude);
+            return Cesium.Cartesian3.fromDegrees(lng, lat, startHeight);
+          }
+        }
+        
+        const startLng = Number(tankerRescueCarAdjust.lng) || 113.06929;
+        const startLat = Number(tankerRescueCarAdjust.lat) || 30.2393;
+        return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
+      } else {
+        // 阶段 >= 8：先从车顶飞向绕飞起点，再围绕事故点做圆周绕飞拍照 (只绕一圈)
+        if (!tankerUavOrbitStartTime) {
+          tankerUavOrbitStartTime = Date.now();
+        }
+        const elapsed = Date.now() - tankerUavOrbitStartTime;
+        
+        // 起点：救援车的停靠终点 (0.55 处)
+        const startLng = Number(tankerRescueCarAdjust.lng) || 113.06929;
+        const startLat = Number(tankerRescueCarAdjust.lat) || 30.2393;
+        const carLng = startLng + 0.55 * (targetLng - startLng);
+        const carLat = startLat + 0.55 * (targetLat - startLat);
+
+        // 绕飞半径 (约 50 米)
+        const radiusLng = 0.00055;
+        const radiusLat = 0.00045;
+        
+        // 飞行阶段时间配置
+        const flyDuration = 3000;
+        const orbitDuration = 12000;
+        const returnDuration = 3000;
+        
+        // 绕飞起点 (angle = 0)
+        const orbitStartLng = targetLng + radiusLng;
+        const orbitStartLat = targetLat;
+        
+        if (elapsed < flyDuration) {
+          // 1. 从救援车飞向绕飞起点
+          const t = elapsed / flyDuration;
+          const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+          
+          const lng = carLng + (orbitStartLng - carLng) * easeT;
+          const lat = carLat + (orbitStartLat - carLat) * easeT;
           return Cesium.Cartesian3.fromDegrees(lng, lat, startHeight);
+        } else if (elapsed < flyDuration + orbitDuration) {
+          // 2. 围绕事故点进行圆周绕飞拍照
+          const orbitElapsed = elapsed - flyDuration;
+          const rawAngle = (orbitElapsed / orbitDuration) * 2.0 * Math.PI;
+          const angle = Math.min(rawAngle, 2.0 * Math.PI); // 限制只绕一圈
+          
+          const currentLng = targetLng + radiusLng * Math.cos(angle);
+          const currentLat = targetLat + radiusLat * Math.sin(angle);
+          
+          // 触发多角度照片拍摄状态
+          if (angle >= 0.5 * Math.PI && !capturedPhotos.value[0]) {
+            capturedPhotos.value[0] = true;
+            activePhotoIndex.value = 0;
+            triggerPhotoAnimation(0, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, startHeight));
+          }
+          if (angle >= 1.0 * Math.PI && !capturedPhotos.value[1]) {
+            capturedPhotos.value[1] = true;
+            activePhotoIndex.value = 1;
+            triggerPhotoAnimation(1, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, startHeight));
+          }
+          if (angle >= 1.5 * Math.PI && !capturedPhotos.value[2]) {
+            capturedPhotos.value[2] = true;
+            activePhotoIndex.value = 2;
+            triggerPhotoAnimation(2, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, startHeight));
+          }
+          if (angle >= 2.0 * Math.PI && !capturedPhotos.value[3]) {
+            capturedPhotos.value[3] = true;
+            activePhotoIndex.value = 3;
+            triggerPhotoAnimation(3, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, startHeight));
+          }
+
+          return Cesium.Cartesian3.fromDegrees(currentLng, currentLat, startHeight);
+        } else if (elapsed < flyDuration + orbitDuration + returnDuration) {
+          // 3. 绕飞结束，飞回救援车原点
+          const returnElapsed = elapsed - flyDuration - orbitDuration;
+          const t = returnElapsed / returnDuration;
+          const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+          
+          // 确保拍摄状态已全部完成
+          if (!capturedPhotos.value[3]) {
+            capturedPhotos.value[3] = true;
+            activePhotoIndex.value = 3;
+            triggerPhotoAnimation(3, Cesium.Cartesian3.fromDegrees(orbitStartLng, orbitStartLat, startHeight));
+          }
+
+          const lng = orbitStartLng + (carLng - orbitStartLng) * easeT;
+          const lat = orbitStartLat + (carLat - orbitStartLat) * easeT;
+          return Cesium.Cartesian3.fromDegrees(lng, lat, startHeight);
+        } else {
+          // 4. 返回并悬停在救援车上方
+          return Cesium.Cartesian3.fromDegrees(carLng, carLat, startHeight);
         }
       }
-      
-      const startLng = Number(tankerRescueCarAdjust.lng) || 113.06929;
-      const startLat = Number(tankerRescueCarAdjust.lat) || 30.2393;
-      return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
     }, false);
 
     const tankerUavOrientation = new Cesium.CallbackProperty(() => {
       const pos = tankerUavPosition.getValue(viewer.clock.currentTime);
       if (!pos) return undefined;
-      const headingDeg = Number(tankerUavAdjust.heading) || 18;
-      const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(headingDeg), 0, 0);
+
+      let headingRad;
+      if (props.activePhaseIndex >= 8) {
+        // 计算无人机当前位置指向事故中心的朝向角度，使其镜头始终对准事故车拍照
+        const targetLng = Number(tankerPointAdjust.lng) || 113.067999;
+        const targetLat = Number(tankerPointAdjust.lat) || 30.2401;
+        
+        const carto = Cesium.Cartographic.fromCartesian(pos);
+        const currentLng = Cesium.Math.toDegrees(carto.longitude);
+        const currentLat = Cesium.Math.toDegrees(carto.latitude);
+        
+        headingRad = Math.PI / 2 - Math.atan2(targetLat - currentLat, targetLng - currentLng);
+      } else {
+        const headingDeg = Number(tankerUavAdjust.heading) || 18;
+        headingRad = Cesium.Math.toRadians(headingDeg);
+      }
+
+      const hpr = new Cesium.HeadingPitchRoll(headingRad, 0, 0);
       return Cesium.Transforms.headingPitchRollQuaternion(pos, hpr);
     }, false);
 
@@ -1346,6 +1763,15 @@ function updatePhaseScene(index) {
   if (!viewer || !props.phases.length || !focusAreaEntity) return
 
   try {
+    if (index !== 7) {
+      phase7StartTime = 0;
+    }
+    if (index !== 8) {
+      uavOrbitStartTime = 0;
+      tankerUavOrbitStartTime = 0;
+      capturedPhotos.value = [false, false, false, false];
+      activePhotoIndex.value = null;
+    }
     const phase = props.phases[index] || props.phases[0]
     const pointId = props.focusedPointId || phase.focusPoint || 'gateway'
     const point = scenarioPoints[pointId] || scenarioPoints.gateway
@@ -1614,7 +2040,7 @@ function flyToUav() {
   console.log('正在飞往无人机位置')
 }
 
-defineExpose({ zoomToPoint });
+defineExpose({ zoomToPoint, capturedPhotos, activePhotoIndex, currentTimeStr });
 
 watch(() => props.activePhaseIndex, (next, prev) => {
   if (next === 7 && prev !== 7) {
@@ -1637,9 +2063,14 @@ watch(() => props.focusedPointId, () => {
   updatePhaseScene(props.activePhaseIndex);
 });
 
-onMounted(() => initViewer())
+onMounted(() => {
+  initViewer()
+  updateTime()
+  timeInterval = setInterval(updateTime, 1000)
+})
 onBeforeUnmount(() => {
   stopAutoRotate()
+  if (timeInterval) clearInterval(timeInterval)
   if (viewer) {
     viewer.scene.postRender.removeEventListener(updateModelsReadyStatus)
     viewer.scene.postRender.removeEventListener(updatePopupPosition)
@@ -1654,6 +2085,221 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .cesium-wrapper, .cesium-container { width: 100%; height: 100%; position: relative; }
+
+/* 无人机拍照侦察悬浮窗样式 */
+.uav-photo-panel {
+  position: absolute;
+  top: 80px;
+  right: 20px;
+  width: 350px;
+  background: rgba(7, 11, 25, 0.9);
+  border: 1px solid rgba(0, 255, 255, 0.45);
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.65), 0 0 12px rgba(0, 255, 255, 0.2);
+  z-index: 1000;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  animation: photoPanelFadeIn 0.3s ease-out;
+  pointer-events: auto;
+}
+
+.uav-photo-header {
+  background: rgba(0, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(0, 255, 255, 0.25);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.uav-photo-icon {
+  font-size: 14px;
+}
+
+.uav-photo-title {
+  color: #00ffff;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.uav-status-tag {
+  margin-left: auto;
+  font-size: 10px;
+  padding: 2px 6px;
+  background: rgba(255, 169, 64, 0.15);
+  color: #ffa940;
+  border: 1px solid rgba(255, 169, 64, 0.35);
+  border-radius: 4px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.uav-status-tag.status-done {
+  background: rgba(82, 196, 26, 0.15);
+  color: #52c41a;
+  border: 1px solid rgba(82, 196, 26, 0.35);
+}
+
+.uav-photo-content {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.uav-main-photo-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: #000;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.uav-photo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  font-size: 12px;
+  gap: 10px;
+}
+
+.radar-scan {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px dashed #00ffff;
+  animation: spin 3s linear infinite;
+}
+
+.uav-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 模拟多角度透视和裁剪效果 */
+.photo-angle-0 {
+  transform: scale(1.0);
+}
+.photo-angle-1 {
+  transform: scale(1.22) rotate(90deg);
+}
+.photo-angle-2 {
+  transform: scale(1.15) scaleX(-1);
+}
+.photo-angle-3 {
+  transform: scale(1.3) rotate(270deg);
+}
+
+.uav-photo-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #fff;
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.uav-photo-timestamp {
+  color: #ff4d4f;
+  font-weight: bold;
+}
+
+.uav-photo-coords {
+  color: #00e5ff;
+}
+
+.uav-thumbnails-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.uav-thumb-box {
+  flex: 1;
+  aspect-ratio: 16 / 10;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+  position: relative;
+  cursor: not-allowed;
+  transition: all 0.25s ease;
+}
+
+.uav-thumb-box.is-captured {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+}
+
+.uav-thumb-box.is-captured:hover {
+  border-color: #00ffff;
+  transform: translateY(-2px);
+}
+
+.uav-thumb-box.is-captured.is-active {
+  border: 1.5px solid #00ffff;
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.4);
+}
+
+.uav-thumb-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.uav-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumb-badge {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #00ffff;
+  font-size: 8px;
+  padding: 1px 3px;
+  border-radius: 2px;
+  font-family: monospace;
+  font-weight: bold;
+  border: 0.5px solid rgba(0, 255, 255, 0.3);
+}
+
+.uav-thumb-lock {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.4;
+}
+
+.lock-icon {
+  font-size: 11px;
+}
+
+@keyframes photoPanelFadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 /* 避难点 HTML 悬浮窗样式 */
 .shelter-popup-panel {
@@ -1790,4 +2436,18 @@ onBeforeUnmount(() => {
   background: #00e5ff; color: #061628; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold;
 }
 
+</style>
+
+<style>
+.flying-photo {
+  position: fixed;
+  z-index: 9999;
+  background-size: cover;
+  background-position: center;
+  border: 2px solid #00e5ff;
+  border-radius: 4px;
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.8);
+  transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+  pointer-events: none;
+}
 </style>
