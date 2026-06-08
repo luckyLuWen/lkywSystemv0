@@ -7,11 +7,30 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $publicRoot = Join-Path $root 'vue-project_all\public'
 
+function Assert-TargetInsidePublicRoot {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Path
+  )
+
+  $fullPublicRoot = [System.IO.Path]::GetFullPath($publicRoot).TrimEnd(
+    [System.IO.Path]::DirectorySeparatorChar,
+    [System.IO.Path]::AltDirectorySeparatorChar
+  ) + [System.IO.Path]::DirectorySeparatorChar
+  $fullPath = [System.IO.Path]::GetFullPath($Path)
+
+  if (-not $fullPath.StartsWith($fullPublicRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "Refusing to reset directory outside public root: $Path"
+  }
+}
+
 function Reset-Directory {
   param(
     [Parameter(Mandatory = $true)]
     [string]$Path
   )
+
+  Assert-TargetInsidePublicRoot -Path $Path
 
   if (Test-Path -LiteralPath $Path) {
     Remove-Item -LiteralPath $Path -Recurse -Force
