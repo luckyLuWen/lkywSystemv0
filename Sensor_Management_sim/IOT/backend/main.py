@@ -11,10 +11,12 @@ import random
 import shutil
 import socket
 import sqlite3
+import sys
 import threading
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, Optional
 
 import cv2
@@ -31,6 +33,34 @@ os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = (
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HOSTNAME = socket.gethostname()
+REPO_ROOT = Path(__file__).resolve().parents[3]
+INTEGRATION_CLIENT_DIR = REPO_ROOT / "Integration_Hub"
+if str(INTEGRATION_CLIENT_DIR) not in sys.path:
+    sys.path.insert(0, str(INTEGRATION_CLIENT_DIR))
+
+try:
+    from event_client import (
+        IntegrationCommandClient,
+        IntegrationEventPublisher,
+        build_command_status_payload,
+    )
+except Exception:
+    class IntegrationEventPublisher:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def publish(self, *args, **kwargs):
+            return False
+
+    class IntegrationCommandClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def poll(self, *args, **kwargs):
+            return []
+
+    def build_command_status_payload(command, status, **kwargs):
+        return {"commandId": command.get("commandId", ""), "status": status, **kwargs}
 
 DB_PATH = os.getenv("DB_PATH", os.path.join(BASE_DIR, "sensor_data.db"))
 IMG_DIR = os.getenv("IMG_DIR", r"D:\sat\image")
@@ -43,6 +73,24 @@ SYSTEM_RUNNING = os.getenv("SYSTEM_RUNNING", "1").strip().lower() in {"1", "true
 SAMPLING_INTERVAL_SECONDS = float(os.getenv("SAMPLING_INTERVAL_SECONDS", "0.5"))
 NODE_OFFLINE_AFTER_SECONDS = float(os.getenv("NODE_OFFLINE_AFTER_SECONDS", "5"))
 VIDEO_OFFLINE_AFTER_SECONDS = float(os.getenv("VIDEO_OFFLINE_AFTER_SECONDS", "5"))
+SENSOR_EVENT_STATUS_INTERVAL_SECONDS = float(os.getenv("SENSOR_EVENT_STATUS_INTERVAL_SECONDS", "5"))
+SENSOR_EVENT_THRESHOLD_COOLDOWN_SECONDS = float(os.getenv("SENSOR_EVENT_THRESHOLD_COOLDOWN_SECONDS", "60"))
+SENSOR_THRESHOLDS = {
+    "smoke": float(os.getenv("SENSOR_THRESHOLD_SMOKE", "600000")),
+    "tvoc": float(os.getenv("SENSOR_THRESHOLD_TVOC", "2.0")),
+    "co": float(os.getenv("SENSOR_THRESHOLD_CO", "50")),
+}
+INTEGRATION_SOURCE_ID = os.getenv("INTEGRATION_SOURCE_ID", f"sensor-management-{GATEWAY_MODE}")
+EVENT_PUBLISHER = IntegrationEventPublisher(source=INTEGRATION_SOURCE_ID)
+COMMAND_CLIENT = IntegrationCommandClient(
+    target=INTEGRATION_SOURCE_ID,
+    targets=[
+        INTEGRATION_SOURCE_ID,
+        "sensor-management",
+        f"sensor-management-{GATEWAY_MODE}",
+        "sensor",
+    ],
+)
 
 DRONE_RTMP_URL = os.getenv("DRONE_RTMP_URL", "rtmp://192.168.0.67:1935/live/abc")
 
@@ -92,6 +140,8 @@ data_lock = threading.Lock()
 state_lock = threading.Lock()
 LAST_SAMPLE_AT: Optional[datetime] = None
 LAST_SAMPLE_DURATION_MS: Optional[float] = None
+LAST_STATUS_EVENT_AT = 0.0
+LAST_THRESHOLD_EVENT_AT: Dict[str, float] = {}
 
 
 def ensure_directory(path: str) -> None:
@@ -348,6 +398,152 @@ def build_simulated_payload() -> dict:
     return data
 
 
+def publish_sensor_observation_event(sampled: dict, duration_ms: float) -> None:
+    global LAST_STATUS_EVENT_AT
+
+    now = time.time()
+    if now - LAST_STATUS_EVENT_AT < SENSOR_EVENT_STATUS_INTERVAL_SECONDS:
+        return
+
+    LAST_STATUS_EVENT_AT = now
+    EVENT_PUBLISHER.publish(
+        "sensor.observation.updated",
+        subject="sensor-gateway",
+        payload={
+            "mode": GATEWAY_MODE,
+            "running": SYSTEM_RUNNING,
+            "samplingIntervalSeconds": SAMPLING_INTERVAL_SECONDS,
+            "sampleDurationMs": duration_ms,
+            "sampledAt": datetime.now().isoformat(timespec="seconds"),
+            "nodes": get_node_snapshot(),
+            "latestData": sampled,
+        },
+    )
+
+
+def publish_sensor_threshold_events(sampled: dict) -> None:
+    now = time.time()
+    for node_key in ("node1", "node2"):
+        node_data = sampled.get(node_key) or {}
+        node_cfg = NODES.get(node_key, {})
+        for metric, threshold in SENSOR_THRESHOLDS.items():
+            value = node_data.get(metric)
+            if value is None or float(value) < threshold:
+                continue
+
+            event_key = f"{node_key}:{metric}"
+            if now - LAST_THRESHOLD_EVENT_AT.get(event_key, 0.0) < SENSOR_EVENT_THRESHOLD_COOLDOWN_SECONDS:
+                continue
+
+            LAST_THRESHOLD_EVENT_AT[event_key] = now
+            EVENT_PUBLISHER.publish(
+                "sensor.threshold.exceeded",
+                subject=event_key,
+                severity="warn",
+                payload={
+                    "nodeId": node_key,
+                    "nodeLabel": node_cfg.get("label", node_key),
+                    "nodeName": node_cfg.get("display_name", node_key),
+                    "metric": metric,
+                    "value": value,
+                    "threshold": threshold,
+                    "mode": GATEWAY_MODE,
+                    "sampledAt": datetime.now().isoformat(timespec="seconds"),
+                },
+            )
+
+
+def publish_command_status(command: dict, status: str, message: str = "", result: Optional[dict] = None, error_message: str = "") -> None:
+    command_id = command.get("commandId", "")
+    severity = "error" if status == "failed" else "info"
+    EVENT_PUBLISHER.publish(
+        f"command.{status}",
+        subject=command_id,
+        severity=severity,
+        correlation_id=command_id,
+        payload=build_command_status_payload(
+            command,
+            status,
+            message=message,
+            result=result or {},
+            error_message=error_message,
+        ),
+    )
+
+
+def set_sampling_running(active: bool, origin: str = "api", command: Optional[dict] = None) -> dict:
+    global SYSTEM_RUNNING
+
+    with state_lock:
+        previous_running = SYSTEM_RUNNING
+        SYSTEM_RUNNING = bool(active)
+        running = SYSTEM_RUNNING
+
+    event_payload = {
+        "previousRunning": previous_running,
+        "running": running,
+        "mode": GATEWAY_MODE,
+        "origin": origin,
+        "changedAt": datetime.now().isoformat(timespec="seconds"),
+    }
+    if command:
+        event_payload["commandId"] = command.get("commandId", "")
+        event_payload["commandType"] = command.get("type", "")
+
+    EVENT_PUBLISHER.publish(
+        "sensor.sampling.started" if running else "sensor.sampling.stopped",
+        subject="sensor-gateway",
+        correlation_id=command.get("commandId", "") if command else "",
+        payload=event_payload,
+    )
+    return event_payload
+
+
+def execute_sensor_command(command: dict) -> None:
+    command_type = command.get("type", "")
+    try:
+        publish_command_status(command, "accepted", message="sensor command accepted")
+
+        if command_type == "sensor.sampling.start":
+            event_payload = set_sampling_running(True, origin="command", command=command)
+        elif command_type == "sensor.sampling.stop":
+            event_payload = set_sampling_running(False, origin="command", command=command)
+        elif command_type == "sensor.sampling.set":
+            active = bool((command.get("payload") or {}).get("active"))
+            event_payload = set_sampling_running(active, origin="command", command=command)
+        else:
+            publish_command_status(
+                command,
+                "failed",
+                message="unsupported sensor command",
+                error_message=f"unsupported_command:{command_type}",
+            )
+            return
+
+        publish_command_status(
+            command,
+            "completed",
+            message="sensor command completed",
+            result={"sampling": event_payload, "status": build_status_payload()},
+        )
+    except Exception as exc:
+        publish_command_status(
+            command,
+            "failed",
+            message="sensor command failed",
+            error_message=str(exc),
+        )
+
+
+def command_task() -> None:
+    while True:
+        commands = COMMAND_CLIENT.poll(count=10)
+        for command in commands:
+            execute_sensor_command(command)
+        if not commands:
+            time.sleep(0.2)
+
+
 def background_task() -> None:
     global LAST_SAMPLE_AT, LAST_SAMPLE_DURATION_MS, latest_data
 
@@ -386,6 +582,9 @@ def background_task() -> None:
         with state_lock:
             LAST_SAMPLE_AT = datetime.now()
             LAST_SAMPLE_DURATION_MS = duration_ms
+
+        publish_sensor_observation_event(sampled, duration_ms)
+        publish_sensor_threshold_events(sampled)
 
         sleep_time = max(0, SAMPLING_INTERVAL_SECONDS - (time.time() - loop_start))
         time.sleep(sleep_time)
@@ -566,7 +765,11 @@ async def lifespan(app: FastAPI):
     init_db()
     worker = threading.Thread(target=background_task, daemon=True)
     worker.start()
+    command_worker = threading.Thread(target=command_task, daemon=True)
+    command_worker.start()
+    EVENT_PUBLISHER.publish("sensor.gateway.started", subject="sensor-gateway", payload=build_health_payload())
     yield
+    EVENT_PUBLISHER.publish("sensor.gateway.stopped", subject="sensor-gateway", payload={"mode": GATEWAY_MODE})
     if drone_stream is not None:
         drone_stream.stop()
 
@@ -592,8 +795,7 @@ def status():
 
 @app.post("/api/control")
 def control(payload: ControlModel):
-    global SYSTEM_RUNNING
-    SYSTEM_RUNNING = payload.active
+    set_sampling_running(payload.active, origin="api")
     return build_status_payload()
 
 

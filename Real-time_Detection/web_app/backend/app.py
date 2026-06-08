@@ -3,6 +3,8 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import os
 import sys
+import time
+import threading
 
 # 必须在导入 torch 之前设置环境变量
 os.environ['TORCH_LOAD_WEIGHTS_ONLY'] = '0'
@@ -41,6 +43,48 @@ app.register_blueprint(history_bp)
 app.register_blueprint(stats_bp)
 
 BASE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = BASE_DIR.parents[2]
+INTEGRATION_CLIENT_DIR = REPO_ROOT / "Integration_Hub"
+if str(INTEGRATION_CLIENT_DIR) not in sys.path:
+    sys.path.insert(0, str(INTEGRATION_CLIENT_DIR))
+
+try:
+    from event_client import (
+        IntegrationCommandClient,
+        IntegrationEventPublisher,
+        build_command_status_payload,
+    )
+except Exception:
+    class IntegrationEventPublisher:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def publish(self, *args, **kwargs):
+            return False
+
+    class IntegrationCommandClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def poll(self, *args, **kwargs):
+            return []
+
+    def build_command_status_payload(command, status, **kwargs):
+        return {'commandId': command.get('commandId', ''), 'status': status, **kwargs}
+
+INTEGRATION_SOURCE_ID = os.getenv("INTEGRATION_SOURCE_ID", "real-time-detection")
+EVENT_PUBLISHER = IntegrationEventPublisher(source=INTEGRATION_SOURCE_ID)
+COMMAND_CLIENT = IntegrationCommandClient(
+    target=INTEGRATION_SOURCE_ID,
+    targets=[
+        INTEGRATION_SOURCE_ID,
+        "realtime-detection",
+        "real-time-detection",
+        "detection",
+    ],
+)
+DETECTION_EVENT_COOLDOWN_SECONDS = float(os.getenv("DETECTION_EVENT_COOLDOWN_SECONDS", "10"))
+last_detection_event_at = {}
 
 # Configuration
 UPLOAD_FOLDER = str(BASE_DIR / 'uploads')
@@ -90,6 +134,70 @@ CLASS_COLORS = {
 
 # RTSP检测器管理
 rtsp_detectors = {}
+command_worker_started = False
+command_worker_lock = threading.Lock()
+
+
+def publish_detection_event(event_type, subject, payload, severity='info'):
+    EVENT_PUBLISHER.publish(
+        event_type,
+        subject=subject,
+        severity=severity,
+        payload=payload,
+    )
+
+
+def publish_command_status(command, status, message='', result=None, error_message=''):
+    command_id = command.get('commandId', '')
+    severity = 'error' if status == 'failed' else 'info'
+    EVENT_PUBLISHER.publish(
+        f'command.{status}',
+        subject=command_id,
+        severity=severity,
+        correlation_id=command_id,
+        payload=build_command_status_payload(
+            command,
+            status,
+            message=message,
+            result=result or {},
+            error_message=error_message,
+        ),
+    )
+
+
+def should_publish_detection_event(event_key):
+    now = time.time()
+    last_at = last_detection_event_at.get(event_key, 0)
+    if now - last_at < DETECTION_EVENT_COOLDOWN_SECONDS:
+        return False
+    last_detection_event_at[event_key] = now
+    return True
+
+
+def on_rtsp_detection_event(detection, stats):
+    stream_id = detection.get('camera_id') or stats.get('camera_id') or 'rtsp_cam_01'
+    detections = detection.get('detections') or []
+    fire_detections = [
+        item for item in detections
+        if 'fire' in str(item.get('class', '')).lower() or '火' in str(item.get('class', ''))
+    ]
+
+    if not fire_detections:
+        return
+
+    payload = {
+        'streamId': stream_id,
+        'rtspUrl': stats.get('rtsp_url'),
+        'detection': detection,
+        'stats': stats,
+        'fireDetections': fire_detections,
+    }
+
+    if should_publish_detection_event(f'{stream_id}:fire'):
+        publish_detection_event('detection.fire.detected', stream_id, payload, severity='warn')
+
+    if should_publish_detection_event(f'{stream_id}:accident'):
+        publish_detection_event('detection.accident.confirmed', stream_id, payload, severity='critical')
 
 
 def resolve_path(path_value):
@@ -732,40 +840,172 @@ def system_info():
         pass
 
     return jsonify({'success': True, 'info': info})
+@app.route('/api/rtsp/status', methods=['GET'])
+def get_rtsp_status():
+    """Get active RTSP stream status for total-system cards and integrations."""
+    model_status = get_model_status()
+    streams = []
+    for stream_id, detector in rtsp_detectors.items():
+        stats = detector.get_stats()
+        streams.append({
+            'camera_id': stream_id,
+            'rtsp_url': stats.get('rtsp_url'),
+            'running': bool(stats.get('is_running')),
+            'frame_count': stats.get('frame_count', 0),
+            'fire_count': stats.get('fire_count', 0),
+            'last_detection_time': stats.get('last_detection_time'),
+        })
+
+    return jsonify({
+        'success': True,
+        'service': 'real-time-detection',
+        'model_ready': any(item['exists'] for item in model_status),
+        'active_streams': len(streams),
+        'streams': streams,
+    })
+
+
+def start_rtsp_detector(data):
+    """Start an RTSP detector from a plain command/API payload."""
+    stream_id = data.get('stream_id') or data.get('streamId') or 'rtsp_cam_01'
+    rtsp_url = data.get('rtsp_url') or data.get('rtspUrl')
+    camera_name = data.get('camera_name') or data.get('cameraName') or 'RTSP Camera'
+    model_name = data.get('model') or list(MODEL_PATHS.keys())[0]
+
+    if not rtsp_url:
+        return {'error': 'RTSP URL is required'}, 400
+
+    if stream_id in rtsp_detectors:
+        return {'success': True, 'message': 'Stream already running', 'stream_id': stream_id}, 200
+
+    model_path = MODEL_PATHS.get(model_name)
+    detector = RTSPDetector(
+        model_path=model_path,
+        rtsp_url=rtsp_url,
+        camera_id=stream_id,
+        on_detection=on_rtsp_detection_event,
+    )
+    detector.connect()
+    detector.start()
+    rtsp_detectors[stream_id] = detector
+    publish_detection_event(
+        'detection.stream.started',
+        stream_id,
+        {
+            'streamId': stream_id,
+            'rtspUrl': rtsp_url,
+            'cameraName': camera_name,
+            'model': model_name,
+            'startedAt': datetime.now().isoformat(timespec='seconds'),
+        },
+    )
+
+    return {'success': True, 'stream_id': stream_id}, 200
+
+
+def stop_rtsp_detector(stream_id):
+    """Stop an RTSP detector from a plain command/API payload."""
+    if stream_id in rtsp_detectors:
+        stats = rtsp_detectors[stream_id].get_stats()
+        rtsp_detectors[stream_id].stop()
+        del rtsp_detectors[stream_id]
+        publish_detection_event(
+            'detection.stream.stopped',
+            stream_id,
+            {
+                'streamId': stream_id,
+                'stats': stats,
+                'stoppedAt': datetime.now().isoformat(timespec='seconds'),
+            },
+        )
+        return {'success': True, 'stream_id': stream_id}, 200
+    return {'error': 'Not found', 'stream_id': stream_id}, 404
+
+
+def execute_detection_command(command):
+    command_type = command.get('type', '')
+    payload = command.get('payload') or {}
+    try:
+        publish_command_status(command, 'accepted', message='detection command accepted')
+
+        if command_type == 'detection.rtsp.start':
+            result, status_code = start_rtsp_detector(payload)
+        elif command_type == 'detection.rtsp.stop':
+            stream_id = payload.get('streamId') or payload.get('stream_id') or command.get('subject') or 'rtsp_cam_01'
+            result, status_code = stop_rtsp_detector(stream_id)
+        else:
+            publish_command_status(
+                command,
+                'failed',
+                message='unsupported detection command',
+                error_message=f'unsupported_command:{command_type}',
+            )
+            return
+
+        if status_code >= 400:
+            publish_command_status(
+                command,
+                'failed',
+                message='detection command failed',
+                result=result,
+                error_message=result.get('error', f'http_status:{status_code}'),
+            )
+            return
+
+        publish_command_status(
+            command,
+            'completed',
+            message='detection command completed',
+            result=result,
+        )
+    except Exception as exc:
+        publish_command_status(
+            command,
+            'failed',
+            message='detection command failed',
+            error_message=str(exc),
+        )
+
+
+def command_task():
+    while True:
+        commands = COMMAND_CLIENT.poll(count=10)
+        for command in commands:
+            execute_detection_command(command)
+        if not commands:
+            time.sleep(0.2)
+
+
+def start_command_worker():
+    global command_worker_started
+    with command_worker_lock:
+        if command_worker_started:
+            return
+        command_worker_started = True
+        thread = threading.Thread(target=command_task, daemon=True)
+        thread.start()
+
+
+@app.before_request
+def ensure_command_worker_started():
+    if os.getenv('INTEGRATION_COMMANDS_START_ON_REQUEST', '1').lower() in {'1', 'true', 'yes', 'on'}:
+        start_command_worker()
+
 
 @app.route('/api/rtsp/start', methods=['POST'])
 def start_rtsp_detection():
     """启动RTSP流检测"""
     try:
         data = request.get_json()
-        stream_id = data.get('stream_id') or 'rtsp_cam_01'
-        rtsp_url = data.get('rtsp_url')
-        camera_name = data.get('camera_name') or 'RTSP Camera'
-        model_name = data.get('model') or list(MODEL_PATHS.keys())[0]
-        
-        if not rtsp_url:
-            return jsonify({'error': 'RTSP URL is required'}), 400
-        
-        if stream_id in rtsp_detectors:
-            return jsonify({'success': True, 'message': 'Stream already running'})
-        
-        model_path = MODEL_PATHS.get(model_name)
-        detector = RTSPDetector(model_path=model_path, rtsp_url=rtsp_url, camera_id=stream_id)
-        detector.connect()
-        detector.start()
-        rtsp_detectors[stream_id] = detector
-        
-        return jsonify({'success': True, 'stream_id': stream_id})
+        result, status_code = start_rtsp_detector(data or {})
+        return jsonify(result), status_code
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/rtsp/stop/<stream_id>', methods=['POST'])
 def stop_rtsp_detection(stream_id):
-    if stream_id in rtsp_detectors:
-        rtsp_detectors[stream_id].stop()
-        del rtsp_detectors[stream_id]
-        return jsonify({'success': True})
-    return jsonify({'error': 'Not found'}), 404
+    result, status_code = stop_rtsp_detector(stream_id)
+    return jsonify(result), status_code
 
 @app.route('/api/rtsp/video_feed/<stream_id>')
 def rtsp_video_feed(stream_id):
@@ -792,4 +1032,7 @@ def get_rtsp_detection(stream_id):
 
 if __name__ == '__main__':
     print("Starting YOLO Web API...")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    debug_enabled = os.getenv('FLASK_DEBUG', '1').lower() in {'1', 'true', 'yes', 'on'}
+    if not debug_enabled or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        start_command_worker()
+    app.run(host='0.0.0.0', port=5000, debug=debug_enabled)

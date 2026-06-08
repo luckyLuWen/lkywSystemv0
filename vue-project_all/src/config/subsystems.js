@@ -5,6 +5,7 @@ const DEFAULT_REALTIME_RTSP_URL = 'rtsp://localhost:8554/live'
 const DEFAULT_COLLABORATIVE_CONTROLLER_BASE_URL = 'http://127.0.0.1:18601'
 const DEFAULT_COLLABORATIVE_STREAMLIT_URL = 'http://127.0.0.1:8501/?embed=true'
 const DEFAULT_COLLABORATIVE_COMMAND_CENTER_BASE_URL = 'http://127.0.0.1:5001'
+const DEFAULT_INTEGRATION_HUB_BASE_URL = 'http://127.0.0.1:18701'
 
 const STORAGE_KEYS = {
   sensorGatewayBaseUrl: 'lkyw.sensorGatewayBaseUrl',
@@ -14,6 +15,7 @@ const STORAGE_KEYS = {
   collaborativeStreamlitUrl: 'lkyw.collaborativeStreamlitUrl',
   collaborativeCommandCenterBaseUrl: 'lkyw.collaborativeCommandCenterBaseUrl',
   legacyCollaborativeSimulationUrl: 'lkyw.collaborativeSimulationUrl',
+  integrationHubBaseUrl: 'lkyw.integrationHubBaseUrl',
 }
 
 export function normalizeBaseUrl(value) {
@@ -274,6 +276,36 @@ export function buildRealtimeDetectionIframeSrc(
   )}&rtspUrl=${encodeURIComponent(resolvedRtspUrl)}`
 }
 
+export function getIntegrationHubBaseUrl() {
+  return (
+    normalizeBaseUrl(getQueryValue('integrationHubBase')) ||
+    normalizeBaseUrl(getStorageValue(STORAGE_KEYS.integrationHubBaseUrl)) ||
+    getEnvValue('VITE_INTEGRATION_HUB_BASE_URL') ||
+    DEFAULT_INTEGRATION_HUB_BASE_URL
+  )
+}
+
+export function persistIntegrationHubBaseUrl(value) {
+  const normalized = normalizeBaseUrl(value) || DEFAULT_INTEGRATION_HUB_BASE_URL
+  persistValue(STORAGE_KEYS.integrationHubBaseUrl, normalized)
+  return normalized
+}
+
+export function resetIntegrationHubBaseUrl() {
+  resetValue(STORAGE_KEYS.integrationHubBaseUrl)
+  return DEFAULT_INTEGRATION_HUB_BASE_URL
+}
+
+export function buildIntegrationHubApiUrl(path = '', baseUrl = getIntegrationHubBaseUrl()) {
+  const normalizedPath = String(path).replace(/^\/+/, '')
+  const apiBaseUrl = normalizeBaseUrl(baseUrl)
+  return normalizedPath ? `${apiBaseUrl}/${normalizedPath}` : apiBaseUrl
+}
+
+export function buildIntegrationHubSseUrl(baseUrl = getIntegrationHubBaseUrl()) {
+  return buildIntegrationHubApiUrl('api/events/stream', baseUrl)
+}
+
 export {
   DEFAULT_SENSOR_GATEWAY_BASE_URL,
   DEFAULT_REALTIME_DETECTION_BASE_URL,
@@ -281,4 +313,5 @@ export {
   DEFAULT_COLLABORATIVE_CONTROLLER_BASE_URL,
   DEFAULT_COLLABORATIVE_STREAMLIT_URL,
   DEFAULT_COLLABORATIVE_COMMAND_CENTER_BASE_URL,
+  DEFAULT_INTEGRATION_HUB_BASE_URL,
 }

@@ -1,0 +1,29 @@
+{
+  "services": {
+    "streamlit": {
+      "label": "协同调度平台",
+      "public_url": "http://127.0.0.1:8501/?embed=true",
+      "health_url": "http://127.0.0.1:8501/_stcore/health",
+      "working_directory": ".",
+      "start_command": [
+        "python",
+        "-m",
+        "streamlit",
+        "run",
+        "app_2d.py",
+        "--server.port",
+        "8501",
+        "--server.address",
+        "127.0.0.1",
+        "--server.headless",
+        "true",
+        "--server.enableCORS",
+        "false",
+        "--server.enableXsrfProtection",
+        "false"
+      ],
+      "stop_command": [],
+      "shell": false
+    }
+  }
+}
