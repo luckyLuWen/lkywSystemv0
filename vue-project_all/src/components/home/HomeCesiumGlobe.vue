@@ -188,12 +188,72 @@
         </div>
       </div>
     </div>
+
+    <!-- 无人车 A 实时数据悬浮窗 -->
+    <div 
+      v-if="props.activePhaseIndex >= 7 && ugvA.x !== -1000" 
+      class="ugv-panel"
+      :style="{ left: ugvA.x + 'px', top: ugvA.y + 'px' }"
+    >
+      <div class="ugv-header">
+        <span class="ugv-title">无人车 A</span>
+        <span class="ugv-status">在线</span>
+      </div>
+      <div class="ugv-data">
+        <div class="ugv-row">
+          <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ ugvA.temp }}</span></div>
+          <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ ugvA.hum }}%</span></div>
+        </div>
+        <div class="ugv-row">
+          <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ ugvA.smoke }} ug</span></div>
+        </div>
+        <div class="ugv-row">
+          <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ ugvA.tvoc }}</span></div>
+          <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ ugvA.co }}</span></div>
+        </div>
+      </div>
+      <div class="ugv-footer" @click="goToSensorManage('node1')">点击查看详情 →</div>
+    </div>
+
+    <!-- 无人车 B 实时数据悬浮窗 -->
+    <div 
+      v-if="props.activePhaseIndex >= 7 && ugvB.x !== -1000" 
+      class="ugv-panel"
+      :style="{ left: ugvB.x + 'px', top: ugvB.y + 'px' }"
+    >
+      <div class="ugv-header">
+        <span class="ugv-title">无人车 B</span>
+        <span class="ugv-status">在线</span>
+      </div>
+      <div class="ugv-data">
+        <div class="ugv-row">
+          <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ ugvB.temp }}</span></div>
+          <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ ugvB.hum }}%</span></div>
+        </div>
+        <div class="ugv-row">
+          <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ ugvB.smoke }} ug</span></div>
+        </div>
+        <div class="ugv-row">
+          <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ ugvB.tvoc }}</span></div>
+          <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ ugvB.co }}</span></div>
+        </div>
+      </div>
+      <div class="ugv-footer" @click="goToSensorManage('node2')">点击查看详情 →</div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch, reactive, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import * as Cesium from 'cesium'
+
+const router = useRouter()
+
+function goToSensorManage(target = '') {
+  const query = target ? { target } : {}
+  router.push({ path: '/sensor-manage', query })
+}
 
 // 当前选中的场景
 const currentScene = ref('truck')
@@ -293,6 +353,18 @@ const rescuePopup = reactive({
 
 let rescueMarkerEntity = null;
 
+let sharedTruckRescueCarPosition = null;
+
+// 无人车实时数据及浮窗位置
+const ugvA = reactive({
+  temp: 29.88, hum: 58.02, smoke: 25284, tvoc: 0.357, co: 2.8,
+  x: -1000, y: -1000
+});
+const ugvB = reactive({
+  temp: 27.07, hum: 43.47, smoke: 25292, tvoc: 0.588, co: 3.3,
+  x: -1000, y: -1000
+});
+
 // 计算属性：根据当前场景返回对应的参数对象
 const currentUavAdjust = computed(() => {
   return currentScene.value === 'truck' ? uavAdjust : tankerUavAdjust
@@ -310,6 +382,7 @@ const props = defineProps({
   phases: { type: Array, default: () => [] },
   activePhaseIndex: { type: Number, default: 0 },
   focusedPointId: { type: String, default: '' },
+  sensorData: { type: Object, default: () => ({}) }
 })
 
 const emit = defineEmits(['accident-picked', 'models-ready'])
@@ -875,6 +948,46 @@ function updatePopupPosition() {
       rescuePopup.x = canvasPosition.x;
       rescuePopup.y = canvasPosition.y - 45;
     }
+  }
+
+  // 更新无人车浮窗坐标与数据 (仅在到达现场后显示，也就是 activePhaseIndex >= 7)
+  if (props.activePhaseIndex >= 7) {
+    const isTanker = props.focusedPointId === 'accident_red';
+    const carPosCallback = isTanker ? sharedTankerRescueCarPosition : sharedTruckRescueCarPosition;
+    
+    if (carPosCallback) {
+      const pos = carPosCallback.getValue(viewer.clock.currentTime);
+      if (pos) {
+        const canvasPos = viewer.scene.cartesianToCanvasCoordinates(pos);
+        if (canvasPos) {
+          // A车在左侧，B车在右侧，稍微错开
+          ugvA.x = canvasPos.x - 220;
+          ugvA.y = canvasPos.y - 120;
+          ugvB.x = canvasPos.x + 20;
+          ugvB.y = canvasPos.y - 120;
+
+          // 关联真实的全局传感数据
+          ugvA.temp = props.sensorData?.temp || 0;
+          ugvA.hum = props.sensorData?.humidity || 0;
+          ugvA.smoke = props.sensorData?.smoke || 0;
+          ugvA.tvoc = props.sensorData?.tvoc || 0;
+          ugvA.co = props.sensorData?.co || 0;
+
+          // 无人车 B 作为辅助节点，制造合理的微小偏差以体现多设备空间差异
+          ugvB.temp = +(ugvA.temp - 0.45).toFixed(2);
+          ugvB.hum = +(ugvA.hum - 2.12).toFixed(2);
+          ugvB.smoke = Math.max(0, Math.floor(ugvA.smoke * 0.95));
+          ugvB.tvoc = Math.max(0, +(ugvA.tvoc * 0.88).toFixed(3));
+          ugvB.co = Math.max(0, +(ugvA.co * 0.92).toFixed(1));
+        } else {
+          ugvA.x = -1000; ugvA.y = -1000;
+          ugvB.x = -1000; ugvB.y = -1000;
+        }
+      }
+    }
+  } else {
+    ugvA.x = -1000; ugvA.y = -1000;
+    ugvB.x = -1000; ugvB.y = -1000;
   }
 }
 
@@ -1507,6 +1620,8 @@ function addEventEntities() {
       const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(headingDeg), 0, 0);
       return Cesium.Transforms.headingPitchRollQuaternion(pos, hpr);
     }, false);
+
+    sharedTruckRescueCarPosition = rescueCarPosition;
 
     const entity = viewer.entities.add({
       id: config.id,
@@ -2434,6 +2549,133 @@ onBeforeUnmount(() => {
 .phase-indicator span.active { background: #00e5ff; box-shadow: 0 0 8px #00e5ff; }
 .play-btn {
   background: #00e5ff; color: #061628; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold;
+}
+
+/* 无人车实时数据悬浮窗 - 赛博朋克深色主题 */
+.ugv-panel {
+  position: absolute;
+  width: 210px;
+  background: rgba(7, 11, 25, 0.85);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 255, 255, 0.2);
+  font-family: "JetBrains Mono", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #fff;
+  z-index: 1000;
+  pointer-events: none;
+  overflow: hidden;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  backdrop-filter: blur(8px);
+  transform: translate(-50%, -100%);
+}
+
+/* 顶部霓虹边框高光 */
+.ugv-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ffff, transparent);
+}
+
+.ugv-panel::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 7px solid rgba(0, 255, 255, 0.4);
+  filter: drop-shadow(0 2px 4px rgba(0, 255, 255, 0.3));
+}
+
+.ugv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(0, 255, 255, 0.15);
+  background: rgba(0, 255, 255, 0.05);
+}
+
+.ugv-title {
+  font-weight: bold;
+  font-size: 13px;
+  color: #00ffff;
+  letter-spacing: 1px;
+}
+
+.ugv-status {
+  font-size: 11px;
+  color: #00ff88;
+  font-weight: bold;
+  padding: 2px 6px;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 3px;
+}
+
+.ugv-data {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ugv-row {
+  display: flex;
+  gap: 6px;
+}
+
+.ugv-item {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: background 0.3s;
+}
+
+.ugv-item.full-width {
+  flex: 100%;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ugv-label {
+  font-size: 11px;
+  color: #8fa3b0;
+}
+
+.ugv-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e0f2fe;
+  text-shadow: 0 0 5px rgba(224, 242, 254, 0.4);
+}
+
+.ugv-footer {
+  text-align: right;
+  padding: 6px 12px;
+  font-size: 10px;
+  color: #00ffff;
+  background: rgba(0, 255, 255, 0.05);
+  border-top: 1px solid rgba(0, 255, 255, 0.15);
+  opacity: 0.8;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.ugv-footer:hover {
+  opacity: 1;
+  background: rgba(0, 255, 255, 0.15);
 }
 
 </style>

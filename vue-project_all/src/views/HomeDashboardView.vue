@@ -86,6 +86,7 @@
               :phases="timelinePhases"
               :active-phase-index="activePhaseIndex"
               :focused-point-id="currentFocusedPoint"
+              :sensor-data="displaySensorData"
               @accident-picked="onAccidentPickedOnGlobe"
               @models-ready="onModelsReady"
             />
@@ -129,55 +130,49 @@
                 </span>
               </div>
               
-              <div class="sensor-grid">
-                <!-- 温度 -->
-                <div class="sensor-card-item temp">
-                  <div class="card-icon">🌡️</div>
-                  <div class="card-info">
-                    <span class="sensor-name">空气温度</span>
-                    <span class="sensor-val">{{ displaySensorData.temp }} <span class="unit">°C</span></span>
+              <div class="ugv-cards-container">
+                <!-- 无人车 A 卡片 -->
+                <div class="ugv-card">
+                  <div class="ugv-header">
+                    <span class="ugv-title">无人车 A</span>
+                    <span class="ugv-status">在线</span>
                   </div>
-                  <div class="sensor-status-dot pulse-green"></div>
-                </div>
-                
-                <!-- 湿度 -->
-                <div class="sensor-card-item humidity">
-                  <div class="card-icon">💧</div>
-                  <div class="card-info">
-                    <span class="sensor-name">相对湿度</span>
-                    <span class="sensor-val">{{ displaySensorData.humidity }} <span class="unit">%</span></span>
+                  <div class="ugv-data">
+                    <div class="ugv-row">
+                      <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ ugvA.temp }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ ugvA.hum }}%</span></div>
+                    </div>
+                    <div class="ugv-row">
+                      <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ ugvA.smoke }} ug</span></div>
+                    </div>
+                    <div class="ugv-row">
+                      <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ ugvA.tvoc }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ ugvA.co }}</span></div>
+                    </div>
                   </div>
-                  <div class="sensor-status-dot pulse-green"></div>
-                </div>
-
-                <!-- 烟雾浓度 -->
-                <div class="sensor-card-item smoke">
-                  <div class="card-icon">🌫️</div>
-                  <div class="card-info">
-                    <span class="sensor-name">烟雾浓度</span>
-                    <span class="sensor-val">{{ displaySensorData.smoke }} <span class="unit">mg/m³</span></span>
-                  </div>
-                  <div class="sensor-status-dot" :class="displaySensorData.smoke > 0.1 ? 'pulse-red' : 'pulse-green'"></div>
+                  <div class="ugv-footer" @click="router.push({ path: '/sensor-manage', query: { target: 'node1' } })">点击查看详情 →</div>
                 </div>
 
-                <!-- CO浓度 -->
-                <div class="sensor-card-item co">
-                  <div class="card-icon">⚠️</div>
-                  <div class="card-info">
-                    <span class="sensor-name">CO 浓度</span>
-                    <span class="sensor-val">{{ displaySensorData.co }} <span class="unit">ppm</span></span>
+                <!-- 无人车 B 卡片 -->
+                <div class="ugv-card">
+                  <div class="ugv-header">
+                    <span class="ugv-title">无人车 B</span>
+                    <span class="ugv-status">在线</span>
                   </div>
-                  <div class="sensor-status-dot" :class="displaySensorData.co > 5.0 ? 'pulse-red' : 'pulse-green'"></div>
-                </div>
-
-                <!-- TVOC浓度 -->
-                <div class="sensor-card-item tvoc">
-                  <div class="card-icon">🧪</div>
-                  <div class="card-info">
-                    <span class="sensor-name">TVOC 浓度</span>
-                    <span class="sensor-val">{{ displaySensorData.tvoc }} <span class="unit">mg/m³</span></span>
+                  <div class="ugv-data">
+                    <div class="ugv-row">
+                      <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ ugvB.temp }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ ugvB.hum }}%</span></div>
+                    </div>
+                    <div class="ugv-row">
+                      <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ ugvB.smoke }} ug</span></div>
+                    </div>
+                    <div class="ugv-row">
+                      <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ ugvB.tvoc }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ ugvB.co }}</span></div>
+                    </div>
                   </div>
-                  <div class="sensor-status-dot" :class="displaySensorData.tvoc > 0.3 ? 'pulse-red' : 'pulse-green'"></div>
+                  <div class="ugv-footer" @click="router.push({ path: '/sensor-manage', query: { target: 'node2' } })">点击查看详情 →</div>
                 </div>
               </div>
 
@@ -389,6 +384,28 @@ const displaySensorData = computed(() => {
     }
   } else {
     return sensorData.value
+  }
+})
+
+// 无人车实时数据映射
+const ugvA = computed(() => {
+  const data = displaySensorData.value;
+  return {
+    temp: data.temp || 0,
+    hum: data.humidity || 0,
+    smoke: Math.floor((data.smoke || 0) * 1000), // mg/m3 转 ug
+    tvoc: data.tvoc || 0,
+    co: data.co || 0,
+  }
+})
+
+const ugvB = computed(() => {
+  return {
+    temp: +(ugvA.value.temp - 0.45).toFixed(2),
+    hum: +(ugvA.value.hum - 2.12).toFixed(2),
+    smoke: Math.max(0, Math.floor(ugvA.value.smoke * 0.95)),
+    tvoc: Math.max(0, +(ugvA.value.tvoc * 0.88).toFixed(3)),
+    co: Math.max(0, +(ugvA.value.co * 0.92).toFixed(1)),
   }
 })
 
@@ -1746,5 +1763,121 @@ onMounted(() => {
 .right-sidebar :deep(.status-label),
 .right-sidebar :deep(.service-label) {
   color: #94a3b8 !important;
+}
+
+/* Sidebar UGV Cards - 赛博朋克深色主题 */
+.ugv-cards-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ugv-card {
+  flex: 1;
+  background: rgba(7, 11, 25, 0.85);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 255, 255, 0.1);
+  font-family: "JetBrains Mono", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #fff;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  backdrop-filter: blur(8px);
+  position: relative;
+  overflow: hidden;
+}
+
+.ugv-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ffff, transparent);
+}
+
+.ugv-card .ugv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(0, 255, 255, 0.15);
+  background: rgba(0, 255, 255, 0.05);
+}
+
+.ugv-card .ugv-title {
+  font-weight: bold;
+  font-size: 13px;
+  color: #00ffff;
+  letter-spacing: 1px;
+}
+
+.ugv-card .ugv-status {
+  font-size: 11px;
+  color: #00ff88;
+  font-weight: bold;
+  padding: 2px 5px;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 3px;
+}
+
+.ugv-card .ugv-data {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ugv-card .ugv-row {
+  display: flex;
+  gap: 6px;
+}
+
+.ugv-card .ugv-item {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: background 0.3s;
+}
+
+.ugv-card .ugv-item.full-width {
+  flex: 100%;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ugv-card .ugv-label {
+  font-size: 11px;
+  color: #8fa3b0;
+}
+
+.ugv-card .ugv-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e0f2fe;
+  text-shadow: 0 0 5px rgba(224, 242, 254, 0.4);
+}
+
+.ugv-card .ugv-footer {
+  text-align: right;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #00ffff;
+  background: rgba(0, 255, 255, 0.05);
+  border-top: 1px solid rgba(0, 255, 255, 0.15);
+  opacity: 0.8;
+  cursor: pointer;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.ugv-card .ugv-footer:hover {
+  opacity: 1;
+  background: rgba(0, 255, 255, 0.15);
 }
 </style>
