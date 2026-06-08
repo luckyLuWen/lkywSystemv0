@@ -86,6 +86,33 @@
 
     <div v-if="loading" class="globe-mask">三维地球加载中...</div>
     <div v-else-if="errorMessage" class="globe-mask is-error">{{ errorMessage }}</div>
+
+    <!-- 救援装备出动悬浮窗 -->
+    <div 
+      v-if="rescuePopup.show" 
+      class="shelter-popup-panel"
+      :style="{ left: rescuePopup.x + 'px', top: rescuePopup.y + 'px' }"
+    >
+      <div class="shelter-popup-header">
+        <span>{{ rescuePopup.title }}</span>
+        <button class="close-btn" @click="rescuePopup.show = false">×</button>
+      </div>
+      <table class="shelter-popup-table">
+        <tr>
+          <td class="label">无人机</td>
+          <td class="value">{{ rescuePopup.uavCount }}</td>
+        </tr>
+        <tr>
+          <td class="label">无人车</td>
+          <td class="value">{{ rescuePopup.carCount }}</td>
+        </tr>
+        <tr>
+          <td class="label">出动状态</td>
+          <td class="value">{{ rescuePopup.status }}</td>
+        </tr>
+      </table>
+      <div class="shelter-popup-arrow"></div>
+    </div>
   </div>
 </template>
 
@@ -95,6 +122,23 @@ import * as Cesium from 'cesium'
 
 // 当前选中的场景
 const currentScene = ref('truck')
+
+
+
+// 救援装备出动状态与坐标 (放在无人机/车出动起点附近)
+const rescueCoords = reactive({ lng: 113.10725, lat: 30.38491, height: 24.0 });
+
+const rescuePopup = reactive({
+  show: false,
+  title: '救援装备出动',
+  uavCount: '1 架',
+  carCount: '2 辆',
+  status: '已出发',
+  x: 0,
+  y: 0
+});
+
+let rescueMarkerEntity = null;
 
 // 计算属性：根据当前场景返回对应的参数对象
 const currentUavAdjust = computed(() => {
@@ -215,6 +259,7 @@ const rescueCarAdjust = reactive({
 let uavEntities = []
 let rescueCarEntities = []
 let phase7StartTime = 0
+let diffusionStartTime = 0
 let lastUavPhaseIndex = -1
 
 // 油罐车场景的无人机和救援车配置（独立控制）
@@ -411,10 +456,13 @@ function applyOrbitView() {
           pitch = Cesium.Math.toRadians(-22)
         }
       } else if (props.activePhaseIndex === 3 || props.activePhaseIndex === 4) {
-        range = props.focusedPointId === 'accident_red' ? 100 : 220;
-        pitch = props.focusedPointId === 'accident_red' 
-          ? Cesium.Math.toRadians(-25) 
-          : Cesium.Math.toRadians(-65);
+        if (props.focusedPointId === 'accident_red') {
+          range = 100; // 统一为以次生灾害弥漫为主的 100 米范围视角
+          pitch = Cesium.Math.toRadians(-25); // 统一为以次生灾害弥漫为主的 -25 度俯仰角
+        } else {
+          range = 220;
+          pitch = Cesium.Math.toRadians(-65);
+        }
       } else if (props.activePhaseIndex === 5) {
         // 大火与弥漫扩散阶段：油罐车中近距离视角，确保能看清大面积扩散细节
         if (props.focusedPointId === 'accident_red') {
@@ -546,63 +594,132 @@ function createFireSystem(lng, lat) {
   });
 }
 
-// 创建更加逼真的油罐车泄露效果 (使用 whitePuff00.png) - 优化尺寸版
+// 创建更加逼真、动感的油罐车泄露效果 (高压侧向喷射抛物线 Plume 效果)
 function createLeakSystem(lng, lat) {
+  const position = Cesium.Cartesian3.fromDegrees(lng, lat, 0.8);
+  const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(Number(tankerAdjust.heading) || 36), 0, 0);
+  const modelMatrix = Cesium.Transforms.headingPitchRollToFixedFrame(position, hpr);
+
+  // 旋转发射器方向：把默认朝上(+z)的锥形喷射旋转-90度，使其朝向车身侧面(+y方向)喷出
+  const rotation = Cesium.Matrix3.fromRotationX(Cesium.Math.toRadians(-90.0));
+  // 稍微向车外侧偏移，使粒子从侧面罐体破裂处喷出，而不是车底中心
+  const translation = new Cesium.Cartesian3(0.0, 1.2, 0.2);
+  const emitterModelMatrix = Cesium.Matrix4.fromRotationTranslation(rotation, translation);
+
   return new Cesium.ParticleSystem({
     image: '/Dashboard/images/whitePuff00.png',
-    startColor: new Cesium.Color(0.7, 0.85, 1.0, 0.1), // 极低不透明度
-    endColor: new Cesium.Color(0.9, 0.95, 1.0, 0.0),
-    startScale: 1.0,
-    endScale: 3.0, // 显著减小膨胀比例
-    minimumParticleLife: 2.0,
-    maximumParticleLife: 4.0,
-    minimumSpeed: 0.3,
-    maximumSpeed: 0.8,
-    imageSize: new Cesium.Cartesian2(4, 4), // 显著减小原始尺寸（从15降到4）
-    emissionRate: 35.0, // 略微降低频率
+    startColor: new Cesium.Color(0.85, 0.9, 0.95, 0.65), // 增强不透明度，表现喷射处的浓密感
+    endColor: new Cesium.Color(0.95, 0.97, 1.0, 0.0),
+    startScale: 0.6,  // 喷口处适当保留体积
+    endScale: 5.5,    // 随抛物线下落扩散开来
+    minimumParticleLife: 1.0,
+    maximumParticleLife: 2.2, // 较短寿命防止在天空中堆积
+    minimumSpeed: 3.5, // 喷出的初始速度
+    maximumSpeed: 6.0,
+    imageSize: new Cesium.Cartesian2(6, 6), // 较小的粒子尺寸以获得精细自然的渐变感
+    emissionRate: 140.0, // 显著提高粒子发射率以模拟连续高压水柱/气柱
     lifetime: 16.0,
-    emitter: new Cesium.SphereEmitter(1.0), // 缩小发射半径
-    modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(lng, lat, 0.0)),
+    emitter: new Cesium.ConeEmitter(Cesium.Math.toRadians(25.0)), // 25度适度喷嘴角度
+    modelMatrix: modelMatrix,
+    emitterModelMatrix: emitterModelMatrix,
     sizeInMeters: true,
     show: false,
     updateCallback: (particle, dt) => {
-      // 模拟气云缓慢散开
-      const gravityScratch = new Cesium.Cartesian3();
-      Cesium.Cartesian3.normalize(particle.position, gravityScratch);
-      Cesium.Cartesian3.multiplyByScalar(gravityScratch, 0.1 * dt, gravityScratch); 
-      Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
+      // 1. 模拟水平方向空气阻力：速度迅速衰减，表现喷射后的悬浮感
+      const dragFactor = Math.pow(0.85, dt * 60);
+      particle.velocity.x *= dragFactor;
+      particle.velocity.y *= dragFactor;
+
+      // 2. 模拟重力下坠：喷出后的气体/液体在重力作用下呈优美的抛物线弧度坠落到地面
+      particle.velocity.z -= 4.0 * dt;
     }
   });
 }
 
-// 创建弥漫效果系统 (使用 fart00.png) - 优化版，防止效果过大
+// 创建弥漫效果系统 (使用 whitePuff00.png) - 统一为与泄露一致的圆形粒子喷射散开效果，并支持随时间渐进向外扩散 (已微调减小)
 function createDiffusionSystem(lng, lat) {
+  const center = Cesium.Cartesian3.fromDegrees(lng, lat, 0.8);
+  
+  // 计算卡车所在位置的局部 ENU (东-北-上) 坐标轴向量，用于在地球世界坐标系中进行方向纠正
+  const enuMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(center);
+  const eastVec = Cesium.Matrix4.getColumn(enuMatrix, 0, new Cesium.Cartesian3());
+  const northVec = Cesium.Matrix4.getColumn(enuMatrix, 1, new Cesium.Cartesian3());
+  const upVec = Cesium.Matrix4.getColumn(enuMatrix, 2, new Cesium.Cartesian3());
+
   return new Cesium.ParticleSystem({
-    image: '/Dashboard/images/fart00.png',
-    // 使用更淡的颜色和更低的透明度
-    startColor: new Cesium.Color(0.8, 0.9, 1.0, 0.15), 
-    endColor: new Cesium.Color(0.9, 0.95, 1.0, 0.0),
-    startScale: 1.0,
-    endScale: 5.0, // 显著缩小膨胀比例
-    minimumParticleLife: 5.0,
-    maximumParticleLife: 10.0,
-    minimumSpeed: 0.1,
-    maximumSpeed: 0.5,
-    imageSize: new Cesium.Cartesian2(12, 12), // 略微回调尺寸（从8调到12）
-    emissionRate: 20.0, 
+    image: '/Dashboard/images/whitePuff00.png',
+    startColor: new Cesium.Color(0.35, 0.8, 0.35, 0.45), // 绿色半透明圆形粒子
+    endColor: new Cesium.Color(0.45, 0.85, 0.45, 0.0),       // 渐变至完全透明
+    startScale: 0.8,
+    endScale: 8.0, // 在生命周期中逐渐膨胀变大
+    minimumParticleLife: 4.0,
+    maximumParticleLife: 6.5, // 微调粒子寿命，适度减小扩散半径
+    minimumSpeed: 2.0,
+    maximumSpeed: 5.5, // 适度调低喷出初速度
+    imageSize: new Cesium.Cartesian2(9, 9), // 基础尺寸调整为 9x9 (原为12x12)，更显精细与克制
+    emissionRate: 120.0, // 保持发射率以维持连贯的团雾质感
     lifetime: 16.0,
-    emitter: new Cesium.SphereEmitter(4.0), // 稍微增大发射半径
-    modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(lng, lat, 0.0)),
+    emitter: new Cesium.SphereEmitter(2.5), // 发射器半径调整为 2.5 (原为3.5)
+    modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(center),
     sizeInMeters: true,
     show: false,
     updateCallback: (particle, dt) => {
-      // 模拟缓慢的空气漂浮
-      const gravityScratch = new Cesium.Cartesian3();
-      Cesium.Cartesian3.normalize(particle.position, gravityScratch);
-      Cesium.Cartesian3.multiplyByScalar(gravityScratch, 0.05 * dt, gravityScratch); 
-      Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
+      // 1. 真实局部向上浮力 (Z轴向上，使整个弥漫气云升空)
+      const buoyancy = new Cesium.Cartesian3();
+      Cesium.Cartesian3.multiplyByScalar(upVec, 0.5 * dt, buoyancy); 
+      Cesium.Cartesian3.add(particle.velocity, buoyancy, particle.velocity);
+      
+      // 2. 真实地理风向漂移：沿局部东向和北向缓缓漂移
+      const windEast = new Cesium.Cartesian3();
+      Cesium.Cartesian3.multiplyByScalar(eastVec, 0.5 * dt, windEast);
+      Cesium.Cartesian3.add(particle.velocity, windEast, particle.velocity);
+      
+      const windNorth = new Cesium.Cartesian3();
+      Cesium.Cartesian3.multiplyByScalar(northVec, 0.25 * dt, windNorth);
+      Cesium.Cartesian3.add(particle.velocity, windNorth, particle.velocity);
+
+      // 3. 随仿真阶段时间推移的“渐进式向外二次大范围膨胀扩散”
+      const offset = Cesium.Cartesian3.subtract(particle.position, center, new Cesium.Cartesian3());
+      const dist = Cesium.Cartesian3.magnitude(offset);
+      if (dist > 0.01) {
+        const dir = new Cesium.Cartesian3();
+        Cesium.Cartesian3.normalize(offset, dir);
+        
+        // 根据阶段持续运行时间 (15 秒内渐进增强)
+        const elapsed = diffusionStartTime ? (Date.now() - diffusionStartTime) / 1000 : 0;
+        const systemTimeRatio = Math.min(elapsed / 15.0, 1.0);
+        
+        // 随着阶段进行，粒子向四周放射膨胀的速度适度增加
+        const extraForce = (4.0 + 12.0 * systemTimeRatio) * dt;
+        const expansion = new Cesium.Cartesian3();
+        Cesium.Cartesian3.multiplyByScalar(dir, extraForce, expansion);
+        Cesium.Cartesian3.add(particle.velocity, expansion, particle.velocity);
+        
+        // 动态调控粒子大小：远端的粒子适度膨胀
+        const ageRatio = particle.age / particle.life;
+        const currentEndScale = 8.0 + 8.0 * systemTimeRatio; // 最大可膨胀到 16.0 倍 (原为22.0)
+        particle.scale = 0.8 + (currentEndScale - 0.8) * ageRatio;
+      }
+
+      // 4. 空气阻力：阻力从 0.978 调整到 0.96，使扩散边界略微收拢，防止过度散开
+      const dragFactor = Math.pow(0.96, dt * 60);
+      particle.velocity.x *= dragFactor;
+      particle.velocity.y *= dragFactor;
+      particle.velocity.z *= dragFactor;
     }
   });
+}
+
+function updatePopupPosition() {
+  if (!viewer) return;
+  if (rescuePopup.show) {
+    const cartesian = Cesium.Cartesian3.fromDegrees(rescueCoords.lng, rescueCoords.lat, rescueCoords.height);
+    const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
+    if (canvasPosition) {
+      rescuePopup.x = canvasPosition.x;
+      rescuePopup.y = canvasPosition.y - 45;
+    }
+  }
 }
 
 async function initViewer() {
@@ -613,6 +730,7 @@ async function initViewer() {
       infoBox: false, navigationHelpButton: false, sceneModePicker: false, selectionIndicator: false,
       timeline: false, shouldAnimate: true, skyAtmosphere: false,
     })
+    window.viewer = viewer
     viewer.scene.globe.enableLighting = true
     viewer.cesiumWidget.creditContainer.style.display = 'none'
 
@@ -650,6 +768,7 @@ async function initViewer() {
     }
 
     viewer.scene.postRender.addEventListener(updateModelsReadyStatus)
+    viewer.scene.postRender.addEventListener(updatePopupPosition)
 
     loading.value = false
   } catch (error) {
@@ -659,7 +778,7 @@ async function initViewer() {
   }
 }
 
-function updateTruckSequence(phaseIndex) {
+function updateTruckSequence(phaseIndex, pointId = '') {
   if (!viewer) return
   
   const targetModelId = phaseToModelMap[phaseIndex] || null
@@ -695,7 +814,7 @@ function updateTruckSequence(phaseIndex) {
   currentActiveModelId = targetModelId
   lastPhaseIndex = phaseIndex
 
-  const isTruckFocus = props.focusedPointId === 'accident_blue';
+  const isTruckFocus = pointId === 'accident_blue' || props.focusedPointId === 'accident_blue';
 
   const isBigFire = (phaseIndex === 5);
   const smokeScaleBase = isBigFire ? 2.8 : 1.0;
@@ -718,7 +837,7 @@ function updateTruckSequence(phaseIndex) {
 }
 
 // 油罐车模型序列更新函数
-function updateTankerSequence(phaseIndex) {
+function updateTankerSequence(phaseIndex, pointId = '') {
   if (!viewer) return
   
   const targetModelId = tankerPhaseToModelMap[phaseIndex] || null
@@ -745,7 +864,7 @@ function updateTankerSequence(phaseIndex) {
   lastTankerPhaseIndex = phaseIndex
 
   // 全时段就绪：泄露与弥漫效果根据focusedPointId决定是否显示
-  const isTankerFocus = props.focusedPointId === 'accident_red';
+  const isTankerFocus = pointId === 'accident_red' || props.focusedPointId === 'accident_red';
 
   if (leakParticle) {
     // 只有在聚焦该点且阶段 >= 3 时才显示
@@ -759,9 +878,9 @@ function updateTankerSequence(phaseIndex) {
     diffusionParticle.show = isTankerFocus && (phaseIndex >= 4);
     // 阶段4（弥漫）开始产生，阶段5（扩散）显著增强
     if (phaseIndex === 4) {
-      diffusionParticle.emissionRate = 30.0;
+      diffusionParticle.emissionRate = 100.0; // 提升初始浓度
     } else if (phaseIndex >= 5) {
-      diffusionParticle.emissionRate = 80.0; // 显著增强
+      diffusionParticle.emissionRate = 180.0; // 显著增强，提供大范围浓烈雾气效果
     } else {
       diffusionParticle.emissionRate = 0.0;
     }
@@ -841,6 +960,31 @@ function addEventEntities() {
       outline: true, outlineColor: toCesiumColor('#00e5ff', 0.32), height: 0,
     },
   })
+
+  // 创建高精度绿色救援装备图标
+  const rescueSvgIcon = `data:image/svg+xml;utf8,` + encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="48" height="48">
+      <polygon points="50,5 95,30 95,75 50,98 5,75 5,30" fill="rgba(0, 229, 90, 0.18)" stroke="#00e575" stroke-width="6"/>
+      <path d="M25,50 L40,50 M60,50 L75,50 M50,25 L50,40 M50,60 L50,75 M35,35 L65,65 M35,65 L65,35" stroke="#00e575" stroke-width="5"/>
+      <circle cx="50" cy="50" r="10" fill="#00e575"/>
+    </svg>
+  `);
+
+  rescueMarkerEntity = viewer.entities.add({
+    id: 'rescue-marker',
+    position: new Cesium.CallbackProperty(() => {
+      return Cesium.Cartesian3.fromDegrees(rescueCoords.lng, rescueCoords.lat, rescueCoords.height);
+    }, false),
+    billboard: {
+      image: rescueSvgIcon,
+      width: 24,
+      height: 24,
+      heightReference: Cesium.HeightReference.NONE,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM
+    },
+    show: false
+  });
 
   popupEntity = viewer.entities.add({
     id: 'event-popup',
@@ -1216,19 +1360,83 @@ function updatePhaseScene(index) {
     // 无论在哪个场景，都让所有模型保持 show: true 状态以触发预加载
     // 但通过 scale 来控制真正可见的模型
     if (pointId === 'accident_blue') {
-      updateTruckSequence(index)
+      updateTruckSequence(index, pointId)
       if (leakParticle) leakParticle.show = false
+      if (diffusionParticle) diffusionParticle.show = false
     } else if (pointId === 'accident_red') {
-      updateTankerSequence(index)
+      updateTankerSequence(index, pointId)
       if (smokeParticle) smokeParticle.show = false
       if (fireParticle) fireParticle.show = false
     } else {
       if (smokeParticle) smokeParticle.show = false
       if (fireParticle) fireParticle.show = false
       if (leakParticle) leakParticle.show = false
+      if (diffusionParticle) diffusionParticle.show = false
     }
 
     focusAreaEntity.position = Cesium.Cartesian3.fromDegrees(lng, lat, 0)
+
+    // 悬浮窗展示逻辑：在货车追尾现场和油罐车泄露现场的“无人装备出动阶段”(索引 6) 和 “无人感知部署阶段”(索引 7) 显示
+    const isTruckScene = (pointId === 'accident_blue');
+    const isTankerScene = (pointId === 'accident_red');
+
+    if (isTruckScene && index === 6) {
+      rescuePopup.title = '救援装备出动';
+      rescuePopup.status = '已出发';
+      rescueCoords.lng = 113.10725;
+      rescueCoords.lat = 30.38491;
+      rescueCoords.height = 24.0;
+      
+      if (rescueMarkerEntity) rescueMarkerEntity.show = true;
+      rescuePopup.show = true;
+    } else if (isTruckScene && index === 7) {
+      rescuePopup.title = '无人机感知部署';
+      rescuePopup.status = '已到达';
+      rescueCoords.lng = 113.104833;
+      rescueCoords.lat = 30.385469;
+      rescueCoords.height = 24.0;
+      
+      // 飞行/行驶动画耗时约6秒，在第5秒（即将到达的最后一秒）再显示标记和悬浮窗，避免突兀
+      if (rescueMarkerEntity) rescueMarkerEntity.show = false;
+      rescuePopup.show = false;
+      
+      setTimeout(() => {
+        if (props.focusedPointId === 'accident_blue' && Number(props.activePhaseIndex) === 7) {
+          if (rescueMarkerEntity) rescueMarkerEntity.show = true;
+          rescuePopup.show = true;
+        }
+      }, 5000);
+    } else if (isTankerScene && index === 6) {
+      rescuePopup.title = '救援装备出动';
+      rescuePopup.status = '已出发';
+      // 油罐车无人机起点 (tankerUavAdjust)
+      rescueCoords.lng = 113.06925;
+      rescueCoords.lat = 30.23928;
+      rescueCoords.height = 17.0; // 悬停于高度11.5的模型上方
+      
+      if (rescueMarkerEntity) rescueMarkerEntity.show = true;
+      rescuePopup.show = true;
+    } else if (isTankerScene && index === 7) {
+      rescuePopup.title = '无人机感知部署';
+      rescuePopup.status = '已到达';
+      // 油罐车事故点 (tankerPointAdjust)
+      rescueCoords.lng = 113.067999;
+      rescueCoords.lat = 30.2401;
+      rescueCoords.height = 17.0;
+      
+      if (rescueMarkerEntity) rescueMarkerEntity.show = false;
+      rescuePopup.show = false;
+      
+      setTimeout(() => {
+        if (props.focusedPointId === 'accident_red' && Number(props.activePhaseIndex) === 7) {
+          if (rescueMarkerEntity) rescueMarkerEntity.show = true;
+          rescuePopup.show = true;
+        }
+      }, 5000);
+    } else {
+      if (rescueMarkerEntity) rescueMarkerEntity.show = false;
+      rescuePopup.show = false;
+    }
     if (popupEntity) {
       // 隐藏悬浮窗和连接线（根据用户要求取消显示）
       popupEntity.show = false
@@ -1364,12 +1572,18 @@ watch([() => tankerAdjust.lng, () => tankerAdjust.lat, () => tankerAdjust.headin
 
 // 监听救援车微调变化 (位置、角度和缩放已完全由 CallbackProperty 接管，此处无需手动更新 Entity 属性)
 
-// 监听油罐车事故点位置变化同步更新泄露与弥漫效果位置
-watch([() => tankerPointAdjust.lng, () => tankerPointAdjust.lat], () => {
+// 监听油罐车事故点位置与车身朝向变化同步更新泄露与弥漫效果位置
+watch([() => tankerPointAdjust.lng, () => tankerPointAdjust.lat, () => tankerAdjust.heading], () => {
   if (typeof tankerPointAdjust.lng !== 'number' || typeof tankerPointAdjust.lat !== 'number') return;
-  const matrix = Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(tankerPointAdjust.lng, tankerPointAdjust.lat, 0.0));
-  if (leakParticle) leakParticle.modelMatrix = matrix;
-  if (diffusionParticle) diffusionParticle.modelMatrix = matrix;
+  
+  // 泄露粒子系统使用车身朝向对齐的坐标系，使侧向喷射角度正确
+  const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(Number(tankerAdjust.heading) || 36), 0, 0);
+  const leakMatrix = Cesium.Transforms.headingPitchRollToFixedFrame(Cesium.Cartesian3.fromDegrees(tankerPointAdjust.lng, tankerPointAdjust.lat, 0.8), hpr);
+  if (leakParticle) leakParticle.modelMatrix = leakMatrix;
+
+  // 弥漫粒子系统保持 ENU 坐标系以利于风向漂移
+  const diffMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(tankerPointAdjust.lng, tankerPointAdjust.lat, 0.0));
+  if (diffusionParticle) diffusionParticle.modelMatrix = diffMatrix;
 });
 
 // 监听无人机微调变化 (位置和角度已完全由 CallbackProperty 接管，此处无需手动更新 Entity 属性)
@@ -1410,6 +1624,12 @@ watch(() => props.activePhaseIndex, (next, prev) => {
     phase7StartTime = 0;
     tankerPhase7StartTime = 0;
   }
+  
+  if (next >= 4 && (prev < 4 || !diffusionStartTime)) {
+    diffusionStartTime = Date.now();
+  } else if (next < 4) {
+    diffusionStartTime = 0;
+  }
   updatePhaseScene(next);
 });
 
@@ -1422,6 +1642,7 @@ onBeforeUnmount(() => {
   stopAutoRotate()
   if (viewer) {
     viewer.scene.postRender.removeEventListener(updateModelsReadyStatus)
+    viewer.scene.postRender.removeEventListener(updatePopupPosition)
     if (smokeParticle) viewer.scene.primitives.remove(smokeParticle)
     if (fireParticle) viewer.scene.primitives.remove(fireParticle)
     if (leakParticle) viewer.scene.primitives.remove(leakParticle)
@@ -1433,6 +1654,85 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .cesium-wrapper, .cesium-container { width: 100%; height: 100%; position: relative; }
+
+/* 避难点 HTML 悬浮窗样式 */
+.shelter-popup-panel {
+  position: absolute;
+  z-index: 1000;
+  transform: translate(-50%, -100%);
+  width: 170px;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  font-family: "Microsoft YaHei", sans-serif;
+  overflow: visible;
+  pointer-events: auto;
+}
+
+.shelter-popup-header {
+  background-color: #b49b1c; /* 芥末黄/金黄色 */
+  color: white;
+  padding: 4px 8px;
+  font-weight: bold;
+  font-size: 11px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+}
+
+.shelter-popup-header .close-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.shelter-popup-header .close-btn:hover {
+  opacity: 0.8;
+}
+
+.shelter-popup-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  color: #333;
+}
+
+.shelter-popup-table td {
+  padding: 4px 6px;
+  border: 1px solid #dff0f6;
+  text-align: center;
+}
+
+.shelter-popup-table td.label {
+  background-color: #e0f0f5;
+  color: #555;
+  font-weight: bold;
+  width: 45%;
+}
+
+.shelter-popup-table td.value {
+  background-color: white;
+  color: #333;
+}
+
+.shelter-popup-arrow {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid white;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.15));
+}
 .globe-mask {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   background: rgba(2, 10, 22, 0.88); color: rgba(255, 255, 255, 0.78);

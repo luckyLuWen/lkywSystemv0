@@ -1,6 +1,5 @@
 <template>
   <div class="simulation-container">
-    <h1>仿真推演</h1>
     <div class="iframe-container">
       <iframe
         src="/constructive-simulation/index.html"
@@ -25,14 +24,8 @@ const onIframeLoad = () => {
   display: flex;
   flex-direction: column;
   background: var(--bg-color);
-}
-
-h1 {
-  color: var(--primary-color);
-  margin: 0 0 20px 0;
-  text-shadow: var(--glow-shadow);
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 10px;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .iframe-container {
