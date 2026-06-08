@@ -27,14 +27,23 @@ UGV_BLOCKED = (args.ugv_block == 1)
 UAV_SMOKE = (args.uav_smoke == 1)
 SYNC_STRATEGY = str(args.strategy).strip().lower()
 
-CAR_SPEED = 8.33   # 30 km/h
-UAV_SPEED = 20.0   # 20 m/s
-START_POINT = (30.5185, 114.4140) 
-END_POINT = (30.4751, 114.4046)   
-NFZ_LIST = [{'center': (30.495, 114.41), 'radius': 600}]
-NEW_NFZ_LIST = [{'center': (30.505, 114.415), 'radius': 500}] 
-CONGESTION_ZONE_POLYGON = [[30.512, 114.408], [30.512, 114.412], [30.508, 114.412], [30.508, 114.408]]
-GRID_RES = 30.0 
+CAR_SPEED = 22.22  # 80 km/h (长途救援真实车速)
+UAV_SPEED = 20.0   # 20 m/s (大型救援无人机)
+START_POINT = (30.321919430948842, 113.41817301217728)  # 起点：仙桃市毛嘴镇消防站
+END_POINT = (30.238683, 113.070272)                     # 终点：油罐车泄漏现场
+
+# 核心禁飞区：放在三伏潭镇附近（路径中段偏北），迫使无人机绕行
+NFZ_LIST = [{'center': (30.33, 113.30), 'radius': 2000}]
+# 风险缓冲区：放在胡场镇附近（路径中段偏南），扩大避障范围
+NEW_NFZ_LIST = [{'center': (30.27, 113.18), 'radius': 1500}]
+# 地面拥堵区：拦截G318沪聂线主干道（毛嘴→仙桃方向）
+CONGESTION_ZONE_POLYGON = [
+    [30.310, 113.245],
+    [30.310, 113.260],
+    [30.295, 113.260],
+    [30.295, 113.245]
+]
+GRID_RES = 100.0   # 适配约35km大范围网格 
 START_TIME = pd.Timestamp('2025-01-01 09:00:00')
 ANIMATION_INTERVAL = 1.0
 
@@ -70,9 +79,12 @@ def b_spline_smooth(waypoints, num_points=200, k=3):
 # ==================== 3. 路径生成 ====================
 def generate_car_path():
     try:
+        straight_dist = calculate_distance(START_POINT[0], START_POINT[1], END_POINT[0], END_POINT[1])
+        fetch_radius = int(straight_dist * 1.5)
+        print(f"正在拉取底层真实路网... (预计半径: {fetch_radius/1000:.1f} km)")
         G = load_drive_graph_from_local_or_osm(
             START_POINT,
-            dist=6000,
+            dist=fetch_radius,
             network_type='drive',
             simplify=False,
         )
@@ -101,7 +113,7 @@ def generate_car_path():
     except Exception as e: return pd.DataFrame([START_POINT, END_POINT], columns=['lat', 'lon']), 100
 
 def generate_uav_path(car_time):
-    pad = 0.02
+    pad = 0.05
     min_lat, max_lat = min(START_POINT[0], END_POINT[0]) - pad, max(START_POINT[0], END_POINT[0]) + pad
     min_lon, max_lon = min(START_POINT[1], END_POINT[1]) - pad, max(START_POINT[1], END_POINT[1]) + pad
     rows, cols = int(calculate_distance(min_lat, min_lon, max_lat, min_lon) / GRID_RES), int(calculate_distance(min_lat, min_lon, min_lat, max_lon) / GRID_RES)
@@ -142,15 +154,14 @@ def generate_uav_path(car_time):
     return df, raw_df, delay
 
 # ==================== 4. 生成 Folium ====================
-def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, delay, output_filename='wuhan_rescue_optimized.html'):
+def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, delay, output_filename='2d_deduction.html'):
     map_center = [(START_POINT[0] + END_POINT[0]) / 2, (START_POINT[1] + END_POINT[1]) / 2]
     
     # 🌟 修改点 1：开启 detect_retina=True (高清视网膜图层，极大提高清晰度) 和 control_scale=True (添加学术论文必备的比例尺)
-    m = folium.Map(location=map_center, zoom_start=13, tiles="OpenStreetMap", detect_retina=True, control_scale=True)
+    m = folium.Map(location=map_center, zoom_start=11, tiles="OpenStreetMap", detect_retina=True, control_scale=True)
 
     car_path_group = folium.FeatureGroup(name='车辆路径 (UGV Path)', show=True).add_to(m)
     uav_path_group = folium.FeatureGroup(name='无人机路径 (UAV Path)', show=True).add_to(m)
-    raw_uav_path_group = folium.FeatureGroup(name='原始A*折线 (Raw Path)', show=True).add_to(m)
 
     if UGV_BLOCKED: 
         folium.Polygon(locations=CONGESTION_ZONE_POLYGON, color='#3b82f6', weight=2, fill=True, fill_opacity=0.2, tooltip='地面拥堵/救援禁区').add_to(m)
@@ -163,18 +174,8 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
         new_nfz = NEW_NFZ_LIST[0]
         folium.Circle(location=new_nfz['center'], radius=new_nfz['radius'], color='#f97316', weight=2, fill=True, fill_opacity=0.25, tooltip='风险缓冲区 (Buffer Zone)').add_to(m)
     
-    folium.Marker(START_POINT, icon=folium.Icon(color='green', icon='home')).add_to(m)
-    folium.Marker(END_POINT, icon=folium.Icon(color='red', icon='fire')).add_to(m)
-
-    # 黑色折线
-    if not raw_uav_df.empty:
-        folium.PolyLine(
-            raw_uav_df[['lat', 'lon']].values.tolist(), 
-            color='black', 
-            weight=3, 
-            opacity=1.0, 
-            tooltip='原始A*路径 (未平滑)'
-        ).add_to(raw_uav_path_group)
+    folium.Marker(START_POINT, icon=folium.Icon(color='green', icon='home'), tooltip='起点：仙桃市毛嘴镇消防站').add_to(m)
+    folium.Marker(END_POINT, icon=folium.Icon(color='red', icon='fire'), tooltip='终点：市区道路-油罐车泄漏现场').add_to(m)
 
     # 车：蓝色实线
     folium.PolyLine(car_interp[['lat', 'lon']].values.tolist(), color='#0000ff', weight=5, opacity=0.7).add_to(car_path_group)
@@ -204,7 +205,7 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
 
     ui_html = f'''
     <div style="position: fixed; top: 20px; left: 60px; z-index: 1000; width: 280px; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); font-family: 'Arial', sans-serif;">
-        <h4 style="margin: 0 0 12px; color: #1e40af; text-align: center; border-bottom: 2px solid #ddd; padding-bottom: 8px;">📈 ISD/CAS/RCD 效能对比</h4>
+        <h4 style="margin: 0 0 12px; color: #1e40af; text-align: center; border-bottom: 2px solid #ddd; padding-bottom: 8px;">ISD/CAS/RCD 效能对比</h4>
         <div style="font-size: 13px; line-height: 1.6;">
             <div style="display: flex; justify-content: space-between;"><span>协同机制:</span> <b>{strategy_name}</b></div>
             <div style="display: flex; justify-content: space-between;"><span>车辆(UGV)耗时:</span> <b>{car_df['time_s'].iloc[-1]/60:.1f} min</b></div>
@@ -216,23 +217,11 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
     </div>
     '''
     
-    # 🌟 修改点 2：最纯正的学术论文风图例 (黑框、纯白底色、直角、无阴影、Times New Roman)
+    # 精简图例 (右上角)
     legend_html = f'''
-    <div style="position: fixed; top: 20px; right: 20px; z-index: 1000; width: 250px; background: white; padding: 12px 15px; border: 1.5px solid black; font-family: 'Times New Roman', Times, serif, 'SimSun'; color: black; box-shadow: none; border-radius: 0;">
+    <div style="position: fixed; top: 20px; right: 20px; z-index: 1000; width: 220px; background: white; padding: 12px 15px; border: 1.5px solid black; font-family: 'Times New Roman', Times, serif, 'SimSun'; color: black; box-shadow: none; border-radius: 0;">
         <h4 style="margin: 0 0 10px; text-align: center; color: black; font-size: 15px; font-weight: bold; border-bottom: 1px solid black; padding-bottom: 6px;">图 例 / Legend</h4>
         <div style="font-size: 13px; line-height: 1.8;">
-            <div style="display: flex; align-items: center; margin-bottom: 4px;">
-                <span style="width: 30px; height: 12px; background: rgba(239,68,68,0.5); border: 1px solid #ef4444; display: inline-block; margin-right: 12px;"></span>
-                核心禁飞区 / Core NFZ
-            </div>
-            <div style="display: flex; align-items: center; margin-bottom: 4px;">
-                <span style="width: 30px; height: 12px; background: rgba(249,115,22,0.4); border: 1px solid #f97316; display: inline-block; margin-right: 12px;"></span>
-                风险缓冲区 / Buffer Zone
-            </div>
-            <div style="display: flex; align-items: center; margin-bottom: 4px;">
-                <span style="width: 30px; height: 12px; background: rgba(59,130,246,0.2); border: 1px solid #3b82f6; display: inline-block; margin-right: 12px;"></span>
-                拥堵禁区 / Congestion
-            </div>
             <div style="display: flex; align-items: center; margin-bottom: 4px;">
                 <span style="width: 30px; height: 3px; background: #0000ff; display: inline-block; margin-right: 12px;"></span>
                 车辆(UGV)路径 / UGV Path
@@ -241,15 +230,11 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
                 <span style="width: 30px; height: 0px; border-top: 3px dashed #ff00ff; display: inline-block; margin-right: 12px;"></span>
                 无人机(UAV)路径 / UAV Path
             </div>
-            <div style="display: flex; align-items: center; margin-bottom: 4px;">
-                <span style="width: 30px; height: 2.5px; background: black; display: inline-block; margin-right: 12px;"></span>
-                原始A*路径 / Raw Path
-            </div>
             <div style="display: flex; align-items: center; margin-top: 6px;">
-                <i class="fa fa-map-marker fa-lg" style="color:green; margin-right: 16px; margin-left: 8px;"></i> 起点 / Start Point
+                <i class="fa fa-map-marker fa-lg" style="color:green; margin-right: 16px; margin-left: 8px;"></i> 起点：仙桃市毛嘴镇消防站
             </div>
             <div style="display: flex; align-items: center; margin-top: 4px;">
-                <i class="fa fa-map-marker fa-lg" style="color:red; margin-right: 16px; margin-left: 8px;"></i> 终点 / End Point
+                <i class="fa fa-map-marker fa-lg" style="color:red; margin-right: 16px; margin-left: 8px;"></i> 终点：市区道路-油罐车泄漏现场
             </div>
         </div>
     </div>
@@ -277,4 +262,5 @@ if __name__ == '__main__':
     print("正在进行时空同步插值与交互式网页生成...")
     car_interp = interpolate_path(car_df, ANIMATION_INTERVAL)
     uav_interp = interpolate_path(uav_df, ANIMATION_INTERVAL)
-    create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, delay)
+    output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "2d_deduction.html")
+    create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, delay, output_filename=output_path)

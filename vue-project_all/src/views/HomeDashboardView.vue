@@ -201,6 +201,7 @@ const topMenus = [
   { key: 'sensor', label: '传感器管理', path: '/sensor-manage' },
   { key: 'realtime', label: '实时检测', path: '/realtime' },
   { key: 'coordination', label: '协同响应', path: '/coordination' },
+  { key: '2d-deduction', label: '二维动态推演', path: '/2d-deduction' },
   { key: 'modeling', label: '精细建模', path: '/modeling' },
   { key: 'simulation', label: '仿真推演', path: '/simulation' },
 ]

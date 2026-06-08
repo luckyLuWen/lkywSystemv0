@@ -6,12 +6,14 @@ import SensorManage from '../views/SensorManage.vue'
 import SimulationView from '../views/SimulationView.vue'
 import ModelingView from '../views/ModelingView.vue'
 import CoordinationView from '../views/CoordinationView.vue'
+import TwoDimensionView from '../views/TwoDimensionView.vue'
 
 const routes = [
   { path: '/', component: HomeDashboardView },
   { path: '/realtime', component: AccidentDetectionView },
   { path: '/sensor-manage', component: SensorManage },
   { path: '/coordination', component: CoordinationView },
+  { path: '/2d-deduction', component: TwoDimensionView },
   { path: '/modeling', component: ModelingView },
   { path: '/simulation', component: SimulationView },
 ]

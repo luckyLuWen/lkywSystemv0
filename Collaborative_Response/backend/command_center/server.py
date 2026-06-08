@@ -445,9 +445,16 @@ def build_health_payload() -> dict[str, Any]:
 
 # ── Static / view routes ──────────────────────────────────────────────
 
+COLLAB_RESPONSE_PUBLIC = os.path.join(os.path.dirname(BASE_DIR), "..", "vue-project_all", "public", "collaborative-response")
+
 @app.route("/")
 def index():
     return send_from_directory(BASE_DIR, "index.html")
+
+@app.route("/collaborative-response/")
+@app.route("/collaborative-response/<path:filename>")
+def serve_collaborative_response(filename="index.html"):
+    return send_from_directory(COLLAB_RESPONSE_PUBLIC, filename)
 
 
 @app.route("/cesium_viewer")
@@ -455,9 +462,9 @@ def cesium_viewer():
     return send_from_directory(BASE_DIR, "cesium_viewer.html")
 
 
-@app.route("/wuhan_rescue_optimized.html")
-def serve_folium_map():
-    return send_from_directory(BASE_DIR, "wuhan_rescue_optimized.html")
+@app.route("/2d_deduction.html")
+def serve_2d_deduction():
+    return send_from_directory(BASE_DIR, "2d_deduction.html")
 
 
 @app.route("/mission.czml")
@@ -514,7 +521,7 @@ def run_3d_strategy():
         )
     return success_response(
         "二维动态推演与策略评估已刷新",
-        url="/wuhan_rescue_optimized.html",
+        url="/2d_deduction.html",
         metrics=load_strategy_metrics(),
     )
 
