@@ -68,5 +68,7 @@ start_Collaborative_Response.sh
 start_detection_backend.sh
 start_sensor_gateway.sh
 
-
+.claude/
 *.improve
+
+subsystems.js
