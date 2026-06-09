@@ -306,24 +306,6 @@ export function buildIntegrationHubSseUrl(baseUrl = getIntegrationHubBaseUrl()) 
   return buildIntegrationHubApiUrl('api/events/stream', baseUrl)
 }
 
-export function build2DDeductionIframeSrc(
-  commandCenterBaseUrl = getCollaborativeCommandCenterBaseUrl()
-) {
-  const base = normalizeBaseUrl(commandCenterBaseUrl) || DEFAULT_COLLABORATIVE_COMMAND_CENTER_BASE_URL
-  return `${base}/2d_deduction.html`
-}
-
-export async function trigger2DDeduction(
-  commandCenterBaseUrl = getCollaborativeCommandCenterBaseUrl()
-) {
-  const base = normalizeBaseUrl(commandCenterBaseUrl) || DEFAULT_COLLABORATIVE_COMMAND_CENTER_BASE_URL
-  const resp = await fetch(`${base}/api/run_3d_strategy`)
-  if (!resp.ok) {
-    throw new Error(`生成失败: ${resp.status}`)
-  }
-  return resp.json()
-}
-
 export {
   DEFAULT_SENSOR_GATEWAY_BASE_URL,
   DEFAULT_REALTIME_DETECTION_BASE_URL,
