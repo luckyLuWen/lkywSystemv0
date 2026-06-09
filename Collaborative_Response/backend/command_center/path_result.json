@@ -1,38 +1,38 @@
 {
-  "end_point": "crash",
-  "end_point_name": "高速公路-货车追尾现场",
+  "end_point": "leak",
+  "end_point_name": "市区道路-油罐车泄漏现场",
   "strategy": "rcd",
   "metrics": {
-    "carTime": "26.5",
-    "uavTime": "26.8",
-    "delay": "0",
-    "uavEnergy": "1929.6"
+    "carTime": "33.9",
+    "uavTime": "30.0",
+    "delay": "237.0",
+    "uavEnergy": "2160.0"
   },
   "obstacles": [
     {
       "type": "polygon",
       "color": "#3b82f6",
       "positions": [
-        113.255,
-        30.36,
-        113.275,
-        30.36,
-        113.275,
-        30.345,
-        113.255,
-        30.345
+        113.245,
+        30.31,
+        113.26,
+        30.31,
+        113.26,
+        30.295,
+        113.245,
+        30.295
       ]
     },
     {
       "type": "cylinder",
       "center": [
-        113.28,
-        30.365
+        113.3,
+        30.33
       ],
       "radius": 2000,
       "color": "#ef4444",
       "height": 200
     }
   ],
-  "updated_at": "2026-06-09T05:50:10.475879+00:00"
+  "updated_at": "2026-06-09T06:04:47.088427+00:00"
 }
