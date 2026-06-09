@@ -1,15 +1,36 @@
-param()
+param(
+  [string[]]$TargetName = @()
+)
 
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $publicRoot = Join-Path $root 'vue-project_all\public'
 
+function Assert-TargetInsidePublicRoot {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Path
+  )
+
+  $fullPublicRoot = [System.IO.Path]::GetFullPath($publicRoot).TrimEnd(
+    [System.IO.Path]::DirectorySeparatorChar,
+    [System.IO.Path]::AltDirectorySeparatorChar
+  ) + [System.IO.Path]::DirectorySeparatorChar
+  $fullPath = [System.IO.Path]::GetFullPath($Path)
+
+  if (-not $fullPath.StartsWith($fullPublicRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "Refusing to reset directory outside public root: $Path"
+  }
+}
+
 function Reset-Directory {
   param(
     [Parameter(Mandatory = $true)]
     [string]$Path
   )
+
+  Assert-TargetInsidePublicRoot -Path $Path
 
   if (Test-Path -LiteralPath $Path) {
     Remove-Item -LiteralPath $Path -Recurse -Force
@@ -46,11 +67,12 @@ function Convert-ViteIndexToRelative {
     throw "Entry file not found: $IndexPath"
   }
 
-  $content = Get-Content -LiteralPath $IndexPath -Raw
+  $utf8 = New-Object System.Text.UTF8Encoding -ArgumentList $false, $true
+  $content = [System.IO.File]::ReadAllText($IndexPath, $utf8)
   $content = $content.Replace('href="/assets/', 'href="./assets/')
   $content = $content.Replace('src="/assets/', 'src="./assets/')
   $content = $content.Replace('href="/vite.svg"', 'href="./vite.svg"')
-  Set-Content -LiteralPath $IndexPath -Value $content -Encoding UTF8
+  [System.IO.File]::WriteAllText($IndexPath, $content, $utf8)
 }
 
 $targets = @(
@@ -66,8 +88,8 @@ $targets = @(
   },
   @{
     Name = 'realtime-detection'
-    Source = Join-Path $root 'Real-time_Detection\web_app\frontend'
-    Type = 'static'
+    Source = Join-Path $root 'Real-time_Detection\web_app\frontend\vue-frontend\dist'
+    Type = 'vite'
   },
   @{
     Name = 'sensor-management'
@@ -76,6 +98,17 @@ $targets = @(
   }
 )
 
+if ($TargetName.Count -gt 0) {
+  $knownTargetNames = $targets | ForEach-Object { $_.Name }
+  foreach ($name in $TargetName) {
+    if ($knownTargetNames -notcontains $name) {
+      throw "Unknown target '$name'. Known targets: $($knownTargetNames -join ', ')"
+    }
+  }
+
+  $targets = $targets | Where-Object { $TargetName -contains $_.Name }
+}
+
 foreach ($target in $targets) {
   $destination = Join-Path $publicRoot $target.Name
   Copy-DirectoryContents -Source $target.Source -Target $destination
@@ -83,6 +116,8 @@ foreach ($target in $targets) {
   if ($target.Type -eq 'vite') {
     Convert-ViteIndexToRelative -IndexPath (Join-Path $destination 'index.html')
   }
+
+  Write-Host "Synced $($target.Name)."
 }
 
 Write-Host 'Subsystem static assets synced.'
