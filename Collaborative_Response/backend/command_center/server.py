@@ -101,6 +101,9 @@ def load_strategy_metrics() -> dict[str, Any]:
     return {
         "available": True,
         "message": "已读取当前策略评估结果",
+        "end_point": payload.get("end_point", ""),
+        "end_point_name": payload.get("end_point_name", ""),
+        "strategy": payload.get("strategy", ""),
         "metrics": payload.get("metrics", {}),
         "obstacles": payload.get("obstacles", []),
         "updated_at": file_info(PATH_RESULT_PATH)["updated_at"],
@@ -445,9 +448,16 @@ def build_health_payload() -> dict[str, Any]:
 
 # ── Static / view routes ──────────────────────────────────────────────
 
+COLLAB_RESPONSE_PUBLIC = os.path.join(os.path.dirname(BASE_DIR), "..", "vue-project_all", "public", "collaborative-response")
+
 @app.route("/")
 def index():
     return send_from_directory(BASE_DIR, "index.html")
+
+@app.route("/collaborative-response/")
+@app.route("/collaborative-response/<path:filename>")
+def serve_collaborative_response(filename="index.html"):
+    return send_from_directory(COLLAB_RESPONSE_PUBLIC, filename)
 
 
 @app.route("/cesium_viewer")
@@ -455,9 +465,9 @@ def cesium_viewer():
     return send_from_directory(BASE_DIR, "cesium_viewer.html")
 
 
-@app.route("/wuhan_rescue_optimized.html")
-def serve_folium_map():
-    return send_from_directory(BASE_DIR, "wuhan_rescue_optimized.html")
+@app.route("/2d_deduction.html")
+def serve_2d_deduction():
+    return send_from_directory(BASE_DIR, "2d_deduction.html")
 
 
 @app.route("/mission.czml")
@@ -505,7 +515,22 @@ def run_2d():
 
 @app.route("/api/run_3d_strategy")
 def run_3d_strategy():
-    result = run_script("app_3d_strategy.py")
+    end_point = request.args.get("end_point", "leak")
+    if end_point not in ("leak", "crash"):
+        end_point = "leak"
+    ugv_block = request.args.get("ugv_block", "1")
+    uav_smoke = request.args.get("uav_smoke", "1")
+    strategy = request.args.get("strategy", "rcd")
+    compare = request.args.get("compare", "0")
+    extra_args = [
+        "--end_point", end_point,
+        "--ugv_block", ugv_block,
+        "--uav_smoke", uav_smoke,
+        "--strategy", strategy,
+    ]
+    if compare == "1":
+        extra_args += ["--compare", "1"]
+    result = run_script("app_3d_strategy.py", *extra_args)
     if result.returncode != 0:
         return error_response(
             "二维动态推演生成失败",
@@ -514,7 +539,7 @@ def run_3d_strategy():
         )
     return success_response(
         "二维动态推演与策略评估已刷新",
-        url="/wuhan_rescue_optimized.html",
+        url="/2d_deduction.html",
         metrics=load_strategy_metrics(),
     )
 
@@ -595,4 +620,11 @@ if __name__ == "__main__":
     print(f"协同响应指挥后端已启动: http://127.0.0.1:{COMMAND_CENTER_PORT}")
     print(f"  API 健康检查: http://127.0.0.1:{COMMAND_CENTER_PORT}/api/health")
     print(f"  服务管理:     http://127.0.0.1:{COMMAND_CENTER_PORT}/api/services")
+
+    try:
+        manager.start_service("streamlit")
+        print(f"  协同调度平台:  http://127.0.0.1:{STREAMLIT_PORT}/?embed=true")
+    except Exception as exc:
+        print(f"  [WARN] Streamlit 自启动失败: {exc}")
+
     app.run(host=COMMAND_CENTER_HOST, port=COMMAND_CENTER_PORT, threaded=True)

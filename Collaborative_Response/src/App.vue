@@ -522,7 +522,7 @@ async function runCommandCenterAction(path, nextView) {
 function refreshFrames() {
   streamlitFrameSrc.value = appendUrlParams(resolvedStreamlitUrl.value, { embed: 'true', t: Date.now() })
   strategyFrameSrc.value = appendUrlParams(
-    buildCommandCenterUrl('wuhan_rescue_optimized.html', resolvedCommandCenterBaseUrl.value),
+    buildCommandCenterUrl('2d_deduction.html', resolvedCommandCenterBaseUrl.value),
     { t: Date.now() }
   )
   cesiumFrameSrc.value = appendUrlParams(
@@ -562,7 +562,7 @@ async function showStreamlitView() {
 async function show2DView() {
   await openManagedView('2d', 'commandCenter', () => {
     strategyFrameSrc.value = appendUrlParams(
-      buildCommandCenterUrl('wuhan_rescue_optimized.html', resolvedCommandCenterBaseUrl.value),
+      buildCommandCenterUrl('2d_deduction.html', resolvedCommandCenterBaseUrl.value),
       { t: Date.now() }
     )
     strategyFrameKey.value += 1
