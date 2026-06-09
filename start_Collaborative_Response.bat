@@ -3,7 +3,7 @@ setlocal
 
 :: 1. Setup paths
 set "REPO_DIR=%~dp0"
-set "TARGET_DIR=%REPO_DIR%Collaborative_Response\service_manager"
+set "TARGET_DIR=%REPO_DIR%Collaborative_Response\backend\command_center"
 
 :: 2. Resolve Python
 set "PYTHON_EXE=%LKYW_PYTHON_EXE%"
