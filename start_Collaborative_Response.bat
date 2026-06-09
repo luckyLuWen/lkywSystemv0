@@ -9,7 +9,7 @@ set "TARGET_DIR=%REPO_DIR%Collaborative_Response\backend\command_center"
 set "PYTHON_EXE=%LKYW_PYTHON_EXE%"
 if defined PYTHON_EXE goto python_ready
 
-set "PYTHON_EXE=D:\CondaEnvs\yolov11_traffic_dev\python.exe"
+set "PYTHON_EXE=D:\Miniconda\envs\layolo_traffic_dev\python.exe"
 if exist "%PYTHON_EXE%" goto python_ready
 
 for /f "delims=" %%I in ('where python 2^>nul') do (

@@ -2,17 +2,30 @@
   <div class="home-dashboard">
     <!-- Top Nav / Toolbar -->
     <header class="top-nav-desktop">
-      <div class="toolbar">
-        <button
-          v-for="item in topMenus"
-          :key="item.key"
-          type="button"
-          class="toolbar-btn"
-          :class="{ active: activeMenuKey === item.key }"
-          @click="goTo(item)"
-        >
-          {{ item.label }}
-        </button>
+      <div class="header-left-actions">
+        <div class="toolbar">
+          <button
+            v-for="item in topMenus"
+            :key="item.key"
+            type="button"
+            class="toolbar-btn"
+            :class="{ active: activeMenuKey === item.key }"
+            @click="goTo(item)"
+          >
+            {{ item.label }}
+          </button>
+        </div>
+      </div>
+      
+      <div class="header-center-title">
+        <div class="title-glow">两客一危应急救援协同决策大屏</div>
+      </div>
+      
+      <div class="header-right-actions">
+        <div class="digital-clock">
+          <span class="clock-icon">🕒</span>
+          <span class="clock-text">{{ systemTime }}</span>
+        </div>
       </div>
     </header>
 
@@ -73,6 +86,7 @@
               :phases="timelinePhases"
               :active-phase-index="activePhaseIndex"
               :focused-point-id="currentFocusedPoint"
+              :sensor-data="displaySensorData"
               @accident-picked="onAccidentPickedOnGlobe"
               @models-ready="onModelsReady"
             />
@@ -98,65 +112,179 @@
           {{ isRightCollapsed ? '◀' : '▶' }}
         </button>
         <div class="sidebar-header">
-          <h2 class="sidebar-title">处理参数与当前状态</h2>
-          <span class="sidebar-subtitle">Processing Parameters</span>
+          <h2 class="sidebar-title">
+            {{ activeRightTab === 'sensor' ? '传感器数据' : activeRightTab === 'detection' ? '检测数据' : '规划数据' }}
+          </h2>
+          <span class="sidebar-subtitle">
+            {{ activeRightTab === 'sensor' ? 'Sensor Data Gateway' : activeRightTab === 'detection' ? 'Real-time Detection' : 'Collaborative Planning' }}
+          </span>
         </div>
-        <div class="sidebar-content">
-          <div class="parameter-table">
-            <div class="table-header">
-              <span class="col-param">参数</span>
-              <span class="col-val">当前状态/值</span>
-            </div>
-            <div class="table-body">
-              <div class="table-row">
-                <span class="col-param font-medium">当前事故场景</span>
-                <span class="col-val text-blue font-semibold">{{ currentAccidentId === 'rear-end' ? '货车追尾现场' : '油罐车泄露现场' }}</span>
+        <div class="sidebar-content right-sidebar-flex-content">
+          <div class="right-tab-panel">
+            <!-- 传感器数据标签页 -->
+            <div v-if="activeRightTab === 'sensor'" class="sensor-data-panel">
+              <div class="sensor-header-row">
+                <span class="sensor-section-title">实时环境传感器</span>
+                <span class="sensor-source-badge" :class="{ online: isWsConnected }">
+                  {{ isWsConnected ? '📡 网关在线' : '⚠️ 离线模拟' }}
+                </span>
               </div>
-              <div class="table-row">
-                <span class="col-param font-medium">推演阶段</span>
-                <span class="col-val font-semibold">{{ timelinePhases[activePhaseIndex]?.shortLabel || '未开始' }}</span>
-              </div>
-              <div class="table-row">
-                <span class="col-param font-medium">仿真当前时间</span>
-                <span class="col-val text-amber font-semibold">{{ timelinePhases[activePhaseIndex]?.time || '00:00' }}</span>
-              </div>
-              <div class="table-row">
-                <span class="col-param font-medium">网关与检测</span>
-                <span class="col-val text-green font-semibold">系统协同联动中</span>
-              </div>
-              <div class="table-row">
-                <span class="col-param font-medium">三维地图引擎</span>
-                <span class="col-val">Cesium 3D Globe</span>
-              </div>
-            </div>
-          </div>
+              
+              <div class="ugv-cards-container">
+                <!-- 无人车 A 卡片 -->
+                <div class="ugv-card">
+                  <div class="ugv-header">
+                    <span class="ugv-title">无人车 A</span>
+                    <span class="ugv-status">在线</span>
+                  </div>
+                  <div class="ugv-data">
+                    <div class="ugv-row">
+                      <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ ugvA.temp }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ ugvA.hum }}%</span></div>
+                    </div>
+                    <div class="ugv-row">
+                      <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ ugvA.smoke }} ug</span></div>
+                    </div>
+                    <div class="ugv-row">
+                      <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ ugvA.tvoc }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ ugvA.co }}</span></div>
+                    </div>
+                  </div>
+                  <div class="ugv-footer" @click="router.push({ path: '/sensor-manage', query: { target: 'node1' } })">点击查看详情 →</div>
+                </div>
 
-          <IntegrationEventMonitor />
-          
-          <div class="action-card-right">
-            <h3 class="action-card-title">场景重置与交互操作</h3>
-            <p class="action-card-desc">您可以点击下方按钮对当前选中的事故点进行视角定位或将仿真阶段重置。</p>
-            <div class="action-card-btns">
-              <button class="action-btn-desktop primary" @click="handleLocate">定位到事故点</button>
-              <button class="action-btn-desktop secondary" @click="activePhaseIndex = 0">重置当前阶段</button>
-            </div>
-          </div>
+                <!-- 无人车 B 卡片 -->
+                <div class="ugv-card">
+                  <div class="ugv-header">
+                    <span class="ugv-title">无人车 B</span>
+                    <span class="ugv-status">在线</span>
+                  </div>
+                  <div class="ugv-data">
+                    <div class="ugv-row">
+                      <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ ugvB.temp }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ ugvB.hum }}%</span></div>
+                    </div>
+                    <div class="ugv-row">
+                      <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ ugvB.smoke }} ug</span></div>
+                    </div>
+                    <div class="ugv-row">
+                      <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ ugvB.tvoc }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ ugvB.co }}</span></div>
+                    </div>
+                  </div>
+                  <div class="ugv-footer" @click="router.push({ path: '/sensor-manage', query: { target: 'node2' } })">点击查看详情 →</div>
+                </div>
+              </div>
 
-          <div class="action-card-right" style="margin-top: 12px;">
-            <h3 class="action-card-title">时间轴垂直位置微调</h3>
-            <p class="action-card-desc">拉动滑块实时手动调整底部时间轴的垂直高度：</p>
-            <div class="slider-control-row">
-              <input
-                type="range"
-                v-model.number="timelineBottom"
-                min="-10"
-                max="100"
-                step="1"
-                class="desktop-slider"
-              />
-              <span class="slider-val">{{ timelineBottom }}px</span>
+              <div class="sensor-section-title" style="margin-top: 18px;">局部气象环境</div>
+              
+              <div class="meteorology-card">
+                <div class="met-icon">🌬️</div>
+                <div class="met-details">
+                  <div class="met-row">
+                    <span class="met-label">实时风速</span>
+                    <span class="met-val">{{ displaySensorData.windSpeed }} m/s</span>
+                  </div>
+                  <div class="met-divider"></div>
+                  <div class="met-row">
+                    <span class="met-label">当前风向</span>
+                    <span class="met-val">{{ displaySensorData.windDirection }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 无人机航拍图片数据 -->
+              <div class="sensor-section-title" style="margin-top: 18px;">无人机航拍图片</div>
+
+              <div class="sidebar-uav-gallery" v-if="globeRef && globeRef.capturedPhotos">
+                <!-- 主图区域 -->
+                <div class="sidebar-uav-main-photo">
+                  <img
+                    v-if="globeRef.activePhotoIndex !== null"
+                    :src="currentPhotoSrc"
+                    :class="['sidebar-uav-img', 'photo-angle-' + globeRef.activePhotoIndex]"
+                  />
+                  <div v-else class="sidebar-uav-placeholder">
+                    <div class="sidebar-radar"></div>
+                    <span>等待无人机到达侦察位置...</span>
+                  </div>
+                  <div class="sidebar-uav-overlay" v-if="globeRef.activePhotoIndex !== null">
+                    <span class="timestamp">{{ globeRef.currentTimeStr }}</span>
+                    <span class="coords">
+                      {{ currentAccidentId === 'rear-end' ? '113.1048°E, 30.3855°N' : '113.0680°E, 30.2401°N' }}
+                    </span>
+                  </div>
+                </div>
+                <!-- 4张缩略图列表 -->
+                <div class="sidebar-uav-thumbs">
+                  <div
+                    v-for="i in [0, 1, 2, 3]"
+                    :key="i"
+                    class="sidebar-thumb-box"
+                    :class="{
+                      'is-captured': globeRef.capturedPhotos[i],
+                      'is-active': globeRef.activePhotoIndex === i
+                    }"
+                    @click="globeRef.capturedPhotos[i] ? globeRef.activePhotoIndex = i : null"
+                  >
+                    <div class="thumb-inner" v-if="globeRef.capturedPhotos[i]">
+                      <img
+                        :src="currentPhotoSrc"
+                        :class="['sidebar-thumb-img', 'photo-angle-' + i]"
+                      />
+                      <div class="thumb-badge">角 {{ i+1 }}</div>
+                    </div>
+                    <div class="thumb-lock" v-else>🔒</div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-else class="sidebar-uav-no-ref">
+                <p>正在初始化三维引擎...</p>
+              </div>
+            </div>
+
+            <!-- 检测数据标签页 -->
+            <div v-else-if="activeRightTab === 'detection'" class="detection-data-panel">
+              <div class="sensor-section-title">AI 目标检测流</div>
+              <RealtimeDetectionCard />
+            </div>
+
+            <!-- 规划数据标签页 -->
+            <div v-else-if="activeRightTab === 'planning'" class="planning-data-panel">
+              <CollaborativeResponseCard />
             </div>
           </div>
+        </div>
+        <!-- 侧边栏最下边的切换栏 -->
+        <div class="right-sidebar-footer-tabs">
+          <button 
+            type="button" 
+            class="right-tab-btn" 
+            :class="{ active: activeRightTab === 'sensor' }"
+            @click="activeRightTab = 'sensor'"
+          >
+            <span class="tab-icon">📡</span>
+            <span class="tab-text">传感器数据</span>
+          </button>
+          <button 
+            type="button" 
+            class="right-tab-btn" 
+            :class="{ active: activeRightTab === 'detection' }"
+            @click="activeRightTab = 'detection'"
+          >
+            <span class="tab-icon">🔍</span>
+            <span class="tab-text">检测数据</span>
+          </button>
+          <button 
+            type="button" 
+            class="right-tab-btn" 
+            :class="{ active: activeRightTab === 'planning' }"
+            @click="activeRightTab = 'planning'"
+          >
+            <span class="tab-icon">📋</span>
+            <span class="tab-text">规划数据</span>
+          </button>
         </div>
       </aside>
     </div>
@@ -164,7 +292,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import CollaborativeResponseCard from '../components/CollaborativeResponseCard.vue'
 import RealtimeDetectionCard from '../components/RealtimeDetectionCard.vue'
@@ -172,12 +300,157 @@ import SensorGatewayCard from '../components/SensorGatewayCard.vue'
 import IntegrationEventMonitor from '../components/IntegrationEventMonitor.vue'
 import HomeCesiumGlobe from '../components/home/HomeCesiumGlobe.vue'
 import HomeTimeProgress from '../components/home/HomeTimeProgress.vue'
+import { getSensorGatewayBaseUrl } from '../config/subsystems'
 
 const router = useRouter()
 const route = useRoute()
 const activeServiceId = ref('')
 const activeMenuKey = ref('')
 const globeRef = ref(null)
+
+const currentPhotoSrc = computed(() => {
+  return currentAccidentId.value === 'rear-end' 
+    ? '/Dashboard/images/uav_aerial_photo.png' 
+    : '/Dashboard/images/tanker_aerial_photo.png'
+})
+
+// 实时环境与气象传感器数据 (模拟)
+const sensorData = ref({
+  temp: 24.5,
+  humidity: 52.0,
+  smoke: 0.02,
+  co: 1.2,
+  tvoc: 0.15,
+  windSpeed: 3.2,
+  windDirection: '东北风'
+})
+
+let sensorInterval = null
+
+// WebSocket 网关状态同步 (连通 "传感器管理" 模块后台)
+const wsData = ref(null)
+const isWsConnected = ref(false)
+let socket = null
+let reconnectTimer = null
+
+function connectWS() {
+  if (socket) {
+    try { socket.close() } catch(e){}
+  }
+  const base = getSensorGatewayBaseUrl()
+  const wsUrl = base.replace(/^http/i, 'ws') + '/ws'
+  socket = new WebSocket(wsUrl)
+  
+  socket.onopen = () => {
+    isWsConnected.value = true
+  }
+  
+  socket.onmessage = (event) => {
+    try {
+      const parsed = JSON.parse(event.data)
+      if (parsed && (parsed.node1 || parsed.node3)) {
+        wsData.value = parsed
+      }
+    } catch (e) {
+      console.error('Error parsing WS data:', e)
+    }
+  }
+  
+  socket.onclose = () => {
+    isWsConnected.value = false
+    reconnectTimer = setTimeout(connectWS, 4000)
+  }
+  
+  socket.onerror = () => {
+    socket.close()
+  }
+}
+
+// 统一展示的传感器数据 (自动选择网关在线的真实采集数据，或离线本地模拟数据)
+const displaySensorData = computed(() => {
+  if (isWsConnected.value && wsData.value) {
+    // 优先显示测点 A (Node 1) 的温湿度、烟雾浓度、CO 浓度和 TVOC 可燃气体浓度
+    const n1 = wsData.value.node1 || {}
+    // 优先显示固定杆 (Node 3) 的风速风向
+    const n3 = wsData.value.node3 || {}
+    return {
+      temp: n1.temp !== undefined ? n1.temp : 24.5,
+      humidity: n1.hum !== undefined ? n1.hum : 52.0,
+      smoke: n1.smoke !== undefined ? (n1.smoke / 1000).toFixed(2) : 0.02, // 转换为毫克/立方米
+      co: n1.co !== undefined ? n1.co : 1.2, // ppm
+      tvoc: n1.tvoc !== undefined ? n1.tvoc : 0.15, // mg/m³
+      windSpeed: n3.wind !== undefined ? n3.wind : 3.2,
+      windDirection: n3.wind_dir || '东北风'
+    }
+  } else {
+    return sensorData.value
+  }
+})
+
+// 无人车实时数据映射
+const ugvA = computed(() => {
+  const data = displaySensorData.value;
+  return {
+    temp: data.temp || 0,
+    hum: data.humidity || 0,
+    smoke: Math.floor((data.smoke || 0) * 1000), // mg/m3 转 ug
+    tvoc: data.tvoc || 0,
+    co: data.co || 0,
+  }
+})
+
+const ugvB = computed(() => {
+  return {
+    temp: +(ugvA.value.temp - 0.45).toFixed(2),
+    hum: +(ugvA.value.hum - 2.12).toFixed(2),
+    smoke: Math.max(0, Math.floor(ugvA.value.smoke * 0.95)),
+    tvoc: Math.max(0, +(ugvA.value.tvoc * 0.88).toFixed(3)),
+    co: Math.max(0, +(ugvA.value.co * 0.92).toFixed(1)),
+  }
+})
+
+// 实时系统时钟
+const systemTime = ref('')
+let timeInterval = null
+
+onMounted(() => {
+  connectWS()
+  
+  systemTime.value = new Date().toLocaleString()
+  timeInterval = setInterval(() => {
+    systemTime.value = new Date().toLocaleString()
+  }, 1000)
+  
+  sensorInterval = setInterval(() => {
+    // 阶段3以上（灾害发生）后，烟雾和CO浓度显著升高以匹配险情
+    const isCrisis = activePhaseIndex.value >= 3
+    const baseSmoke = isCrisis ? 0.35 : 0.02
+    const baseCo = isCrisis ? 6.2 : 1.2
+    const baseTvoc = isCrisis ? 0.45 : 0.15
+
+    sensorData.value.temp = +(24.5 + (Math.random() - 0.5) * 0.4).toFixed(1)
+    sensorData.value.humidity = +(52.0 + (Math.random() - 0.5) * 1.0).toFixed(1)
+    sensorData.value.smoke = +(baseSmoke + (Math.random() - 0.5) * 0.04).toFixed(2)
+    sensorData.value.co = +(baseCo + (Math.random() - 0.5) * 0.4).toFixed(1)
+    sensorData.value.tvoc = +(baseTvoc + (Math.random() - 0.5) * 0.02).toFixed(2)
+    sensorData.value.windSpeed = +(3.2 + (Math.random() - 0.5) * 0.3).toFixed(1)
+  }, 3000)
+})
+
+onBeforeUnmount(() => {
+  if (sensorInterval) {
+    clearInterval(sensorInterval)
+  }
+  if (timeInterval) {
+    clearInterval(timeInterval)
+  }
+  if (socket) {
+    socket.close()
+  }
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer)
+  }
+})
 
 const isLeftCollapsed = ref(false)
 const isRightCollapsed = ref(false)
@@ -186,6 +459,7 @@ const activeAccidentIndex = ref(0)
 const currentFocusedPoint = ref('')
 const modelsReadyStatus = ref({})
 const timelineBottom = ref(18)
+const activeRightTab = ref('sensor')
 
 // 为每个事故点维护独立的进度状态
 const accidentPhaseIndices = ref({
@@ -400,98 +674,151 @@ onMounted(() => {
   position: relative;
 }
 
-/* Top Nav Desktop (Menu bar + Toolbar) */
+/* Top Nav Desktop (Menu bar + Toolbar) Overhaul */
 .top-nav-desktop {
-  background: #f8fafc;
-  border-bottom: 1px solid #cbd5e1;
+  background: linear-gradient(180deg, #09101f 0%, #060a12 100%);
+  border-bottom: 1px solid rgba(0, 242, 254, 0.25);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 242, 254, 0.1);
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px;
+  height: 60px;
   user-select: none;
+  z-index: 100;
+  position: relative;
 }
 
-.menu-bar {
+.header-logo-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-logo-icon {
+  font-size: 20px;
+  filter: drop-shadow(0 0 8px #00f2fe);
+}
+
+.header-logo-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+  background: linear-gradient(180deg, #ffffff 0%, #a5b4fc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.header-logo-sub {
+  font-size: 10px;
+  color: #00f2fe;
+  background: rgba(0, 242, 254, 0.1);
+  border: 1px solid rgba(0, 242, 254, 0.2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.header-center-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.title-glow {
+  font-size: 19px;
+  font-weight: 800;
+  color: #00f2fe;
+  text-shadow: 0 0 10px rgba(0, 242, 254, 0.6), 0 0 2px rgba(0, 242, 254, 0.8);
+  letter-spacing: 2px;
+  font-family: "Microsoft YaHei", sans-serif;
+  position: relative;
+}
+
+/* Brackets decoration for center title */
+.title-glow::before {
+  content: '[';
+  margin-right: 8px;
+  color: rgba(0, 242, 254, 0.5);
+}
+.title-glow::after {
+  content: ']';
+  margin-left: 8px;
+  color: rgba(0, 242, 254, 0.5);
+}
+
+.header-left-actions,
+.header-right-actions {
   display: flex;
   align-items: center;
   gap: 20px;
-  padding: 6px 16px;
-  background: #ffffff;
-  border-bottom: 1px solid #f1f5f9;
-  font-size: 13px;
-  color: #475569;
-}
-
-.app-logo {
-  font-weight: 700;
-  color: #1e3a8a;
-  margin-right: 12px;
-  font-size: 14px;
-  letter-spacing: 0.5px;
-}
-
-.menu-item {
-  cursor: pointer;
-  padding: 2px 8px;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.menu-item:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-}
-
-.menu-item.active {
-  color: #2563eb;
-  font-weight: 600;
 }
 
 .toolbar {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  background: #f8fafc;
 }
 
 .toolbar-btn {
-  padding: 6px 12px;
-  border-radius: 4px;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #334155;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.25s ease;
 }
 
 .toolbar-btn:hover {
-  background: #f1f5f9;
-  border-color: #94a3b8;
-  color: #0f172a;
+  background: rgba(0, 242, 254, 0.1);
+  border-color: rgba(0, 242, 254, 0.4);
+  color: #00f2fe;
+  box-shadow: 0 0 8px rgba(0, 242, 254, 0.2);
 }
 
 .toolbar-btn.active {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: #ffffff;
-  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.2) 0%, rgba(37, 99, 235, 0.2) 100%);
+  border-color: #00f2fe;
+  color: #00f2fe;
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.35);
+  text-shadow: 0 0 4px rgba(0, 242, 254, 0.5);
 }
 
-/* Left & Right Sidebars */
+.digital-clock {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #94a3b8;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: monospace;
+}
+
+.clock-icon {
+  color: #00f2fe;
+}
+
+/* Left & Right Sidebars Overhaul */
 .left-sidebar,
 .right-sidebar {
-  width: 380px;
+  width: 385px;
   height: calc(100% - 32px);
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
+  background: rgba(10, 19, 35, 0.82);
+  backdrop-filter: blur(20px) saturate(140%);
   display: flex;
   flex-direction: column;
   overflow: visible;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  border-radius: 12px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), inset 0 0 15px rgba(0, 242, 254, 0.08);
+  border: 1px solid rgba(0, 242, 254, 0.22);
+  border-radius: 14px;
   position: absolute;
   top: 16px;
   bottom: 16px;
@@ -516,59 +843,78 @@ onMounted(() => {
   transform: translateX(calc(100% + 20px));
 }
 
-/* Sidebar Toggle Buttons */
+/* Sidebar Toggle Buttons - High Tech Glass */
 .toggle-btn {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 20px;
-  height: 50px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  width: 18px;
+  height: 60px;
+  background: rgba(10, 19, 35, 0.9);
+  border: 1px solid rgba(0, 242, 254, 0.3);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #64748b;
-  font-size: 11px;
+  color: #00f2fe;
+  font-size: 10px;
   transition: all 0.2s;
   z-index: 11;
   padding: 0;
 }
 .toggle-btn:hover {
-  color: #2563eb;
-  background: #f8fafc;
+  color: #ffffff;
+  background: rgba(0, 242, 254, 0.2);
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.4);
 }
 .toggle-btn-left {
-  right: -20px;
+  right: -18px;
   border-radius: 0 8px 8px 0;
   border-left: none;
 }
 .toggle-btn-right {
-  left: -20px;
+  left: -18px;
   border-radius: 8px 0 0 8px;
   border-right: none;
 }
 
 .sidebar-header {
-  padding: 14px 20px;
-  border-bottom: 1px solid #e2e8f0;
-  background: #f8fafc;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(0, 242, 254, 0.15);
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px 12px 0 0;
+  position: relative;
+}
+
+.sidebar-header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 18px;
+  bottom: 18px;
+  width: 4px;
+  background: #00f2fe;
+  border-radius: 0 4px 4px 0;
+  box-shadow: 0 0 8px rgba(0, 242, 254, 0.7);
 }
 
 .sidebar-title {
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #0f172a;
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.5px;
 }
 
 .sidebar-subtitle {
-  font-size: 10px;
-  color: #64748b;
+  font-size: 9px;
+  color: #00f2fe;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
+  display: inline-block;
+  margin-top: 3px;
+  opacity: 0.85;
 }
 
 .sidebar-content {
@@ -588,19 +934,20 @@ onMounted(() => {
   border-radius: 99px;
 }
 
-/* Accordion Items - Light/White theme */
+/* Accordion Items - High Tech Dark Theme */
 .accordion-item-light {
-  border: 1px solid #e2e8f0;
+  border: 1px solid rgba(0, 242, 254, 0.15);
   border-radius: 8px;
-  background: #ffffff;
+  background: rgba(15, 23, 42, 0.45);
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .accordion-item-light.open {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  border-color: #cbd5e1;
+  box-shadow: 0 4px 16px rgba(0, 242, 254, 0.15);
+  border-color: rgba(0, 242, 254, 0.4);
+  background: rgba(15, 23, 42, 0.7);
 }
 
 .accordion-trigger-light {
@@ -610,115 +957,150 @@ onMounted(() => {
   justify-content: space-between;
   padding: 14px 16px;
   border: none;
-  background: #f8fafc;
+  background: rgba(10, 19, 35, 0.6);
   cursor: pointer;
   text-align: left;
   border-bottom: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.accordion-trigger-light:hover {
+  background: rgba(0, 242, 254, 0.08);
 }
 
 .accordion-item-light.open .accordion-trigger-light {
-  border-bottom-color: #e2e8f0;
+  border-bottom-color: rgba(0, 242, 254, 0.15);
+  background: rgba(0, 242, 254, 0.05);
 }
 
 .trigger-kicker {
   font-size: 9px;
-  color: #94a3b8;
-  font-weight: 600;
-  letter-spacing: 1px;
+  color: #00f2fe;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-shadow: 0 0 4px rgba(0, 242, 254, 0.3);
 }
 
 .trigger-title {
   margin: 4px 0 0;
   font-size: 13px;
-  font-weight: 600;
-  color: #334155;
+  font-weight: 700;
+  color: #ffffff;
 }
 
 .trigger-indicator {
   font-size: 11px;
-  color: #64748b;
-  background: #ffffff;
+  color: #00f2fe;
+  background: rgba(0, 242, 254, 0.1);
   padding: 4px 10px;
   border-radius: 6px;
-  border: 1px solid #cbd5e1;
-  font-weight: 500;
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.trigger-indicator:hover {
+  background: rgba(0, 242, 254, 0.2);
+  border-color: rgba(0, 242, 254, 0.5);
+  box-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
 }
 
 .accordion-body-light {
-  padding: 12px;
-  background: #ffffff;
+  padding: 14px;
+  background: transparent;
 }
 
-/* Deep overrides to skin inner dark cards as premium white */
+/* Deep overrides to skin inner cards into gorgeous high-tech dark mode */
 .left-sidebar :deep(.collaborative-response-card),
 .left-sidebar :deep(.sensor-gateway-card),
 .left-sidebar :deep(.realtime-detection-card) {
-  background: #ffffff !important;
-  color: #334155 !important;
-  border: 1px solid #e2e8f0 !important;
-  box-shadow: none !important;
+  background: rgba(2, 12, 26, 0.6) !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(0, 242, 254, 0.15) !important;
+  box-shadow: inset 0 0 10px rgba(0, 242, 254, 0.05) !important;
   padding: 12px !important;
+  border-radius: 8px !important;
 }
 
 .left-sidebar :deep(.card-title) {
-  color: #0f172a !important;
+  color: #ffffff !important;
   font-size: 14px !important;
+  font-weight: 700 !important;
+  text-shadow: 0 0 6px rgba(0, 242, 254, 0.3);
 }
 
 .left-sidebar :deep(.card-subtitle),
 .left-sidebar :deep(.tip-text) {
-  color: #64748b !important;
+  color: #94a3b8 !important;
 }
 
 .left-sidebar :deep(.config-input),
 .left-sidebar :deep(.gateway-input) {
-  background: #f8fafc !important;
-  color: #334155 !important;
-  border: 1px solid #cbd5e1 !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(0, 242, 254, 0.3) !important;
+}
+
+.left-sidebar :deep(.config-input:focus),
+.left-sidebar :deep(.gateway-input:focus) {
+  border-color: #00f2fe !important;
+  box-shadow: 0 0 8px rgba(0, 242, 254, 0.3) !important;
 }
 
 .left-sidebar :deep(.status-item),
 .left-sidebar :deep(.service-row) {
-  background: #f8fafc !important;
-  border: 1px solid #e2e8f0 !important;
+  background: rgba(10, 19, 35, 0.7) !important;
+  border: 1px solid rgba(0, 242, 254, 0.12) !important;
 }
 
 .left-sidebar :deep(.status-label),
 .left-sidebar :deep(.service-label) {
-  color: #64748b !important;
+  color: #94a3b8 !important;
 }
 
 .left-sidebar :deep(.status-badge.online),
 .left-sidebar :deep(.node-chip.online),
 .left-sidebar :deep(.status-value.ok) {
-  color: #15803d !important;
-  background: #dcfce7 !important;
-  border-color: #bbf7d0 !important;
+  color: #67f7b2 !important;
+  background: rgba(28, 140, 96, 0.25) !important;
+  border-color: rgba(103, 247, 178, 0.3) !important;
 }
 
 .left-sidebar :deep(.status-badge.offline),
 .left-sidebar :deep(.node-chip.offline),
 .left-sidebar :deep(.status-value.warn) {
-  color: #b91c1c !important;
-  background: #fee2e2 !important;
-  border-color: #fca5a5 !important;
+  color: #ff8f8f !important;
+  background: rgba(160, 40, 40, 0.2) !important;
+  border-color: rgba(255, 143, 143, 0.3) !important;
 }
 
 .left-sidebar :deep(.action-btn.secondary) {
-  color: #2563eb !important;
-  background: #eff6ff !important;
-  border-color: #bfdbfe !important;
+  color: #00f2fe !important;
+  background: rgba(0, 242, 254, 0.1) !important;
+  border-color: rgba(0, 242, 254, 0.25) !important;
+}
+
+.left-sidebar :deep(.action-btn.secondary:hover) {
+  background: rgba(0, 242, 254, 0.2) !important;
+  border-color: #00f2fe !important;
+  box-shadow: 0 0 8px rgba(0, 242, 254, 0.3) !important;
 }
 
 .left-sidebar :deep(.action-btn.primary) {
-  color: #ffffff !important;
-  background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%) !important;
+  color: #09101f !important;
+  background: linear-gradient(90deg, #00f2fe 0%, #38bdf8 100%) !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.3) !important;
+}
+
+.left-sidebar :deep(.action-btn.primary:hover) {
+  box-shadow: 0 0 15px rgba(0, 242, 254, 0.5) !important;
 }
 
 .left-sidebar :deep(.action-btn.ghost) {
-  color: #475569 !important;
-  background: #f1f5f9 !important;
-  border-color: #cbd5e1 !important;
+  color: #cbd5e1 !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 /* Center Viewport (The GIS View Window) */
@@ -943,5 +1325,559 @@ onMounted(() => {
   color: #334155;
   min-width: 32px;
   text-align: right;
+}
+
+/* 右边栏最下边的切换栏样式 */
+.right-sidebar-footer-tabs {
+  display: flex;
+  height: 54px;
+  background: rgba(8, 16, 28, 0.95);
+  border-top: 1px solid rgba(0, 242, 254, 0.25);
+  border-radius: 0 0 14px 14px;
+  overflow: hidden;
+  padding: 5px;
+  gap: 5px;
+}
+
+.right-tab-btn {
+  flex: 1;
+  border: 1px solid transparent;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  color: #94a3b8;
+  font-family: inherit;
+  border-radius: 6px;
+  transition: all 0.25s ease;
+  padding: 4px 0;
+}
+
+.right-tab-btn:hover {
+  background: rgba(0, 242, 254, 0.08);
+  color: #00f2fe;
+}
+
+.right-tab-btn.active {
+  background: linear-gradient(180deg, rgba(0, 242, 254, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%);
+  color: #00f2fe;
+  box-shadow: inset 0 0 8px rgba(0, 242, 254, 0.15);
+  border-color: rgba(0, 242, 254, 0.4);
+}
+
+.right-tab-btn .tab-icon {
+  font-size: 14px;
+}
+
+.right-tab-btn .tab-text {
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.right-tab-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* 实时环境数据面板样式 */
+.sensor-data-panel,
+.detection-data-panel,
+.planning-data-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: tabFadeIn 0.3s ease-out;
+}
+
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.sensor-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.sensor-source-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.sensor-source-badge.online {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.25);
+}
+
+.sensor-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-left: 3px solid #00f2fe;
+  padding-left: 8px;
+  margin: 4px 0 8px;
+}
+
+.sensor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.sensor-card-item {
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(0, 242, 254, 0.12);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  transition: all 0.25s ease;
+}
+
+.sensor-card-item:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 242, 254, 0.35);
+  box-shadow: 0 4px 15px rgba(0, 242, 254, 0.15);
+}
+
+.sensor-card-item .card-icon {
+  font-size: 20px;
+  opacity: 0.95;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.2));
+}
+
+.sensor-card-item .card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sensor-card-item .sensor-name {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.sensor-card-item .sensor-val {
+  font-size: 14px;
+  color: #ffffff;
+  font-weight: 700;
+  font-family: monospace;
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.2);
+}
+
+.sensor-card-item .unit {
+  font-size: 9px;
+  color: #00f2fe;
+  font-weight: bold;
+}
+
+/* 传感器状态小圆点与脉冲动画 */
+.sensor-status-dot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.pulse-green {
+  background-color: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulseGreen 2s infinite;
+}
+
+.pulse-red {
+  background-color: #ef4444;
+  box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  animation: pulseRed 2s infinite;
+}
+
+@keyframes pulseGreen {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 4px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+@keyframes pulseRed {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* 局部气象卡片 */
+.meteorology-card {
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(0, 242, 254, 0.15);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: inset 0 0 10px rgba(0, 242, 254, 0.05);
+}
+
+.meteorology-card .met-icon {
+  font-size: 26px;
+  background: rgba(0, 242, 254, 0.1);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-shadow: 0 0 5px #00f2fe;
+}
+
+.meteorology-card .met-details {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.meteorology-card .met-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.meteorology-card .met-label {
+  font-size: 9px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.meteorology-card .met-val {
+  font-size: 13px;
+  color: #ffffff;
+  font-weight: 700;
+  text-shadow: 0 0 4px rgba(0, 242, 254, 0.3);
+}
+
+.meteorology-card .met-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(0, 242, 254, 0.2);
+}
+
+/* 右边栏无人机图片展示 */
+.sidebar-uav-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 242, 254, 0.2);
+}
+
+.sidebar-uav-main-photo {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: #09101f;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 242, 254, 0.15);
+  overflow: hidden;
+}
+
+.sidebar-uav-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-uav-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 242, 254, 0.5);
+  font-size: 11px;
+  gap: 8px;
+}
+
+.sidebar-radar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px dashed #00f2fe;
+  animation: spin 3s linear infinite;
+  box-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
+}
+
+.sidebar-uav-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(10, 19, 35, 0.95), transparent);
+  padding: 4px 8px;
+  display: flex;
+  justify-content: space-between;
+  color: #00f2fe;
+  font-family: monospace;
+  font-size: 9px;
+  border-top: 1px solid rgba(0, 242, 254, 0.1);
+}
+
+.sidebar-uav-thumbs {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+}
+
+.sidebar-thumb-box {
+  flex: 1;
+  aspect-ratio: 16 / 10;
+  border: 1px dashed rgba(0, 242, 254, 0.25);
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  position: relative;
+  cursor: not-allowed;
+  transition: all 0.2s ease;
+}
+
+.sidebar-thumb-box.is-captured {
+  border: 1px solid rgba(0, 242, 254, 0.4);
+  cursor: pointer;
+}
+
+.sidebar-thumb-box.is-captured:hover {
+  border-color: #00f2fe;
+  box-shadow: 0 0 6px rgba(0, 242, 254, 0.3);
+}
+
+.sidebar-thumb-box.is-captured.is-active {
+  border: 1.5px solid #00f2fe;
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.6);
+}
+
+.sidebar-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sidebar-thumb-box .thumb-badge {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #00f2fe;
+  font-size: 7px;
+  padding: 0px 3px;
+  border-radius: 1px;
+  font-family: monospace;
+  border: 1px solid rgba(0, 242, 254, 0.2);
+}
+
+.sidebar-thumb-box .thumb-lock {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 242, 254, 0.4);
+  font-size: 9px;
+  opacity: 0.75;
+}
+
+.sidebar-uav-no-ref {
+  padding: 20px;
+  text-align: center;
+  color: rgba(0, 242, 254, 0.5);
+  font-size: 12px;
+}
+
+/* Deep overrides for right sidebar child cards to match dark digital twin look */
+.right-sidebar :deep(.collaborative-response-card),
+.right-sidebar :deep(.sensor-gateway-card),
+.right-sidebar :deep(.realtime-detection-card) {
+  background: rgba(2, 12, 26, 0.6) !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(0, 242, 254, 0.15) !important;
+  box-shadow: inset 0 0 10px rgba(0, 242, 254, 0.05) !important;
+  padding: 12px !important;
+  border-radius: 8px !important;
+}
+
+.right-sidebar :deep(.card-title) {
+  color: #ffffff !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  text-shadow: 0 0 6px rgba(0, 242, 254, 0.3);
+}
+
+.right-sidebar :deep(.card-subtitle),
+.right-sidebar :deep(.tip-text) {
+  color: #94a3b8 !important;
+}
+
+.right-sidebar :deep(.config-input),
+.right-sidebar :deep(.gateway-input) {
+  background: rgba(0, 0, 0, 0.4) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(0, 242, 254, 0.3) !important;
+}
+
+.right-sidebar :deep(.config-input:focus),
+.right-sidebar :deep(.gateway-input:focus) {
+  border-color: #00f2fe !important;
+  box-shadow: 0 0 8px rgba(0, 242, 254, 0.3) !important;
+}
+
+.right-sidebar :deep(.status-item),
+.right-sidebar :deep(.service-row) {
+  background: rgba(10, 19, 35, 0.7) !important;
+  border: 1px solid rgba(0, 242, 254, 0.12) !important;
+}
+
+.right-sidebar :deep(.status-label),
+.right-sidebar :deep(.service-label) {
+  color: #94a3b8 !important;
+}
+
+/* Sidebar UGV Cards - 赛博朋克深色主题 */
+.ugv-cards-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ugv-card {
+  flex: 1;
+  background: rgba(7, 11, 25, 0.85);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 255, 255, 0.1);
+  font-family: "JetBrains Mono", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #fff;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  backdrop-filter: blur(8px);
+  position: relative;
+  overflow: hidden;
+}
+
+.ugv-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ffff, transparent);
+}
+
+.ugv-card .ugv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(0, 255, 255, 0.15);
+  background: rgba(0, 255, 255, 0.05);
+}
+
+.ugv-card .ugv-title {
+  font-weight: bold;
+  font-size: 13px;
+  color: #00ffff;
+  letter-spacing: 1px;
+}
+
+.ugv-card .ugv-status {
+  font-size: 11px;
+  color: #00ff88;
+  font-weight: bold;
+  padding: 2px 5px;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 3px;
+}
+
+.ugv-card .ugv-data {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ugv-card .ugv-row {
+  display: flex;
+  gap: 6px;
+}
+
+.ugv-card .ugv-item {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: background 0.3s;
+}
+
+.ugv-card .ugv-item.full-width {
+  flex: 100%;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ugv-card .ugv-label {
+  font-size: 11px;
+  color: #8fa3b0;
+}
+
+.ugv-card .ugv-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e0f2fe;
+  text-shadow: 0 0 5px rgba(224, 242, 254, 0.4);
+}
+
+.ugv-card .ugv-footer {
+  text-align: right;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #00ffff;
+  background: rgba(0, 255, 255, 0.05);
+  border-top: 1px solid rgba(0, 255, 255, 0.15);
+  opacity: 0.8;
+  cursor: pointer;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.ugv-card .ugv-footer:hover {
+  opacity: 1;
+  background: rgba(0, 255, 255, 0.15);
 }
 </style>
