@@ -103,7 +103,7 @@ os.makedirs(RESULT_FOLDER, exist_ok=True)
 # Load YOLO model
 MODELS = {}
 
-WEIGHTS_DIR = (BASE_DIR / '../LKYWDataset_weights').resolve()
+WEIGHTS_DIR = (BASE_DIR / '../../LKYWDataset_weights').resolve()
 
 def get_available_models():
     models_config = {}
