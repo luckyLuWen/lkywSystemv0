@@ -7,7 +7,7 @@
         class="return-home-btn-inline"
         @click="router.push('/')"
       >
-        <span class="back-icon">←</span> 返回首页
+        <span class="back-icon">←</span> 返回地图大屏
       </button>
       <div class="nav-divider"></div>
       <span class="subpage-title">{{ routeTitle }}</span>

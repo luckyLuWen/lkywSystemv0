@@ -46,11 +46,12 @@ function Convert-ViteIndexToRelative {
     throw "Entry file not found: $IndexPath"
   }
 
-  $content = Get-Content -LiteralPath $IndexPath -Raw
+  $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+  $content = [System.IO.File]::ReadAllText($IndexPath, $utf8NoBom)
   $content = $content.Replace('href="/assets/', 'href="./assets/')
   $content = $content.Replace('src="/assets/', 'src="./assets/')
   $content = $content.Replace('href="/vite.svg"', 'href="./vite.svg"')
-  Set-Content -LiteralPath $IndexPath -Value $content -Encoding UTF8
+  [System.IO.File]::WriteAllText($IndexPath, $content, $utf8NoBom)
 }
 
 $targets = @(
@@ -66,8 +67,8 @@ $targets = @(
   },
   @{
     Name = 'realtime-detection'
-    Source = Join-Path $root 'Real-time_Detection\web_app\frontend'
-    Type = 'static'
+    Source = Join-Path $root 'Real-time_Detection\web_app\frontend\vue-frontend\dist'
+    Type = 'vite'
   },
   @{
     Name = 'sensor-management'
