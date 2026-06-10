@@ -82,6 +82,10 @@ const connectWS = () => {
   }
 }
 
+const returnToParent = () => {
+  window.top.location.href = '/'
+}
+
 const isOverviewOpen = ref(true)
 const isLogicMenuOpen = ref(false)
 const isNode1Open = ref(false)
@@ -110,6 +114,13 @@ onUnmounted(() => {
     <aside class="sidebar">
       <div class="logo">监控指挥中心</div>
       <nav>
+        <div class="nav-group return-nav-group">
+          <div class="nav-item group-title return-home-btn" @click="returnToParent">
+            <span>🗺️ 返回地图大屏</span>
+            <span class="arrow">→</span>
+          </div>
+        </div>
+
         <div class="nav-group">
           <div class="nav-item group-title" @click="toggleOverview">
             <span>全站总览大屏</span>
@@ -231,6 +242,23 @@ nav::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
 
 .link-style.router-link-active { border-left-color: #3182ce; background: #2b3a4a; color: #63b3ed; }
 .link-style-drone.router-link-active { border-left-color: #8b5cf6; background: #2d2b38; color: #c4b5fd; }
+
+.return-nav-group {
+  margin-bottom: 15px;
+}
+
+.nav-item.return-home-btn {
+  background: rgba(0, 229, 255, 0.15) !important;
+  color: #00e5ff !important;
+  border-left: 4px solid #00e5ff !important;
+  font-weight: bold;
+}
+
+.nav-item.return-home-btn:hover {
+  background: rgba(0, 229, 255, 0.25) !important;
+  color: #fff !important;
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.3);
+}
 
 .footer { padding: 15px; font-size: 0.8rem; text-align: center; color: #666; border-top: 1px solid #333; background: #181a1f; }
 .content { flex: 1; padding: 30px; overflow-y: auto; background-color: #f7fafc; position: relative; }

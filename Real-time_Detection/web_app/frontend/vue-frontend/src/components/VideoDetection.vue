@@ -44,7 +44,7 @@
         </div>
         <div class="info-box">
           <h4>平均帧处理时间</h4>
-          <p>{{ result.avg_frame_time }} ms</p>
+          <p>{{ result.avg_frame_time }} s</p>
         </div>
         <div class="info-box">
           <h4>检测到目标</h4>

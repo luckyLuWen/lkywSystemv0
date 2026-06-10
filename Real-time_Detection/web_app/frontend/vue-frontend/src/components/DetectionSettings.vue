@@ -2,7 +2,7 @@
   <div class="card settings-card">
     <div class="card-header">
       <span class="bracket">[</span>
-      <h3>模型配置</h3>
+      <h2>模型配置</h2>
       <span class="bracket">]</span>
     </div>
     
@@ -63,18 +63,18 @@ const cleanModelName = (name) => {
 .bracket {
   color: var(--primary-cyan);
   font-weight: bold;
-  font-size: 20px;
+  font-size: 44px;
 }
 
 .model-info {
   background: rgba(0, 0, 0, 0.3);
-  padding: 15px;
-  border-left: 2px solid var(--accent-amber);
-  margin-bottom: 30px;
+  padding: 34px;
+  border-left: 3px solid var(--accent-amber);
+  margin-bottom: 42px;
 }
 
 .label {
-  font-size: 10px;
+  font-size: 23px;
   color: var(--text-dim);
 }
 
@@ -83,10 +83,10 @@ const cleanModelName = (name) => {
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid var(--accent-amber);
   color: var(--accent-amber);
-  padding: 8px;
-  font-size: 16px;
+  padding: 18px;
+  font-size: 35px;
   font-weight: bold;
-  margin: 10px 0;
+  margin: 18px 0;
   cursor: pointer;
   outline: none;
   border-radius: 0;
@@ -98,30 +98,30 @@ const cleanModelName = (name) => {
 }
 
 .value {
-  font-size: 20px;
+  font-size: 44px;
   color: var(--accent-amber);
   font-weight: bold;
-  margin: 5px 0;
+  margin: 8px 0;
 }
 
 .tag {
-  font-size: 9px;
+  font-size: 20px;
   display: inline-block;
-  padding: 2px 6px;
+  padding: 5px 12px;
   background: var(--accent-amber);
   color: black;
   font-weight: bold;
 }
 
 .control-group {
-  margin-bottom: 20px;
+  margin-bottom: 44px;
 }
 
 .control-label {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
-  margin-bottom: 10px;
+  font-size: 24px;
+  margin-bottom: 14px;
   font-family: monospace;
   color: var(--text-main);
 }
@@ -129,7 +129,7 @@ const cleanModelName = (name) => {
 .cyber-range {
   -webkit-appearance: none;
   width: 100%;
-  height: 4px;
+  height: 10px;
   background: rgba(0, 229, 255, 0.1);
   border-radius: 2px;
   outline: none;
@@ -137,8 +137,8 @@ const cleanModelName = (name) => {
 
 .cyber-range::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 15px;
-  height: 15px;
+  width: 34px;
+  height: 34px;
   background: var(--primary-cyan);
   border-radius: 50%;
   cursor: pointer;

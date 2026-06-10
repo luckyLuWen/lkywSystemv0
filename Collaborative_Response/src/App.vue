@@ -4,6 +4,7 @@
       <h2>协同响应指挥面板</h2>
 
       <div class="menu">
+        <button class="menu-btn return-btn" @click="returnToParent">🗺️ 返回地图大屏</button>
         <button class="menu-btn blue" @click="showHome">系统首页</button>
         <button class="menu-btn blue" @click="showStreamlitView">协同调度平台</button>
         <button class="menu-btn cyan" @click="show2DView">二维动态推演</button>
@@ -204,6 +205,9 @@ import {
 } from './service-config'
 
 const currentView = ref('home')
+const returnToParent = () => {
+  window.top.location.href = '/'
+}
 const showEvaluationPanel = ref(false)
 const streamlitUrl = ref(getCollaborativeStreamlitUrl())
 const commandCenterBaseUrl = ref(getCollaborativeCommandCenterBaseUrl())
@@ -672,6 +676,17 @@ onUnmounted(() => {
 
 .menu-btn {
   padding: 14px 16px;
+}
+
+.menu-btn.return-btn {
+  background: rgba(0, 229, 255, 0.12);
+  border: 1px dashed #00e5ff;
+  color: #00e5ff;
+}
+
+.menu-btn.return-btn:hover {
+  background: rgba(0, 229, 255, 0.22);
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
 }
 
 .menu-btn.blue,

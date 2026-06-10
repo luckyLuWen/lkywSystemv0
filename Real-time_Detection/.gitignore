@@ -77,6 +77,16 @@ special_test/*.png
 # Word文档
 *.docx
 
+# 数据库文件
+web_app/backend/detection_history.db
+
+# 二进制文件
+sqlite3
+torch
+
+# 旧版前端
+web_app/frontend/old_version/
+
 # 其他大文件
 *.zip
 *.tar.gz

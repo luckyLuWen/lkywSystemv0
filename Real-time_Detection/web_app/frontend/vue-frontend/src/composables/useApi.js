@@ -1,10 +1,30 @@
 import { ref, reactive, onMounted } from 'vue'
 
 export function useApi() {
-  const DEFAULT_API_URL = 'http://127.0.0.1:5000'
   const API_STORAGE_KEY = 'realtimeDetection.apiBaseUrl'
   
-  const apiUrl = ref(localStorage.getItem(API_STORAGE_KEY) || DEFAULT_API_URL)
+  const getInitialApiUrl = () => {
+    // 优先从 URL Query 参数中提取大系统传入的 apiBase 地址
+    const urlParams = new URLSearchParams(window.location.search)
+    const queryApiBase = urlParams.get('apiBase')
+    if (queryApiBase) {
+      return queryApiBase.replace(/\/+$/, '')
+    }
+
+    const dynamicDefault = `${window.location.protocol}//${window.location.hostname}:5000`
+    const stored = localStorage.getItem(API_STORAGE_KEY)
+    
+    // 如果存储的地址是本地环回地址，但当前是用外部 IP 访问的，自动升级为外部 IP 以免连接失败
+    if (stored && (stored.includes('://127.0.0.1') || stored.includes('://localhost'))) {
+      if (window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost') {
+        localStorage.setItem(API_STORAGE_KEY, dynamicDefault)
+        return dynamicDefault
+      }
+    }
+    return stored || dynamicDefault
+  }
+
+  const apiUrl = ref(getInitialApiUrl())
   const isOnline = ref(false)
   const statusDetail = ref('')
   const availableModels = ref([])
