@@ -2973,7 +2973,6 @@ onBeforeUnmount(() => {
   border-right: 6px solid transparent;
   border-top: 6px solid rgba(7, 11, 25, 0.9);
 }
-
 </style>
 
 <style>
