@@ -17,7 +17,7 @@
         </div>
       </div>
       
-      <div class="header-center-title">
+      <div class="header-center-title" @click="goTo({ key: 'home', label: '地图大屏', path: '/' })" style="cursor: pointer;">
         <div class="title-glow">两客一危应急救援协同决策大屏</div>
       </div>
       
@@ -58,7 +58,7 @@
               <div v-if="activeServiceId === item.id" class="accordion-body-light">
                 <CollaborativeResponseCard v-if="item.id === 'collaborative'" />
                 <SensorGatewayCard v-else-if="item.id === 'sensor'" />
-                <RealtimeDetectionCard v-else />
+                <RealtimeDetectionCard v-else :only-control="true" />
               </div>
             </transition>
           </div>
@@ -211,7 +211,7 @@
                   <div class="sidebar-uav-overlay" v-if="globeRef.activePhotoIndex !== null">
                     <span class="timestamp">{{ globeRef.currentTimeStr }}</span>
                     <span class="coords">
-                      {{ currentAccidentId === 'rear-end' ? '113.1048°E, 30.3855°N' : '113.0680°E, 30.2401°N' }}
+                      {{ currentAccidentId === 'rear-end' ? '113.1048°E, 30.3855°N' : '114.8945°E, 30.6322°N' }}
                     </span>
                   </div>
                 </div>
@@ -481,6 +481,7 @@ const activePhaseIndex = computed({
 })
 
 const topMenus = [
+  { key: 'home', label: '地图大屏', path: '/' },
   { key: 'sensor', label: '传感器管理', path: '/sensor-manage' },
   { key: 'realtime', label: '实时检测', path: '/realtime' },
   { key: 'coordination', label: '协同响应', path: '/coordination' },
@@ -606,6 +607,13 @@ function toggleServicePanel(serviceId) {
 }
 
 function goTo(item) {
+  if (item.path === '/') {
+    if (globeRef.value) {
+      globeRef.value.resetView()
+    }
+    currentFocusedPoint.value = ''
+    activeServiceId.value = ''
+  }
   activeMenuKey.value = item.key
   persistMenuKey(item.key)
   router.push(item.path)
@@ -642,13 +650,18 @@ watch(
   () => route.path,
   (newPath) => {
     if (newPath === '/') {
-      activeMenuKey.value = ''
+      activeMenuKey.value = 'home'
+      if (globeRef.value) {
+        globeRef.value.resetView()
+      }
+      currentFocusedPoint.value = ''
+      activeServiceId.value = ''
     }
   }
 )
 
 onMounted(() => {
-  activeMenuKey.value = ''
+  activeMenuKey.value = 'home'
 })
 </script>
 
@@ -668,7 +681,7 @@ onMounted(() => {
 .main-layout {
   display: flex;
   flex: 1;
-  height: 0;
+  min-height: 0;
   width: 100%;
   overflow: hidden;
   position: relative;
@@ -683,7 +696,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 0 24px;
-  height: 60px;
+  height: 84px;
   user-select: none;
   z-index: 100;
   position: relative;
@@ -728,11 +741,11 @@ onMounted(() => {
 }
 
 .title-glow {
-  font-size: 19px;
+  font-size: 28px;
   font-weight: 800;
   color: #00f2fe;
-  text-shadow: 0 0 10px rgba(0, 242, 254, 0.6), 0 0 2px rgba(0, 242, 254, 0.8);
-  letter-spacing: 2px;
+  text-shadow: 0 0 12px rgba(0, 242, 254, 0.65), 0 0 4px rgba(0, 242, 254, 0.8);
+  letter-spacing: 3px;
   font-family: "Microsoft YaHei", sans-serif;
   position: relative;
 }
@@ -763,12 +776,12 @@ onMounted(() => {
 }
 
 .toolbar-btn {
-  padding: 6px 14px;
+  padding: 9px 20px;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   background: rgba(255, 255, 255, 0.05);
   color: #cbd5e1;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.25s ease;
@@ -793,10 +806,10 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 15px;
   color: #94a3b8;
   background: rgba(0, 0, 0, 0.3);
-  padding: 6px 12px;
+  padding: 8px 18px;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   font-family: monospace;
@@ -809,7 +822,7 @@ onMounted(() => {
 /* Left & Right Sidebars Overhaul */
 .left-sidebar,
 .right-sidebar {
-  width: 385px;
+  width: 420px;
   height: calc(100% - 32px);
   background: rgba(10, 19, 35, 0.82);
   backdrop-filter: blur(20px) saturate(140%);
@@ -901,14 +914,14 @@ onMounted(() => {
 
 .sidebar-title {
   margin: 0;
-  font-size: 15px;
+  font-size: 19px;
   font-weight: 700;
   color: #ffffff;
   letter-spacing: 0.5px;
 }
 
 .sidebar-subtitle {
-  font-size: 9px;
+  font-size: 11px;
   color: #00f2fe;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -974,7 +987,7 @@ onMounted(() => {
 }
 
 .trigger-kicker {
-  font-size: 9px;
+  font-size: 11px;
   color: #00f2fe;
   font-weight: 700;
   letter-spacing: 1.5px;
@@ -983,16 +996,16 @@ onMounted(() => {
 
 .trigger-title {
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 700;
   color: #ffffff;
 }
 
 .trigger-indicator {
-  font-size: 11px;
+  font-size: 13px;
   color: #00f2fe;
   background: rgba(0, 242, 254, 0.1);
-  padding: 4px 10px;
+  padding: 5px 12px;
   border-radius: 6px;
   border: 1px solid rgba(0, 242, 254, 0.25);
   font-weight: 600;
@@ -1024,7 +1037,7 @@ onMounted(() => {
 
 .left-sidebar :deep(.card-title) {
   color: #ffffff !important;
-  font-size: 14px !important;
+  font-size: 16px !important;
   font-weight: 700 !important;
   text-shadow: 0 0 6px rgba(0, 242, 254, 0.3);
 }
@@ -1160,7 +1173,7 @@ onMounted(() => {
 .viewport-body {
   flex: 1;
   position: relative;
-  height: 0;
+  height: calc(100% - 38px);
 }
 
 .globe-layer {
@@ -1330,7 +1343,7 @@ onMounted(() => {
 /* 右边栏最下边的切换栏样式 */
 .right-sidebar-footer-tabs {
   display: flex;
-  height: 54px;
+  height: 64px;
   background: rgba(8, 16, 28, 0.95);
   border-top: 1px solid rgba(0, 242, 254, 0.25);
   border-radius: 0 0 14px 14px;
@@ -1353,7 +1366,7 @@ onMounted(() => {
   font-family: inherit;
   border-radius: 6px;
   transition: all 0.25s ease;
-  padding: 4px 0;
+  padding: 6px 0;
 }
 
 .right-tab-btn:hover {
@@ -1369,11 +1382,11 @@ onMounted(() => {
 }
 
 .right-tab-btn .tab-icon {
-  font-size: 14px;
+  font-size: 18px;
 }
 
 .right-tab-btn .tab-text {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -1425,7 +1438,7 @@ onMounted(() => {
 }
 
 .sensor-section-title {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 700;
   color: #ffffff;
   text-transform: uppercase;
@@ -1472,13 +1485,13 @@ onMounted(() => {
 }
 
 .sensor-card-item .sensor-name {
-  font-size: 10px;
+  font-size: 12px;
   color: #94a3b8;
   font-weight: 600;
 }
 
 .sensor-card-item .sensor-val {
-  font-size: 14px;
+  font-size: 17px;
   color: #ffffff;
   font-weight: 700;
   font-family: monospace;
@@ -1486,7 +1499,7 @@ onMounted(() => {
 }
 
 .sensor-card-item .unit {
-  font-size: 9px;
+  font-size: 11px;
   color: #00f2fe;
   font-weight: bold;
 }
@@ -1564,13 +1577,13 @@ onMounted(() => {
 }
 
 .meteorology-card .met-label {
-  font-size: 9px;
+  font-size: 12px;
   color: #94a3b8;
   font-weight: 600;
 }
 
 .meteorology-card .met-val {
-  font-size: 13px;
+  font-size: 16px;
   color: #ffffff;
   font-weight: 700;
   text-shadow: 0 0 4px rgba(0, 242, 254, 0.3);
@@ -1731,7 +1744,7 @@ onMounted(() => {
 
 .right-sidebar :deep(.card-title) {
   color: #ffffff !important;
-  font-size: 14px !important;
+  font-size: 16px !important;
   font-weight: 700 !important;
   text-shadow: 0 0 6px rgba(0, 242, 254, 0.3);
 }
@@ -1806,13 +1819,13 @@ onMounted(() => {
 
 .ugv-card .ugv-title {
   font-weight: bold;
-  font-size: 13px;
+  font-size: 16px;
   color: #00ffff;
   letter-spacing: 1px;
 }
 
 .ugv-card .ugv-status {
-  font-size: 11px;
+  font-size: 13px;
   color: #00ff88;
   font-weight: bold;
   padding: 2px 5px;
@@ -1853,12 +1866,12 @@ onMounted(() => {
 }
 
 .ugv-card .ugv-label {
-  font-size: 11px;
+  font-size: 13px;
   color: #8fa3b0;
 }
 
 .ugv-card .ugv-value {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   color: #e0f2fe;
   text-shadow: 0 0 5px rgba(224, 242, 254, 0.4);
@@ -1867,7 +1880,7 @@ onMounted(() => {
 .ugv-card .ugv-footer {
   text-align: right;
   padding: 8px 12px;
-  font-size: 11px;
+  font-size: 13px;
   color: #00ffff;
   background: rgba(0, 255, 255, 0.05);
   border-top: 1px solid rgba(0, 255, 255, 0.15);
