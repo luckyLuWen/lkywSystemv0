@@ -18,7 +18,7 @@
     ></div>
     
     <!-- 模型调整控制面板 -->
-    <div class="debug-panel" v-if="true">
+    <div class="debug-panel" v-if="false">
       <!-- 场景切换按钮 -->
       <div class="scene-switcher">
         <h4>场景选择</h4>
@@ -80,17 +80,6 @@
       
       <hr style="margin: 8px 0; border-color: #333;" />
       
-      <!-- 事故点位置微调 (蓝色标记点) -->
-      <h4>事故点位置微调</h4>
-      <div>
-        <label>经度 (X): <input type="number" v-model.number="currentPointAdjust.lng" step="0.00001" /></label>
-      </div>
-      <div>
-        <label>纬度 (Y): <input type="number" v-model.number="currentPointAdjust.lat" step="0.00001" /></label>
-      </div>
-      
-      <hr style="margin: 8px 0; border-color: #333;" />
-      
       <!-- 救援车微调 -->
       <h4>救援车微调</h4>
       <div>
@@ -124,20 +113,18 @@
         <button class="close-btn" @click="rescuePopup.show = false">×</button>
       </div>
       <table class="shelter-popup-table">
-        <tbody>
-          <tr>
-            <td class="label">无人机</td>
-            <td class="value">{{ rescuePopup.uavCount }}</td>
-          </tr>
-          <tr>
-            <td class="label">无人车</td>
-            <td class="value">{{ rescuePopup.carCount }}</td>
-          </tr>
-          <tr>
-            <td class="label">出动状态</td>
-            <td class="value">{{ rescuePopup.status }}</td>
-          </tr>
-        </tbody>
+        <tr>
+          <td class="label">无人机</td>
+          <td class="value">{{ rescuePopup.uavCount }}</td>
+        </tr>
+        <tr>
+          <td class="label">无人车</td>
+          <td class="value">{{ rescuePopup.carCount }}</td>
+        </tr>
+        <tr>
+          <td class="label">出动状态</td>
+          <td class="value">{{ rescuePopup.status }}</td>
+        </tr>
       </table>
       <div class="shelter-popup-arrow"></div>
     </div>
@@ -171,7 +158,7 @@
           
           <div class="uav-photo-overlay" v-if="activePhotoIndex !== null">
             <div class="uav-photo-timestamp">REC ● {{ currentTimeStr }}</div>
-            <div class="uav-photo-coords">{{ getAngleName(activePhotoIndex) }} ({{ props.phases[0]?.id.startsWith('t-') ? '113.1048°E, 30.3855°N' : '114.8945°E, 30.6322°N' }})</div>
+            <div class="uav-photo-coords">{{ getAngleName(activePhotoIndex) }} ({{ props.phases[0]?.id.startsWith('t-') ? '113.1048°E, 30.3855°N' : '113.0680°E, 30.2401°N' }})</div>
           </div>
         </div>
         
@@ -201,72 +188,12 @@
         </div>
       </div>
     </div>
-
-    <!-- 无人车 A 实时数据悬浮窗 -->
-    <div 
-      v-if="props.activePhaseIndex >= 7 && ugvA.x !== -1000" 
-      class="ugv-panel"
-      :style="{ left: ugvA.x + 'px', top: ugvA.y + 'px' }"
-    >
-      <div class="ugv-header">
-        <span class="ugv-title">无人车 A</span>
-        <span class="ugv-status">在线</span>
-      </div>
-      <div class="ugv-data">
-        <div class="ugv-row">
-          <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ ugvA.temp }}</span></div>
-          <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ ugvA.hum }}%</span></div>
-        </div>
-        <div class="ugv-row">
-          <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ ugvA.smoke }} ug</span></div>
-        </div>
-        <div class="ugv-row">
-          <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ ugvA.tvoc }}</span></div>
-          <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ ugvA.co }}</span></div>
-        </div>
-      </div>
-      <div class="ugv-footer" @click="goToSensorManage('node1')">点击查看详情 →</div>
-    </div>
-
-    <!-- 无人车 B 实时数据悬浮窗 -->
-    <div 
-      v-if="props.activePhaseIndex >= 7 && ugvB.x !== -1000" 
-      class="ugv-panel"
-      :style="{ left: ugvB.x + 'px', top: ugvB.y + 'px' }"
-    >
-      <div class="ugv-header">
-        <span class="ugv-title">无人车 B</span>
-        <span class="ugv-status">在线</span>
-      </div>
-      <div class="ugv-data">
-        <div class="ugv-row">
-          <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ ugvB.temp }}</span></div>
-          <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ ugvB.hum }}%</span></div>
-        </div>
-        <div class="ugv-row">
-          <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ ugvB.smoke }} ug</span></div>
-        </div>
-        <div class="ugv-row">
-          <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ ugvB.tvoc }}</span></div>
-          <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ ugvB.co }}</span></div>
-        </div>
-      </div>
-      <div class="ugv-footer" @click="goToSensorManage('node2')">点击查看详情 →</div>
-    </div>
   </div>
 </template>
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch, reactive, computed } from 'vue'
-import { useRouter } from 'vue-router'
 import * as Cesium from 'cesium'
-
-const router = useRouter()
-
-function goToSensorManage(target = '') {
-  const query = target ? { target } : {}
-  router.push({ path: '/sensor-manage', query })
-}
 
 // 当前选中的场景
 const currentScene = ref('truck')
@@ -364,24 +291,7 @@ const rescuePopup = reactive({
   y: 0
 });
 
-// 城市高亮上浮高度 (仙桃与黄冈)
-const xiantaoHeight = ref(0);
-const huanggangHeight = ref(0);
-
 let rescueMarkerEntity = null;
-
-let sharedTruckRescueCarPosition = null;
-let sharedTankerRescueCarPosition = null;
-
-// 无人车实时数据及浮窗位置
-const ugvA = reactive({
-  temp: 29.88, hum: 58.02, smoke: 25284, tvoc: 0.357, co: 2.8,
-  x: -1000, y: -1000
-});
-const ugvB = reactive({
-  temp: 27.07, hum: 43.47, smoke: 25292, tvoc: 0.588, co: 3.3,
-  x: -1000, y: -1000
-});
 
 // 计算属性：根据当前场景返回对应的参数对象
 const currentUavAdjust = computed(() => {
@@ -392,10 +302,6 @@ const currentTruckAdjust = computed(() => {
   return currentScene.value === 'truck' ? truckAdjust : tankerAdjust
 })
 
-const currentPointAdjust = computed(() => {
-  return currentScene.value === 'truck' ? truckPointAdjust : tankerPointAdjust
-})
-
 const currentRescueCarAdjust = computed(() => {
   return currentScene.value === 'truck' ? rescueCarAdjust : tankerRescueCarAdjust
 })
@@ -404,7 +310,6 @@ const props = defineProps({
   phases: { type: Array, default: () => [] },
   activePhaseIndex: { type: Number, default: 0 },
   focusedPointId: { type: String, default: '' },
-  sensorData: { type: Object, default: () => ({}) }
 })
 
 const emit = defineEmits(['accident-picked', 'models-ready'])
@@ -458,22 +363,17 @@ const truckAdjust = reactive({
   height: -1.2 // 手动微调高度以贴合地面
 })
 
-const truckPointAdjust = reactive({
-  lng: 113.104833,
-  lat: 30.385469
-})
-
 const tankerAdjust = reactive({
   scale: 0.26,
-  heading: -29,
-  lng: 114.8945,
-  lat: 30.632161,
+  heading: 36,
+  lng: 113.070226,
+  lat: 30.238683,
   height: -1.2 // 手动微调高度以贴合地面
 })
 
 const tankerPointAdjust = reactive({
-  lng: 114.89209,
-  lat: 30.63101
+  lng: 113.067999,
+  lat: 30.2401
 })
 
 // 无人机配置
@@ -520,20 +420,18 @@ let lastUavPhaseIndex = -1
 const tankerUavAdjust = reactive({
   scale: 6,
   heading: 34,
-  lng: 114.89539,
-  lat: 30.63129,
+  lng: 113.06925,
+  lat: 30.23928,
   height: 11.5
 });
 
 const tankerRescueCarAdjust = reactive({
   scale: 250,
-  heading: 155,
-  lng: 114.89417,
-  lat: 30.63182,
-  height: 6.5
+  heading: 215,
+  lng: 113.06929,
+  lat: 30.2393,
+  height: -1.5
 });
-
-const TANKER_STOP_FACTOR = 0.4;
 
 // 油罐车场景的无人机和救援车实体数组
 let tankerUavEntities = []
@@ -665,7 +563,7 @@ const scenarioPoints = {
   detection: { id: 'detection', label: '检测现场', longitude: 114.389, latitude: 30.5282, color: '#ffb84d' },
   response: { id: 'response', label: '协同处置区域', longitude: 114.3348, latitude: 30.5638, color: '#8cf7c5' },
   accident_blue: { id: 'accident_blue', label: '货车追尾现场', longitude: 113.104833, latitude: 30.385469, color: '#ffea00' }, // 改为黄色
-  accident_red: { id: 'accident_red', label: '油罐车泄露现场', longitude: 114.8945, latitude: 30.632161, color: '#00e5ff' },  // 改为蓝色
+  accident_red: { id: 'accident_red', label: '油罐车泄露现场', longitude: 113.067999, latitude: 30.2401, color: '#00e5ff' },  // 改为蓝色
 }
 
 function toCesiumColor(color, alpha = 1) {
@@ -701,9 +599,9 @@ function applyOrbitView() {
 
     if (isFocused) {
       if (props.activePhaseIndex <= 1) {
-        // 仿真开始及正常行驶阶段：高俯视全景视角
-        range = 1800
-        pitch = Cesium.Math.toRadians(-75);
+        // 仿真开始及正常行驶阶段：全景拉远
+        range = 1200
+        pitch = Cesium.Math.toRadians(-45);
       } else if (props.activePhaseIndex === 2) {
         // 事故发生瞬间：货车保持特写，油罐车保持全景
         if (props.focusedPointId === 'accident_red') {
@@ -970,24 +868,6 @@ function createDiffusionSystem(lng, lat) {
 
 function updatePopupPosition() {
   if (!viewer) return;
-
-  // 救援装备出动阶段 (index === 6) 让浮窗和图标跟随无人机的位置运动
-  if (rescuePopup.show && Number(props.activePhaseIndex) === 6) {
-    const isTanker = props.focusedPointId === 'accident_red';
-    const uavId = isTanker ? 'uav_model_tanker' : 'uav_model';
-    const uavEntity = viewer.entities.getById(uavId);
-    if (uavEntity) {
-      const pos = uavEntity.position.getValue(viewer.clock.currentTime);
-      if (pos) {
-        const cartographic = Cesium.Cartographic.fromCartesian(pos);
-        rescueCoords.lng = Cesium.Math.toDegrees(cartographic.longitude);
-        rescueCoords.lat = Cesium.Math.toDegrees(cartographic.latitude);
-        // 让浮窗/标记在无人机上方以避免重叠
-        rescueCoords.height = cartographic.height + 8.0;
-      }
-    }
-  }
-
   if (rescuePopup.show) {
     const cartesian = Cesium.Cartesian3.fromDegrees(rescueCoords.lng, rescueCoords.lat, rescueCoords.height);
     const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
@@ -995,46 +875,6 @@ function updatePopupPosition() {
       rescuePopup.x = canvasPosition.x;
       rescuePopup.y = canvasPosition.y - 45;
     }
-  }
-
-  // 更新无人车浮窗坐标与数据 (仅在到达现场后显示，也就是 activePhaseIndex >= 7)
-  if (props.activePhaseIndex >= 7) {
-    const isTanker = props.focusedPointId === 'accident_red';
-    const carPosCallback = isTanker ? sharedTankerRescueCarPosition : sharedTruckRescueCarPosition;
-    
-    if (carPosCallback) {
-      const pos = carPosCallback.getValue(viewer.clock.currentTime);
-      if (pos) {
-        const canvasPos = viewer.scene.cartesianToCanvasCoordinates(pos);
-        if (canvasPos) {
-          // A车在左侧，B车在右侧，稍微错开
-          ugvA.x = canvasPos.x - 220;
-          ugvA.y = canvasPos.y - 120;
-          ugvB.x = canvasPos.x + 20;
-          ugvB.y = canvasPos.y - 120;
-
-          // 关联真实的全局传感数据
-          ugvA.temp = props.sensorData?.temp || 0;
-          ugvA.hum = props.sensorData?.humidity || 0;
-          ugvA.smoke = props.sensorData?.smoke || 0;
-          ugvA.tvoc = props.sensorData?.tvoc || 0;
-          ugvA.co = props.sensorData?.co || 0;
-
-          // 无人车 B 作为辅助节点，制造合理的微小偏差以体现多设备空间差异
-          ugvB.temp = +(ugvA.temp - 0.45).toFixed(2);
-          ugvB.hum = +(ugvA.hum - 2.12).toFixed(2);
-          ugvB.smoke = Math.max(0, Math.floor(ugvA.smoke * 0.95));
-          ugvB.tvoc = Math.max(0, +(ugvA.tvoc * 0.88).toFixed(3));
-          ugvB.co = Math.max(0, +(ugvA.co * 0.92).toFixed(1));
-        } else {
-          ugvA.x = -1000; ugvA.y = -1000;
-          ugvB.x = -1000; ugvB.y = -1000;
-        }
-      }
-    }
-  } else {
-    ugvA.x = -1000; ugvA.y = -1000;
-    ugvB.x = -1000; ugvB.y = -1000;
   }
 }
 
@@ -1063,86 +903,6 @@ function drawBoundaryLine(coords) {
       clampToGround: true
     }
   });
-}
-
-// 绘制市级行政区区划边界与点击面 (霓虹发光材质与半透明填充)
-function drawCityBoundary(coords, colorStr, name, id) {
-  if (!viewer) return;
-  const positions = convertCoordsToCartesians(coords);
-  
-  // 1. 霓虹发光边线
-  viewer.entities.add({
-    id: id + '-line',
-    name: name,
-    polyline: {
-      positions: positions,
-      width: 5.5, // 稍微加粗，使市级边界显眼
-      material: new Cesium.PolylineGlowMaterialProperty({
-        glowPower: 0.26,
-        color: Cesium.Color.fromCssColorString(colorStr)
-      }),
-      clampToGround: true
-    }
-  });
-
-  // 2. 填充的多边形 (设置挤出高度，使其成为具有上浮效果的三维立体模块，并能接收点击事件)
-  viewer.entities.add({
-    id: id,
-    name: name,
-    polygon: {
-      hierarchy: new Cesium.PolygonHierarchy(positions),
-      material: Cesium.Color.fromCssColorString(colorStr).withAlpha(0.15), // 提高透明度让立体感更强
-      extrudedHeight: 12000, // 赋予12公里厚度，使其成为明显的三维立体控板
-      outline: false
-    }
-  });
-}
-
-// 异步加载湖北省仙桃市与黄冈市的行政区划边界数据，并用亮色边界和填充面描绘出来
-async function loadCityBoundaries() {
-  if (!viewer) return;
-
-  // 1. 仙桃市边界 ( adcode: 429004 ) - 使用亮粉红/粉紫色霓虹发光与半透明面
-  try {
-    const response = await fetch('/Dashboard/xiantao.json');
-    if (!response.ok) throw new Error('读取 xiantao.json 失败');
-    const geojson = await response.json();
-    
-    geojson.features.forEach(feature => {
-      const geometry = feature.geometry;
-      if (geometry.type === 'Polygon') {
-        drawCityBoundary(geometry.coordinates[0], '#ff007f', '仙桃市', 'city-boundary-xiantao');
-      } else if (geometry.type === 'MultiPolygon') {
-        geometry.coordinates.forEach((polygon, idx) => {
-          drawCityBoundary(polygon[0], '#ff007f', '仙桃市', 'city-boundary-xiantao-' + idx);
-        });
-      }
-    });
-    console.log('[Cesium] 仙桃市行政边界加载成功');
-  } catch (error) {
-    console.error('加载仙桃市行政边界时出错:', error);
-  }
-
-  // 2. 黄冈市边界 ( adcode: 421100 ) - 使用明亮黄/金黄色霓虹发光与半透明面
-  try {
-    const response = await fetch('/Dashboard/huanggang.json');
-    if (!response.ok) throw new Error('读取 huanggang.json 失败');
-    const geojson = await response.json();
-    
-    geojson.features.forEach(feature => {
-      const geometry = feature.geometry;
-      if (geometry.type === 'Polygon') {
-        drawCityBoundary(geometry.coordinates[0], '#ffd700', '黄冈市', 'city-boundary-huanggang');
-      } else if (geometry.type === 'MultiPolygon') {
-        geometry.coordinates.forEach((polygon, idx) => {
-          drawCityBoundary(polygon[0], '#ffd700', '黄冈市', 'city-boundary-huanggang-' + idx);
-        });
-      }
-    });
-    console.log('[Cesium] 黄冈市行政边界加载成功');
-  } catch (error) {
-    console.error('加载黄冈市行政边界时出错:', error);
-  }
 }
 
 // 异步加载湖北省行政区划边界数据，并建立反向蒙版 (遮罩层)
@@ -1199,23 +959,14 @@ async function loadHubeiMask() {
 }
 
 async function initViewer() {
-  console.log('[Cesium] 开始初始化三维地球...')
-  if (!containerRef.value || viewer) {
-    console.log('[Cesium] 容器不存在或已初始化')
-    return
-  }
-  console.log('[Cesium] 容器元素:', containerRef.value)
-  console.log('[Cesium] 容器尺寸:', containerRef.value.offsetWidth, 'x', containerRef.value.offsetHeight)
-  
+  if (!containerRef.value || viewer) return
   try {
-    console.log('[Cesium] 创建 Viewer 实例...')
     viewer = new Cesium.Viewer(containerRef.value, {
       animation: false, baseLayerPicker: false, fullscreenButton: false, geocoder: false, homeButton: false,
       infoBox: false, navigationHelpButton: false, sceneModePicker: false, selectionIndicator: false,
       timeline: false, shouldAnimate: true, skyAtmosphere: false,
     })
     window.viewer = viewer
-    console.log('[Cesium] Viewer 实例创建成功')
     
     // 关闭地球物理光照（防止因为时差导致场景处于黑夜）
     viewer.scene.globe.enableLighting = false
@@ -1228,60 +979,19 @@ async function initViewer() {
       scene.light.direction = Cesium.Cartesian3.clone(scene.camera.directionWC, scene.light.direction)
     })
 
-     viewer.cesiumWidget.creditContainer.style.display = 'none'
-
-    // 临时调试点击事件，获取道路精确坐标
-    const debugHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
-    debugHandler.setInputAction(function (movement) {
-      // 优先检测是否点击了三维立体控板
-      const pickedObject = viewer.scene.pick(movement.position);
-      if (Cesium.defined(pickedObject) && pickedObject.id) {
-        const pickedId = String(pickedObject.id.id);
-        if (pickedId.startsWith('city-boundary-xiantao') || pickedId === 'marker-accident_blue') {
-          router.push('/simulation?city=xiantao');
-          return;
-        } else if (pickedId.startsWith('city-boundary-huanggang') || pickedId === 'marker-accident_red') {
-          router.push('/simulation?city=huanggang');
-          return;
-        }
-      }
-
-      // 临时调试点击事件，获取道路精确坐标
-      const ray = viewer.camera.getPickRay(movement.position);
-      const cartesian = viewer.scene.globe.pick(ray, viewer.scene);
-      if (cartesian) {
-        const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
-        const longitudeString = Cesium.Math.toDegrees(cartographic.longitude).toFixed(6);
-        const latitudeString = Cesium.Math.toDegrees(cartographic.latitude).toFixed(6);
-        console.log(`[CLICK_COORDS] lng: ${longitudeString}, lat: ${latitudeString}`);
-      }
-    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    viewer.cesiumWidget.creditContainer.style.display = 'none'
 
     viewer.imageryLayers.removeAll()
-    console.log('[Cesium] 加载 ArcGIS 影像图层...')
-    try {
-      const imagery = await Cesium.ArcGisMapServerImageryProvider.fromUrl(
-        'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
-      )
-      viewer.imageryLayers.addImageryProvider(imagery)
-      console.log('[Cesium] ArcGIS 影像图层加载成功')
-    } catch (e) {
-      console.warn('[Cesium] ArcGIS 影像图层加载失败，使用默认底图:', e.message)
-      viewer.imageryLayers.addImageryProvider(new Cesium.createWorldImagery())
-    }
+    const imagery = await Cesium.ArcGisMapServerImageryProvider.fromUrl(
+      'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
+    )
+    viewer.imageryLayers.addImageryProvider(imagery)
 
     // 加载湖北省行政边界反向蒙版
     try {
       await loadHubeiMask()
     } catch (e) {
       console.warn('初始化湖北省遮罩蒙版时出现警告:', e.message)
-    }
-
-    // 加载仙桃市和黄冈市行政边界
-    try {
-      await loadCityBoundaries()
-    } catch (e) {
-      console.warn('初始化仙桃市和黄冈市边界时出现警告:', e.message)
     }
 
     try {
@@ -1495,6 +1205,7 @@ function replayCurrentPhase() {
 }
 
 function addEventEntities() {
+  let sharedTankerRescueCarPosition = null;
   focusAreaEntity = viewer.entities.add({
     id: 'event-area',
     show: false,
@@ -1563,22 +1274,9 @@ function addEventEntities() {
   })
 
   Object.values(scenarioPoints).filter(p => p.id.startsWith('accident_')).forEach(point => {
-    let positionCallback;
-    if (point.id === 'accident_blue') {
-      positionCallback = new Cesium.CallbackProperty(() => {
-        return Cesium.Cartesian3.fromDegrees(Number(truckPointAdjust.lng) || point.longitude, Number(truckPointAdjust.lat) || point.latitude, 0);
-      }, false);
-    } else if (point.id === 'accident_red') {
-      positionCallback = new Cesium.CallbackProperty(() => {
-        return Cesium.Cartesian3.fromDegrees(Number(tankerPointAdjust.lng) || point.longitude, Number(tankerPointAdjust.lat) || point.latitude, 0);
-      }, false);
-    } else {
-      positionCallback = Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude, 0);
-    }
-    
     viewer.entities.add({
       id: `marker-${point.id}`,
-      position: positionCallback,
+      position: Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude, 0),
       point: {
         pixelSize: 10,
         color: Cesium.Color.fromCssColorString(point.color),
@@ -1810,8 +1508,6 @@ function addEventEntities() {
       return Cesium.Transforms.headingPitchRollQuaternion(pos, hpr);
     }, false);
 
-    sharedTruckRescueCarPosition = rescueCarPosition;
-
     const entity = viewer.entities.add({
       id: config.id,
       name: config.label,
@@ -1835,8 +1531,8 @@ function addEventEntities() {
 
     const tankerUavPosition = new Cesium.CallbackProperty(() => {
       const startHeight = Number(tankerUavAdjust.height) || 11.5;
-      const targetLng = Number(tankerPointAdjust.lng) || 114.8945;
-      const targetLat = Number(tankerPointAdjust.lat) || 30.632161;
+      const targetLng = Number(tankerPointAdjust.lng) || 113.067999;
+      const targetLat = Number(tankerPointAdjust.lat) || 30.2401;
 
       if (props.activePhaseIndex <= 7) {
         if (sharedTankerRescueCarPosition) {
@@ -1845,99 +1541,98 @@ function addEventEntities() {
             const cartographic = Cesium.Cartographic.fromCartesian(carPos);
             const lng = Cesium.Math.toDegrees(cartographic.longitude);
             const lat = Cesium.Math.toDegrees(cartographic.latitude);
-            // 无人机一直在两辆车（救援车和事故点上的油罐车）的中间
-            const midLng = lng + 0.5 * (targetLng - lng);
-            const midLat = lat + 0.5 * (targetLat - lat);
-            return Cesium.Cartesian3.fromDegrees(midLng, midLat, startHeight);
+            return Cesium.Cartesian3.fromDegrees(lng, lat, startHeight);
           }
         }
         
-        const startLng = Number(tankerRescueCarAdjust.lng) || 114.895791;
-        const startLat = Number(tankerRescueCarAdjust.lat) || 30.631361;
-        const midLng = startLng + 0.5 * (targetLng - startLng);
-        const midLat = startLat + 0.5 * (targetLat - startLat);
-        return Cesium.Cartesian3.fromDegrees(midLng, midLat, startHeight);
+        const startLng = Number(tankerRescueCarAdjust.lng) || 113.06929;
+        const startLat = Number(tankerRescueCarAdjust.lat) || 30.2393;
+        return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
       } else {
-        // 阶段 >= 8：先从两车中间飞向绕飞起点，再围绕事故点做圆周绕飞拍照 (只绕一圈)
+        // 阶段 >= 8：先从车顶飞向绕飞起点，再围绕事故点做圆周绕飞拍照 (只绕一圈)
         if (!tankerUavOrbitStartTime) {
           tankerUavOrbitStartTime = Date.now();
         }
         const elapsed = Date.now() - tankerUavOrbitStartTime;
         
-        // 获取救援车当前位置（与阶段7保持一致）
-        let carLng, carLat;
-        if (sharedTankerRescueCarPosition) {
-          const carPos = sharedTankerRescueCarPosition.getValue(viewer.clock.currentTime);
-          if (carPos) {
-            const cartographic = Cesium.Cartographic.fromCartesian(carPos);
-            carLng = Cesium.Math.toDegrees(cartographic.longitude);
-            carLat = Cesium.Math.toDegrees(cartographic.latitude);
-          } else {
-            const startLng = Number(tankerRescueCarAdjust.lng) || 114.895791;
-            const startLat = Number(tankerRescueCarAdjust.lat) || 30.631361;
-            carLng = startLng + TANKER_STOP_FACTOR * (targetLng - startLng);
-            carLat = startLat + TANKER_STOP_FACTOR * (targetLat - startLat);
-          }
-        } else {
-          const startLng = Number(tankerRescueCarAdjust.lng) || 114.895791;
-          const startLat = Number(tankerRescueCarAdjust.lat) || 30.631361;
-          carLng = startLng + TANKER_STOP_FACTOR * (targetLng - startLng);
-          carLat = startLat + TANKER_STOP_FACTOR * (targetLat - startLat);
-        }
+        // 起点：救援车的停靠终点 (0.55 处)
+        const startLng = Number(tankerRescueCarAdjust.lng) || 113.06929;
+        const startLat = Number(tankerRescueCarAdjust.lat) || 30.2393;
+        const carLng = startLng + 0.55 * (targetLng - startLng);
+        const carLat = startLat + 0.55 * (targetLat - startLat);
 
-        // 起点：前一阶段的终点（两车中间点）- 与阶段7保持一致的计算方式
-        const uavStartLng = carLng + 0.5 * (targetLng - carLng);
-        const uavStartLat = carLat + 0.5 * (targetLat - carLat);
-
-        // 绕飞开始
-        const orbitDuration = 12000;
+        // 绕飞半径 (约 50 米)
+        const radiusLng = 0.00055;
+        const radiusLat = 0.00045;
         
-        // 计算无人机当前位置相对于事故点的初始角度和半径
-        const dLng = uavStartLng - targetLng;
-        const dLat = uavStartLat - targetLat;
-        const radius = Math.sqrt(dLng * dLng + dLat * dLat);
-        const startAngle = Math.atan2(dLat, dLng);
-
-        if (elapsed < orbitDuration) {
-          // 1. 围绕事故点进行圆周绕飞拍照 (顺时针，角度递减 2*PI)
-          const rawAngle = startAngle - (elapsed / orbitDuration) * 2.0 * Math.PI;
-          const angle = Math.max(rawAngle, startAngle - 2.0 * Math.PI); // 限制只绕一圈
+        // 飞行阶段时间配置
+        const flyDuration = 3000;
+        const orbitDuration = 12000;
+        const returnDuration = 3000;
+        
+        // 绕飞起点 (angle = 0)
+        const orbitStartLng = targetLng + radiusLng;
+        const orbitStartLat = targetLat;
+        
+        if (elapsed < flyDuration) {
+          // 1. 从救援车飞向绕飞起点
+          const t = elapsed / flyDuration;
+          const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
           
-          const currentLng = targetLng + radius * Math.cos(angle);
-          const currentLat = targetLat + radius * Math.sin(angle);
+          const lng = carLng + (orbitStartLng - carLng) * easeT;
+          const lat = carLat + (orbitStartLat - carLat) * easeT;
+          return Cesium.Cartesian3.fromDegrees(lng, lat, startHeight);
+        } else if (elapsed < flyDuration + orbitDuration) {
+          // 2. 围绕事故点进行圆周绕飞拍照
+          const orbitElapsed = elapsed - flyDuration;
+          const rawAngle = (orbitElapsed / orbitDuration) * 2.0 * Math.PI;
+          const angle = Math.min(rawAngle, 2.0 * Math.PI); // 限制只绕一圈
           
-          // 触发多角度照片拍摄状态 (根据经过的角度比例)
-          const angleDiff = startAngle - angle; // 从 0 增加到 2*PI
-          if (angleDiff >= 0.5 * Math.PI && !capturedPhotos.value[0]) {
+          const currentLng = targetLng + radiusLng * Math.cos(angle);
+          const currentLat = targetLat + radiusLat * Math.sin(angle);
+          
+          // 触发多角度照片拍摄状态
+          if (angle >= 0.5 * Math.PI && !capturedPhotos.value[0]) {
             capturedPhotos.value[0] = true;
             activePhotoIndex.value = 0;
             triggerPhotoAnimation(0, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, startHeight));
           }
-          if (angleDiff >= 1.0 * Math.PI && !capturedPhotos.value[1]) {
+          if (angle >= 1.0 * Math.PI && !capturedPhotos.value[1]) {
             capturedPhotos.value[1] = true;
             activePhotoIndex.value = 1;
             triggerPhotoAnimation(1, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, startHeight));
           }
-          if (angleDiff >= 1.5 * Math.PI && !capturedPhotos.value[2]) {
+          if (angle >= 1.5 * Math.PI && !capturedPhotos.value[2]) {
             capturedPhotos.value[2] = true;
             activePhotoIndex.value = 2;
             triggerPhotoAnimation(2, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, startHeight));
           }
-          if (angleDiff >= 1.95 * Math.PI && !capturedPhotos.value[3]) {
+          if (angle >= 2.0 * Math.PI && !capturedPhotos.value[3]) {
             capturedPhotos.value[3] = true;
             activePhotoIndex.value = 3;
             triggerPhotoAnimation(3, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, startHeight));
           }
 
           return Cesium.Cartesian3.fromDegrees(currentLng, currentLat, startHeight);
-        } else {
-          // 2. 绕飞结束，悬停在终点（即起点位置）
+        } else if (elapsed < flyDuration + orbitDuration + returnDuration) {
+          // 3. 绕飞结束，飞回救援车原点
+          const returnElapsed = elapsed - flyDuration - orbitDuration;
+          const t = returnElapsed / returnDuration;
+          const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+          
+          // 确保拍摄状态已全部完成
           if (!capturedPhotos.value[3]) {
             capturedPhotos.value[3] = true;
             activePhotoIndex.value = 3;
-            triggerPhotoAnimation(3, Cesium.Cartesian3.fromDegrees(uavStartLng, uavStartLat, startHeight));
+            triggerPhotoAnimation(3, Cesium.Cartesian3.fromDegrees(orbitStartLng, orbitStartLat, startHeight));
           }
-          return Cesium.Cartesian3.fromDegrees(uavStartLng, uavStartLat, startHeight);
+
+          const lng = orbitStartLng + (carLng - orbitStartLng) * easeT;
+          const lat = orbitStartLat + (carLat - orbitStartLat) * easeT;
+          return Cesium.Cartesian3.fromDegrees(lng, lat, startHeight);
+        } else {
+          // 4. 返回并悬停在救援车上方
+          return Cesium.Cartesian3.fromDegrees(carLng, carLat, startHeight);
         }
       }
     }, false);
@@ -1949,8 +1644,8 @@ function addEventEntities() {
       let headingRad;
       if (props.activePhaseIndex >= 8) {
         // 计算无人机当前位置指向事故中心的朝向角度，使其镜头始终对准事故车拍照
-        const targetLng = Number(tankerPointAdjust.lng) || 114.8945;
-        const targetLat = Number(tankerPointAdjust.lat) || 30.632161;
+        const targetLng = Number(tankerPointAdjust.lng) || 113.067999;
+        const targetLat = Number(tankerPointAdjust.lat) || 30.2401;
         
         const carto = Cesium.Cartographic.fromCartesian(pos);
         const currentLng = Cesium.Math.toDegrees(carto.longitude);
@@ -1988,12 +1683,12 @@ function addEventEntities() {
     console.log(`[Cesium] 正在初始化油罐车场景救援车实体: ${config.id}, 路径: ${config.uri}`);
 
     const tankerRescueCarPosition = new Cesium.CallbackProperty(() => {
-      const startLng = Number(tankerRescueCarAdjust.lng) || 114.895791;
-      const startLat = Number(tankerRescueCarAdjust.lat) || 30.631361;
+      const startLng = Number(tankerRescueCarAdjust.lng) || 113.06929;
+      const startLat = Number(tankerRescueCarAdjust.lat) || 30.2393;
       const startHeight = Number(tankerRescueCarAdjust.height) || -1.5;
 
-      const targetLng = Number(tankerPointAdjust.lng) || 114.8945;
-      const targetLat = Number(tankerPointAdjust.lat) || 30.632161;
+      const targetLng = Number(tankerPointAdjust.lng) || 113.067999;
+      const targetLat = Number(tankerPointAdjust.lat) || 30.2401;
       const targetHeight = startHeight;
 
       if (props.activePhaseIndex < 7) {
@@ -2007,16 +1702,18 @@ function addEventEntities() {
         const t = Math.min(elapsed / duration, 1.0);
         const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
-        const actualTargetLng = startLng + TANKER_STOP_FACTOR * (targetLng - startLng);
-        const actualTargetLat = startLat + TANKER_STOP_FACTOR * (targetLat - startLat);
+        const stopFactor = 0.55;
+        const actualTargetLng = startLng + stopFactor * (targetLng - startLng);
+        const actualTargetLat = startLat + stopFactor * (targetLat - startLat);
 
         const lng = startLng + (actualTargetLng - startLng) * easeT;
         const lat = startLat + (actualTargetLat - startLat) * easeT;
         const height = startHeight + (targetHeight - startHeight) * easeT;
         return Cesium.Cartesian3.fromDegrees(lng, lat, height);
       } else {
-        const actualTargetLng = startLng + TANKER_STOP_FACTOR * (targetLng - startLng);
-        const actualTargetLat = startLat + TANKER_STOP_FACTOR * (targetLat - startLat);
+        const stopFactor = 0.55;
+        const actualTargetLng = startLng + stopFactor * (targetLng - startLng);
+        const actualTargetLat = startLat + stopFactor * (targetLat - startLat);
         return Cesium.Cartesian3.fromDegrees(actualTargetLng, actualTargetLat, startHeight);
       }
     }, false);
@@ -2052,15 +1749,9 @@ function addEventEntities() {
     const pickedObject = viewer.scene.pick(movement.position);
     if (Cesium.defined(pickedObject) && pickedObject.id) {
       const entityId = pickedObject.id.id;
-      
-      let emitId = null;
-      if (entityId === 'accident_blue' || entityId === 'marker-accident_blue' || entityId === 'model_normal' || entityId === 'model_accident') {
-        emitId = 'accident_blue';
-      } else if (entityId === 'accident_red' || entityId === 'marker-accident_red' || entityId === 'tanker_normal' || entityId === 'tanker_accident') {
-        emitId = 'accident_red';
-      }
-      
-      if (emitId) {
+      // 检查点击的是否是货车模型或油罐车
+      if (entityId.includes('model_') || entityId.includes('tanker_') || entityId === 'accident_red' || entityId === 'accident_blue') {
+        const emitId = (entityId.includes('model_') || entityId === 'accident_blue') ? 'accident_blue' : 'accident_red'
         emit('accident-picked', emitId);
         zoomToPoint(emitId);
       }
@@ -2144,19 +1835,19 @@ function updatePhaseScene(index) {
     } else if (isTankerScene && index === 6) {
       rescuePopup.title = '救援装备出动';
       rescuePopup.status = '已出发';
-      // 跟随无人机位置，悬浮窗显示在无人机头顶上方
-      rescueCoords.lng = tankerUavAdjust.lng;
-      rescueCoords.lat = tankerUavAdjust.lat;
-      rescueCoords.height = tankerUavAdjust.height + 8.0; // 显示在无人机头顶上方
+      // 油罐车无人机起点 (tankerUavAdjust)
+      rescueCoords.lng = 113.06925;
+      rescueCoords.lat = 30.23928;
+      rescueCoords.height = 17.0; // 悬停于高度11.5的模型上方
       
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
       rescuePopup.show = true;
     } else if (isTankerScene && index === 7) {
       rescuePopup.title = '无人机感知部署';
       rescuePopup.status = '已到达';
-      // 油罐车事故点 (使用动态的 tankerPointAdjust)
-      rescueCoords.lng = tankerPointAdjust.lng;
-      rescueCoords.lat = tankerPointAdjust.lat;
+      // 油罐车事故点 (tankerPointAdjust)
+      rescueCoords.lng = 113.067999;
+      rescueCoords.lat = 30.2401;
       rescueCoords.height = 17.0;
       
       if (rescueMarkerEntity) rescueMarkerEntity.show = false;
@@ -2334,26 +2025,22 @@ function hideUav() {
   console.log('无人机已隐藏')
 }
 
-function resetView() {
-  if (!viewer || isFlying) return
-  stopAutoRotate()
-  isFlying = true
+function flyToUav() {
+  if (!viewer) return
+  const position = Cesium.Cartesian3.fromDegrees(uavAdjust.lng, uavAdjust.lat, uavAdjust.height)
   viewer.camera.flyTo({
-    destination: Cesium.Cartesian3.fromDegrees(112.5, 30.6, 1200000),
+    destination: position,
     orientation: {
-      heading: 0,
-      pitch: Cesium.Math.toRadians(-90),
+      heading: Cesium.Math.toRadians(uavAdjust.heading),
+      pitch: Cesium.Math.toRadians(-30),
       roll: 0.0
     },
-    duration: 1.5,
-    complete: () => {
-      isFlying = false
-    }
+    duration: 2.0
   })
-  console.log('地图已重置回湖北全图概览')
+  console.log('正在飞往无人机位置')
 }
 
-defineExpose({ zoomToPoint, resetView, capturedPhotos, activePhotoIndex, currentTimeStr });
+defineExpose({ zoomToPoint, capturedPhotos, activePhotoIndex, currentTimeStr });
 
 watch(() => props.activePhaseIndex, (next, prev) => {
   if (next === 7 && prev !== 7) {
@@ -2747,231 +2434,6 @@ onBeforeUnmount(() => {
 .phase-indicator span.active { background: #00e5ff; box-shadow: 0 0 8px #00e5ff; }
 .play-btn {
   background: #00e5ff; color: #061628; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold;
-}
-
-/* 无人车实时数据悬浮窗 - 赛博朋克深色主题 - 紧凑版 */
-.ugv-panel {
-  position: absolute;
-  width: 175px;
-  background: rgba(7, 11, 25, 0.85);
-  border-radius: 5px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6), 0 0 8px rgba(0, 255, 255, 0.15);
-  font-family: "JetBrains Mono", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  color: #fff;
-  z-index: 1000;
-  pointer-events: none;
-  overflow: hidden;
-  border: 1px solid rgba(0, 255, 255, 0.25);
-  backdrop-filter: blur(6px);
-  transform: translate(-50%, -100%);
-}
-
-/* 顶部霓虹边框高光 */
-.ugv-panel::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #00ffff, transparent);
-}
-
-.ugv-panel::after {
-  content: '';
-  position: absolute;
-  bottom: -6px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 6px solid rgba(0, 255, 255, 0.4);
-  filter: drop-shadow(0 1px 3px rgba(0, 255, 255, 0.3));
-}
-
-.ugv-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 10px;
-  border-bottom: 1px solid rgba(0, 255, 255, 0.12);
-  background: rgba(0, 255, 255, 0.04);
-}
-
-.ugv-title {
-  font-weight: bold;
-  font-size: 11px;
-  color: #00ffff;
-  letter-spacing: 0.5px;
-}
-
-.ugv-status {
-  font-size: 9px;
-  color: #00ff88;
-  font-weight: bold;
-  padding: 1px 4px;
-  background: rgba(0, 255, 136, 0.08);
-  border: 1px solid rgba(0, 255, 136, 0.25);
-  border-radius: 2px;
-}
-
-.ugv-data {
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.ugv-row {
-  display: flex;
-  gap: 4px;
-}
-
-.ugv-item {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 3px;
-  padding: 4px 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  transition: background 0.3s;
-}
-
-.ugv-item.full-width {
-  flex: 100%;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.ugv-label {
-  font-size: 10px;
-  color: #8fa3b0;
-}
-
-.ugv-value {
-  font-size: 11px;
-  font-weight: 700;
-  color: #e0f2fe;
-  text-shadow: 0 0 4px rgba(224, 242, 254, 0.3);
-}
-
-.ugv-footer {
-  text-align: right;
-  padding: 5px 10px;
-  font-size: 9px;
-  color: #00ffff;
-  background: rgba(0, 255, 255, 0.04);
-  border-top: 1px solid rgba(0, 255, 255, 0.12);
-  opacity: 0.8;
-  cursor: pointer;
-  pointer-events: auto;
-  transition: opacity 0.2s, background 0.2s;
-}
-
-.ugv-footer:hover {
-  opacity: 1;
-  background: rgba(0, 255, 255, 0.12);
-}
-
-/* 城市行政区划说明悬浮窗样式 */
-.city-popup-panel {
-  position: absolute;
-  z-index: 1000;
-  transform: translate(-50%, -100%);
-  width: 220px;
-  background: rgba(7, 11, 25, 0.9);
-  border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 229, 255, 0.2);
-  font-family: "Microsoft YaHei", sans-serif;
-  overflow: visible;
-  pointer-events: auto;
-  border: 1px solid rgba(0, 229, 255, 0.3);
-  backdrop-filter: blur(8px);
-  padding: 0;
-  color: #ffffff;
-}
-
-.city-popup-header {
-  background: linear-gradient(90deg, rgba(255, 0, 127, 0.2), rgba(255, 0, 127, 0.05));
-  border-bottom: 1px solid rgba(255, 0, 127, 0.3);
-  color: #ff007f;
-  padding: 8px 12px;
-  font-weight: bold;
-  font-size: 13px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-top-left-radius: 6px;
-  border-top-right-radius: 6px;
-}
-
-.city-popup-header.is-huanggang {
-  background: linear-gradient(90deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.05));
-  border-bottom: 1px solid rgba(255, 215, 0, 0.3);
-  color: #ffd700;
-}
-
-.city-popup-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.city-close-btn {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 16px;
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
-  transition: color 0.2s;
-}
-
-.city-close-btn:hover {
-  color: #ffffff;
-}
-
-.city-popup-body {
-  padding: 10px 12px;
-  font-size: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.city-info-item {
-  display: flex;
-  line-height: 1.4;
-}
-
-.info-label {
-  color: #8fa3b0;
-  width: 65px;
-  flex-shrink: 0;
-}
-
-.info-value {
-  color: #e0f2fe;
-}
-
-.info-value.desc {
-  text-align: justify;
-}
-
-.city-popup-arrow {
-  position: absolute;
-  bottom: -6px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-top: 6px solid rgba(7, 11, 25, 0.9);
 }
 
 </style>

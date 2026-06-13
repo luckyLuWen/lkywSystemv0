@@ -62,8 +62,3 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
-
-# 启动脚本（各模块自行管理）
-start_Collaborative_Response.sh
-start_detection_backend.sh
-start_sensor_gateway.sh
