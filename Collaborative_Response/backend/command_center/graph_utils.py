@@ -6,9 +6,12 @@ import osmnx as ox
 
 
 BASE_DIR = Path(__file__).resolve().parent
+# 本地缓存仅用于加速已知区域的反复推演。
+# 若新场景坐标不在缓存范围内，请删除对应 .graphml 文件或将其移走，
+# 脚本会自动从 OSM 拉取新路网。
 GRAPH_CANDIDATES = (
-    BASE_DIR / "wuhan_drive_network.graphml",
-    BASE_DIR / "wuhan_drive_full.graphml",
+    # BASE_DIR / "wuhan_drive_network.graphml",
+    # BASE_DIR / "wuhan_drive_full.graphml",
 )
 
 
