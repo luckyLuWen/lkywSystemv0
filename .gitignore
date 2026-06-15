@@ -73,5 +73,5 @@ start_sensor_gateway.sh
 
 .claude/
 *.improve
-
 subsystems.js
+Collaborative_Response/backend/command_center/runtime/
