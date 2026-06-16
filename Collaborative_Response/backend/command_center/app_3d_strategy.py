@@ -11,7 +11,7 @@ import os
 from scipy.interpolate import splprep, splev 
 import json
 import argparse
-from graph_utils import load_drive_graph_from_local_or_osm
+from graph_utils import load_drive_graph_from_local_or_osm, load_drive_graph_bbox
 
 warnings.filterwarnings("ignore")
 
@@ -34,27 +34,38 @@ COMPARE = (args.compare == 1)
 
 CAR_SPEED = 22.22  # 80 km/h (长途救援真实车速)
 UAV_SPEED = 20.0   # 20 m/s (大型救援无人机)
-START_POINT = (30.321919430948842, 113.41817301217728)  # 起点：仙桃市毛嘴镇消防站
+
+# 起点按终点分别配置：不同灾情场景由最近的消防站出警
+START_POINTS = {
+    'leak':  (30.713897297892842, 114.7804552777263),   # 武汉市消防救援支队新洲区大队
+    'crash': (30.321919430948842, 113.41817301217728),   # 仙桃市毛嘴镇消防站
+}
+START_POINT_NAMES = {
+    'leak':  '武汉市消防救援支队新洲区大队',
+    'crash': '仙桃市毛嘴镇消防站',
+}
 
 END_POINTS = {
-    'leak':  (30.238683, 113.070272),   # 油罐车泄漏现场
-    'crash': (30.385469, 113.104833),   # 货车追尾现场
+    'leak':  (30.607380528841425, 114.87332066872784),   # 油罐车泄漏现场
+    'crash': (30.385469, 113.104833),                     # 货车追尾现场
 }
 END_POINT_NAMES = {
     'leak':  '市区道路-油罐车泄漏现场',
     'crash': '高速公路-货车追尾现场',
 }
+START_POINT = START_POINTS[args.end_point]
+START_POINT_NAME = START_POINT_NAMES[args.end_point]
 END_POINT = END_POINTS[args.end_point]
 END_POINT_NAME = END_POINT_NAMES[args.end_point]
 
 # 禁飞区 & 拥堵区 — 按终点分别配置，确保每条路径都有绕行效果
 NFZ_CONFIG = {
     'leak': {
-        'nfz':      [{'center': (30.33, 113.30), 'radius': 2000}],   # 三伏潭镇偏北
-        'buffer':   [{'center': (30.27, 113.18), 'radius': 1500}],   # 胡场镇偏南
+        'nfz':      [{'center': (30.67, 114.82), 'radius': 2000}],   # 新洲→黄冈段 路径中段拦截
+        'buffer':   [{'center': (30.63, 114.85), 'radius': 1500}],   # 路径南侧缓冲区
         'congestion': [
-            [30.310, 113.245], [30.310, 113.260],
-            [30.295, 113.260], [30.295, 113.245],
+            [30.660, 114.815], [30.660, 114.835],
+            [30.645, 114.835], [30.645, 114.815],
         ],
     },
     'crash': {
@@ -74,8 +85,19 @@ START_TIME = pd.Timestamp('2025-01-01 09:00:00')
 ANIMATION_INTERVAL = 1.0
 
 # ==================== 2. 辅助与算法 ====================
-def calculate_distance(lat1, lon1, lat2, lon2): 
+def calculate_distance(lat1, lon1, lat2, lon2):
     return geodesic((lat1, lon1), (lat2, lon2)).meters
+
+# 统一路网 bbox：覆盖全部起点+终点的矩形走廊，比圆形区域小 70%+，避免切换终点时重复下载
+_PAD = 0.05  # 每边约 5km 缓冲
+_ALL_LATS = [p[0] for p in START_POINTS.values()] + [p[0] for p in END_POINTS.values()]
+_ALL_LONS = [p[1] for p in START_POINTS.values()] + [p[1] for p in END_POINTS.values()]
+UNIFIED_BBOX = (
+    max(_ALL_LATS) + _PAD,   # north
+    min(_ALL_LATS) - _PAD,   # south
+    max(_ALL_LONS) + _PAD,   # east
+    min(_ALL_LONS) - _PAD,   # west
+)
 
 def interpolate_path(df, interval=1.0):
     if len(df) < 2: return df
@@ -106,8 +128,8 @@ def b_spline_smooth(waypoints, num_points=200, k=3):
 def generate_car_path():
     try:
         straight_dist = calculate_distance(START_POINT[0], START_POINT[1], END_POINT[0], END_POINT[1])
-        fetch_radius = int(straight_dist * 1.5)
-        print(f"正在拉取底层真实路网... (预计半径: {fetch_radius/1000:.1f} km)")
+        fetch_radius = max(int(straight_dist * 1.15), 5000)  # 至少 5km 半径
+        print(f"正在拉取底层真实路网... (半径: {fetch_radius/1000:.1f} km)")
         G = load_drive_graph_from_local_or_osm(
             START_POINT,
             dist=fetch_radius,
@@ -121,8 +143,8 @@ def generate_car_path():
             u_node, v_node = G.nodes[u], G.nodes[v]
             if UGV_BLOCKED and ((min_lat <= u_node['y'] <= max_lat and min_lon <= u_node['x'] <= max_lon) or \
                (min_lat <= v_node['y'] <= max_lat and min_lon <= v_node['x'] <= max_lon)):
-                data['weight'] = length * 99999 
-            else: 
+                data['weight'] = length * 99999
+            else:
                 data['weight'] = length
         orig = ox.nearest_nodes(G, START_POINT[1], START_POINT[0])
         dest = ox.nearest_nodes(G, END_POINT[1], END_POINT[0])
@@ -135,8 +157,8 @@ def generate_car_path():
         total_time = df['dist'].sum() / CAR_SPEED
         df['time_s'] = np.linspace(0, total_time, len(df))
         df['timestamp'] = START_TIME + pd.to_timedelta(df['time_s'], unit='s')
-        return df, total_time
-    except Exception as e: return pd.DataFrame([START_POINT, END_POINT], columns=['lat', 'lon']), 100
+        return df, total_time, G
+    except Exception as e: return pd.DataFrame([START_POINT, END_POINT], columns=['lat', 'lon']), 100, None
 
 def generate_uav_path(car_time):
     pad = 0.05
@@ -180,14 +202,15 @@ def generate_uav_path(car_time):
     return df, raw_df, delay
 
 # ==================== 3b. 基线对比算法 ====================
-def generate_car_path_bfs():
+def generate_car_path_bfs(G=None):
     """基线算法：BFS — 最少边数路径，忽略道路长度权重，对比 Dijkstra 加权最短路径"""
     try:
-        straight_dist = calculate_distance(START_POINT[0], START_POINT[1], END_POINT[0], END_POINT[1])
-        fetch_radius = int(straight_dist * 1.5)
-        G = load_drive_graph_from_local_or_osm(
-            START_POINT, dist=fetch_radius, network_type='drive', simplify=False,
-        )
+        if G is None:
+            straight_dist = calculate_distance(START_POINT[0], START_POINT[1], END_POINT[0], END_POINT[1])
+            fetch_radius = max(int(straight_dist * 1.15), 5000)
+            G = load_drive_graph_from_local_or_osm(
+                START_POINT, dist=fetch_radius, network_type='drive', simplify=False,
+            )
         lats, lons = [p[0] for p in CONGESTION_ZONE_POLYGON], [p[1] for p in CONGESTION_ZONE_POLYGON]
         min_lat, max_lat, min_lon, max_lon = min(lats), max(lats), min(lons), max(lons)
         blocked_edges = set()
@@ -290,7 +313,7 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
         new_nfz = NEW_NFZ_LIST[0]
         folium.Circle(location=new_nfz['center'], radius=new_nfz['radius'], color='#f97316', weight=2, fill=True, fill_opacity=0.25, tooltip='风险缓冲区 (Buffer Zone)').add_to(m)
 
-    folium.Marker(START_POINT, icon=folium.Icon(color='green', icon='home'), tooltip='起点：仙桃市毛嘴镇消防站').add_to(m)
+    folium.Marker(START_POINT, icon=folium.Icon(color='green', icon='home'), tooltip=f'起点：{START_POINT_NAME}').add_to(m)
     folium.Marker(END_POINT, icon=folium.Icon(color='red', icon='fire'), tooltip=f'终点：{END_POINT_NAME}').add_to(m)
 
     # 当前算法 — 车：蓝色实线 / 飞机：紫色虚线
@@ -425,7 +448,7 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
                 基线Greedy(机) / Greedy BL
             </div>''' if COMPARE else ''}
             <div style="display: flex; align-items: center; margin-top: 6px;">
-                <i class="fa fa-map-marker fa-lg" style="color:green; margin-right: 16px; margin-left: 8px;"></i> 起点：仙桃市毛嘴镇消防站
+                <i class="fa fa-map-marker fa-lg" style="color:green; margin-right: 16px; margin-left: 8px;"></i> 起点：{START_POINT_NAME}
             </div>
             <div style="display: flex; align-items: center; margin-top: 4px;">
                 <i class="fa fa-map-marker fa-lg" style="color:red; margin-right: 16px; margin-left: 8px;"></i> 终点：{END_POINT_NAME}
@@ -490,6 +513,7 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
         <span id="replan-status" style="color: #f97316; font-size: 12px; display: none;">规划中...</span>
     </div>
     <script>
+    var _replanTimer = null;
     async function replanPath() {{
         var ep = document.getElementById('endpoint-selector');
         var ob = document.getElementById('obstacle-selector');
@@ -499,17 +523,34 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
         var status = document.getElementById('replan-status');
         btn.disabled = true;
         status.style.display = 'inline';
+        status.style.color = '#f97316';
+        var startTime = Date.now();
+        if (_replanTimer) clearInterval(_replanTimer);
+        _replanTimer = setInterval(function() {{
+            var elapsed = Math.floor((Date.now() - startTime) / 1000);
+            status.textContent = '规划中... (' + elapsed + 's)';
+        }}, 1000);
+        var controller = new AbortController();
+        var timer = setTimeout(function() {{ controller.abort(); }}, 180000);
         try {{
             var params = '?end_point=' + encodeURIComponent(ep.value)
                        + '&ugv_block=' + encodeURIComponent(ob.value)
                        + '&uav_smoke=' + encodeURIComponent(ob.value)
                        + '&strategy=' + encodeURIComponent(st.value)
                        + '&compare=' + encodeURIComponent(cp.value);
-            var resp = await fetch('/api/run_3d_strategy' + params);
+            var resp = await fetch('/api/run_3d_strategy' + params, {{ signal: controller.signal }});
+            clearTimeout(timer);
+            clearInterval(_replanTimer);
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             location.reload();
         }} catch(e) {{
-            status.textContent = '规划失败: ' + e.message;
+            clearTimeout(timer);
+            clearInterval(_replanTimer);
+            if (e.name === 'AbortError') {{
+                status.textContent = '规划超时(>3分钟)，请重试';
+            }} else {{
+                status.textContent = '规划失败: ' + e.message;
+            }}
             status.style.color = '#ef4444';
             btn.disabled = false;
         }}
@@ -518,71 +559,66 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
     '''
     m.get_root().html.add_child(folium.Element(selector_html))
 
-    # 自定义图层面板 — 替代 Folium 原生 LayerControl (与自定义HTML注入有兼容性bug)
-    cmp_rows = '''
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:3px 0;">
-                    <input type="checkbox" checked onchange="var l=Object.values(map._layers).find(l=>l.options&&l.options.name==='车辆-基线BFS (UGV Baseline)');if(l){l._map?l.setVisible(this.checked):l.addTo(map)}">
-                    <span style="display:inline-block;width:22px;height:0;border-top:3px dashed #22c55e;"></span>
-                    <span style="font-size:12px;color:#334155;">车辆-基线BFS</span>
-                </label>
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:3px 0;">
-                    <input type="checkbox" checked onchange="var l=Object.values(map._layers).find(l=>l.options&&l.options.name==='无人机-基线Greedy (UAV Baseline)');if(l){l._map?l.setVisible(this.checked):l.addTo(map)}">
-                    <span style="display:inline-block;width:22px;height:0;border-top:3px dashed #f97316;"></span>
-                    <span style="font-size:12px;color:#334155;">无人机-基线Greedy</span>
-                </label>
-    ''' if COMPARE else ''
-    layer_html = f'''
-    <div id="custom-layer-control" style="position:fixed;bottom:20px;left:20px;z-index:9998;
-                background:rgba(255,255,255,0.92);padding:10px 14px;border-radius:8px;
-                box-shadow:0 2px 10px rgba(0,0,0,0.15);font-family:'Microsoft YaHei',sans-serif;">
-        <div style="font-size:12px;font-weight:700;color:#1e293b;margin-bottom:6px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">图层 / Layers</div>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:3px 0;">
-            <input type="checkbox" checked onchange="var l=Object.values(map._layers).find(l=>l.options&&l.options.name==='车辆路径 (UGV Path)');if(l){{l._map?l.setVisible&&l.setVisible(this.checked):l.addTo(map)}}">
-            <span style="display:inline-block;width:22px;height:3px;background:#0000ff;"></span>
-            <span style="font-size:12px;color:#334155;">车辆(UGV)路径</span>
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:3px 0;">
-            <input type="checkbox" checked onchange="var l=Object.values(map._layers).find(l=>l.options&&l.options.name==='无人机路径 (UAV Path)');if(l){{l._map?l.setVisible&&l.setVisible(this.checked):l.addTo(map)}}">
-            <span style="display:inline-block;width:22px;height:0;border-top:3px dashed #ff00ff;"></span>
-            <span style="font-size:12px;color:#334155;">无人机(UAV)路径</span>
-        </label>
-        {cmp_rows}
-    </div>
-    '''
-    m.get_root().html.add_child(folium.Element(layer_html))
     m.save(output_filename)
     print(f"地图已保存至: {output_filename}")
 
 # ==================== 5. 主函数 ====================
+def _load_path_from_json(endpoint, strategy, ugv_block, uav_smoke):
+    """从预计算的 JSON 文件快速加载路径数据，跳过路网下载和路径规划。"""
+    block_key = f"b{1 if ugv_block else 0}s{1 if uav_smoke else 0}"
+    data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "path_data", f"path_{endpoint}_{block_key}.json")
+    if not os.path.exists(data_path):
+        return None
+    with open(data_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    if data.get('strategy', '') != strategy:
+        return None
+    if data.get('ugv_block') != ugv_block or data.get('uav_smoke') != uav_smoke:
+        return None
+    metrics = data.get('metrics', {})
+    car_df = pd.DataFrame(data['car_path'])
+    uav_df = pd.DataFrame(data['uav_path'])
+    car_time = metrics.get('car_time_min', 0) * 60
+    delay = metrics.get('delay_sec', 0)
+    return car_df, uav_df, car_time, delay
+
 if __name__ == '__main__':
-    print("正在请求路网数据并规划无人车路径...")
-    car_df, car_time = generate_car_path()
-    print(f"无人车路径规划完成，预估耗时: {car_time/60:.1f} 分钟。")
-    
-    print("正在进行无人机三维避障规划与B样条平滑...")
-    uav_df, raw_uav_df, delay = generate_uav_path(car_time)
-    print(f"无人机规划完成。策略: {SYNC_STRATEGY}, 地面待机时间: {delay:.1f} 秒。")
-    
-    # 基线对比算法
-    car_bfs_df, car_bfs_interp = None, None
-    uav_greedy_df, uav_greedy_interp = None, None
-    if COMPARE:
-        print("--- 对比模式：正在运行基线算法 ---")
-        print("  [基线] BFS 车辆路径 (最少边数, 忽略道路长度)...")
-        car_bfs_df, _ = generate_car_path_bfs()
-        bfs_dist = car_bfs_df['dist'].sum() / 1000 if 'dist' in car_bfs_df.columns else 0
-        print(f"  [基线] BFS 完成, 路径距离: {bfs_dist:.1f} km")
-        print("  [基线] Greedy 无人机路径 (仅朝目标移动, 忽略全局代价)...")
-        uav_greedy_df, _, _ = generate_uav_path_greedy()
-        greedy_dist = sum(calculate_distance(uav_greedy_df.iloc[i-1]['lat'], uav_greedy_df.iloc[i-1]['lon'], uav_greedy_df.iloc[i]['lat'], uav_greedy_df.iloc[i]['lon']) for i in range(1, len(uav_greedy_df))) / 1000 if len(uav_greedy_df) > 1 else 0
-        print(f"  [基线] Greedy 完成, 路径距离: {greedy_dist:.1f} km")
-        car_bfs_interp = interpolate_path(car_bfs_df, ANIMATION_INTERVAL)
-        uav_greedy_interp = interpolate_path(uav_greedy_df, ANIMATION_INTERVAL)
-        # 基线指标 vs 当前算法
-        car_dist = car_df['dist'].sum() / 1000 if 'dist' in car_df.columns else 0
-        uav_dist = sum(calculate_distance(uav_df.iloc[i-1]['lat'], uav_df.iloc[i-1]['lon'], uav_df.iloc[i]['lat'], uav_df.iloc[i]['lon']) for i in range(1, len(uav_df))) / 1000
-        print(f"  算法优越性: Dijkstra={car_dist:.1f} vs BFS={bfs_dist:.1f} km (节省{(bfs_dist-car_dist)/bfs_dist*100:.1f}%)")
-        print(f"  算法优越性: A*={uav_dist:.1f} vs Greedy={greedy_dist:.1f} km (节省{(greedy_dist-uav_dist)/greedy_dist*100:.1f}%)")
+    # 快速重载：如果路径数据 JSON 已存在且策略匹配，直接加载跳过路网下载和路径规划
+    cached = _load_path_from_json(args.end_point, SYNC_STRATEGY, UGV_BLOCKED, UAV_SMOKE)
+    if cached and not COMPARE:
+        car_df, uav_df, car_time, delay = cached
+        raw_uav_df = uav_df  # 快速模式复用平滑路径
+        print(f"[快速模式] 从缓存 JSON 加载路径 (终点={args.end_point})，跳过路网下载与路径规划")
+        car_bfs_df, car_bfs_interp = None, None
+        uav_greedy_df, uav_greedy_interp = None, None
+    else:
+        print("正在请求路网数据并规划无人车路径...")
+        car_df, car_time, car_G = generate_car_path()
+        print(f"无人车路径规划完成，预估耗时: {car_time/60:.1f} 分钟。")
+
+        print("正在进行无人机三维避障规划与B样条平滑...")
+        uav_df, raw_uav_df, delay = generate_uav_path(car_time)
+        print(f"无人机规划完成。策略: {SYNC_STRATEGY}, 地面待机时间: {delay:.1f} 秒。")
+
+        # 基线对比算法
+        car_bfs_df, car_bfs_interp = None, None
+        uav_greedy_df, uav_greedy_interp = None, None
+        if COMPARE:
+            print("--- 对比模式：正在运行基线算法 ---")
+            print("  [基线] BFS 车辆路径 (最少边数, 忽略道路长度)...")
+            car_bfs_df, _ = generate_car_path_bfs(G=car_G.copy() if car_G is not None else None)
+            bfs_dist = car_bfs_df['dist'].sum() / 1000 if 'dist' in car_bfs_df.columns else 0
+            print(f"  [基线] BFS 完成, 路径距离: {bfs_dist:.1f} km")
+            print("  [基线] Greedy 无人机路径 (仅朝目标移动, 忽略全局代价)...")
+            uav_greedy_df, _, _ = generate_uav_path_greedy()
+            greedy_dist = sum(calculate_distance(uav_greedy_df.iloc[i-1]['lat'], uav_greedy_df.iloc[i-1]['lon'], uav_greedy_df.iloc[i]['lat'], uav_greedy_df.iloc[i]['lon']) for i in range(1, len(uav_greedy_df))) / 1000 if len(uav_greedy_df) > 1 else 0
+            print(f"  [基线] Greedy 完成, 路径距离: {greedy_dist:.1f} km")
+            car_bfs_interp = interpolate_path(car_bfs_df, ANIMATION_INTERVAL)
+            uav_greedy_interp = interpolate_path(uav_greedy_df, ANIMATION_INTERVAL)
+            car_dist = car_df['dist'].sum() / 1000 if 'dist' in car_df.columns else 0
+            uav_dist = sum(calculate_distance(uav_df.iloc[i-1]['lat'], uav_df.iloc[i-1]['lon'], uav_df.iloc[i]['lat'], uav_df.iloc[i]['lon']) for i in range(1, len(uav_df))) / 1000
+            print(f"  算法优越性: Dijkstra={car_dist:.1f} vs BFS={bfs_dist:.1f} km (节省{(bfs_dist-car_dist)/bfs_dist*100:.1f}%)")
+            print(f"  算法优越性: A*={uav_dist:.1f} vs Greedy={greedy_dist:.1f} km (节省{(greedy_dist-uav_dist)/greedy_dist*100:.1f}%)")
 
     print("正在进行时空同步插值与交互式网页生成...")
     car_interp = interpolate_path(car_df, ANIMATION_INTERVAL)
@@ -592,36 +628,42 @@ if __name__ == '__main__':
                          car_bfs_df=car_bfs_df, car_bfs_interp=car_bfs_interp,
                          uav_greedy_df=uav_greedy_df, uav_greedy_interp=uav_greedy_interp)
 
-    # 导出路径数据为 JSON 文件
-    car_records = car_df[['lat', 'lon', 'time_s']].to_dict(orient='records')
-    uav_records = uav_df[['lat', 'lon', 'alt', 'time_s']].to_dict(orient='records')
-    car_time_min = round(car_time / 60, 1)
-    uav_flight_min = round((uav_df['time_s'].iloc[-1] - delay) / 60, 1) if len(uav_df) > 0 else 0
-    car_dist = round(car_df['dist'].sum() / 1000, 2) if 'dist' in car_df.columns else 0
-    path_data = {
-        'end_point': args.end_point,
-        'end_point_name': END_POINT_NAME,
-        'strategy': SYNC_STRATEGY,
-        'start_point': {'lat': START_POINT[0], 'lon': START_POINT[1], 'name': '仙桃市毛嘴镇消防站'},
-        'end_point_coord': {'lat': END_POINT[0], 'lon': END_POINT[1]},
-        'car_path': car_records,
-        'uav_path': uav_records,
-        'metrics': {
-            'car_time_min': car_time_min,
-            'uav_flight_time_min': uav_flight_min,
-            'delay_sec': round(delay, 1),
-            'car_dist_km': car_dist,
+    # 导出路径数据为 JSON 文件（快速模式跳过，数据未变）
+    if not cached:
+        car_records = car_df[['lat', 'lon', 'time_s']].to_dict(orient='records')
+        uav_records = uav_df[['lat', 'lon', 'alt', 'time_s']].to_dict(orient='records')
+        car_time_min = round(car_time / 60, 1)
+        uav_flight_min = round((uav_df['time_s'].iloc[-1] - delay) / 60, 1) if len(uav_df) > 0 else 0
+        car_dist = round(car_df['dist'].sum() / 1000, 2) if 'dist' in car_df.columns else 0
+        path_data = {
+            'end_point': args.end_point,
+            'end_point_name': END_POINT_NAME,
+            'strategy': SYNC_STRATEGY,
+            'ugv_block': UGV_BLOCKED,
+            'uav_smoke': UAV_SMOKE,
+            'start_point': {'lat': START_POINT[0], 'lon': START_POINT[1], 'name': START_POINT_NAME},
+            'end_point_coord': {'lat': END_POINT[0], 'lon': END_POINT[1]},
+            'car_path': car_records,
+            'uav_path': uav_records,
+            'metrics': {
+                'car_time_min': car_time_min,
+                'uav_flight_time_min': uav_flight_min,
+                'delay_sec': round(delay, 1),
+                'car_dist_km': car_dist,
+            }
         }
-    }
-    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "path_data")
-    os.makedirs(data_dir, exist_ok=True)
-    data_path = os.path.join(data_dir, f"path_{args.end_point}.json")
-    with open(data_path, 'w', encoding='utf-8') as f:
-        json.dump(path_data, f, ensure_ascii=False, indent=2)
-    print(f"路径数据已导出至: {data_path}")
+        block_key = f"b{1 if UGV_BLOCKED else 0}s{1 if UAV_SMOKE else 0}"
+        data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "path_data")
+        os.makedirs(data_dir, exist_ok=True)
+        data_path = os.path.join(data_dir, f"path_{args.end_point}_{block_key}.json")
+        with open(data_path, 'w', encoding='utf-8') as f:
+            json.dump(path_data, f, ensure_ascii=False, indent=2)
+        print(f"路径数据已导出至: {data_path}")
 
     # 同时更新 path_result.json 供 API metrics 接口使用
     result_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "path_result.json")
+    car_time_min = round(car_time / 60, 1)
+    uav_flight_min = round((uav_df['time_s'].iloc[-1] - delay) / 60, 1) if len(uav_df) > 0 else 0
     result_data = {
         'end_point': args.end_point,
         'end_point_name': END_POINT_NAME,

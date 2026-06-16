@@ -16,6 +16,9 @@ coverage/
 *.tsbuildinfo
 .eslintcache
 
+# osmnx Overpass API 缓存
+Collaborative_Response/backend/command_center/cache/
+
 # Python 缓存
 **/__pycache__/
 *.pyc
@@ -68,6 +71,7 @@ start_Collaborative_Response.sh
 start_detection_backend.sh
 start_sensor_gateway.sh
 
-
+.claude/
 *.improve
+subsystems.js
 Collaborative_Response/backend/command_center/runtime/
