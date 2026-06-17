@@ -1,20 +1,42 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# 遇到错误立即停止 (等同于 $ErrorActionPreference = 'Stop')
-set -e
+set -euo pipefail
 
-# 1. 设置路径
-# 获取脚本所在目录，以及上一级目录 (等同于 Split-Path -Parent $PSScriptRoot)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 PUBLIC_ROOT="${ROOT_DIR}/vue-project_all/public"
 
-# 2. 辅助函数
+TARGET_NAMES=("$@")
+
+assert_target_inside_public_root() {
+  local target_path="$1"
+  local public_root_real
+  local target_parent
+  local target_real
+
+  public_root_real="$(cd "$PUBLIC_ROOT" && pwd -P)"
+  target_parent="$(dirname "$target_path")"
+  mkdir -p "$target_parent"
+  target_real="$(cd "$target_parent" && pwd -P)/$(basename "$target_path")"
+
+  case "$target_real" in
+    "$public_root_real"/*) ;;
+    *)
+      echo "[ERROR] Refusing to reset directory outside public root: $target_path" >&2
+      exit 1
+      ;;
+  esac
+}
+
 reset_directory() {
   local target_path="$1"
+
+  assert_target_inside_public_root "$target_path"
+
   if [ -d "$target_path" ]; then
     rm -rf "$target_path"
   fi
+
   mkdir -p "$target_path"
 }
 
@@ -28,7 +50,6 @@ copy_directory_contents() {
   fi
 
   reset_directory "$target_dir"
-  # 使用 cp -a 复制目录内所有内容（包含隐藏文件），并保持文件属性
   cp -a "$source_dir"/. "$target_dir"/
 }
 
@@ -40,13 +61,11 @@ convert_vite_index_to_relative() {
     exit 1
   fi
 
-  # 使用 sed 进行原地字符串替换 (-i)
   sed -i 's|href="/assets/|href="./assets/|g' "$index_path"
   sed -i 's|src="/assets/|src="./assets/|g' "$index_path"
   sed -i 's|href="/vite.svg"|href="./vite.svg"|g' "$index_path"
 }
 
-# 3. 定义同步目标 (格式: "名称|源路径|类型")
 TARGETS=(
   "collaborative-response|${ROOT_DIR}/Collaborative_Response/dist|vite"
   "constructive-simulation|${ROOT_DIR}/Constructive simulation|static"
@@ -54,18 +73,66 @@ TARGETS=(
   "sensor-management|${ROOT_DIR}/Sensor_Management/IOT/frontend/dist|vite"
 )
 
-# 4. 执行同步
+is_known_target() {
+  local expected_name="$1"
+  local target
+  local name
+  local source
+  local type
+
+  for target in "${TARGETS[@]}"; do
+    IFS='|' read -r name source type <<< "$target"
+    if [ "$name" = "$expected_name" ]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+should_sync_target() {
+  local name="$1"
+  local selected
+
+  if [ "${#TARGET_NAMES[@]}" -eq 0 ]; then
+    return 0
+  fi
+
+  for selected in "${TARGET_NAMES[@]}"; do
+    if [ "$selected" = "$name" ]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+if [ "${#TARGET_NAMES[@]}" -gt 0 ]; then
+  for target_name in "${TARGET_NAMES[@]}"; do
+    if ! is_known_target "$target_name"; then
+      echo "[ERROR] Unknown target '${target_name}'." >&2
+      echo "[ERROR] Known targets: collaborative-response, constructive-simulation, realtime-detection, sensor-management" >&2
+      exit 1
+    fi
+  done
+fi
+
 for target in "${TARGETS[@]}"; do
-  # 解析字符串
   IFS='|' read -r name source type <<< "$target"
-  
+
+  if ! should_sync_target "$name"; then
+    continue
+  fi
+
   destination="${PUBLIC_ROOT}/${name}"
-  
+
   copy_directory_contents "$source" "$destination"
 
   if [ "$type" = "vite" ]; then
     convert_vite_index_to_relative "${destination}/index.html"
   fi
+
+  echo "Synced ${name}."
 done
 
 echo "Subsystem static assets synced."

@@ -1,26 +1,10 @@
 {
-  "controller": {
-    "host": "0.0.0.0",
-    "port": 18601
-  },
   "services": {
-    "commandCenter": {
-      "label": "协同响应指挥后端",
-      "public_url": "http://127.0.0.1:5001",
-      "health_url": "http://127.0.0.1:5001/api/health",
-      "working_directory": "../backend/command_center",
-      "start_command": [
-        "python",
-        "server.py"
-      ],
-      "stop_command": [],
-      "shell": false
-    },
     "streamlit": {
       "label": "协同调度平台",
       "public_url": "http://127.0.0.1:8501/?embed=true",
       "health_url": "http://127.0.0.1:8501/_stcore/health",
-      "working_directory": "../backend/command_center",
+      "working_directory": ".",
       "start_command": [
         "python",
         "-m",
@@ -30,11 +14,11 @@
         "--server.port",
         "8501",
         "--server.address",
-        "0.0.0.0",
+        "127.0.0.1",
         "--server.headless",
         "true",
         "--server.enableCORS",
-        "false",
+        "true",
         "--server.enableXsrfProtection",
         "false"
       ],

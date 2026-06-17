@@ -54,32 +54,33 @@
     </div>
 
     <script>
+        // 从 URL 参数读取指挥后端地址，默认 5001
+        const params = new URLSearchParams(window.location.search);
+        const cmdBase = params.get('commandCenterBase') || 'http://127.0.0.1:5001';
+
         function launchApp(apiEndpoint, btnId, showLoader) {
             const statusBar = document.getElementById('status-bar');
             const screen = document.getElementById('display-screen');
             const loader = document.getElementById('loader-overlay');
             const btns = document.querySelectorAll('.btn');
-            
-            // 锁定按钮防止重复点击
+
             btns.forEach(b => b.disabled = true);
             statusBar.className = "loading";
             statusBar.innerText = "正在向后端发送调度指令...";
-            
+
             if(showLoader) loader.style.display = "flex";
 
-            // 通过 Fetch API 调用 Python 后端
-            fetch(apiEndpoint)
+            fetch(cmdBase + apiEndpoint)
                 .then(response => response.json())
                 .then(data => {
                     if(data.status === 'success') {
                         statusBar.className = "success";
                         statusBar.innerText = data.msg;
-                        
-                        // 针对 Streamlit 需要稍微等几秒让其启动
+
                         if(apiEndpoint === '/api/run_2d') {
                             setTimeout(() => { screen.src = data.url; }, 3000);
                         } else {
-                            screen.src = data.url; // 注入生成的 HTML 或 Cesium
+                            screen.src = cmdBase + data.url;
                         }
                     } else {
                         statusBar.className = "error";
