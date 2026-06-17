@@ -9785,5 +9785,7 @@
     "uav_flight_time_min": 26.8,
     "delay_sec": 0,
     "car_dist_km": 35.35
-  }
+  },
+  "ugv_block": true,
+  "uav_smoke": true
 }
