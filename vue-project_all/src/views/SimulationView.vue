@@ -2,8 +2,8 @@
   <div class="simulation-container">
     <!-- 视图切换开关 -->
     <div class="view-toggle">
-      <button :class="{ active: viewMode === '2d' }" @click="viewMode = '2d'">🗺️ 二维推演</button>
       <button :class="{ active: viewMode === '3d' }" @click="viewMode = '3d'">🌍 三维仿真</button>
+      <button :class="{ active: viewMode === '2d' }" @click="viewMode = '2d'">🗺️ 二维推演</button>
     </div>
 
     <div v-show="viewMode === '3d'" id="simulationCesiumContainer" class="cesium-container"></div>
