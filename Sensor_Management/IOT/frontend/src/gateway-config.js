@@ -1,4 +1,4 @@
-const DEFAULT_EDGE_GATEWAY_BASE_URL = "http://192.168.2.111:8000"
+const DEFAULT_EDGE_GATEWAY_BASE_URL = "http://192.168.0.242:8000"
 const STORAGE_KEY = "sensorManagement.edgeBaseUrl"
 
 function normalizeBaseUrl(value) {
@@ -30,11 +30,7 @@ function getStorageBaseUrl() {
 }
 
 function pickBaseUrl() {
-  const queryBase = normalizeBaseUrl(getQueryBaseUrl())
-  const envBase = normalizeBaseUrl(import.meta.env.VITE_SENSOR_EDGE_BASE_URL)
-  const storageBase = normalizeBaseUrl(getStorageBaseUrl())
-
-  return queryBase || storageBase || envBase || DEFAULT_EDGE_GATEWAY_BASE_URL
+  return "http://192.168.0.242:8000"
 }
 
 export const EDGE_GATEWAY_BASE_URL = pickBaseUrl()

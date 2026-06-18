@@ -1,4 +1,4 @@
-const DEFAULT_EDGE_GATEWAY_BASE_URL = "http://127.0.0.1:18080"
+const DEFAULT_EDGE_GATEWAY_BASE_URL = "http://192.168.0.242:8000"
 const STORAGE_KEY = "sensorManagement.edgeBaseUrl"
 
 function normalizeBaseUrl(value) {
