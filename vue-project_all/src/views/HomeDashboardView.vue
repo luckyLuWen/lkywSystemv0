@@ -33,7 +33,7 @@
       <!-- Left Sidebar (White) -->
       <aside class="left-sidebar" :class="{ collapsed: isLeftCollapsed }">
         <button class="toggle-btn toggle-btn-left" type="button" @click="isLeftCollapsed = !isLeftCollapsed">
-          {{ isLeftCollapsed ? '▶' : '◀' }}
+          {{ isLeftCollapsed ? '◀' : '▶' }}
         </button>
         <div class="sidebar-header">
           <h2 class="sidebar-title">工作目录 / 服务中心</h2>
@@ -109,7 +109,7 @@
       <!-- Right Sidebar (White) -->
       <aside class="right-sidebar" :class="{ collapsed: isRightCollapsed }">
         <button class="toggle-btn toggle-btn-right" type="button" @click="isRightCollapsed = !isRightCollapsed">
-          {{ isRightCollapsed ? '◀' : '▶' }}
+          {{ isRightCollapsed ? '▶' : '◀' }}
         </button>
         <div class="sidebar-header">
           <h2 class="sidebar-title">
@@ -839,21 +839,21 @@ onMounted(() => {
 }
 
 .left-sidebar {
-  left: 16px;
-  z-index: 10;
-}
-
-.left-sidebar.collapsed {
-  transform: translateX(calc(-100% - 20px));
-}
-
-.right-sidebar {
   right: 16px;
   z-index: 10;
 }
 
-.right-sidebar.collapsed {
+.left-sidebar.collapsed {
   transform: translateX(calc(100% + 20px));
+}
+
+.right-sidebar {
+  left: 16px;
+  z-index: 10;
+}
+
+.right-sidebar.collapsed {
+  transform: translateX(calc(-100% - 20px));
 }
 
 /* Sidebar Toggle Buttons - High Tech Glass */
@@ -882,14 +882,14 @@ onMounted(() => {
   box-shadow: 0 0 10px rgba(0, 242, 254, 0.4);
 }
 .toggle-btn-left {
-  right: -18px;
-  border-radius: 0 8px 8px 0;
-  border-left: none;
-}
-.toggle-btn-right {
   left: -18px;
   border-radius: 8px 0 0 8px;
   border-right: none;
+}
+.toggle-btn-right {
+  right: -18px;
+  border-radius: 0 8px 8px 0;
+  border-left: none;
 }
 
 .sidebar-header {

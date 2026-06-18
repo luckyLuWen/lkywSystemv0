@@ -1,6 +1,20 @@
 <template>
   <div class="simulation-container">
-    <div id="simulationCesiumContainer" class="cesium-container"></div>
+    <!-- 视图切换开关 -->
+    <div class="view-toggle">
+      <button :class="{ active: viewMode === '3d' }" @click="viewMode = '3d'">🌍 三维仿真</button>
+      <button :class="{ active: viewMode === '2d' }" @click="viewMode = '2d'">🗺️ 二维推演</button>
+    </div>
+
+    <div v-show="viewMode === '3d'" id="simulationCesiumContainer" class="cesium-container"></div>
+    
+    <div v-if="viewMode === '2d'" class="cesium-container iframe-container">
+      <div v-if="isGenerating2D" class="loading-overlay">
+        <div class="spinner"></div>
+        <span>正在生成二维推演...</span>
+      </div>
+      <iframe v-else :src="iframeSrc" class="deduction-iframe"></iframe>
+    </div>
     
     <!-- 市级行政区划切换按钮 -->
     <div class="city-switcher">
@@ -27,10 +41,33 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import * as Cesium from 'cesium'
+import { getCollaborativeCommandCenterBaseUrl } from '../config/subsystems'
+
+const viewMode = ref('3d')
+const iframeSrc = ref('')
+const isGenerating2D = ref(false)
 
 let viewer = null
 const route = useRoute()
 const currentCity = ref(route.query.city === 'huanggang' ? 'huanggang' : 'xiantao')
+
+const generate2DDeduction = async (city) => {
+  const endpoint = city === 'xiantao' ? 'crash' : 'leak'
+  isGenerating2D.value = true
+  try {
+    const baseUrl = getCollaborativeCommandCenterBaseUrl()
+    const response = await fetch(`${baseUrl}/api/run_3d_strategy?end_point=${endpoint}`)
+    if (response.ok) {
+      iframeSrc.value = `${baseUrl}/2d_deduction.html?t=${Date.now()}`
+    } else {
+      console.error('二维推演生成失败')
+    }
+  } catch (error) {
+    console.error('请求生成二维推演时出错:', error)
+  } finally {
+    isGenerating2D.value = false
+  }
+}
 
 // 辅助方法：将经纬度数组转换为 Cesium.Cartesian3 数组
 const convertCoordsToCartesians = (coords) => {
@@ -130,6 +167,10 @@ async function loadCityMask(city) {
 
 const flyToCity = async (city) => {
   currentCity.value = city;
+  
+  // 触发生成对应的二维推演
+  generate2DDeduction(city);
+
   if (!viewer) return;
   
   await loadCityMask(city);
@@ -200,6 +241,9 @@ onMounted(async () => {
   }
 
   await loadCityMask(currentCity.value)
+  
+  // 初始生成对应的二维推演
+  generate2DDeduction(currentCity.value)
 })
 
 onBeforeUnmount(() => {
@@ -227,6 +271,79 @@ onBeforeUnmount(() => {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+}
+
+.view-toggle {
+  position: absolute;
+  top: 40px;
+  left: 40px;
+  background: rgba(6, 22, 40, 0.85);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  gap: 8px;
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+}
+
+.view-toggle button {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94a3b8;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 600;
+}
+
+.view-toggle button:hover {
+  color: #00e5ff;
+}
+
+.view-toggle button.active {
+  background: rgba(0, 229, 255, 0.15);
+  border-color: rgba(0, 229, 255, 0.4);
+  color: #00e5ff;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+}
+
+.iframe-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f172a;
+}
+
+.deduction-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 8px;
+}
+
+.loading-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #00e5ff;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 229, 255, 0.2);
+  border-top-color: #00e5ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .city-switcher {

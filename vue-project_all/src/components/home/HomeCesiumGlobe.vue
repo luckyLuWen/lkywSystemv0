@@ -18,7 +18,7 @@
     ></div>
     
     <!-- 模型调整控制面板 -->
-    <div class="debug-panel" v-if="true">
+    <div class="debug-panel" v-if="false">
       <!-- 场景切换按钮 -->
       <div class="scene-switcher">
         <h4>场景选择</h4>

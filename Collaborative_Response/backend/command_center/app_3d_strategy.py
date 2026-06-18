@@ -296,6 +296,54 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
     map_center = [(START_POINT[0] + END_POINT[0]) / 2, (START_POINT[1] + END_POINT[1]) / 2]
     m = folium.Map(location=map_center, zoom_start=11, tiles="OpenStreetMap", detect_retina=True, control_scale=True)
 
+    # --- 添加城市边界遮罩 ---
+    city_file = 'xiantao.json' if args.end_point == 'crash' else 'huanggang.json'
+    geojson_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'vue-project_all', 'public', 'Dashboard', city_file)
+    if os.path.exists(geojson_path):
+        import json
+        with open(geojson_path, 'r', encoding='utf-8') as f:
+            city_data = json.load(f)
+            
+        features = city_data.get('features', [])
+        if features:
+            geom = features[0].get('geometry', {})
+            geom_type = geom.get('type')
+            coords = geom.get('coordinates', [])
+            
+            mask_locations = [
+                [[-90.0, -180.0], [90.0, -180.0], [90.0, 180.0], [-90.0, 180.0], [-90.0, -180.0]]
+            ]
+            
+            def swap_coords(ring):
+                return [[pt[1], pt[0]] for pt in ring]
+
+            if geom_type == 'Polygon':
+                for ring in coords:
+                    mask_locations.append(swap_coords(ring))
+            elif geom_type == 'MultiPolygon':
+                for poly in coords:
+                    for ring in poly:
+                        mask_locations.append(swap_coords(ring))
+            
+            folium.Polygon(
+                locations=mask_locations,
+                color='none',
+                fill_color='#070b19',
+                fill_opacity=0.75,
+            ).add_to(m)
+
+            folium.GeoJson(
+                city_data,
+                style_function=lambda x: {'color': '#00e5ff', 'weight': 3, 'fillOpacity': 0, 'dashArray': '5, 5'}
+            ).add_to(m)
+
+            # 计算城市边界并自动缩放以在视图中完整显示城市
+            city_lats = [pt[0] for ring in mask_locations[1:] for pt in ring]
+            city_lons = [pt[1] for ring in mask_locations[1:] for pt in ring]
+            if city_lats and city_lons:
+                m.fit_bounds([[min(city_lats), min(city_lons)], [max(city_lats), max(city_lons)]])
+    # -----------------------
+
     car_path_group = folium.FeatureGroup(name='车辆路径 (UGV Path)', show=True).add_to(m)
     uav_path_group = folium.FeatureGroup(name='无人机路径 (UAV Path)', show=True).add_to(m)
 
@@ -413,7 +461,7 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
         '''
 
     ui_html = f'''
-    <div style="position: fixed; top: 20px; left: 60px; z-index: 1000; width: 300px; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); font-family: 'Arial', sans-serif;">
+    <div style="position: fixed; top: 110px; left: 40px; z-index: 1000; width: 300px; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); font-family: 'Arial', sans-serif;">
         <h4 style="margin: 0 0 12px; color: #1e40af; text-align: center; border-bottom: 2px solid #ddd; padding-bottom: 8px;">ISD/CAS/RCD 效能对比</h4>
         <div style="font-size: 13px; line-height: 1.6;">
             <div style="display: flex; justify-content: space-between;"><span>协同机制:</span> <b>{strategy_name}</b></div>
@@ -439,14 +487,14 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
             <div style="display: flex; align-items: center; margin-bottom: 4px;">
                 <span style="width: 30px; height: 0px; border-top: 3px dashed #ff00ff; display: inline-block; margin-right: 12px;"></span>
                 无人机(UAV)路径 / UAV Path
-            </div>{'''            <div style="display: flex; align-items: center; margin-bottom: 4px;">
+            </div>{"""            <div style="display: flex; align-items: center; margin-bottom: 4px;">
                 <span style="width: 30px; height: 0px; border-top: 3px dashed #22c55e; display: inline-block; margin-right: 12px;"></span>
                 基线BFS(车) / BFS Baseline
             </div>
             <div style="display: flex; align-items: center; margin-bottom: 4px;">
                 <span style="width: 30px; height: 0px; border-top: 3px dashed #f97316; display: inline-block; margin-right: 12px;"></span>
                 基线Greedy(机) / Greedy BL
-            </div>''' if COMPARE else ''}
+            </div>""" if COMPARE else ''}
             <div style="display: flex; align-items: center; margin-top: 6px;">
                 <i class="fa fa-map-marker fa-lg" style="color:green; margin-right: 16px; margin-left: 8px;"></i> 起点：{START_POINT_NAME}
             </div>
