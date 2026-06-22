@@ -30,54 +30,11 @@
     </header>
 
     <div class="main-layout">
-      <!-- Left Sidebar (White) -->
-      <aside class="left-sidebar" :class="{ collapsed: isLeftCollapsed }">
-        <button class="toggle-btn toggle-btn-left" type="button" @click="isLeftCollapsed = !isLeftCollapsed">
-          {{ isLeftCollapsed ? '◀' : '▶' }}
-        </button>
-        <div class="sidebar-header">
-          <h2 class="sidebar-title">工作目录 / 服务中心</h2>
-          <span class="sidebar-subtitle">Service Center</span>
-        </div>
-        <div class="sidebar-content">
-          <div
-            v-for="item in servicePanels"
-            :key="item.id"
-            class="accordion-item-light"
-            :class="{ open: activeServiceId === item.id }"
-          >
-            <button class="accordion-trigger-light" type="button" @click="toggleServicePanel(item.id)">
-              <div class="trigger-copy">
-                <span class="trigger-kicker">{{ item.owner.toUpperCase() }} SERVICE</span>
-                <h3 class="trigger-title">{{ item.title }}</h3>
-              </div>
-              <span class="trigger-indicator">{{ activeServiceId === item.id ? '收起' : '展开' }}</span>
-            </button>
 
-            <transition name="accordion">
-              <div v-if="activeServiceId === item.id" class="accordion-body-light">
-                <CollaborativeResponseCard v-if="item.id === 'collaborative'" />
-                <SensorGatewayCard v-else-if="item.id === 'sensor'" />
-                <RealtimeDetectionCard v-else :only-control="true" />
-              </div>
-            </transition>
-          </div>
-        </div>
-      </aside>
 
       <!-- Center Viewport (Cesium Map) -->
       <main class="center-viewport-container">
-        <div class="viewport-header">
-          <div class="viewport-title-left">
-            <span class="viewport-icon">🗺️</span>
-            <span class="viewport-title-text">View 1 (Cesium 三维态势图)</span>
-          </div>
-          <div class="viewport-controls">
-            <button class="win-btn">➖</button>
-            <button class="win-btn">🔳</button>
-            <button class="win-btn">❌</button>
-          </div>
-        </div>
+
         
         <div class="viewport-body">
           <div class="globe-layer">

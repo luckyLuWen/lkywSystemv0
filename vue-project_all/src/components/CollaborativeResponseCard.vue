@@ -87,6 +87,34 @@
       <button class="action-btn ghost" @click="goToCoordination">进入协同响应</button>
     </div>
 
+    <div v-if="strategyMetrics" class="strategy-metrics-panel">
+      <h4 class="metrics-title">📊 协同策略评估结果</h4>
+      <div class="metrics-grid">
+        <div class="metric-item" style="grid-column: span 2;">
+          <span class="metric-label">灾害场景</span>
+          <span class="metric-value highlight">{{ strategyMetrics.end_point_name }}</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">协同机制</span>
+          <span class="metric-value highlight">
+            {{ strategyMetrics.strategy === 'rcd' ? 'RCD 逆向推演' : (strategyMetrics.strategy === 'independent' ? 'ISD 极速独立' : 'CAS 基地待命') }}
+          </span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">无人机地面待机</span>
+          <span class="metric-value warning">{{ strategyMetrics.metrics.delay }} s</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">无人车(UGV)耗时</span>
+          <span class="metric-value">{{ strategyMetrics.metrics.carTime }} min</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">无人机(UAV)飞行</span>
+          <span class="metric-value">{{ strategyMetrics.metrics.uavTime }} min</span>
+        </div>
+      </div>
+    </div>
+
     <p v-if="lastError" class="error-text">最近错误：{{ lastError }}</p>
   </section>
 </template>
@@ -113,6 +141,7 @@ const commandCenterDraft = ref(commandCenterBaseUrl.value)
 const streamlitDraft = ref(streamlitUrl.value)
 const controllerOnline = ref(false)
 const lastError = ref('')
+const strategyMetrics = ref(null)
 
 const services = reactive({
   commandCenter: createServiceState(),
@@ -161,10 +190,16 @@ async function refreshStatus() {
     controllerOnline.value = Boolean(payload.ok)
     updateService('commandCenter', payload.services?.commandCenter, commandCenterBaseUrl.value)
     updateService('streamlit', payload.services?.streamlit, streamlitUrl.value)
+    if (payload.strategy_metrics && payload.strategy_metrics.available) {
+      strategyMetrics.value = payload.strategy_metrics
+    } else {
+      strategyMetrics.value = null
+    }
     lastError.value = ''
     return
   } catch (error) {
     controllerOnline.value = false
+    strategyMetrics.value = null
     lastError.value = error instanceof Error ? error.message : '无法连接控制层'
   }
 
@@ -372,5 +407,46 @@ onBeforeUnmount(() => {
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+.strategy-metrics-panel {
+  margin-top: 4px;
+  padding: 14px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+.metrics-title {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #34d399;
+}
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+}
+.metric-label {
+  font-size: 11px;
+  color: #94a3b8;
+}
+.metric-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+.metric-value.highlight {
+  color: #60a5fa;
+}
+.metric-value.warning {
+  color: #fbbf24;
 }
 </style>
