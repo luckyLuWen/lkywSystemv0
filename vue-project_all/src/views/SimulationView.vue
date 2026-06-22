@@ -6,33 +6,19 @@
       <button :class="{ active: viewMode === '3d' }" @click="viewMode = '3d'">🌍 三维仿真</button>
     </div>
 
-    <div v-show="viewMode === '3d'" id="simulationCesiumContainer" class="cesium-container"></div>
+    <div id="simulationCesiumContainer" class="cesium-container" :style="{ visibility: viewMode === '3d' ? 'visible' : 'hidden', position: 'absolute', top: '20px', left: '20px', right: '20px', bottom: '20px', width: 'auto', height: 'auto', zIndex: 1 }"></div>
     
-    <div v-if="viewMode === '2d'" class="cesium-container iframe-container">
+    <div v-if="viewMode === '2d'" class="cesium-container iframe-container" style="position: absolute; top: 20px; left: 20px; right: 20px; bottom: 20px; z-index: 10; width: auto; height: auto;">
       <div v-if="isGenerating2D" class="loading-overlay">
         <div class="spinner"></div>
         <span>正在生成二维推演...</span>
       </div>
-      <iframe v-else :src="iframeSrc" class="deduction-iframe"></iframe>
-    </div>
-    
-    <!-- 市级行政区划切换按钮 -->
-    <div class="city-switcher">
-      <h4>市级行政区划选择</h4>
-      <div class="switch-buttons">
-        <button 
-          :class="{ active: currentCity === 'xiantao' }" 
-          @click="flyToCity('xiantao')"
-        >
-          📍 仙桃市
-        </button>
-        <button 
-          :class="{ active: currentCity === 'huanggang' }" 
-          @click="flyToCity('huanggang')"
-        >
-          📍 黄冈市
-        </button>
+      <div v-else-if="errorMessage" class="error-overlay">
+        <div class="error-icon">⚠️</div>
+        <span>{{ errorMessage }}</span>
+        <button class="retry-btn" @click="generate2DDeduction(currentCity)">重试</button>
       </div>
+      <iframe v-else :src="iframeSrc" class="deduction-iframe"></iframe>
     </div>
   </div>
 </template>
@@ -48,6 +34,7 @@ Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOi
 const viewMode = ref('2d')
 const iframeSrc = ref('')
 const isGenerating2D = ref(false)
+const errorMessage = ref('')
 
 let viewer = null
 let currentCzmlDataSource = null
@@ -83,6 +70,7 @@ const loadMission = async () => {
 const generate2DDeduction = async (city) => {
   const endpoint = city === 'xiantao' ? 'crash' : 'leak'
   isGenerating2D.value = true
+  errorMessage.value = ''
   try {
     const baseUrl = getCollaborativeCommandCenterBaseUrl()
     const response = await fetch(`${baseUrl}/api/run_3d_strategy?end_point=${endpoint}`)
@@ -91,9 +79,11 @@ const generate2DDeduction = async (city) => {
       // 生成成功后，异步加载并播放 3D 仿真轨迹
       await loadMission()
     } else {
+      errorMessage.value = '二维推演生成失败，后端返回错误。'
       console.error('二维推演生成失败')
     }
   } catch (error) {
+    errorMessage.value = '请求生成二维推演时出错，请确保后端服务已启动。'
     console.error('请求生成二维推演时出错:', error)
   } finally {
     isGenerating2D.value = false
@@ -647,54 +637,34 @@ onBeforeUnmount(() => {
   to { transform: rotate(360deg); }
 }
 
-.city-switcher {
-  position: absolute;
-  top: 40px;
-  right: 40px;
-  width: 320px;
-  background: rgba(6, 22, 40, 0.85);
-  border: 1px solid rgba(0, 229, 255, 0.4);
-  border-radius: 8px;
-  padding: 16px;
-  color: #fff;
-  z-index: 1000;
-  backdrop-filter: blur(8px);
-}
-
-.city-switcher h4 {
-  margin: 0 0 12px 0;
-  font-size: 16px;
-  color: #00e5ff;
-  border-bottom: 1px solid rgba(0, 229, 255, 0.2);
-  padding-bottom: 8px;
-}
-
-.switch-buttons {
+.error-overlay {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 12px;
+  color: #ef4444;
+  font-size: 16px;
+  font-weight: bold;
 }
 
-.switch-buttons button {
-  flex: 1;
-  padding: 10px 0;
-  background: rgba(0, 229, 255, 0.1);
-  border: 1px solid rgba(0, 229, 255, 0.3);
-  color: #fff;
+.error-icon {
+  font-size: 32px;
+}
+
+.retry-btn {
+  margin-top: 10px;
+  padding: 8px 16px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #ef4444;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 14px;
 }
 
-.switch-buttons button:hover {
-  background: rgba(0, 229, 255, 0.2);
-  border-color: rgba(0, 229, 255, 0.6);
+.retry-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
 }
 
-.switch-buttons button.active {
-  background: rgba(0, 229, 255, 0.3);
-  border-color: #00e5ff;
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
-  font-weight: bold;
-}
 </style>
