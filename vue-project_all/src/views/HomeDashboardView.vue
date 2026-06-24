@@ -44,6 +44,7 @@
               :active-phase-index="activePhaseIndex"
               :focused-point-id="currentFocusedPoint"
               :sensor-data="displaySensorData"
+              :is-ws-connected="isWsConnected"
               @accident-picked="onAccidentPickedOnGlobe"
               @models-ready="onModelsReady"
             />
@@ -92,19 +93,19 @@
                 <div class="ugv-card">
                   <div class="ugv-header">
                     <span class="ugv-title">无人车 A</span>
-                    <span class="ugv-status">在线</span>
+                    <span class="ugv-status" :class="{ offline: !isWsConnected }">{{ isWsConnected ? '在线' : '离线' }}</span>
                   </div>
                   <div class="ugv-data">
                     <div class="ugv-row">
-                      <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ ugvA.temp }}</span></div>
-                      <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ ugvA.hum }}%</span></div>
+                      <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ isWsConnected ? ugvA.temp : '--' }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ isWsConnected ? ugvA.hum + '%' : '--' }}</span></div>
                     </div>
                     <div class="ugv-row">
-                      <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ ugvA.smoke }} ug</span></div>
+                      <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ isWsConnected ? ugvA.smoke + ' ug' : '--' }}</span></div>
                     </div>
                     <div class="ugv-row">
-                      <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ ugvA.tvoc }}</span></div>
-                      <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ ugvA.co }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ isWsConnected ? ugvA.tvoc : '--' }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ isWsConnected ? ugvA.co : '--' }}</span></div>
                     </div>
                   </div>
                   <div class="ugv-footer" @click="router.push({ path: '/sensor-manage', query: { target: 'node1' } })">点击查看详情 →</div>
@@ -114,19 +115,19 @@
                 <div class="ugv-card">
                   <div class="ugv-header">
                     <span class="ugv-title">无人车 B</span>
-                    <span class="ugv-status">在线</span>
+                    <span class="ugv-status" :class="{ offline: !isWsConnected }">{{ isWsConnected ? '在线' : '离线' }}</span>
                   </div>
                   <div class="ugv-data">
                     <div class="ugv-row">
-                      <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ ugvB.temp }}</span></div>
-                      <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ ugvB.hum }}%</span></div>
+                      <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ isWsConnected ? ugvB.temp : '--' }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ isWsConnected ? ugvB.hum + '%' : '--' }}</span></div>
                     </div>
                     <div class="ugv-row">
-                      <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ ugvB.smoke }} ug</span></div>
+                      <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ isWsConnected ? ugvB.smoke + ' ug' : '--' }}</span></div>
                     </div>
                     <div class="ugv-row">
-                      <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ ugvB.tvoc }}</span></div>
-                      <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ ugvB.co }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ isWsConnected ? ugvB.tvoc : '--' }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ isWsConnected ? ugvB.co : '--' }}</span></div>
                     </div>
                   </div>
                   <div class="ugv-footer" @click="router.push({ path: '/sensor-manage', query: { target: 'node2' } })">点击查看详情 →</div>
@@ -1789,6 +1790,12 @@ onMounted(() => {
   background: rgba(0, 255, 136, 0.1);
   border: 1px solid rgba(0, 255, 136, 0.3);
   border-radius: 3px;
+}
+
+.ugv-card .ugv-status.offline {
+  color: #ffb4b4;
+  background: rgba(168, 54, 54, 0.18);
+  border-color: rgba(255, 180, 180, 0.28);
 }
 
 .ugv-card .ugv-data {
