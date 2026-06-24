@@ -210,7 +210,7 @@
     >
       <div class="ugv-header">
         <span class="ugv-title">无人车 A</span>
-        <span class="ugv-status">在线</span>
+        <span class="ugv-status" :class="{ offline: !props.isWsConnected }">{{ props.isWsConnected ? '在线' : '离线' }}</span>
       </div>
       <div class="ugv-data">
         <div class="ugv-row">
@@ -236,7 +236,7 @@
     >
       <div class="ugv-header">
         <span class="ugv-title">无人车 B</span>
-        <span class="ugv-status">在线</span>
+        <span class="ugv-status" :class="{ offline: !props.isWsConnected }">{{ props.isWsConnected ? '在线' : '离线' }}</span>
       </div>
       <div class="ugv-data">
         <div class="ugv-row">
@@ -260,6 +260,7 @@
 import { onBeforeUnmount, onMounted, ref, watch, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import * as Cesium from 'cesium'
+import { getCollaborativeCommandCenterBaseUrl } from '../../config/subsystems'
 
 const router = useRouter()
 
@@ -404,7 +405,8 @@ const props = defineProps({
   phases: { type: Array, default: () => [] },
   activePhaseIndex: { type: Number, default: 0 },
   focusedPointId: { type: String, default: '' },
-  sensorData: { type: Object, default: () => ({}) }
+  sensorData: { type: Object, default: () => ({}) },
+  isWsConnected: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['accident-picked', 'models-ready'])
@@ -565,6 +567,34 @@ const modelsReadyStatus = reactive({});
 let lastEmitTime = 0;
 const primitiveCache = new Map(); // 缓存找到的 primitive，避免重复递归搜索
 let readyCheckFrameCounter = 0; // 帧计数器，用于节流
+
+let currentMissionDataSource = null;
+
+const loadMission = async () => {
+  if (!viewer) return;
+  try {
+    const baseUrl = getCollaborativeCommandCenterBaseUrl();
+    if (currentMissionDataSource) {
+      viewer.dataSources.remove(currentMissionDataSource);
+      currentMissionDataSource = null;
+    }
+    
+    const endpoint = currentScene.value === 'truck' ? 'crash' : 'leak';
+    // 异步触发生成
+    fetch(`${baseUrl}/api/run_3d_strategy?end_point=${endpoint}`).catch(() => {});
+    
+    // 加载最新的 czml
+    const czmlUrl = `${baseUrl}/mission.czml?t=${Date.now()}`;
+    const dataSource = await Cesium.CzmlDataSource.load(czmlUrl);
+    currentMissionDataSource = dataSource;
+    viewer.dataSources.add(dataSource);
+
+    // 根据用户要求，加快无人机无人车行走的时间
+    viewer.clock.multiplier = 20.0;
+  } catch (error) {
+    console.error('加载三维轨迹 CZML 失败:', error);
+  }
+}
 
 // 递归查找原始模型对象
 function findModelPrimitive(collection, entity) {
@@ -1092,7 +1122,6 @@ function drawCityBoundary(coords, colorStr, name, id) {
     polygon: {
       hierarchy: new Cesium.PolygonHierarchy(positions),
       material: Cesium.Color.fromCssColorString(colorStr).withAlpha(0.15), // 提高透明度让立体感更强
-      extrudedHeight: 12000, // 赋予12公里厚度，使其成为明显的三维立体控板
       outline: false
     }
   });
@@ -1350,7 +1379,9 @@ function updateTruckSequence(phaseIndex, pointId = '') {
     if (phaseIndex < 6 && (isModelChanged || isInitialSwitch)) {
       const entity = truckEntities.find(e => e.id === targetModelId)
       if (entity) {
-        playEntityAnimation(entity, false)
+        const durationMap = { 1: 3, 2: 2, 3: 3, 4: 3, 5: 3 }
+        const duration = durationMap[phaseIndex] || 3
+        playEntityAnimation(entity, false, duration)
       }
     }
   }
@@ -1400,7 +1431,9 @@ function updateTankerSequence(phaseIndex, pointId = '') {
     })
     const entity = tankerEntities.find(e => e.id === targetModelId)
     if (entity) {
-      playEntityAnimation(entity, false)
+      const durationMap = { 1: 3, 2: 2, 3: 3, 4: 3, 5: 3 }
+      const duration = durationMap[phaseIndex] || 3
+      playEntityAnimation(entity, false, duration)
     }
   }
   
@@ -1459,18 +1492,33 @@ function playEntityAnimation(entity, loop = false, duration = 0, speedMultiplier
           p.activeAnimations.removeAll();
           const options = {
             loop: loop ? Cesium.ModelAnimationLoop.REPEAT : Cesium.ModelAnimationLoop.NONE,
-            multiplier: speedMultiplier, // 使用动态控制的播放倍速
+            multiplier: speedMultiplier, // 默认倍速
             startTime: viewer.clock.currentTime,
             removeOnStop: false // 停止时保留在最后一帧状态
           };
           
-          if (duration > 0) {
-            options.stopTime = Cesium.JulianDate.addSeconds(viewer.clock.currentTime, duration, new Cesium.JulianDate());
-          }
+          // 调用 addAll 强制激活模型内所有的 animation tracks
+          const addedAnims = p.activeAnimations.addAll(options);
           
-          // 核心：调用 addAll 强制激活模型内所有的 animation tracks
-          p.activeAnimations.addAll(options);
-          console.log(`[Cesium] 动画播放指令已成功下发: duration = ${duration}s, 播放倍速 = ${speedMultiplier}`);
+          // 如果用户指定了明确的 duration，我们动态计算 speedMultiplier，使动画恰好在 duration 时间内播完
+          if (duration > 0 && addedAnims && addedAnims.length > 0) {
+            addedAnims.forEach(anim => {
+              if (anim.startTime && anim.stopTime) {
+                const nativeDuration = Cesium.JulianDate.secondsDifference(anim.stopTime, anim.startTime);
+                if (nativeDuration > 0) {
+                  anim.multiplier = nativeDuration / duration;
+                  // 更新停止时间，使其准确在 duration 后停止
+                  anim.stopTime = Cesium.JulianDate.addSeconds(anim.startTime, duration, new Cesium.JulianDate());
+                }
+              }
+            });
+            console.log(`[Cesium] 动画已调整: 目标时长 = ${duration}s`);
+          } else if (duration > 0) {
+            // 回退方案：如果没有成功读取到动画时间，按原逻辑强行截断
+            p.activeAnimations.removeAll();
+            options.stopTime = Cesium.JulianDate.addSeconds(viewer.clock.currentTime, duration, new Cesium.JulianDate());
+            p.activeAnimations.addAll(options);
+          }
         } catch (animError) {
           console.warn('播放动画时出现警告:', animError.message);
         }
@@ -2172,6 +2220,34 @@ function updatePhaseScene(index) {
       if (rescueMarkerEntity) rescueMarkerEntity.show = false;
       rescuePopup.show = false;
     }
+
+    if (index >= 6) {
+      if (!currentMissionDataSource) {
+        loadMission();
+      }
+
+      // 根据用户要求，当在货车现场进入"无人装备出动"(阶段6)时，视角飞向大范围俯视视角
+      if (pointId === 'accident_blue' && index === 6) {
+        stopAutoRotate();
+        isFlying = true;
+        viewer.camera.flyTo({
+          destination: Cesium.Cartesian3.fromDegrees(113.2716, 30.3761, 55000), // 覆盖整个仙桃市区路径的高空视角
+          orientation: { heading: 0, pitch: Cesium.Math.toRadians(-90), roll: 0.0 }, // 纯俯视
+          duration: 1.5,
+          complete: () => {
+            isFlying = false;
+          }
+        });
+      }
+    } else {
+      if (currentMissionDataSource) {
+        viewer.dataSources.remove(currentMissionDataSource);
+        currentMissionDataSource = null;
+      }
+      // 恢复正常的时间流速，防止粒子和模型动画过快
+      viewer.clock.multiplier = 1.0;
+    }
+
     if (popupEntity) {
       // 隐藏悬浮窗和连接线（根据用户要求取消显示）
       popupEntity.show = false
@@ -2184,6 +2260,7 @@ function updatePhaseScene(index) {
             const isTarget = (index === 6 && entity.id === 'uav_model') || (index >= 7 && entity.id === 'uav_model_move');
             if (isTarget) {
               const needsAnimation = !entity.show || (entity.id === 'uav_model_move' && index === 7 && lastUavPhaseIndex !== 7);
+              // 恢复显示无人机模型
               entity.show = true;
               if (needsAnimation) {
                 // 两个阶段的无人机螺旋桨都需要持续高速旋转
@@ -2193,6 +2270,7 @@ function updatePhaseScene(index) {
               entity.show = false;
             }
           });
+          // 恢复显示救援车模型
           rescueCarEntities.forEach(entity => { entity.show = true });
           
           // 隐藏油罐车场景的无人机和救援车
@@ -2813,6 +2891,12 @@ onBeforeUnmount(() => {
   background: rgba(0, 255, 136, 0.08);
   border: 1px solid rgba(0, 255, 136, 0.25);
   border-radius: 2px;
+}
+
+.ugv-status.offline {
+  color: #ffb4b4;
+  background: rgba(168, 54, 54, 0.18);
+  border-color: rgba(255, 180, 180, 0.28);
 }
 
 .ugv-data {
