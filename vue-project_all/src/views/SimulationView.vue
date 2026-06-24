@@ -1,5 +1,11 @@
 <template>
   <div class="simulation-container">
+    <!-- 返回事故时间线按钮 -->
+    <button class="back-to-timeline-btn" @click="goBackToTimeline">
+      <span class="back-arrow">←</span>
+      <span>返回事故时间线</span>
+    </button>
+
     <!-- 视图切换开关 -->
     <div class="view-toggle">
       <button :class="{ active: viewMode === '2d' }" @click="viewMode = '2d'">🗺️ 二维推演</button>
@@ -25,7 +31,9 @@
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+
+const router = useRouter()
 import * as Cesium from 'cesium'
 import { getCollaborativeCommandCenterBaseUrl } from '../config/subsystems'
 
@@ -44,6 +52,11 @@ let diffusionParticle = null
 let diffusionStartTime = null
 let preRenderListener = null
 const route = useRoute()
+
+function goBackToTimeline() {
+  // 返回首页大屏总览
+  router.push('/')
+}
 const currentCity = ref(route.query.city === 'huanggang' ? 'huanggang' : 'xiantao')
 
 const loadMission = async () => {
@@ -665,6 +678,47 @@ onBeforeUnmount(() => {
 .retry-btn:hover {
   background: rgba(239, 68, 68, 0.2);
   border-color: #ef4444;
+}
+
+/* 返回事故时间线按钮 */
+.back-to-timeline-btn {
+  position: absolute;
+  top: 40px;
+  left: 30px;
+  z-index: 1010;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  background: rgba(8, 16, 36, 0.88);
+  border: 1px solid rgba(0, 255, 180, 0.5);
+  border-radius: 8px;
+  color: #6ee7b7;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 12px rgba(0, 255, 180, 0.15);
+  transition: all 0.25s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.back-to-timeline-btn:hover {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: #34d399;
+  color: #34d399;
+  box-shadow: 0 0 18px rgba(0, 255, 180, 0.3);
+  transform: translateX(-2px);
+}
+
+.back-arrow {
+  font-weight: bold;
+  font-size: 15px;
+  transition: transform 0.2s;
+}
+
+.back-to-timeline-btn:hover .back-arrow {
+  transform: translateX(-3px);
 }
 
 </style>

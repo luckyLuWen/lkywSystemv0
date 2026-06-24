@@ -661,11 +661,11 @@ def save_to_czml(uav_df, car_df, delay):
     # 路径线
     uav_line = []
     for _, r in uav_df.iterrows(): uav_line.extend([r['lon'], r['lat'], r['alt']])
-    czml.append({"id": "UAV_Path", "polyline": {"positions": {"cartographicDegrees": uav_line}, "width": 3, "material": {"solidColor": {"color": {"rgba": [255, 0, 255, 150]}}}}})
+    czml.append({"id": "UAV_Path", "polyline": {"positions": {"cartographicDegrees": uav_line}, "width": 3, "material": {"solidColor": {"color": {"rgba": [255, 0, 0, 150]}}}}})
     
     car_line = []
     for _, r in car_df.iterrows(): car_line.extend([r['lon'], r['lat'], 2])
-    czml.append({"id": "Car_Path", "polyline": {"positions": {"cartographicDegrees": car_line}, "width": 3, "material": {"solidColor": {"color": {"rgba": [0, 100, 255, 150]}}}}})
+    czml.append({"id": "Car_Path", "polyline": {"positions": {"cartographicDegrees": car_line}, "width": 3, "material": {"solidColor": {"color": {"rgba": [0, 0, 255, 150]}}}}})
 
     # 动态对象
     uav_pos = []
@@ -673,7 +673,7 @@ def save_to_czml(uav_df, car_df, delay):
     czml.append({
         "id": "UAV", "name": "无人机 (B-Spline)", "availability": avail,
         "position": {"epoch": start_str, "cartographicDegrees": uav_pos, "interpolationAlgorithm": "LINEAR", "interpolationDegree": 1},
-        "point": {"pixelSize": 15, "color": {"rgba": [255, 0, 255, 255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 2},
+        "point": {"pixelSize": 15, "color": {"rgba": [255, 0, 0, 255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 2},
         "label": {"text": "无人机", "font": "14px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -25]}}
     })
 
@@ -682,7 +682,7 @@ def save_to_czml(uav_df, car_df, delay):
     czml.append({
         "id": "Car", "name": "无人车", "availability": avail,
         "position": {"epoch": start_str, "cartographicDegrees": car_pos, "interpolationAlgorithm": "LINEAR", "interpolationDegree": 1},
-        "point": {"pixelSize": 15, "color": {"rgba": [0, 100, 255, 255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 2},
+        "point": {"pixelSize": 15, "color": {"rgba": [0, 0, 255, 255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 2},
         "label": {"text": "无人车", "font": "14px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -25]}}
     })
 
