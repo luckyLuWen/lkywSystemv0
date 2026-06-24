@@ -250,7 +250,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import CollaborativeResponseCard from '../components/CollaborativeResponseCard.vue'
 import RealtimeDetectionCard from '../components/RealtimeDetectionCard.vue'
@@ -462,6 +462,7 @@ const accidentPoints = [
       { id: 't-uav-start', time: '14:45', shortLabel: '无人装备出动', title: '无人装备协同出动', systems: ['协同响应'], focusPoint: 'accident_blue' },
       { id: 't-uav-deploy', time: '14:50', shortLabel: '无人感知部署', title: '无人感知节点部署', systems: ['实时检测'], focusPoint: 'accident_blue' },
       { id: 't-uav-exec', time: '14:55', shortLabel: '无人感知执行', title: '无人感知任务执行', systems: ['协同响应'], focusPoint: 'accident_blue' },
+      { id: 't-rescue-start', time: '15:00', shortLabel: '救援装备出动', title: '专业救援装备协同出动', systems: ['协同响应'], focusPoint: 'accident_blue' },
     ]
   },
   {
@@ -478,6 +479,7 @@ const accidentPoints = [
       { id: 'l-uav-start', time: '15:55', shortLabel: '无人装备出动', title: '无人装备协同出动', systems: ['协同响应'], focusPoint: 'accident_red' },
       { id: 'l-uav-deploy', time: '16:00', shortLabel: '无人感知部署', title: '无人感知节点部署', systems: ['实时检测'], focusPoint: 'accident_red' },
       { id: 'l-uav-exec', time: '16:05', shortLabel: '无人感知执行', title: '无人感知任务执行', systems: ['协同响应'], focusPoint: 'accident_red' },
+      { id: 'l-rescue-start', time: '16:10', shortLabel: '救援装备出动', title: '专业救援装备协同出动', systems: ['协同响应'], focusPoint: 'accident_red' },
     ]
   },
 ]
@@ -495,7 +497,9 @@ const phaseToModelMap = {
   5: 'model_accident',
   6: 'model_accident',
   7: 'model_accident',
-  8: 'model_accident'
+  8: 'model_accident',
+  9: 'model_accident',
+  10: 'model_accident'
 }
 
 const tankerPhaseToModelMap = {
@@ -506,7 +510,9 @@ const tankerPhaseToModelMap = {
   5: 'tanker_accident',
   6: 'tanker_accident',
   7: 'tanker_accident',
-  8: 'tanker_accident'
+  8: 'tanker_accident',
+  9: 'tanker_accident',
+  10: 'tanker_accident'
 }
 
 const phasesReady = computed(() => {
@@ -571,6 +577,8 @@ function goTo(item) {
     }
     currentFocusedPoint.value = ''
     activeServiceId.value = ''
+    // 返回首页时重置所有事故场景的时间线到“仿真开始”阶段
+    accidentPhaseIndices.value = { 'rear-end': 0, 'leakage': 0 }
   }
   activeMenuKey.value = item.key
   persistMenuKey(item.key)
@@ -605,21 +613,26 @@ watch(activeAccidentIndex, () => {
 })
 
 watch(
-  () => route.path,
+  () => route.fullPath,
   (newPath) => {
-    if (newPath === '/') {
+    if (route.path === '/') {
       activeMenuKey.value = 'home'
+      activeServiceId.value = ''
+
+      // 返回首页时始终重置所有事故场景时间线到“仿真开始”
+      accidentPhaseIndices.value = { 'rear-end': 0, 'leakage': 0 }
+      currentFocusedPoint.value = ''
       if (globeRef.value) {
         globeRef.value.resetView()
       }
-      currentFocusedPoint.value = ''
-      activeServiceId.value = ''
     }
   }
 )
 
 onMounted(() => {
   activeMenuKey.value = 'home'
+  // 初始化时重置所有事故场景时间线从头开始
+  accidentPhaseIndices.value = { 'rear-end': 0, 'leakage': 0 }
 })
 </script>
 

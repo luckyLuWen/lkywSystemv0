@@ -113,6 +113,154 @@
     <div v-if="loading" class="globe-mask">三维地球加载中...</div>
     <div v-else-if="errorMessage" class="globe-mask is-error">{{ errorMessage }}</div>
 
+    <!-- 事故现场三级视角：事故详情悬浮窗 -->
+    <div 
+      v-if="accidentDetailPopup.show && props.focusedPointId" 
+      class="accident-detail-popup"
+      :style="{ left: accidentDetailPopup.x + 'px', top: accidentDetailPopup.y + 'px' }"
+    >
+      <div class="accident-detail-header">
+        <span>{{ accidentDetailPopup.title }}</span>
+        <button class="close-btn" @click="accidentDetailPopup.show = false">×</button>
+      </div>
+      <div class="accident-detail-body" @click="goToMediumView">
+        <div class="img-wrapper">
+          <img :src="accidentDetailPopup.img" class="accident-img" alt="事故实况" />
+          <div class="img-hover-overlay">
+            <span class="zoom-icon">🔍</span>
+            <span>点击图片拉近视角观测</span>
+          </div>
+        </div>
+      </div>
+      <div class="accident-detail-arrow"></div>
+    </div>
+
+    <!-- 实时视频识别与检测悬浮窗 (次生灾害起火阶段 index === 4) -->
+    <div 
+      v-if="detectionPopup.show && props.activePhaseIndex === 4 && props.focusedPointId === 'accident_blue'" 
+      class="detection-popup-panel"
+      :style="{ left: detectionPopup.x + 'px', top: detectionPopup.y + 'px' }"
+    >
+      <div class="detection-popup-header">
+        <div class="header-title-wrap">
+          <span class="pulse-dot"></span>
+          <span class="header-title">实时检测</span>
+        </div>
+        <button class="close-btn" @click="detectionPopup.show = false">×</button>
+      </div>
+      
+      <div class="detection-popup-content">
+        <!-- Left side: Image and Bounding Boxes -->
+        <div class="detection-img-container">
+          <img src="/Dashboard/images/uav_aerial_photo.png" class="detection-raw-img" />
+          
+          <!-- SVG Bounding Box Overlay -->
+          <svg v-if="detectionPopup.state === 'detected'" class="detection-svg-overlay">
+            <!-- Fire Box -->
+            <g class="box-group fire-box">
+              <rect x="52%" y="42%" width="22%" height="24%" class="box-rect rect-fire" />
+              <text x="52%" y="39%" class="box-label label-fire">🔥 Fire: 98.6%</text>
+            </g>
+            <!-- Truck Box -->
+            <g class="box-group truck-box">
+              <rect x="42%" y="35%" width="40%" height="45%" class="box-rect rect-truck" />
+              <text x="42%" y="32%" class="box-label label-truck">🚚 Truck: 99.2%</text>
+            </g>
+            <!-- Smoke Box -->
+            <g class="box-group smoke-box">
+              <rect x="48%" y="15%" width="32%" height="25%" class="box-rect rect-smoke" />
+              <text x="48%" y="12%" class="box-label label-smoke">💨 Smoke: 94.5%</text>
+            </g>
+          </svg>
+          
+          <!-- Scanning/Radar sweep effect when detecting -->
+          <div v-if="detectionPopup.state === 'detecting'" class="scanning-line"></div>
+          <div v-if="detectionPopup.state === 'detecting'" class="scanning-overlay">AI 图像推理中...</div>
+        </div>
+        
+        <!-- Right side: Detection Control Panel -->
+        <div class="detection-control-panel">
+          <div class="panel-section-title">检测控制区</div>
+          
+          <!-- State 1: Idle (Not started) -->
+          <div v-if="detectionPopup.state === 'idle'" class="state-idle-wrap">
+            <p class="desc-text">已接入当前边缘摄像机视频源，可对现场次生灾害起火及烟雾状况进行实时智能分析。</p>
+            <button class="detect-btn pulse-button" @click="startDetection">
+              <span class="btn-icon">⚡</span> 点击进行检测
+            </button>
+          </div>
+          
+          <!-- State 2: Detecting (Loading) -->
+          <div v-if="detectionPopup.state === 'detecting'" class="state-detecting-wrap">
+            <div class="spinner"></div>
+            <p class="loading-text">正在运行推理：{{ detectionPopup.progress }}%</p>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" :style="{ width: detectionPopup.progress + '%' }"></div>
+            </div>
+          </div>
+          
+          <!-- State 3: Detected (Results) -->
+          <div v-if="detectionPopup.state === 'detected'" class="state-results-wrap">
+            <div class="result-summary">
+              <span class="status-indicator warning">存在险情</span>
+              <span class="result-count">检出目标: 3</span>
+            </div>
+            
+            <div class="detection-items-list">
+              <div class="detect-item fire">
+                <span class="item-icon">🔥</span>
+                <span class="item-name">明火区域</span>
+                <span class="item-conf">98.6%</span>
+              </div>
+              <div class="detect-item truck">
+                <span class="item-icon">🚚</span>
+                <span class="item-name">重型卡车</span>
+                <span class="item-conf">99.2%</span>
+              </div>
+              <div class="detect-item smoke">
+                <span class="item-icon">💨</span>
+                <span class="item-name">扩散烟雾</span>
+                <span class="item-conf">94.5%</span>
+              </div>
+            </div>
+            
+            <div class="report-box">
+              <strong>研判结果:</strong> 监测到明火伴随大量烟雾，火焰呈扩大趋势，建议立刻通知消防队伍出动泡沫车进行扑灭。
+            </div>
+            
+            <button class="reset-btn" @click="resetDetection">重新检测</button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="detection-popup-arrow"></div>
+    </div>
+
+    <!-- 仿真推演模块悬浮窗 (无人感知执行阶段 index === 8) -->
+    <div 
+      v-if="simulationPopup.show && props.activePhaseIndex === 8 && props.focusedPointId === 'accident_blue'" 
+      class="simulation-popup-panel"
+      :style="{ left: simulationPopup.x + 'px', top: simulationPopup.y + 'px' }"
+    >
+      <div class="simulation-popup-header">
+        <div class="header-title-wrap">
+          <span class="simulation-icon">📊</span>
+          <span class="header-title">仿真推演</span>
+        </div>
+        <button class="close-btn" @click="simulationPopup.show = false">×</button>
+      </div>
+      
+      <div class="simulation-popup-content">
+        <p class="desc-text">感知数据采集完毕，已生成完整的事故现场推演模型与协同应急部署方案。</p>
+        
+        <button class="enter-sim-btn pulse-button" @click="enterSimulation">
+          <span>进入仿真推演</span> <span class="arrow-icon">→</span>
+        </button>
+      </div>
+      
+      <div class="simulation-popup-arrow"></div>
+    </div>
+
     <!-- 救援装备出动悬浮窗 -->
     <div 
       v-if="rescuePopup.show" 
@@ -432,7 +580,9 @@ const phaseToModelMap = {
   5: 'model_accident',
   6: 'model_accident',
   7: 'model_accident',
-  8: 'model_accident'
+  8: 'model_accident',
+  9: 'model_accident',
+  10: 'model_accident'
 }
 
 // 油罐车阶段索引到模型ID的映射
@@ -444,7 +594,9 @@ const tankerPhaseToModelMap = {
   5: 'tanker_accident',
   6: 'tanker_accident',
   7: 'tanker_accident',
-  8: 'tanker_accident'
+  8: 'tanker_accident',
+  9: 'tanker_accident',
+  10: 'tanker_accident'
 }
 
 let currentActiveModelId = null 
@@ -558,6 +710,62 @@ let focusAreaEntity = null
 let popupEntity = null 
 let connectionLineEntity = null
 
+// 事故现场三级视角状态
+const accidentViewLevel = ref('far') // 'far', 'medium', 'close'
+const accidentDetailPopup = reactive({
+  show: false,
+  x: 0,
+  y: 0,
+  title: '',
+  img: '',
+  pointId: ''
+})
+
+// 实时检测模块弹窗状态
+const detectionPopup = reactive({
+  show: false,
+  state: 'idle', // 'idle' | 'detecting' | 'detected'
+  progress: 0,
+  x: 0,
+  y: 0
+})
+
+let detectionTimer = null
+function startDetection() {
+  if (detectionTimer) clearInterval(detectionTimer)
+  detectionPopup.state = 'detecting'
+  detectionPopup.progress = 0
+  
+  detectionTimer = setInterval(() => {
+    detectionPopup.progress += 5
+    if (detectionPopup.progress >= 100) {
+      clearInterval(detectionTimer)
+      detectionTimer = null
+      detectionPopup.state = 'detected'
+    }
+  }, 75)
+}
+
+function resetDetection() {
+  if (detectionTimer) {
+    clearInterval(detectionTimer)
+    detectionTimer = null
+  }
+  detectionPopup.state = 'idle'
+  detectionPopup.progress = 0
+}
+
+// 仿真推演悬浮窗状态
+const simulationPopup = reactive({
+  show: false,
+  x: 0,
+  y: 0
+})
+
+function enterSimulation() {
+  router.push('/simulation?city=xiantao')
+}
+
 // 粒子系统实例
 let isFlying = false
 let truckEntities = [] 
@@ -580,8 +788,12 @@ const loadMission = async () => {
     }
     
     const endpoint = currentScene.value === 'truck' ? 'crash' : 'leak';
-    // 异步触发生成
-    fetch(`${baseUrl}/api/run_3d_strategy?end_point=${endpoint}`).catch(() => {});
+    // 触发并等待生成，确保 CZML 已经写入完毕
+    try {
+      await fetch(`${baseUrl}/api/run_3d_strategy?end_point=${endpoint}`);
+    } catch (e) {
+      console.warn('[Cesium] 触发策略生成失败，将尝试加载已有 CZML:', e);
+    }
     
     // 加载最新的 czml
     const czmlUrl = `${baseUrl}/mission.czml?t=${Date.now()}`;
@@ -591,6 +803,7 @@ const loadMission = async () => {
 
     // 根据用户要求，加快无人机无人车行走的时间
     viewer.clock.multiplier = 20.0;
+    viewer.clock.shouldAnimate = true;
   } catch (error) {
     console.error('加载三维轨迹 CZML 失败:', error);
   }
@@ -730,7 +943,17 @@ function applyOrbitView() {
     let pitch = isFocused ? (props.focusedPointId === 'accident_red' ? Cesium.Math.toRadians(-32) : Cesium.Math.toRadians(-38)) : Cesium.Math.toRadians(-90)
 
     if (isFocused) {
-      if (props.activePhaseIndex <= 1) {
+      if (accidentViewLevel.value === 'far') {
+        range = 120000
+        pitch = Cesium.Math.toRadians(-60)
+      } else if (accidentViewLevel.value === 'medium') {
+        range = 2500
+        pitch = Cesium.Math.toRadians(-45)
+      } else if (accidentViewLevel.value === 'close') {
+        range = props.focusedPointId === 'accident_red' ? 100 : 75
+        pitch = Cesium.Math.toRadians(-20)
+      } else {
+        if (props.activePhaseIndex <= 1) {
         // 仿真开始及正常行驶阶段：高俯视全景视角
         range = 1800
         pitch = Cesium.Math.toRadians(-75);
@@ -767,6 +990,7 @@ function applyOrbitView() {
         }
       }
     }
+  }
 
     // 航向角处理：针对事故阶段切换到另一侧视角
     let finalHeading = (props.focusedPointId === 'accident_red') ? tankerOrbitHeading : truckOrbitHeading
@@ -775,7 +999,7 @@ function applyOrbitView() {
     // 油罐车始终保持初始航向角，不进行自动旋转
     const shouldRotate = (props.focusedPointId === 'accident_red') ? false : (props.activePhaseIndex >= 2)
     
-    if (isFocused && shouldRotate) {
+    if (isFocused && shouldRotate && accidentViewLevel.value !== 'far') {
       finalHeading += Cesium.Math.toRadians(165)
     }
 
@@ -794,6 +1018,10 @@ function startAutoRotate() {
   lastSpinAt = performance.now()
   spinCallback = () => {
     if (!viewer) return
+    if (accidentViewLevel.value === 'far') {
+      stopAutoRotate();
+      return;
+    }
     const now = performance.now()
     const deltaSeconds = (now - lastSpinAt) / 1000
     lastSpinAt = now
@@ -1024,6 +1252,49 @@ function updatePopupPosition() {
     if (canvasPosition) {
       rescuePopup.x = canvasPosition.x;
       rescuePopup.y = canvasPosition.y - 45;
+    }
+  }
+
+  // 更新实时检测浮窗坐标 (当位于货车追尾现场的次生灾害起火阶段 index === 4 时)
+  if (detectionPopup.show && props.activePhaseIndex === 4 && props.focusedPointId === 'accident_blue') {
+    const lng = Number(truckAdjust.lng) || 113.104833;
+    const lat = Number(truckAdjust.lat) || 30.385469;
+    const cartesian = Cesium.Cartesian3.fromDegrees(lng, lat, 20.0);
+    const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
+    if (canvasPosition) {
+      detectionPopup.x = canvasPosition.x;
+      detectionPopup.y = canvasPosition.y - 130;
+    }
+  }
+
+  // 更新仿真推演悬浮窗坐标 (当位于货车追尾现场的无人感知执行阶段 index === 8 时)
+  if (simulationPopup.show && props.activePhaseIndex === 8 && props.focusedPointId === 'accident_blue') {
+    const lng = Number(truckAdjust.lng) || 113.104833;
+    const lat = Number(truckAdjust.lat) || 30.385469;
+    const cartesian = Cesium.Cartesian3.fromDegrees(lng, lat, 20.0);
+    const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
+    if (canvasPosition) {
+      simulationPopup.x = canvasPosition.x;
+      simulationPopup.y = canvasPosition.y - 120;
+    }
+  }
+
+  // 更新事故现场图片浮窗坐标
+  if (accidentDetailPopup.show && accidentDetailPopup.pointId) {
+    const point = scenarioPoints[accidentDetailPopup.pointId];
+    if (point) {
+      let lng = point.longitude, lat = point.latitude;
+      if (accidentDetailPopup.pointId === 'accident_blue') {
+        lng = truckAdjust.lng; lat = truckAdjust.lat;
+      } else if (accidentDetailPopup.pointId === 'accident_red') {
+        lng = tankerPointAdjust.lng; lat = tankerPointAdjust.lat;
+      }
+      const cartesian = Cesium.Cartesian3.fromDegrees(lng, lat, 0);
+      const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
+      if (canvasPosition) {
+        accidentDetailPopup.x = canvasPosition.x;
+        accidentDetailPopup.y = canvasPosition.y - 40;
+      }
     }
   }
 
@@ -1266,10 +1537,10 @@ async function initViewer() {
       const pickedObject = viewer.scene.pick(movement.position);
       if (Cesium.defined(pickedObject) && pickedObject.id) {
         const pickedId = String(pickedObject.id.id);
-        if (pickedId.startsWith('city-boundary-xiantao') || pickedId === 'marker-accident_blue') {
+        if (pickedId.startsWith('city-boundary-xiantao')) {
           router.push('/simulation?city=xiantao');
           return;
-        } else if (pickedId.startsWith('city-boundary-huanggang') || pickedId === 'marker-accident_red') {
+        } else if (pickedId.startsWith('city-boundary-huanggang')) {
           router.push('/simulation?city=huanggang');
           return;
         }
@@ -1635,6 +1906,25 @@ function addEventEntities() {
         disableDepthTestDistance: Number.POSITIVE_INFINITY
       }
     })
+
+    // 添加波浪闪烁效果
+    viewer.entities.add({
+      id: `wave-${point.id}`,
+      position: positionCallback,
+      point: {
+        pixelSize: new Cesium.CallbackProperty(() => {
+          const t = (Date.now() % 1500) / 1500;
+          return 10 + t * 40; // 从 10 像素扩展到 50 像素
+        }, false),
+        color: Cesium.Color.TRANSPARENT, // 内部透明，仅保留外圈
+        outlineColor: new Cesium.CallbackProperty(() => {
+          const t = (Date.now() % 1500) / 1500;
+          return Cesium.Color.fromCssColorString(point.color).withAlpha(1.0 - Math.pow(t, 1.2)); // 调整透明度衰减曲线
+        }, false),
+        outlineWidth: 3, // 增加线宽，看起来是一圈明显的波浪
+        disableDepthTestDistance: Number.POSITIVE_INFINITY
+      }
+    })
   })
 
   truckModelConfigs.forEach((config) => {
@@ -1708,7 +1998,16 @@ function addEventEntities() {
       const targetLat = Number(truckAdjust.lat) || 30.385469;
       const targetHeight = startHeight; // 保持在原先的高度高空悬停
 
-      if (props.activePhaseIndex < 7) {
+      if (props.activePhaseIndex === 6) {
+        if (currentMissionDataSource) {
+          const entity = currentMissionDataSource.entities.getById('UAV');
+          if (entity) {
+            const pos = entity.position.getValue(viewer.clock.currentTime);
+            if (pos) return pos;
+          }
+        }
+        return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
+      } else if (props.activePhaseIndex < 6) {
         return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
       } else if (props.activePhaseIndex === 7) {
         if (!phase7StartTime) {
@@ -1772,7 +2071,32 @@ function addEventEntities() {
       if (!pos) return undefined;
 
       let headingRad;
-      if (props.activePhaseIndex >= 8) {
+      if (props.activePhaseIndex === 6) {
+        if (currentMissionDataSource) {
+          const entity = currentMissionDataSource.entities.getById('UAV');
+          if (entity) {
+            const nextTime = Cesium.JulianDate.addSeconds(viewer.clock.currentTime, 0.5, new Cesium.JulianDate());
+            const nextPos = entity.position.getValue(nextTime);
+            if (nextPos) {
+              const cartoCur = Cesium.Cartographic.fromCartesian(pos);
+              const cartoNext = Cesium.Cartographic.fromCartesian(nextPos);
+              headingRad = Math.PI / 2 - Math.atan2(
+                Cesium.Math.toDegrees(cartoNext.latitude) - Cesium.Math.toDegrees(cartoCur.latitude),
+                Cesium.Math.toDegrees(cartoNext.longitude) - Cesium.Math.toDegrees(cartoCur.longitude)
+              );
+            } else {
+              const headingDeg = Number(uavAdjust.heading) || 18;
+              headingRad = Cesium.Math.toRadians(headingDeg);
+            }
+          } else {
+            const headingDeg = Number(uavAdjust.heading) || 18;
+            headingRad = Cesium.Math.toRadians(headingDeg);
+          }
+        } else {
+          const headingDeg = Number(uavAdjust.heading) || 18;
+          headingRad = Cesium.Math.toRadians(headingDeg);
+        }
+      } else if (props.activePhaseIndex >= 8) {
         // 计算无人机当前位置指向事故中心的朝向角度，使其镜头始终对准事故车拍照
         const targetLng = Number(truckAdjust.lng) || 113.104833;
         const targetLat = Number(truckAdjust.lat) || 30.385469;
@@ -1828,7 +2152,16 @@ function addEventEntities() {
       const targetLat = startLat + 0.78 * (accidentLat - startLat);
       const targetHeight = -1.5; // 保持与起点的 Z 轴高度一致，防止陷车
 
-      if (props.activePhaseIndex < 7) {
+      if (props.activePhaseIndex === 6) {
+        if (currentMissionDataSource) {
+          const entity = currentMissionDataSource.entities.getById('Car');
+          if (entity) {
+            const pos = entity.position.getValue(viewer.clock.currentTime);
+            if (pos) return pos;
+          }
+        }
+        return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
+      } else if (props.activePhaseIndex < 6) {
         return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
       } else if (props.activePhaseIndex === 7) {
         if (!phase7StartTime) {
@@ -1837,7 +2170,7 @@ function addEventEntities() {
         const elapsed = Date.now() - phase7StartTime;
         const duration = 6000; // 6秒内平滑开到事故现场
         const t = Math.min(elapsed / duration, 1.0);
-        // 使用 EaseInOutQuad 缓动函数，让启动和停止更自然
+        // 使用 EaseInOutQuad 缓动函数，让启动 and 停止更自然
         const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
         
         const lng = startLng + (targetLng - startLng) * easeT;
@@ -1853,8 +2186,36 @@ function addEventEntities() {
     const rescueCarOrientation = new Cesium.CallbackProperty(() => {
       const pos = rescueCarPosition.getValue(viewer.clock.currentTime);
       if (!pos) return undefined;
-      const headingDeg = Number(rescueCarAdjust.heading) || 195;
-      const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(headingDeg), 0, 0);
+      
+      let headingRad;
+      if (props.activePhaseIndex === 6) {
+        if (currentMissionDataSource) {
+          const entity = currentMissionDataSource.entities.getById('Car');
+          if (entity) {
+            const nextTime = Cesium.JulianDate.addSeconds(viewer.clock.currentTime, 0.5, new Cesium.JulianDate());
+            const nextPos = entity.position.getValue(nextTime);
+            if (nextPos) {
+              const cartoCur = Cesium.Cartographic.fromCartesian(pos);
+              const cartoNext = Cesium.Cartographic.fromCartesian(nextPos);
+              headingRad = Math.PI / 2 - Math.atan2(
+                Cesium.Math.toDegrees(cartoNext.latitude) - Cesium.Math.toDegrees(cartoCur.latitude),
+                Cesium.Math.toDegrees(cartoNext.longitude) - Cesium.Math.toDegrees(cartoCur.longitude)
+              );
+            } else {
+              headingRad = Cesium.Math.toRadians(Number(rescueCarAdjust.heading) || 195);
+            }
+          } else {
+            headingRad = Cesium.Math.toRadians(Number(rescueCarAdjust.heading) || 195);
+          }
+        } else {
+          headingRad = Cesium.Math.toRadians(Number(rescueCarAdjust.heading) || 195);
+        }
+      } else {
+        const headingDeg = Number(rescueCarAdjust.heading) || 195;
+        headingRad = Cesium.Math.toRadians(headingDeg);
+      }
+      
+      const hpr = new Cesium.HeadingPitchRoll(headingRad, 0, 0);
       return Cesium.Transforms.headingPitchRollQuaternion(pos, hpr);
     }, false);
 
@@ -2098,19 +2459,45 @@ function addEventEntities() {
 
   viewer.screenSpaceEventHandler.setInputAction((movement) => {
     const pickedObject = viewer.scene.pick(movement.position);
-    if (Cesium.defined(pickedObject) && pickedObject.id) {
-      const entityId = pickedObject.id.id;
+    if (Cesium.defined(pickedObject)) {
+      const entity = pickedObject.id;
+      const primitive = pickedObject.primitive;
       
-      let emitId = null;
-      if (entityId === 'accident_blue' || entityId === 'marker-accident_blue' || entityId === 'model_normal' || entityId === 'model_accident') {
-        emitId = 'accident_blue';
-      } else if (entityId === 'accident_red' || entityId === 'marker-accident_red' || entityId === 'tanker_normal' || entityId === 'tanker_accident') {
-        emitId = 'accident_red';
+      const entityId = entity ? entity.id : null;
+      
+      // 1. 判断是否点击了烟雾粒子或三维车辆模型，若是且当前是中视角，则拉近到近视角
+      const isSmokeClick = (primitive === smokeParticle || primitive === fireParticle || primitive === leakParticle || primitive === diffusionParticle);
+      const isModelClick = entityId && (entityId === 'model_accident' || entityId === 'tanker_accident' || entityId === 'model_normal' || entityId === 'tanker_normal');
+      
+      if (isSmokeClick || isModelClick) {
+        let emitId = null;
+        if (primitive === smokeParticle || primitive === fireParticle || entityId === 'model_accident' || entityId === 'model_normal') {
+          emitId = 'accident_blue';
+        } else if (primitive === leakParticle || primitive === diffusionParticle || entityId === 'tanker_accident' || entityId === 'tanker_normal') {
+          emitId = 'accident_red';
+        }
+        
+        if (emitId) {
+          emit('accident-picked', emitId);
+          goToCloseView(emitId);
+          return;
+        }
       }
       
-      if (emitId) {
-        emit('accident-picked', emitId);
-        zoomToPoint(emitId);
+      // 2. 判断是否点击了地图上的定位标记或波浪光圈，若是则定位到远视角并展示事故图片悬浮窗
+      if (entityId) {
+        let emitId = null;
+        if (entityId === 'accident_blue' || entityId === 'marker-accident_blue' || entityId === 'wave-accident_blue') {
+          emitId = 'accident_blue';
+        } else if (entityId === 'accident_red' || entityId === 'marker-accident_red' || entityId === 'wave-accident_red') {
+          emitId = 'accident_red';
+        }
+        
+        if (emitId) {
+          emit('accident-picked', emitId);
+          zoomToPoint(emitId);
+          return;
+        }
       }
     }
   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
@@ -2159,12 +2546,26 @@ function updatePhaseScene(index) {
 
     focusAreaEntity.position = Cesium.Cartesian3.fromDegrees(lng, lat, 0)
 
-    // 悬浮窗展示逻辑：在货车追尾现场和油罐车泄露现场的“无人装备出动阶段”(索引 6) 和 “无人感知部署阶段”(索引 7) 显示
+    // 悬浮窗展示逻辑：在货车追尾现场和油罐车泄露现场的“无人装备出动阶段”(索引 6) 、 “无人感知部署阶段”(索引 7) 、 “救援装备出动阶段”(索引 9) 、 “救援任务执行阶段”(索引 10) 显示
     const isTruckScene = (pointId === 'accident_blue');
     const isTankerScene = (pointId === 'accident_red');
 
+    if (isTruckScene && index === 4) {
+      detectionPopup.show = true;
+      detectionPopup.state = 'idle';
+      detectionPopup.progress = 0;
+    } else {
+      detectionPopup.show = false;
+    }
+
+    if (isTruckScene && index === 8) {
+      simulationPopup.show = true;
+    } else {
+      simulationPopup.show = false;
+    }
+
     if (isTruckScene && index === 6) {
-      rescuePopup.title = '救援装备出动';
+      rescuePopup.title = '无人装备出动';
       rescuePopup.status = '已出发';
       rescueCoords.lng = 113.10725;
       rescueCoords.lat = 30.38491;
@@ -2173,7 +2574,7 @@ function updatePhaseScene(index) {
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
       rescuePopup.show = true;
     } else if (isTruckScene && index === 7) {
-      rescuePopup.title = '无人机感知部署';
+      rescuePopup.title = '无人感知部署';
       rescuePopup.status = '已到达';
       rescueCoords.lng = 113.104833;
       rescueCoords.lat = 30.385469;
@@ -2189,8 +2590,26 @@ function updatePhaseScene(index) {
           rescuePopup.show = true;
         }
       }, 5000);
-    } else if (isTankerScene && index === 6) {
+    } else if (isTruckScene && index === 9) {
       rescuePopup.title = '救援装备出动';
+      rescuePopup.status = '已出发';
+      rescueCoords.lng = 113.10725;
+      rescueCoords.lat = 30.38491;
+      rescueCoords.height = 24.0;
+      
+      if (rescueMarkerEntity) rescueMarkerEntity.show = true;
+      rescuePopup.show = true;
+    } else if (isTruckScene && index === 10) {
+      rescuePopup.title = '救援任务执行';
+      rescuePopup.status = '执行中';
+      rescueCoords.lng = 113.104833;
+      rescueCoords.lat = 30.385469;
+      rescueCoords.height = 24.0;
+      
+      if (rescueMarkerEntity) rescueMarkerEntity.show = true;
+      rescuePopup.show = true;
+    } else if (isTankerScene && index === 6) {
+      rescuePopup.title = '无人装备出动';
       rescuePopup.status = '已出发';
       // 跟随无人机位置，悬浮窗显示在无人机头顶上方
       rescueCoords.lng = tankerUavAdjust.lng;
@@ -2216,6 +2635,24 @@ function updatePhaseScene(index) {
           rescuePopup.show = true;
         }
       }, 5000);
+    } else if (isTankerScene && index === 9) {
+      rescuePopup.title = '救援装备出动';
+      rescuePopup.status = '已出发';
+      rescueCoords.lng = tankerPointAdjust.lng;
+      rescueCoords.lat = tankerPointAdjust.lat;
+      rescueCoords.height = 17.0;
+      
+      if (rescueMarkerEntity) rescueMarkerEntity.show = true;
+      rescuePopup.show = true;
+    } else if (isTankerScene && index === 10) {
+      rescuePopup.title = '救援任务执行';
+      rescuePopup.status = '执行中';
+      rescueCoords.lng = tankerPointAdjust.lng;
+      rescueCoords.lat = tankerPointAdjust.lat;
+      rescueCoords.height = 17.0;
+      
+      if (rescueMarkerEntity) rescueMarkerEntity.show = true;
+      rescuePopup.show = true;
     } else {
       if (rescueMarkerEntity) rescueMarkerEntity.show = false;
       rescuePopup.show = false;
@@ -2226,13 +2663,17 @@ function updatePhaseScene(index) {
         loadMission();
       }
 
-      // 根据用户要求，当在货车现场进入"无人装备出动"(阶段6)时，视角飞向大范围俯视视角
+      // 根据用户要求，当在货车现场进入"无人装备出动"(阶段6)时，视角飞向大范围侧倾透视视角
       if (pointId === 'accident_blue' && index === 6) {
         stopAutoRotate();
         isFlying = true;
         viewer.camera.flyTo({
-          destination: Cesium.Cartesian3.fromDegrees(113.2716, 30.3761, 55000), // 覆盖整个仙桃市区路径的高空视角
-          orientation: { heading: 0, pitch: Cesium.Math.toRadians(-90), roll: 0.0 }, // 纯俯视
+          destination: Cesium.Cartesian3.fromDegrees(113.26, 29.96, 39000), // 侧倾透视视角，将相机向南平移并微调高度以完整居中路线
+          orientation: {
+            heading: Cesium.Math.toRadians(350.0),
+            pitch: Cesium.Math.toRadians(-35.0),
+            roll: 0.0
+          },
           duration: 1.5,
           complete: () => {
             isFlying = false;
@@ -2336,19 +2777,114 @@ function updatePhaseScene(index) {
   }
 }
 
+function updateMarkerVisibility() {
+  if (!viewer) return;
+  const showMarkers = (accidentViewLevel.value === 'far');
+  const entitiesToToggle = [
+    'marker-accident_blue', 'wave-accident_blue',
+    'marker-accident_red', 'wave-accident_red'
+  ];
+  entitiesToToggle.forEach(id => {
+    const entity = viewer.entities.getById(id);
+    if (entity) {
+      entity.show = showMarkers;
+    }
+  });
+}
+
 function zoomToPoint(pointId) {
   if (!viewer || isFlying) return
   const point = scenarioPoints[pointId]
+  if (!point) return
+  
   stopAutoRotate()
   isFlying = true
+  
+  accidentViewLevel.value = 'far'
+  updateMarkerVisibility()
+  
+  try {
+    viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY)
+  } catch (e) {}
+
+  const destHeight = 120000;
   viewer.camera.flyTo({
-    destination: Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude, 2500),
+    destination: Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude, destHeight),
+    orientation: { heading: 0, pitch: Cesium.Math.toRadians(-60), roll: 0.0 },
+    duration: 1.5,
+    complete: () => {
+      isFlying = false
+      
+      // 显示事故图片悬浮窗
+      accidentDetailPopup.show = true
+      accidentDetailPopup.pointId = pointId
+      accidentDetailPopup.title = pointId === 'accident_blue' ? '高速公路 - 货车追尾事故现场' : '化工园区 - 油罐车泄漏事故现场'
+      accidentDetailPopup.img = pointId === 'accident_blue' ? '/Dashboard/images/uav_aerial_photo.png' : '/Dashboard/images/tanker_aerial_photo.png'
+      
+      applyOrbitView()
+    }
+  })
+}
+
+function goToMediumView() {
+  if (!viewer || isFlying || !accidentDetailPopup.pointId) return
+  const pointId = accidentDetailPopup.pointId
+  const point = scenarioPoints[pointId]
+  if (!point) return
+  
+  accidentDetailPopup.show = false
+  accidentViewLevel.value = 'medium'
+  updateMarkerVisibility()
+  isFlying = true
+  
+  try {
+    viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY)
+  } catch (e) {}
+  
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude, 2000),
     orientation: { heading: 0, pitch: Cesium.Math.toRadians(-45), roll: 0.0 },
     duration: 1.5,
     complete: () => {
       isFlying = false
-      if (props.focusedPointId) applyOrbitView()
-      if (pointId === 'accident_blue') updateTruckSequence(props.activePhaseIndex)
+      applyOrbitView()
+      if (pointId === 'accident_blue') {
+        updateTruckSequence(props.activePhaseIndex)
+      } else if (pointId === 'accident_red') {
+        updateTankerSequence(props.activePhaseIndex)
+      }
+    }
+  })
+}
+
+function goToCloseView(pointId) {
+  if (!viewer || isFlying) return
+  const point = scenarioPoints[pointId]
+  if (!point) return
+  
+  accidentDetailPopup.show = false
+  accidentViewLevel.value = 'close'
+  updateMarkerVisibility()
+  isFlying = true
+  
+  stopAutoRotate()
+  
+  try {
+    viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY)
+  } catch (e) {}
+  
+  const destHeight = pointId === 'accident_red' ? 100 : 75;
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude, destHeight),
+    orientation: {
+      heading: Cesium.Math.toRadians(8),
+      pitch: Cesium.Math.toRadians(-20),
+      roll: 0.0
+    },
+    duration: 1.5,
+    complete: () => {
+      isFlying = false
+      applyOrbitView()
     }
   })
 }
@@ -2434,6 +2970,7 @@ function resetView() {
 defineExpose({ zoomToPoint, resetView, capturedPhotos, activePhotoIndex, currentTimeStr });
 
 watch(() => props.activePhaseIndex, (next, prev) => {
+  accidentViewLevel.value = null;
   if (next === 7 && prev !== 7) {
     phase7StartTime = Date.now();
     tankerPhase7StartTime = Date.now();
@@ -2450,7 +2987,17 @@ watch(() => props.activePhaseIndex, (next, prev) => {
   updatePhaseScene(next);
 });
 
-watch(() => props.focusedPointId, () => {
+watch(accidentViewLevel, () => {
+  updateMarkerVisibility()
+})
+
+watch(() => props.focusedPointId, (newVal) => {
+  if (newVal) {
+    accidentViewLevel.value = 'far'
+  } else {
+    accidentDetailPopup.show = false
+  }
+  updateMarkerVisibility()
   updatePhaseScene(props.activePhaseIndex);
 });
 
@@ -2475,6 +3022,539 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* 仿真推演悬浮窗样式 */
+.simulation-popup-panel {
+  position: absolute;
+  width: 290px;
+  background: rgba(8, 12, 28, 0.94);
+  border: 1px solid rgba(0, 255, 180, 0.5);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 16px rgba(0, 255, 180, 0.2);
+  z-index: 1000;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  pointer-events: auto;
+  transform: translate(-50%, -100%);
+  animation: simPanelFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #e2e8f0;
+}
+
+@keyframes simPanelFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -90%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1);
+  }
+}
+
+.simulation-popup-header {
+  background: rgba(0, 255, 180, 0.12);
+  border-bottom: 1px solid rgba(0, 255, 180, 0.25);
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.simulation-icon {
+  font-size: 14px;
+}
+
+.simulation-popup-panel .close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.simulation-popup-panel .close-btn:hover {
+  color: #f1f5f9;
+}
+
+.simulation-popup-content {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.enter-sim-btn {
+  width: 100%;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: white;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.enter-sim-btn:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  border-color: #34d399;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+  transform: translateY(-1px);
+}
+
+.enter-sim-btn:active {
+  transform: translateY(0);
+}
+
+.arrow-icon {
+  font-weight: bold;
+  transition: transform 0.2s;
+}
+
+.enter-sim-btn:hover .arrow-icon {
+  transform: translateX(3px);
+}
+
+.simulation-popup-arrow {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translate(-50%, 100%);
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 10px solid rgba(8, 12, 28, 0.94);
+}
+
+/* 实时视频检测悬浮窗样式 */
+.detection-popup-panel {
+  position: absolute;
+  width: 540px;
+  background: rgba(7, 11, 26, 0.92);
+  border: 1px solid rgba(0, 180, 255, 0.5);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.75), 0 0 16px rgba(0, 180, 255, 0.25);
+  z-index: 1000;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  pointer-events: auto;
+  transform: translate(-50%, -100%);
+  animation: detectionPanelFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #e2e8f0;
+}
+
+@keyframes detectionPanelFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -90%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1);
+  }
+}
+
+.detection-popup-header {
+  background: rgba(0, 180, 255, 0.15);
+  border-bottom: 1px solid rgba(0, 180, 255, 0.25);
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #ef4444;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #ef4444;
+  animation: pulseRed 1.8s infinite;
+}
+
+@keyframes pulseRed {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.header-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #38bdf8;
+  letter-spacing: 0.5px;
+}
+
+.detection-popup-panel .close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.detection-popup-panel .close-btn:hover {
+  color: #f1f5f9;
+}
+
+.detection-popup-content {
+  display: flex;
+  padding: 14px;
+  gap: 14px;
+}
+
+/* Image Container */
+.detection-img-container {
+  position: relative;
+  width: 260px;
+  height: 180px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  background: #000;
+}
+
+.detection-raw-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* SVG Overlay & Bounding Boxes */
+.detection-svg-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.box-rect {
+  fill: none;
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+  animation: drawBox 0.5s ease-out forwards;
+}
+
+.box-label {
+  font-size: 10px;
+  font-weight: bold;
+  fill: #fff;
+  paint-order: stroke;
+  stroke: #000;
+  stroke-width: 2px;
+  stroke-linejoin: round;
+}
+
+@keyframes drawBox {
+  from {
+    stroke-dasharray: 200;
+    stroke-dashoffset: 200;
+  }
+  to {
+    stroke-dasharray: 200;
+    stroke-dashoffset: 0;
+  }
+}
+
+.rect-fire {
+  stroke: #ef4444;
+}
+.label-fire {
+  fill: #fca5a5;
+}
+
+.rect-truck {
+  stroke: #3b82f6;
+}
+.label-truck {
+  fill: #93c5fd;
+}
+
+.rect-smoke {
+  stroke: #f59e0b;
+}
+.label-smoke {
+  fill: #fde047;
+}
+
+/* Scanning Effect */
+.scanning-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(0,180,255,0) 0%, rgba(0,180,255,1) 50%, rgba(0,180,255,0) 100%);
+  box-shadow: 0 0 8px rgba(0, 180, 255, 0.8);
+  animation: scanMove 1.5s linear infinite;
+}
+
+@keyframes scanMove {
+  0% { top: 0%; }
+  50% { top: 100%; }
+  100% { top: 0%; }
+}
+
+.scanning-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: #38bdf8;
+  text-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
+}
+
+/* Control Panel */
+.detection-control-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 180px;
+}
+
+.panel-section-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 4px;
+}
+
+.desc-text {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+/* Buttons */
+.detect-btn {
+  width: 100%;
+  padding: 10px;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: white;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.detect-btn:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+  border-color: #38bdf8;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+}
+
+.pulse-button {
+  animation: buttonPulse 2s infinite;
+}
+
+@keyframes buttonPulse {
+  0% { box-shadow: 0 0 0 0 rgba(3, 105, 161, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(3, 105, 161, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(3, 105, 161, 0); }
+}
+
+/* Spinner */
+.state-detecting-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(56, 189, 248, 0.1);
+  border-top-color: #38bdf8;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 12px;
+  color: #38bdf8;
+  margin-bottom: 8px;
+}
+
+.progress-bar-container {
+  width: 80%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: #38bdf8;
+  transition: width 0.1s linear;
+}
+
+/* Results State */
+.state-results-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.result-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-indicator {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.status-indicator.warning {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+.result-count {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.detection-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detect-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+}
+
+.detect-item .item-icon {
+  margin-right: 6px;
+}
+
+.detect-item .item-name {
+  flex: 1;
+  color: #cbd5e1;
+}
+
+.detect-item .item-conf {
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.detect-item.fire .item-conf { color: #fca5a5; }
+.detect-item.truck .item-conf { color: #93c5fd; }
+.detect-item.smoke .item-conf { color: #fde047; }
+
+.report-box {
+  background: rgba(245, 158, 11, 0.07);
+  border-left: 3px solid #f59e0b;
+  padding: 8px 10px;
+  border-radius: 0 4px 4px 0;
+  font-size: 11px;
+  color: #fcd34d;
+  line-height: 1.4;
+}
+
+.reset-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  padding: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s;
+}
+
+.reset-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #f1f5f9;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Arrow styling for popup alignment */
+.detection-popup-arrow {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translate(-50%, 100%);
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 10px solid rgba(7, 11, 26, 0.92);
+}
+
 .cesium-wrapper, .cesium-container { width: 100%; height: 100%; position: relative; }
 
 /* 无人机拍照侦察悬浮窗样式 */
@@ -2693,6 +3773,121 @@ onBeforeUnmount(() => {
 }
 
 /* 避难点 HTML 悬浮窗样式 */
+/* 事故详情悬浮窗样式 */
+.accident-detail-popup {
+  position: absolute;
+  z-index: 1001;
+  transform: translate(-50%, -100%);
+  width: 200px;
+  background: rgba(10, 25, 50, 0.92);
+  border: 1.5px solid rgba(0, 229, 255, 0.6);
+  border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.8), 0 0 12px rgba(0, 229, 255, 0.35);
+  font-family: "Microsoft YaHei", sans-serif;
+  overflow: visible;
+  pointer-events: auto;
+  backdrop-filter: blur(8px);
+  animation: popupFadeIn 0.3s ease-out;
+}
+
+@keyframes popupFadeIn {
+  from { opacity: 0; transform: translate(-50%, -95%) scale(0.95); }
+  to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+}
+
+.accident-detail-header {
+  background: linear-gradient(90deg, rgba(0, 229, 255, 0.25), rgba(0, 100, 255, 0.25));
+  border-bottom: 1.5px solid rgba(0, 229, 255, 0.4);
+  color: #00e5ff;
+  padding: 4px 8px;
+  font-weight: bold;
+  font-size: 11px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+}
+
+.accident-detail-header .close-btn {
+  background: none;
+  border: none;
+  color: #00e5ff;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.accident-detail-header .close-btn:hover {
+  color: #ffffff;
+}
+
+.accident-detail-body {
+  padding: 5px;
+}
+
+.accident-detail-body .img-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  cursor: pointer;
+}
+
+.accident-detail-body .accident-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.accident-detail-body .img-wrapper:hover .accident-img {
+  transform: scale(1.05);
+}
+
+.accident-detail-body .img-hover-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 10px;
+  gap: 3px;
+  opacity: 0.85;
+  transition: background 0.3s ease, opacity 0.3s ease;
+}
+
+.accident-detail-body .img-wrapper:hover .img-hover-overlay {
+  background: rgba(0, 0, 0, 0.2);
+  opacity: 1;
+}
+
+.accident-detail-body .zoom-icon {
+  font-size: 13px;
+}
+
+.accident-detail-arrow {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+  border-top-color: rgba(10, 25, 50, 0.92);
+  border-bottom: 0;
+  margin-left: -8px;
+  margin-bottom: -8px;
+}
+
 .shelter-popup-panel {
   position: absolute;
   z-index: 1000;
