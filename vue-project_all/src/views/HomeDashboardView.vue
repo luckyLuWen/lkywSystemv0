@@ -18,7 +18,7 @@
       </div>
       
       <div class="header-center-title" @click="goTo({ key: 'home', label: '地图大屏', path: '/' })" style="cursor: pointer;">
-        <div class="title-glow">两客一危应急救援协同决策大屏</div>
+        <div class="title-glow">基于数字孪生的交通事故智能决策与救援推演平台</div>
       </div>
       
       <div class="header-right-actions">
@@ -30,54 +30,11 @@
     </header>
 
     <div class="main-layout">
-      <!-- Left Sidebar (White) -->
-      <aside class="left-sidebar" :class="{ collapsed: isLeftCollapsed }">
-        <button class="toggle-btn toggle-btn-left" type="button" @click="isLeftCollapsed = !isLeftCollapsed">
-          {{ isLeftCollapsed ? '▶' : '◀' }}
-        </button>
-        <div class="sidebar-header">
-          <h2 class="sidebar-title">工作目录 / 服务中心</h2>
-          <span class="sidebar-subtitle">Service Center</span>
-        </div>
-        <div class="sidebar-content">
-          <div
-            v-for="item in servicePanels"
-            :key="item.id"
-            class="accordion-item-light"
-            :class="{ open: activeServiceId === item.id }"
-          >
-            <button class="accordion-trigger-light" type="button" @click="toggleServicePanel(item.id)">
-              <div class="trigger-copy">
-                <span class="trigger-kicker">{{ item.owner.toUpperCase() }} SERVICE</span>
-                <h3 class="trigger-title">{{ item.title }}</h3>
-              </div>
-              <span class="trigger-indicator">{{ activeServiceId === item.id ? '收起' : '展开' }}</span>
-            </button>
 
-            <transition name="accordion">
-              <div v-if="activeServiceId === item.id" class="accordion-body-light">
-                <CollaborativeResponseCard v-if="item.id === 'collaborative'" />
-                <SensorGatewayCard v-else-if="item.id === 'sensor'" />
-                <RealtimeDetectionCard v-else :only-control="true" />
-              </div>
-            </transition>
-          </div>
-        </div>
-      </aside>
 
       <!-- Center Viewport (Cesium Map) -->
       <main class="center-viewport-container">
-        <div class="viewport-header">
-          <div class="viewport-title-left">
-            <span class="viewport-icon">🗺️</span>
-            <span class="viewport-title-text">View 1 (Cesium 三维态势图)</span>
-          </div>
-          <div class="viewport-controls">
-            <button class="win-btn">➖</button>
-            <button class="win-btn">🔳</button>
-            <button class="win-btn">❌</button>
-          </div>
-        </div>
+
         
         <div class="viewport-body">
           <div class="globe-layer">
@@ -87,6 +44,7 @@
               :active-phase-index="activePhaseIndex"
               :focused-point-id="currentFocusedPoint"
               :sensor-data="displaySensorData"
+              :is-ws-connected="isWsConnected"
               @accident-picked="onAccidentPickedOnGlobe"
               @models-ready="onModelsReady"
             />
@@ -109,7 +67,7 @@
       <!-- Right Sidebar (White) -->
       <aside class="right-sidebar" :class="{ collapsed: isRightCollapsed }">
         <button class="toggle-btn toggle-btn-right" type="button" @click="isRightCollapsed = !isRightCollapsed">
-          {{ isRightCollapsed ? '◀' : '▶' }}
+          {{ isRightCollapsed ? '▶' : '◀' }}
         </button>
         <div class="sidebar-header">
           <h2 class="sidebar-title">
@@ -135,19 +93,19 @@
                 <div class="ugv-card">
                   <div class="ugv-header">
                     <span class="ugv-title">无人车 A</span>
-                    <span class="ugv-status">在线</span>
+                    <span class="ugv-status" :class="{ offline: !isWsConnected }">{{ isWsConnected ? '在线' : '离线' }}</span>
                   </div>
                   <div class="ugv-data">
                     <div class="ugv-row">
-                      <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ ugvA.temp }}</span></div>
-                      <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ ugvA.hum }}%</span></div>
+                      <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ isWsConnected ? ugvA.temp : '--' }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ isWsConnected ? ugvA.hum + '%' : '--' }}</span></div>
                     </div>
                     <div class="ugv-row">
-                      <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ ugvA.smoke }} ug</span></div>
+                      <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ isWsConnected ? ugvA.smoke + ' ug' : '--' }}</span></div>
                     </div>
                     <div class="ugv-row">
-                      <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ ugvA.tvoc }}</span></div>
-                      <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ ugvA.co }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ isWsConnected ? ugvA.tvoc : '--' }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ isWsConnected ? ugvA.co : '--' }}</span></div>
                     </div>
                   </div>
                   <div class="ugv-footer" @click="router.push({ path: '/sensor-manage', query: { target: 'node1' } })">点击查看详情 →</div>
@@ -157,19 +115,19 @@
                 <div class="ugv-card">
                   <div class="ugv-header">
                     <span class="ugv-title">无人车 B</span>
-                    <span class="ugv-status">在线</span>
+                    <span class="ugv-status" :class="{ offline: !isWsConnected }">{{ isWsConnected ? '在线' : '离线' }}</span>
                   </div>
                   <div class="ugv-data">
                     <div class="ugv-row">
-                      <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ ugvB.temp }}</span></div>
-                      <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ ugvB.hum }}%</span></div>
+                      <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ isWsConnected ? ugvB.temp : '--' }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ isWsConnected ? ugvB.hum + '%' : '--' }}</span></div>
                     </div>
                     <div class="ugv-row">
-                      <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ ugvB.smoke }} ug</span></div>
+                      <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ isWsConnected ? ugvB.smoke + ' ug' : '--' }}</span></div>
                     </div>
                     <div class="ugv-row">
-                      <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ ugvB.tvoc }}</span></div>
-                      <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ ugvB.co }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ isWsConnected ? ugvB.tvoc : '--' }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ isWsConnected ? ugvB.co : '--' }}</span></div>
                     </div>
                   </div>
                   <div class="ugv-footer" @click="router.push({ path: '/sensor-manage', query: { target: 'node2' } })">点击查看详情 →</div>
@@ -183,12 +141,12 @@
                 <div class="met-details">
                   <div class="met-row">
                     <span class="met-label">实时风速</span>
-                    <span class="met-val">{{ displaySensorData.windSpeed }} m/s</span>
+                    <span class="met-val">{{ isWsConnected ? displaySensorData.windSpeed + ' m/s' : '--' }}</span>
                   </div>
                   <div class="met-divider"></div>
                   <div class="met-row">
                     <span class="met-label">当前风向</span>
-                    <span class="met-val">{{ displaySensorData.windDirection }}</span>
+                    <span class="met-val">{{ isWsConnected ? displaySensorData.windDirection : '--' }}</span>
                   </div>
                 </div>
               </div>
@@ -292,7 +250,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import CollaborativeResponseCard from '../components/CollaborativeResponseCard.vue'
 import RealtimeDetectionCard from '../components/RealtimeDetectionCard.vue'
@@ -504,6 +462,7 @@ const accidentPoints = [
       { id: 't-uav-start', time: '14:45', shortLabel: '无人装备出动', title: '无人装备协同出动', systems: ['协同响应'], focusPoint: 'accident_blue' },
       { id: 't-uav-deploy', time: '14:50', shortLabel: '无人感知部署', title: '无人感知节点部署', systems: ['实时检测'], focusPoint: 'accident_blue' },
       { id: 't-uav-exec', time: '14:55', shortLabel: '无人感知执行', title: '无人感知任务执行', systems: ['协同响应'], focusPoint: 'accident_blue' },
+      { id: 't-rescue-start', time: '15:00', shortLabel: '救援装备出动', title: '专业救援装备协同出动', systems: ['协同响应'], focusPoint: 'accident_blue' },
     ]
   },
   {
@@ -520,6 +479,7 @@ const accidentPoints = [
       { id: 'l-uav-start', time: '15:55', shortLabel: '无人装备出动', title: '无人装备协同出动', systems: ['协同响应'], focusPoint: 'accident_red' },
       { id: 'l-uav-deploy', time: '16:00', shortLabel: '无人感知部署', title: '无人感知节点部署', systems: ['实时检测'], focusPoint: 'accident_red' },
       { id: 'l-uav-exec', time: '16:05', shortLabel: '无人感知执行', title: '无人感知任务执行', systems: ['协同响应'], focusPoint: 'accident_red' },
+      { id: 'l-rescue-start', time: '16:10', shortLabel: '救援装备出动', title: '专业救援装备协同出动', systems: ['协同响应'], focusPoint: 'accident_red' },
     ]
   },
 ]
@@ -537,7 +497,9 @@ const phaseToModelMap = {
   5: 'model_accident',
   6: 'model_accident',
   7: 'model_accident',
-  8: 'model_accident'
+  8: 'model_accident',
+  9: 'model_accident',
+  10: 'model_accident'
 }
 
 const tankerPhaseToModelMap = {
@@ -548,7 +510,9 @@ const tankerPhaseToModelMap = {
   5: 'tanker_accident',
   6: 'tanker_accident',
   7: 'tanker_accident',
-  8: 'tanker_accident'
+  8: 'tanker_accident',
+  9: 'tanker_accident',
+  10: 'tanker_accident'
 }
 
 const phasesReady = computed(() => {
@@ -613,6 +577,8 @@ function goTo(item) {
     }
     currentFocusedPoint.value = ''
     activeServiceId.value = ''
+    // 返回首页时重置所有事故场景的时间线到“仿真开始”阶段
+    accidentPhaseIndices.value = { 'rear-end': 0, 'leakage': 0 }
   }
   activeMenuKey.value = item.key
   persistMenuKey(item.key)
@@ -647,21 +613,26 @@ watch(activeAccidentIndex, () => {
 })
 
 watch(
-  () => route.path,
+  () => route.fullPath,
   (newPath) => {
-    if (newPath === '/') {
+    if (route.path === '/') {
       activeMenuKey.value = 'home'
+      activeServiceId.value = ''
+
+      // 返回首页时始终重置所有事故场景时间线到“仿真开始”
+      accidentPhaseIndices.value = { 'rear-end': 0, 'leakage': 0 }
+      currentFocusedPoint.value = ''
       if (globeRef.value) {
         globeRef.value.resetView()
       }
-      currentFocusedPoint.value = ''
-      activeServiceId.value = ''
     }
   }
 )
 
 onMounted(() => {
   activeMenuKey.value = 'home'
+  // 初始化时重置所有事故场景时间线从头开始
+  accidentPhaseIndices.value = { 'rear-end': 0, 'leakage': 0 }
 })
 </script>
 
@@ -839,21 +810,21 @@ onMounted(() => {
 }
 
 .left-sidebar {
-  left: 16px;
-  z-index: 10;
-}
-
-.left-sidebar.collapsed {
-  transform: translateX(calc(-100% - 20px));
-}
-
-.right-sidebar {
   right: 16px;
   z-index: 10;
 }
 
-.right-sidebar.collapsed {
+.left-sidebar.collapsed {
   transform: translateX(calc(100% + 20px));
+}
+
+.right-sidebar {
+  left: 16px;
+  z-index: 10;
+}
+
+.right-sidebar.collapsed {
+  transform: translateX(calc(-100% - 20px));
 }
 
 /* Sidebar Toggle Buttons - High Tech Glass */
@@ -882,14 +853,14 @@ onMounted(() => {
   box-shadow: 0 0 10px rgba(0, 242, 254, 0.4);
 }
 .toggle-btn-left {
-  right: -18px;
-  border-radius: 0 8px 8px 0;
-  border-left: none;
-}
-.toggle-btn-right {
   left: -18px;
   border-radius: 8px 0 0 8px;
   border-right: none;
+}
+.toggle-btn-right {
+  right: -18px;
+  border-radius: 0 8px 8px 0;
+  border-left: none;
 }
 
 .sidebar-header {
@@ -1832,6 +1803,12 @@ onMounted(() => {
   background: rgba(0, 255, 136, 0.1);
   border: 1px solid rgba(0, 255, 136, 0.3);
   border-radius: 3px;
+}
+
+.ugv-card .ugv-status.offline {
+  color: #ffb4b4;
+  background: rgba(168, 54, 54, 0.18);
+  border-color: rgba(255, 180, 180, 0.28);
 }
 
 .ugv-card .ugv-data {

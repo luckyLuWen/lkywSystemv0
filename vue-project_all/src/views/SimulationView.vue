@@ -1,36 +1,126 @@
 <template>
   <div class="simulation-container">
-    <div id="simulationCesiumContainer" class="cesium-container"></div>
+    <!-- 返回事故时间线按钮 -->
+    <button class="back-to-timeline-btn" @click="goBackToTimeline">
+      <span class="back-arrow">←</span>
+      <span>返回事故时间线</span>
+    </button>
+
+    <!-- 视图切换开关 -->
+    <div class="view-toggle">
+      <button :class="{ active: viewMode === '2d' }" @click="viewMode = '2d'">🗺️ 二维推演</button>
+      <button :class="{ active: viewMode === '3d' }" @click="viewMode = '3d'">🌍 三维仿真</button>
+    </div>
+
+    <!-- 城市切换开关 -->
+    <div class="city-toggle">
+      <button :class="{ active: currentCity === 'xiantao' }" @click="flyToCity('xiantao')">📍 仙桃市推演</button>
+      <button :class="{ active: currentCity === 'huanggang' }" @click="flyToCity('huanggang')">📍 黄冈市推演</button>
+    </div>
+
+    <div id="simulationCesiumContainer" class="cesium-container" :style="{ visibility: viewMode === '3d' ? 'visible' : 'hidden', position: 'absolute', top: '20px', left: '20px', right: '20px', bottom: '20px', width: 'auto', height: 'auto', zIndex: 1 }"></div>
     
-    <!-- 市级行政区划切换按钮 -->
-    <div class="city-switcher">
-      <h4>市级行政区划选择</h4>
-      <div class="switch-buttons">
-        <button 
-          :class="{ active: currentCity === 'xiantao' }" 
-          @click="flyToCity('xiantao')"
-        >
-          📍 仙桃市
-        </button>
-        <button 
-          :class="{ active: currentCity === 'huanggang' }" 
-          @click="flyToCity('huanggang')"
-        >
-          📍 黄冈市
-        </button>
+    <div v-if="viewMode === '2d'" class="cesium-container iframe-container" style="position: absolute; top: 20px; left: 20px; right: 20px; bottom: 20px; z-index: 10; width: auto; height: auto;">
+      <div v-if="isGenerating2D" class="loading-overlay">
+        <div class="spinner"></div>
+        <span>正在生成二维推演...</span>
       </div>
+      <div v-else-if="errorMessage" class="error-overlay">
+        <div class="error-icon">⚠️</div>
+        <span>{{ errorMessage }}</span>
+        <button class="retry-btn" @click="generate2DDeduction(currentCity)">重试</button>
+      </div>
+      <iframe v-else :src="iframeSrc" class="deduction-iframe"></iframe>
+    </div>
+
+    <!-- 悬浮提示框，显示鼠标指向的市级名字 -->
+    <div v-show="hoveredCityName && viewMode === '3d'" class="city-tooltip" :style="tooltipStyle">
+      <span class="city-icon">📍</span>
+      <span class="city-name">{{ hoveredCityName }}</span>
     </div>
   </div>
 </template>
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+
+const router = useRouter()
 import * as Cesium from 'cesium'
+import { getCollaborativeCommandCenterBaseUrl } from '../config/subsystems'
+
+Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyYTUwYmE4Zi01ZjZlLTQ0MjAtYWMwNS0yYjBkZGFiM2RmOTUiLCJpZCI6MzU4MzQ0LCJpYXQiOjE3NjI1Nzc2NjR9.q9QoG-_99QZ2R2TlUYjiWGhn0-S5I22FFGuou_NAE3Q"
+
+const viewMode = ref('2d')
+const iframeSrc = ref('')
+const isGenerating2D = ref(false)
+const errorMessage = ref('')
+const hoveredCityName = ref('')
+const tooltipStyle = ref({
+  left: '0px',
+  top: '0px'
+})
 
 let viewer = null
+let currentCzmlDataSource = null
+let smokeParticle = null
+let fireParticle = null
+let diffusionParticle = null
+let diffusionStartTime = null
+let preRenderListener = null
+let mouseHandler = null
+let persistentCityEntities = []
 const route = useRoute()
+
+function goBackToTimeline() {
+  // 返回首页大屏总览
+  router.push('/')
+}
 const currentCity = ref(route.query.city === 'huanggang' ? 'huanggang' : 'xiantao')
+
+const loadMission = async () => {
+  if (!viewer) return
+  try {
+    const baseUrl = getCollaborativeCommandCenterBaseUrl()
+    
+    // 清理旧的 CZML 数据源
+    if (currentCzmlDataSource) {
+      viewer.dataSources.remove(currentCzmlDataSource)
+      currentCzmlDataSource = null
+    }
+    
+    const czmlUrl = `${baseUrl}/mission.czml?t=${Date.now()}`
+    const dataSource = await Cesium.CzmlDataSource.load(czmlUrl)
+    currentCzmlDataSource = dataSource
+    viewer.dataSources.add(dataSource)
+    // 保持当前的城市级俯视视角，不改变相机机位
+  } catch (error) {
+    console.error('加载三维轨迹 CZML 失败:', error)
+  }
+}
+
+const generate2DDeduction = async (city) => {
+  const endpoint = city === 'xiantao' ? 'crash' : 'leak'
+  isGenerating2D.value = true
+  errorMessage.value = ''
+  try {
+    const baseUrl = getCollaborativeCommandCenterBaseUrl()
+    const response = await fetch(`${baseUrl}/api/run_3d_strategy?end_point=${endpoint}`)
+    if (response.ok) {
+      iframeSrc.value = `${baseUrl}/2d_deduction.html?t=${Date.now()}`
+      // 生成成功后，异步加载并播放 3D 仿真轨迹
+      await loadMission()
+    } else {
+      errorMessage.value = '二维推演生成失败，后端返回错误。'
+      console.error('二维推演生成失败')
+    }
+  } catch (error) {
+    errorMessage.value = '请求生成二维推演时出错，请确保后端服务已启动。'
+    console.error('请求生成二维推演时出错:', error)
+  } finally {
+    isGenerating2D.value = false
+  }
+}
 
 // 辅助方法：将经纬度数组转换为 Cesium.Cartesian3 数组
 const convertCoordsToCartesians = (coords) => {
@@ -47,60 +137,36 @@ let currentBoundaryLines = [];
 async function loadCityMask(city) {
   if (!viewer) return;
   
-  // 清除旧的蒙版和边界线
+  // 清除旧的蒙版
   if (currentMaskEntity) {
     viewer.entities.remove(currentMaskEntity);
     currentMaskEntity = null;
   }
-  currentBoundaryLines.forEach(line => {
-    viewer.entities.remove(line);
-  });
-  currentBoundaryLines = [];
 
-  const fileName = city === 'xiantao' ? 'xiantao.json' : 'huanggang.json';
-  const colorStr = city === 'xiantao' ? '#ff007f' : '#ffd700';
+  // 定义遮罩镂空（holes）要加载的文件
+  let maskFileName = '';
+  if (city === 'xiantao') {
+    maskFileName = 'xiantao.json';
+  } else {
+    maskFileName = 'huanggang_wuhan.json';
+  }
 
   try {
-    const response = await fetch(`/Dashboard/${fileName}`);
-    if (!response.ok) throw new Error(`读取 ${fileName} 失败`);
-    const geojson = await response.json();
-
+    // 加载镂空文件，并生成暗色背景蒙版
     const holes = [];
-    geojson.features.forEach(feature => {
+    const maskResponse = await fetch(`/Dashboard/${maskFileName}`);
+    if (!maskResponse.ok) throw new Error(`读取 ${maskFileName} 失败`);
+    const maskGeojson = await maskResponse.json();
+
+    maskGeojson.features.forEach(feature => {
       const geometry = feature.geometry;
       if (geometry.type === 'Polygon') {
         const outerRing = convertCoordsToCartesians(geometry.coordinates[0]);
         holes.push(new Cesium.PolygonHierarchy(outerRing));
-        
-        const line = viewer.entities.add({
-          polyline: {
-            positions: outerRing,
-            width: 5.5,
-            material: new Cesium.PolylineGlowMaterialProperty({
-              glowPower: 0.26,
-              color: Cesium.Color.fromCssColorString(colorStr)
-            }),
-            clampToGround: true
-          }
-        });
-        currentBoundaryLines.push(line);
       } else if (geometry.type === 'MultiPolygon') {
         geometry.coordinates.forEach(polygon => {
           const outerRing = convertCoordsToCartesians(polygon[0]);
           holes.push(new Cesium.PolygonHierarchy(outerRing));
-          
-          const line = viewer.entities.add({
-            polyline: {
-              positions: outerRing,
-              width: 5.5,
-              material: new Cesium.PolylineGlowMaterialProperty({
-                glowPower: 0.26,
-                color: Cesium.Color.fromCssColorString(colorStr)
-              }),
-              clampToGround: true
-            }
-          });
-          currentBoundaryLines.push(line);
         });
       }
     });
@@ -118,7 +184,7 @@ async function loadCityMask(city) {
     currentMaskEntity = viewer.entities.add({
       polygon: {
         hierarchy: worldPolygonHierarchy,
-        material: Cesium.Color.fromCssColorString('#070b19').withAlpha(0.96),
+        material: Cesium.Color.fromCssColorString('#070b19').withAlpha(0.94),
         classificationType: Cesium.ClassificationType.BOTH,
         outline: false
       }
@@ -128,11 +194,123 @@ async function loadCityMask(city) {
   }
 }
 
+async function initCityRegionsAndLabels() {
+  if (!viewer) return;
+  
+  // 清理可能已经存在的持久化实体
+  persistentCityEntities.forEach(entity => {
+    viewer.entities.remove(entity);
+  });
+  persistentCityEntities = [];
+
+  const citiesConfig = [
+    { name: '武汉市', file: 'wuhan.json', color: '#00ffd8', center: [114.30, 30.59] },
+    { name: '黄冈市', file: 'huanggang.json', color: '#ffd700', center: [114.87, 30.61] },
+    { name: '仙桃市', file: 'xiantao.json', color: '#ff007f', center: [113.43, 30.29] }
+  ];
+
+  for (const city of citiesConfig) {
+    try {
+      const response = await fetch(`/Dashboard/${city.file}`);
+      if (!response.ok) throw new Error(`读取 ${city.file} 失败`);
+      const geojson = await response.json();
+
+      geojson.features.forEach(feature => {
+        const geometry = feature.geometry;
+        
+        // 1. 绘制行政边界线
+        if (geometry.type === 'Polygon') {
+          const outerRing = convertCoordsToCartesians(geometry.coordinates[0]);
+          const line = viewer.entities.add({
+            polyline: {
+              positions: outerRing,
+              width: 5.5,
+              material: new Cesium.PolylineGlowMaterialProperty({
+                glowPower: 0.26,
+                color: Cesium.Color.fromCssColorString(city.color)
+              }),
+              clampToGround: true
+            }
+          });
+          persistentCityEntities.push(line);
+
+          // 2. 绘制半透明多边形，用于鼠标移动 hover 拾取
+          const polygonEntity = viewer.entities.add({
+            polygon: {
+              hierarchy: new Cesium.PolygonHierarchy(outerRing),
+              material: Cesium.Color.fromCssColorString(city.color).withAlpha(0.015),
+              classificationType: Cesium.ClassificationType.TERRAIN
+            },
+            properties: {
+              cityName: city.name
+            }
+          });
+          persistentCityEntities.push(polygonEntity);
+        } else if (geometry.type === 'MultiPolygon') {
+          geometry.coordinates.forEach(polygon => {
+            const outerRing = convertCoordsToCartesians(polygon[0]);
+            const line = viewer.entities.add({
+              polyline: {
+                positions: outerRing,
+                width: 5.5,
+                material: new Cesium.PolylineGlowMaterialProperty({
+                  glowPower: 0.26,
+                  color: Cesium.Color.fromCssColorString(city.color)
+                }),
+                clampToGround: true
+              }
+            });
+            persistentCityEntities.push(line);
+
+            const polygonEntity = viewer.entities.add({
+              polygon: {
+                hierarchy: new Cesium.PolygonHierarchy(outerRing),
+                material: Cesium.Color.fromCssColorString(city.color).withAlpha(0.015),
+                classificationType: Cesium.ClassificationType.TERRAIN
+              },
+              properties: {
+                cityName: city.name
+              }
+            });
+            persistentCityEntities.push(polygonEntity);
+          });
+        }
+      });
+
+      // 3. 在各市中心添加文字标注
+      const labelEntity = viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(city.center[0], city.center[1], 100),
+        label: {
+          text: city.name,
+          font: 'bold 16px "Microsoft YaHei", sans-serif',
+          fillColor: Cesium.Color.WHITE,
+          outlineColor: Cesium.Color.fromCssColorString('#070b19'),
+          outlineWidth: 5,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+          verticalOrigin: Cesium.VerticalOrigin.CENTER,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          eyeOffset: new Cesium.Cartesian3(0, 0, -1000) // 让标注稍显突出，不被覆盖
+        }
+      });
+      persistentCityEntities.push(labelEntity);
+
+    } catch (e) {
+      console.error(`初始化 ${city.name} 的持久化边界和标注失败:`, e);
+    }
+  }
+}
+
 const flyToCity = async (city) => {
   currentCity.value = city;
+  
+  // 触发生成对应的二维推演
+  generate2DDeduction(city);
+
   if (!viewer) return;
   
   await loadCityMask(city);
+  updateParticlesVisibility(city);
   
   if (city === 'xiantao') {
     viewer.camera.flyTo({
@@ -141,7 +319,7 @@ const flyToCity = async (city) => {
     });
   } else if (city === 'huanggang') {
     viewer.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(115.55, 30.65, 380000), // 黄冈：面积大，高度大幅抬升，同样稍微偏东
+      destination: Cesium.Cartesian3.fromDegrees(114.90, 30.70, 380000), // 黄冈+武汉：中心微调以同时容纳并看清两市及救援路径
       duration: 2.0
     });
   }
@@ -152,11 +330,25 @@ onMounted(async () => {
   if (!container) return
 
   viewer = new Cesium.Viewer(container, {
-    animation: false, baseLayerPicker: false, fullscreenButton: false, geocoder: false, homeButton: false,
-    infoBox: false, navigationHelpButton: false, sceneModePicker: false, selectionIndicator: false,
-    timeline: false, shouldAnimate: true, skyAtmosphere: false,
+    animation: true, baseLayerPicker: false, fullscreenButton: false, geocoder: false, homeButton: false,
+    infoBox: true, navigationHelpButton: false, sceneModePicker: false, selectionIndicator: false,
+    timeline: true, shouldAnimate: true, skyAtmosphere: false,
   })
   window.simulationViewer = viewer
+
+  // 加载 3D 建筑
+  try {
+    Cesium.createOsmBuildingsAsync().then(buildings => {
+      viewer.scene.primitives.add(buildings)
+      buildings.style = new Cesium.Cesium3DTileStyle({
+        color: "color('#ffffff', 0.72)",
+      })
+    }).catch(err => {
+      console.warn("OSM 建筑加载失败", err)
+    })
+  } catch (error) {
+    console.warn("加载 OSM 建筑出错:", error)
+  }
   
   // 初始化时直接将视角定位到对应的城市，跳过从地球飞跃的过程
   if (currentCity.value === 'xiantao') {
@@ -165,7 +357,7 @@ onMounted(async () => {
     })
   } else {
     viewer.camera.setView({
-      destination: Cesium.Cartesian3.fromDegrees(115.55, 30.65, 380000)
+      destination: Cesium.Cartesian3.fromDegrees(114.90, 30.70, 380000)
     })
   }
   
@@ -200,10 +392,277 @@ onMounted(async () => {
   }
 
   await loadCityMask(currentCity.value)
+  
+  // 初始生成对应的二维推演
+  generate2DDeduction(currentCity.value)
+
+  // 初始化粒子系统
+  initParticleSystems()
+
+  // 动态粒子大小和速度监听器：根据相机高度动态缩放，保证高空视角下粒子依然可见且有真实上升漂移感
+  preRenderListener = viewer.scene.preRender.addEventListener(() => {
+    if (!viewer) return
+    const cameraHeight = viewer.camera.positionCartographic.height
+    // 动态缩放比例，基于高度：在 400 米以下为 1.0 倍，随高度增加而呈幂级数缩放
+    const scaleFactor = Math.max(1.0, Math.pow(cameraHeight / 400.0, 0.85))
+    
+    if (smokeParticle) {
+      smokeParticle.imageSize = new Cesium.Cartesian2(25 * scaleFactor, 25 * scaleFactor)
+      smokeParticle.minimumSpeed = 2.0 * scaleFactor
+      smokeParticle.maximumSpeed = 5.0 * scaleFactor
+    }
+    if (fireParticle) {
+      fireParticle.imageSize = new Cesium.Cartesian2(25 * scaleFactor, 25 * scaleFactor)
+      fireParticle.minimumSpeed = 3.0 * scaleFactor
+      fireParticle.maximumSpeed = 7.0 * scaleFactor
+    }
+    if (diffusionParticle) {
+      diffusionParticle.imageSize = new Cesium.Cartesian2(9 * scaleFactor, 9 * scaleFactor)
+      diffusionParticle.minimumSpeed = 2.0 * scaleFactor
+      diffusionParticle.maximumSpeed = 5.5 * scaleFactor
+    }
+  })
+
+  // 初始化各个市级区域和标注
+  await initCityRegionsAndLabels()
+
+  // 注册鼠标移动事件，用于显示市级名字 tooltip
+  mouseHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas)
+  mouseHandler.setInputAction((movement) => {
+    if (viewMode.value !== '3d') {
+      hoveredCityName.value = ''
+      return
+    }
+    const pickedObjects = viewer.scene.drillPick(movement.endPosition)
+    let foundCity = null
+    for (const picked of pickedObjects) {
+      if (picked.id && picked.id.properties && picked.id.properties.cityName) {
+        foundCity = picked.id.properties.cityName.getValue()
+        break
+      }
+    }
+    if (foundCity) {
+      hoveredCityName.value = foundCity
+      tooltipStyle.value = {
+        left: `${movement.endPosition.x + 35}px`,
+        top: `${movement.endPosition.y + 35}px`
+      }
+    } else {
+      hoveredCityName.value = ''
+    }
+  }, Cesium.ScreenSpaceEventType.MOUSE_MOVE)
 })
+
+// 创建烟雾系统
+function createSmokeSystem(lng, lat) {
+  return new Cesium.ParticleSystem({
+    image: '/Dashboard/images/smoke.png',
+    startColor: new Cesium.Color(0.2, 0.2, 0.2, 0.6),
+    endColor: new Cesium.Color(0.9, 0.9, 0.9, 0.0),
+    startScale: 1.0,
+    endScale: 6.0,
+    minimumParticleLife: 2.0,
+    maximumParticleLife: 4.5,
+    minimumSpeed: 2.0,
+    maximumSpeed: 5.0,
+    imageSize: new Cesium.Cartesian2(25, 25),
+    emissionRate: 60.0,
+    lifetime: 16.0,
+    emitter: new Cesium.SphereEmitter(3.0),
+    modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(lng, lat, 0.0)),
+    sizeInMeters: true,
+    show: false,
+    updateCallback: (particle, dt) => {
+      const gravityScratch = new Cesium.Cartesian3();
+      Cesium.Cartesian3.normalize(particle.position, gravityScratch);
+      Cesium.Cartesian3.multiplyByScalar(gravityScratch, 2.5 * dt, gravityScratch);
+      Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
+    }
+  });
+}
+
+// 创建火焰系统
+function createFireSystem(lng, lat) {
+  return new Cesium.ParticleSystem({
+    image: '/Dashboard/images/explosion00.png',
+    startColor: new Cesium.Color(1.0, 0.9, 0.5, 0.8),
+    endColor: new Cesium.Color(1.0, 0.3, 0.0, 0.0),
+    startScale: 1.5,
+    endScale: 4.5,
+    minimumParticleLife: 1.0,
+    maximumParticleLife: 2.5,
+    minimumSpeed: 3.0,
+    maximumSpeed: 7.0,
+    imageSize: new Cesium.Cartesian2(25, 25),
+    emissionRate: 65.0,
+    lifetime: 16.0,
+    emitter: new Cesium.SphereEmitter(2.0),
+    modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(lng, lat, 0.0)),
+    sizeInMeters: true,
+    show: false,
+    updateCallback: (particle, dt) => {
+      const gravityScratch = new Cesium.Cartesian3();
+      Cesium.Cartesian3.normalize(particle.position, gravityScratch);
+      Cesium.Cartesian3.multiplyByScalar(gravityScratch, 5.0 * dt, gravityScratch);
+      Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
+    }
+  });
+}
+
+// 创建绿色有毒气体扩散系统
+function createDiffusionSystem(lng, lat) {
+  const center = Cesium.Cartesian3.fromDegrees(lng, lat, 0.8);
+  const enuMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(center);
+  const eastVec = Cesium.Matrix4.getColumn(enuMatrix, 0, new Cesium.Cartesian3());
+  const northVec = Cesium.Matrix4.getColumn(enuMatrix, 1, new Cesium.Cartesian3());
+  const upVec = Cesium.Matrix4.getColumn(enuMatrix, 2, new Cesium.Cartesian3());
+
+  return new Cesium.ParticleSystem({
+    image: '/Dashboard/images/whitePuff00.png',
+    startColor: new Cesium.Color(0.35, 0.8, 0.35, 0.45),
+    endColor: new Cesium.Color(0.45, 0.85, 0.45, 0.0),
+    startScale: 0.8,
+    endScale: 8.0,
+    minimumParticleLife: 4.0,
+    maximumParticleLife: 6.5,
+    minimumSpeed: 2.0,
+    maximumSpeed: 5.5,
+    imageSize: new Cesium.Cartesian2(9, 9),
+    emissionRate: 120.0,
+    lifetime: 16.0,
+    emitter: new Cesium.SphereEmitter(2.5),
+    modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(center),
+    sizeInMeters: true,
+    show: false,
+    updateCallback: (particle, dt) => {
+      const buoyancy = new Cesium.Cartesian3();
+      Cesium.Cartesian3.multiplyByScalar(upVec, 0.5 * dt, buoyancy);
+      Cesium.Cartesian3.add(particle.velocity, buoyancy, particle.velocity);
+      
+      const windEast = new Cesium.Cartesian3();
+      Cesium.Cartesian3.multiplyByScalar(eastVec, 0.5 * dt, windEast);
+      Cesium.Cartesian3.add(particle.velocity, windEast, particle.velocity);
+      
+      const windNorth = new Cesium.Cartesian3();
+      Cesium.Cartesian3.multiplyByScalar(northVec, 0.25 * dt, windNorth);
+      Cesium.Cartesian3.add(particle.velocity, windNorth, particle.velocity);
+
+      const currentCenter = diffusionParticle 
+        ? Cesium.Matrix4.getTranslation(diffusionParticle.modelMatrix, new Cesium.Cartesian3())
+        : center;
+      const offset = Cesium.Cartesian3.subtract(particle.position, currentCenter, new Cesium.Cartesian3());
+      const dist = Cesium.Cartesian3.magnitude(offset);
+      if (dist > 0.01) {
+        const dir = new Cesium.Cartesian3();
+        Cesium.Cartesian3.normalize(offset, dir);
+        
+        const elapsed = diffusionStartTime ? (Date.now() - diffusionStartTime) / 1000 : 0;
+        const systemTimeRatio = Math.min(elapsed / 15.0, 1.0);
+        
+        const extraForce = (4.0 + 12.0 * systemTimeRatio) * dt;
+        const expansion = new Cesium.Cartesian3();
+        Cesium.Cartesian3.multiplyByScalar(dir, extraForce, expansion);
+        Cesium.Cartesian3.add(particle.velocity, expansion, particle.velocity);
+        
+        const ageRatio = particle.age / particle.life;
+        const currentEndScale = 8.0 + 8.0 * systemTimeRatio;
+        particle.scale = 0.8 + (currentEndScale - 0.8) * ageRatio;
+      }
+
+      const dragFactor = Math.pow(0.96, dt * 60);
+      particle.velocity.x *= dragFactor;
+      particle.velocity.y *= dragFactor;
+      particle.velocity.z *= dragFactor;
+    }
+  });
+}
+
+async function adjustParticleHeight(particleSystem, lng, lat, heightOffset = 0.0) {
+  if (!viewer) return;
+  const carto = Cesium.Cartographic.fromDegrees(lng, lat);
+  try {
+    // 异步查询当前地形高度，使粒子贴合地表面渲染，避免被深度缓冲区遮挡
+    let height = heightOffset;
+    if (viewer.terrainProvider && !(viewer.terrainProvider instanceof Cesium.EllipsoidTerrainProvider)) {
+      const [sampled] = await Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, [carto]);
+      if (sampled && typeof sampled.height === 'number') {
+        height = sampled.height + heightOffset;
+      }
+    }
+    particleSystem.modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(
+      Cesium.Cartesian3.fromDegrees(lng, lat, height)
+    );
+  } catch (e) {
+    console.warn('调整粒子系统高度失败:', e);
+  }
+}
+
+function initParticleSystems() {
+  if (!viewer) return;
+  try {
+    // 仙桃市货车追尾现场坐标：lng = 113.104833, lat = 30.385469
+    smokeParticle = viewer.scene.primitives.add(createSmokeSystem(113.104833, 30.385469));
+    fireParticle = viewer.scene.primitives.add(createFireSystem(113.104833, 30.385469));
+
+    // 黄冈市油罐车泄露现场坐标：lng = 114.873321, lat = 30.607381
+    diffusionParticle = viewer.scene.primitives.add(createDiffusionSystem(114.873321, 30.607381));
+    
+    // 异步调整粒子高度使其紧贴地形表面
+    adjustParticleHeight(smokeParticle, 113.104833, 30.385469, 2.0);
+    adjustParticleHeight(fireParticle, 113.104833, 30.385469, 2.0);
+    adjustParticleHeight(diffusionParticle, 114.873321, 30.607381, 2.8);
+
+    // 更新可见性
+    updateParticlesVisibility(currentCity.value);
+  } catch (error) {
+    console.error('初始化粒子系统失败:', error);
+  }
+}
+
+function updateParticlesVisibility(city) {
+  if (city === 'xiantao') {
+    if (smokeParticle) smokeParticle.show = true;
+    if (fireParticle) fireParticle.show = true;
+    if (diffusionParticle) diffusionParticle.show = false;
+    diffusionStartTime = null;
+  } else {
+    if (smokeParticle) smokeParticle.show = false;
+    if (fireParticle) fireParticle.show = false;
+    if (diffusionParticle) {
+      diffusionParticle.show = true;
+      if (!diffusionStartTime) {
+        diffusionStartTime = Date.now();
+      }
+    }
+  }
+}
 
 onBeforeUnmount(() => {
   if (viewer) {
+    if (mouseHandler) {
+      mouseHandler.destroy();
+      mouseHandler = null;
+    }
+    persistentCityEntities.forEach(entity => {
+      viewer.entities.remove(entity);
+    });
+    persistentCityEntities = [];
+    if (preRenderListener) {
+      viewer.scene.preRender.removeEventListener(preRenderListener);
+      preRenderListener = null;
+    }
+    if (smokeParticle) {
+      viewer.scene.primitives.remove(smokeParticle);
+      smokeParticle = null;
+    }
+    if (fireParticle) {
+      viewer.scene.primitives.remove(fireParticle);
+      fireParticle = null;
+    }
+    if (diffusionParticle) {
+      viewer.scene.primitives.remove(diffusionParticle);
+      diffusionParticle = null;
+    }
     viewer.destroy()
     viewer = null
   }
@@ -229,54 +688,214 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
 }
 
-.city-switcher {
+.city-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(6, 22, 40, 0.85);
+  border: 1px solid rgba(0, 229, 255, 0.6);
+  border-radius: 4px;
+  padding: 6px 12px;
+  color: #fff;
+  font-size: 14px;
+  font-family: var(--font-family, 'Microsoft YaHei', sans-serif);
+  z-index: 9999;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 12px rgba(0, 229, 255, 0.25);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.08s ease-out;
+}
+
+.city-tooltip .city-icon {
+  color: #00e5ff;
+}
+
+.city-tooltip .city-name {
+  font-weight: bold;
+}
+
+.view-toggle {
   position: absolute;
   top: 40px;
-  right: 40px;
-  width: 320px;
+  left: 50%;
+  transform: translateX(-50%);
   background: rgba(6, 22, 40, 0.85);
   border: 1px solid rgba(0, 229, 255, 0.4);
   border-radius: 8px;
-  padding: 16px;
-  color: #fff;
+  padding: 6px;
+  display: flex;
+  gap: 8px;
   z-index: 1000;
   backdrop-filter: blur(8px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
 }
 
-.city-switcher h4 {
-  margin: 0 0 12px 0;
-  font-size: 16px;
+.view-toggle button {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94a3b8;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 600;
+}
+
+.view-toggle button:hover {
   color: #00e5ff;
-  border-bottom: 1px solid rgba(0, 229, 255, 0.2);
-  padding-bottom: 8px;
 }
 
-.switch-buttons {
+.view-toggle button.active {
+  background: rgba(0, 229, 255, 0.15);
+  border-color: rgba(0, 229, 255, 0.4);
+  color: #00e5ff;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+}
+
+.city-toggle {
+  position: absolute;
+  top: 40px;
+  right: 30px;
+  background: rgba(6, 22, 40, 0.85);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  border-radius: 8px;
+  padding: 6px;
   display: flex;
-  gap: 12px;
+  gap: 8px;
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
 }
 
-.switch-buttons button {
-  flex: 1;
-  padding: 10px 0;
-  background: rgba(0, 229, 255, 0.1);
-  border: 1px solid rgba(0, 229, 255, 0.3);
-  color: #fff;
+.city-toggle button {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94a3b8;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 600;
+}
+
+.city-toggle button:hover {
+  color: #00e5ff;
+}
+
+.city-toggle button.active {
+  background: rgba(0, 229, 255, 0.15);
+  border-color: rgba(0, 229, 255, 0.4);
+  color: #00e5ff;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+}
+
+.iframe-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f172a;
+}
+
+.deduction-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 8px;
+}
+
+.loading-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #00e5ff;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 229, 255, 0.2);
+  border-top-color: #00e5ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #ef4444;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.error-icon {
+  font-size: 32px;
+}
+
+.retry-btn {
+  margin-top: 10px;
+  padding: 8px 16px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #ef4444;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 14px;
 }
 
-.switch-buttons button:hover {
-  background: rgba(0, 229, 255, 0.2);
-  border-color: rgba(0, 229, 255, 0.6);
+.retry-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
 }
 
-.switch-buttons button.active {
-  background: rgba(0, 229, 255, 0.3);
-  border-color: #00e5ff;
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+/* 返回事故时间线按钮 */
+.back-to-timeline-btn {
+  position: absolute;
+  top: 40px;
+  left: 30px;
+  z-index: 1010;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  background: rgba(8, 16, 36, 0.88);
+  border: 1px solid rgba(0, 255, 180, 0.5);
+  border-radius: 8px;
+  color: #6ee7b7;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 12px rgba(0, 255, 180, 0.15);
+  transition: all 0.25s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.back-to-timeline-btn:hover {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: #34d399;
+  color: #34d399;
+  box-shadow: 0 0 18px rgba(0, 255, 180, 0.3);
+  transform: translateX(-2px);
+}
+
+.back-arrow {
   font-weight: bold;
+  font-size: 15px;
+  transition: transform 0.2s;
 }
+
+.back-to-timeline-btn:hover .back-arrow {
+  transform: translateX(-3px);
+}
+
 </style>

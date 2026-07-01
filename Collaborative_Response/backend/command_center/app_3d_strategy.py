@@ -310,6 +310,68 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
     map_center = [(START_POINT[0] + END_POINT[0]) / 2, (START_POINT[1] + END_POINT[1]) / 2]
     m = folium.Map(location=map_center, zoom_start=11, tiles="OpenStreetMap", detect_retina=True, control_scale=True)
 
+    # --- 添加城市边界遮罩 ---
+    if args.end_point == 'crash':
+        mask_file = 'xiantao.json'
+        border_files = ['xiantao.json']
+    else:
+        mask_file = 'huanggang_wuhan.json'
+        border_files = ['huanggang.json', 'wuhan.json']
+
+    base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'vue-project_all', 'public', 'Dashboard')
+    mask_path = os.path.join(base_path, mask_file)
+
+    if os.path.exists(mask_path):
+        import json
+        with open(mask_path, 'r', encoding='utf-8') as f:
+            mask_data = json.load(f)
+            
+        features = mask_data.get('features', [])
+        if features:
+            geom = features[0].get('geometry', {})
+            geom_type = geom.get('type')
+            coords = geom.get('coordinates', [])
+            
+            mask_locations = [
+                [[-90.0, -180.0], [90.0, -180.0], [90.0, 180.0], [-90.0, 180.0], [-90.0, -180.0]]
+            ]
+            
+            def swap_coords(ring):
+                return [[pt[1], pt[0]] for pt in ring]
+
+            if geom_type == 'Polygon':
+                for ring in coords:
+                    mask_locations.append(swap_coords(ring))
+            elif geom_type == 'MultiPolygon':
+                for poly in coords:
+                    for ring in poly:
+                        mask_locations.append(swap_coords(ring))
+            
+            folium.Polygon(
+                locations=mask_locations,
+                color='none',
+                fill_color='#070b19',
+                fill_opacity=0.75,
+            ).add_to(m)
+
+            # 计算城市边界并自动缩放以在视图中完整显示城市
+            city_lats = [pt[0] for ring in mask_locations[1:] for pt in ring]
+            city_lons = [pt[1] for ring in mask_locations[1:] for pt in ring]
+            if city_lats and city_lons:
+                m.fit_bounds([[min(city_lats), min(city_lons)], [max(city_lats), max(city_lons)]])
+
+    # 加载高亮边界
+    for b_file in border_files:
+        b_path = os.path.join(base_path, b_file)
+        if os.path.exists(b_path):
+            with open(b_path, 'r', encoding='utf-8') as f:
+                b_data = json.load(f)
+            folium.GeoJson(
+                b_data,
+                style_function=lambda x: {'color': '#00e5ff', 'weight': 3, 'fillOpacity': 0, 'dashArray': '5, 5'}
+            ).add_to(m)
+    # -----------------------
+
     car_path_group = folium.FeatureGroup(name='车辆路径 (UGV Path)', show=True).add_to(m)
     uav_path_group = folium.FeatureGroup(name='无人机路径 (UAV Path)', show=True).add_to(m)
 
@@ -373,26 +435,26 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
         car_saving_km = bfs_dist - car_dist
         uav_saving_km = greedy_dist - uav_dist
         compare_rows = f'''
-            <hr style="margin: 10px 0; border: 0; border-top: 2px solid #dbeafe;">
-            <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-radius: 6px; padding: 10px 12px; margin-bottom: 6px;">
-                <div style="font-size: 12px; font-weight: 700; color: #1e40af; text-align: center; margin-bottom: 10px;">
+            <hr style="margin: 10px 0; border: 0; border-top: 1px solid rgba(0, 229, 255, 0.2);">
+            <div style="background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 6px; padding: 10px 12px; margin-bottom: 6px;">
+                <div style="font-size: 12px; font-weight: 700; color: #00e5ff; text-align: center; margin-bottom: 10px;">
                     ★ 算法优越性分析 ★
                 </div>
 
                 <!-- UGV 对比 -->
                 <div style="margin-bottom: 8px;">
-                    <div style="font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 5px;">
+                    <div style="font-size: 11px; font-weight: 600; color: #94a3b8; margin-bottom: 5px;">
                         <span style="display:inline-block;width:12px;height:12px;background:#f97316;border-radius:3px;margin-right:6px;vertical-align:middle;"></span>
-                        <span style="color:#9a3412;">基准算法</span>
-                        <span style="float:right;color:#9a3412;">BFS: {bfs_dist:.1f} km</span>
+                        <span style="color:#fdba74;">基准算法</span>
+                        <span style="float:right;color:#fdba74;">BFS: {bfs_dist:.1f} km</span>
                     </div>
-                    <div style="font-size: 11px; font-weight: 600; color: #475569;">
+                    <div style="font-size: 11px; font-weight: 600; color: #94a3b8;">
                         <span style="display:inline-block;width:12px;height:12px;background:#2563eb;border-radius:3px;margin-right:6px;vertical-align:middle;"></span>
-                        <span style="color:#1e40af;">本文算法</span>
-                        <span style="float:right;color:#1e40af;">Dijkstra: {car_dist:.1f} km</span>
+                        <span style="color:#93c5fd;">本文算法</span>
+                        <span style="float:right;color:#93c5fd;">Dijkstra: {car_dist:.1f} km</span>
                     </div>
-                    <div style="background: #dcfce7; border-radius: 4px; padding: 3px 8px; margin-top: 4px; text-align: center;">
-                        <span style="font-size: 11px; font-weight: 700; color: #15803d;">
+                    <div style="background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 4px; padding: 3px 8px; margin-top: 4px; text-align: center;">
+                        <span style="font-size: 11px; font-weight: 700; color: #4ade80;">
                             ▼ 车辆路径优化 <b>{car_saving_km:.1f} km</b>（缩短 <b>{car_saving_pct:.1f}%</b>）
                         </span>
                     </div>
@@ -400,26 +462,26 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
 
                 <!-- UAV 对比 -->
                 <div>
-                    <div style="font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 5px;">
+                    <div style="font-size: 11px; font-weight: 600; color: #94a3b8; margin-bottom: 5px;">
                         <span style="display:inline-block;width:12px;height:12px;background:#f97316;border-radius:3px;margin-right:6px;vertical-align:middle;"></span>
-                        <span style="color:#9a3412;">基准算法</span>
-                        <span style="float:right;color:#9a3412;">Greedy: {greedy_dist:.1f} km</span>
+                        <span style="color:#fdba74;">基准算法</span>
+                        <span style="float:right;color:#fdba74;">Greedy: {greedy_dist:.1f} km</span>
                     </div>
-                    <div style="font-size: 11px; font-weight: 600; color: #475569;">
+                    <div style="font-size: 11px; font-weight: 600; color: #94a3b8;">
                         <span style="display:inline-block;width:12px;height:12px;background:#2563eb;border-radius:3px;margin-right:6px;vertical-align:middle;"></span>
-                        <span style="color:#1e40af;">本文算法</span>
-                        <span style="float:right;color:#1e40af;">A*: {uav_dist:.1f} km</span>
+                        <span style="color:#93c5fd;">本文算法</span>
+                        <span style="float:right;color:#93c5fd;">A*: {uav_dist:.1f} km</span>
                     </div>
-                    <div style="background: #dcfce7; border-radius: 4px; padding: 3px 8px; margin-top: 4px; text-align: center;">
-                        <span style="font-size: 11px; font-weight: 700; color: #15803d;">
+                    <div style="background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 4px; padding: 3px 8px; margin-top: 4px; text-align: center;">
+                        <span style="font-size: 11px; font-weight: 700; color: #4ade80;">
                             ▼ 无人机路径优化 <b>{uav_saving_km:.1f} km</b>（缩短 <b>{uav_saving_pct:.1f}%</b>）
                         </span>
                     </div>
                 </div>
 
                 <!-- 总结 -->
-                <div style="background: #166534; border-radius: 4px; padding: 5px 10px; margin-top: 8px; text-align: center;">
-                    <span style="font-size: 11px; font-weight: 700; color: #f0fdf4;">
+                <div style="background: rgba(34, 197, 94, 0.3); border: 1px solid rgba(34, 197, 94, 0.5); border-radius: 4px; padding: 5px 10px; margin-top: 8px; text-align: center;">
+                    <span style="font-size: 11px; font-weight: 700; color: #dcfce7;">
                         综合路径总节省 <b>{(car_saving_km + uav_saving_km):.1f} km</b>（平均优化 <b>{((car_saving_pct + uav_saving_pct) / 2):.1f}%</b>）
                     </span>
                 </div>
@@ -427,53 +489,26 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
         '''
 
     ui_html = f'''
-    <div style="position: fixed; top: 20px; left: 60px; z-index: 1000; width: 300px; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); font-family: 'Arial', sans-serif;">
-        <h4 style="margin: 0 0 12px; color: #1e40af; text-align: center; border-bottom: 2px solid #ddd; padding-bottom: 8px;">ISD/CAS/RCD 效能对比</h4>
+    <div style="position: fixed; top: 110px; left: 40px; z-index: 1000; width: 300px; 
+                background: rgba(6, 22, 40, 0.85); padding: 15px; border-radius: 8px; 
+                border: 1px solid rgba(0, 229, 255, 0.4); backdrop-filter: blur(8px); 
+                box-shadow: 0 4px 20px rgba(0,0,0,0.4); font-family: 'Microsoft YaHei', sans-serif; color: #fff;">
+        <h4 style="margin: 0 0 12px; color: #00e5ff; text-align: center; border-bottom: 1px solid rgba(0, 229, 255, 0.2); padding-bottom: 8px;">ISD/CAS/RCD 效能对比</h4>
         <div style="font-size: 13px; line-height: 1.6;">
-            <div style="display: flex; justify-content: space-between;"><span>协同机制:</span> <b>{strategy_name}</b></div>
-            <div style="display: flex; justify-content: space-between;"><span>车辆(UGV)耗时:</span> <b>{car_df['time_s'].iloc[-1]/60:.1f} min</b></div>
-            <div style="display: flex; justify-content: space-between;"><span>无人机(UAV)飞行:</span> <b>{(uav_df['time_s'].iloc[-1]-delay)/60:.1f} min</b></div>
-            <div style="display: flex; justify-content: space-between; background: #fffbeb; padding: 0 3px;"><span>无人机地面待机:</span> <b style="color:#b45309;">{delay:.1f} s</b></div>
-            <hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">
-            <div style="display: flex; justify-content: space-between; color: #c2410c;"><span>协同终端时间差:</span> <b>{time_diff:.1f} s</b></div>
+            <div style="display: flex; justify-content: space-between;"><span>协同机制:</span> <b style="color: #00e5ff;">{strategy_name}</b></div>
+            <div style="display: flex; justify-content: space-between; margin-top: 4px;"><span>车辆(UGV)耗时:</span> <b style="color: #e6faff;">{car_df['time_s'].iloc[-1]/60:.1f} min</b></div>
+            <div style="display: flex; justify-content: space-between; margin-top: 4px;"><span>无人机(UAV)飞行:</span> <b style="color: #e6faff;">{(uav_df['time_s'].iloc[-1]-delay)/60:.1f} min</b></div>
+            <div style="display: flex; justify-content: space-between; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 4px; padding: 2px 6px; margin-top: 4px;">
+                <span>无人机地面待机:</span> <b style="color:#fbbf24;">{delay:.1f} s</b>
+            </div>
+            <hr style="margin: 10px 0; border: 0; border-top: 1px solid rgba(0, 229, 255, 0.2);">
+            <div style="display: flex; justify-content: space-between; color: #fb7185;"><span>协同终端时间差:</span> <b>{time_diff:.1f} s</b></div>
             {compare_rows}
         </div>
     </div>
     '''
     
-    # 精简图例 (右上角)
-    legend_html = f'''
-    <div style="position: fixed; top: 20px; right: 20px; z-index: 1000; width: 220px; background: white; padding: 12px 15px; border: 1.5px solid black; font-family: 'Times New Roman', Times, serif, 'SimSun'; color: black; box-shadow: none; border-radius: 0;">
-        <h4 style="margin: 0 0 10px; text-align: center; color: black; font-size: 15px; font-weight: bold; border-bottom: 1px solid black; padding-bottom: 6px;">图 例 / Legend</h4>
-        <div style="font-size: 13px; line-height: 1.8;">
-            <div style="display: flex; align-items: center; margin-bottom: 4px;">
-                <span style="width: 30px; height: 3px; background: #0000ff; display: inline-block; margin-right: 12px;"></span>
-                车辆(UGV)路径 / UGV Path
-            </div>
-            <div style="display: flex; align-items: center; margin-bottom: 4px;">
-                <span style="width: 30px; height: 0px; border-top: 3px dashed #ff00ff; display: inline-block; margin-right: 12px;"></span>
-                无人机(UAV)路径 / UAV Path
-            </div>{'''            <div style="display: flex; align-items: center; margin-bottom: 4px;">
-                <span style="width: 30px; height: 0px; border-top: 3px dashed #22c55e; display: inline-block; margin-right: 12px;"></span>
-                基线BFS(车) / BFS Baseline
-            </div>
-            <div style="display: flex; align-items: center; margin-bottom: 4px;">
-                <span style="width: 30px; height: 0px; border-top: 3px dashed #f97316; display: inline-block; margin-right: 12px;"></span>
-                基线Greedy(机) / Greedy BL
-            </div>''' if COMPARE else ''}
-            <div style="display: flex; align-items: center; margin-top: 6px;">
-                <i class="fa fa-map-marker fa-lg" style="color:green; margin-right: 16px; margin-left: 8px;"></i> 起点：{START_POINT_NAME}
-            </div>
-            <div style="display: flex; align-items: center; margin-top: 4px;">
-                <i class="fa fa-map-marker fa-lg" style="color:red; margin-right: 16px; margin-left: 8px;"></i> 终点：{END_POINT_NAME}
-            </div>
-        </div>
-    </div>
-    '''
-
     m.get_root().html.add_child(folium.Element(ui_html))
-    # 注入学术图例
-    m.get_root().html.add_child(folium.Element(legend_html))
 
     # 终点切换 + 障碍物开关 + 协同策略 + 对比模式 控制面板
     leak_selected = 'selected' if args.end_point == 'leak' else ''
@@ -596,6 +631,77 @@ def _load_path_from_json(endpoint, strategy, ugv_block, uav_smoke):
     delay = metrics.get('delay_sec', 0)
     return car_df, uav_df, car_time, delay
 
+def save_to_czml(uav_df, car_df, delay):
+    print("[CZML] Exporting CZML file...")
+    uav_df = uav_df.copy()
+    car_df = car_df.copy()
+    
+    if 'timestamp' not in uav_df.columns:
+        uav_df['timestamp'] = START_TIME + pd.to_timedelta(uav_df['time_s'], unit='s')
+    if 'timestamp' not in car_df.columns:
+        car_df['timestamp'] = START_TIME + pd.to_timedelta(car_df['time_s'], unit='s')
+    
+    def format_timestamp(ts):
+        if ts.tzinfo is None:
+            return ts.strftime('%Y-%m-%dT%H:%M:%S') + 'Z'
+        return ts.isoformat()
+
+    global_start_time = min(uav_df['timestamp'].min(), car_df['timestamp'].min())
+    global_end_time = max(uav_df['timestamp'].max(), car_df['timestamp'].max())
+    
+    start_str = format_timestamp(global_start_time)
+    avail = f"{start_str}/{format_timestamp(global_end_time)}"
+    
+    czml = [{"id": "document", "version": "1.0", "clock": {"interval": avail, "currentTime": start_str, "multiplier": 10, "range": "LOOP_STOP"}}]
+    
+    # 静态地标
+    czml.append({"id": "StartMarker", "position": {"cartographicDegrees": [START_POINT[1], START_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [0,255,0,255]}}, "label": {"text": START_POINT_NAME, "font": "16px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}}})
+    czml.append({"id": "EndMarker", "position": {"cartographicDegrees": [END_POINT[1], END_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [255,0,0,255]}}, "label": {"text": END_POINT_NAME, "font": "16px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}}})
+
+    # 路径线
+    uav_line = []
+    for _, r in uav_df.iterrows(): uav_line.extend([r['lon'], r['lat'], r['alt']])
+    czml.append({"id": "UAV_Path", "polyline": {"positions": {"cartographicDegrees": uav_line}, "width": 3, "material": {"solidColor": {"color": {"rgba": [255, 0, 0, 150]}}}}})
+    
+    car_line = []
+    for _, r in car_df.iterrows(): car_line.extend([r['lon'], r['lat'], 2])
+    czml.append({"id": "Car_Path", "polyline": {"positions": {"cartographicDegrees": car_line}, "width": 3, "material": {"solidColor": {"color": {"rgba": [0, 0, 255, 150]}}}}})
+
+    # 动态对象
+    uav_pos = []
+    for _, r in uav_df.iterrows(): uav_pos.extend([format_timestamp(r['timestamp']), r['lon'], r['lat'], r['alt']])
+    czml.append({
+        "id": "UAV", "name": "无人机 (B-Spline)", "availability": avail,
+        "position": {"epoch": start_str, "cartographicDegrees": uav_pos, "interpolationAlgorithm": "LINEAR", "interpolationDegree": 1},
+        "point": {"pixelSize": 15, "color": {"rgba": [255, 0, 0, 255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 2},
+        "label": {"text": "无人机", "font": "14px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -25]}}
+    })
+
+    car_pos = []
+    for _, r in car_df.iterrows(): car_pos.extend([format_timestamp(r['timestamp']), r['lon'], r['lat'], 2])
+    czml.append({
+        "id": "Car", "name": "无人车", "availability": avail,
+        "position": {"epoch": start_str, "cartographicDegrees": car_pos, "interpolationAlgorithm": "LINEAR", "interpolationDegree": 1},
+        "point": {"pixelSize": 15, "color": {"rgba": [0, 0, 255, 255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 2},
+        "label": {"text": "无人车", "font": "14px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -25]}}
+    })
+
+    # 障碍物
+    for i, nfz in enumerate(NFZ_LIST + NEW_NFZ_LIST):
+        color = [255, 0, 0, 100] if i==0 else [255, 165, 0, 100]
+        czml.append({
+            "id": f"NFZ_{i}", "position": {"cartographicDegrees": [nfz['center'][1], nfz['center'][0], 200]},
+            "cylinder": {"length": 400, "topRadius": nfz['radius'], "bottomRadius": nfz['radius'], "material": {"solidColor": {"color": {"rgba": color}}}}
+        })
+    poly = []
+    for p in CONGESTION_ZONE_POLYGON: poly.extend([p[1], p[0], 0])
+    czml.append({"id": "Congestion", "polygon": {"positions": {"cartographicDegrees": poly}, "material": {"solidColor": {"color": {"rgba": [0, 0, 255, 80]}}}}})
+
+    czml_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mission.czml")
+    with open(czml_path, "w", encoding='utf-8') as f: 
+        json.dump(czml, f, ensure_ascii=False, indent=2)
+    print("[CZML] CZML file generated successfully!")
+
 if __name__ == '__main__':
     # 快速重载：如果路径数据 JSON 已存在且策略匹配，直接加载跳过路网下载和路径规划
     cached = _load_path_from_json(args.end_point, SYNC_STRATEGY, UGV_BLOCKED, UAV_SMOKE)
@@ -696,3 +802,6 @@ if __name__ == '__main__':
     }
     with open(result_path, 'w', encoding='utf-8') as f:
         json.dump(result_data, f, ensure_ascii=False, indent=2)
+    
+    # 导出并覆盖 mission.czml 供三维地图同步载入
+    save_to_czml(uav_df, car_df, delay)
