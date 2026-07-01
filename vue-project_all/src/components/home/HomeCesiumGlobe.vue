@@ -350,9 +350,9 @@
       </div>
     </div>
 
-    <!-- 无人车 A 实时数据悬浮窗 -->
+    <!-- 无人车 A 实时数据悬浮窗 (仅在有传感器数据时显示) -->
     <div 
-      v-if="props.activePhaseIndex >= 7 && ugvA.x !== -1000" 
+      v-if="props.activePhaseIndex >= 7 && ugvA.x !== -1000 && props.sensorData" 
       class="ugv-panel"
       :style="{ left: ugvA.x + 'px', top: ugvA.y + 'px' }"
     >
@@ -362,23 +362,23 @@
       </div>
       <div class="ugv-data">
         <div class="ugv-row">
-          <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ ugvA.temp }}</span></div>
-          <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ ugvA.hum }}%</span></div>
+          <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ props.isWsConnected ? ugvA.temp : '--' }}</span></div>
+          <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ props.isWsConnected ? ugvA.hum + '%' : '--' }}</span></div>
         </div>
         <div class="ugv-row">
-          <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ ugvA.smoke }} ug</span></div>
+          <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ props.isWsConnected ? ugvA.smoke + ' ug' : '--' }}</span></div>
         </div>
         <div class="ugv-row">
-          <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ ugvA.tvoc }}</span></div>
-          <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ ugvA.co }}</span></div>
+          <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ props.isWsConnected ? ugvA.tvoc : '--' }}</span></div>
+          <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ props.isWsConnected ? ugvA.co : '--' }}</span></div>
         </div>
       </div>
       <div class="ugv-footer" @click="goToSensorManage('node1')">点击查看详情 →</div>
     </div>
 
-    <!-- 无人车 B 实时数据悬浮窗 -->
+    <!-- 无人车 B 实时数据悬浮窗 (仅在有传感器数据时显示) -->
     <div 
-      v-if="props.activePhaseIndex >= 7 && ugvB.x !== -1000" 
+      v-if="props.activePhaseIndex >= 7 && ugvB.x !== -1000 && props.sensorData" 
       class="ugv-panel"
       :style="{ left: ugvB.x + 'px', top: ugvB.y + 'px' }"
     >
@@ -388,18 +388,24 @@
       </div>
       <div class="ugv-data">
         <div class="ugv-row">
-          <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ ugvB.temp }}</span></div>
-          <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ ugvB.hum }}%</span></div>
+          <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ props.isWsConnected ? ugvB.temp : '--' }}</span></div>
+          <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ props.isWsConnected ? ugvB.hum + '%' : '--' }}</span></div>
         </div>
         <div class="ugv-row">
-          <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ ugvB.smoke }} ug</span></div>
+          <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ props.isWsConnected ? ugvB.smoke + ' ug' : '--' }}</span></div>
         </div>
         <div class="ugv-row">
-          <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ ugvB.tvoc }}</span></div>
-          <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ ugvB.co }}</span></div>
+          <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ props.isWsConnected ? ugvB.tvoc : '--' }}</span></div>
+          <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ props.isWsConnected ? ugvB.co : '--' }}</span></div>
         </div>
       </div>
       <div class="ugv-footer" @click="goToSensorManage('node2')">点击查看详情 →</div>
+    </div>
+
+    <!-- 悬浮提示框，显示鼠标指向的市级名字 -->
+    <div v-show="hoveredCityName" class="city-tooltip" :style="tooltipStyle">
+      <span class="city-icon">📍</span>
+      <span class="city-name">{{ hoveredCityName }}</span>
     </div>
   </div>
 </template>
@@ -411,6 +417,12 @@ import * as Cesium from 'cesium'
 import { getCollaborativeCommandCenterBaseUrl } from '../../config/subsystems'
 
 const router = useRouter()
+
+const hoveredCityName = ref('')
+const tooltipStyle = ref({
+  left: '0px',
+  top: '0px'
+})
 
 function goToSensorManage(target = '') {
   const query = target ? { target } : {}
@@ -646,12 +658,12 @@ const tankerRescueCarModelConfigs = [
   { id: 'tanker_rescue_car_model', uri: '/Dashboard/models/recure%20car_2.glb', label: '油罐车救援车' }
 ]
 
-// 无人机位置调整（在货车追尾现场附近，稍微偏移中心点防止重叠）
+// 无人机位置调整（起始点：仙桃市毛嘴镇消防站）
 const uavAdjust = reactive({
   scale: 6,
   heading: 18,
-  lng: 113.1072,
-  lat: 30.38493,
+  lng: 113.418173,
+  lat: 30.321919,
   height: 18.5
 });
 
@@ -795,9 +807,20 @@ const loadMission = async () => {
       console.warn('[Cesium] 触发策略生成失败，将尝试加载已有 CZML:', e);
     }
     
+    // 如果在请求 API 期间，用户已经切回到前面（例如回到首页），则终止后续加载
+    if (props.activePhaseIndex < 6) {
+      return;
+    }
+    
     // 加载最新的 czml
     const czmlUrl = `${baseUrl}/mission.czml?t=${Date.now()}`;
     const dataSource = await Cesium.CzmlDataSource.load(czmlUrl);
+    
+    // 再次双重校验，防止加载文件期间用户切换了阶段
+    if (props.activePhaseIndex < 6) {
+      return;
+    }
+
     currentMissionDataSource = dataSource;
     viewer.dataSources.add(dataSource);
 
@@ -901,6 +924,7 @@ let smokeParticle = null
 let fireParticle = null
 let leakParticle = null
 let diffusionParticle = null
+let hoverHandler = null
 
 const scenarioPoints = {
   command: { id: 'command', label: '远程指挥中心', longitude: 114.3055, latitude: 30.5928, color: '#67b8ff' },
@@ -953,11 +977,21 @@ function applyOrbitView() {
         range = props.focusedPointId === 'accident_red' ? 100 : 75
         pitch = Cesium.Math.toRadians(-20)
       } else {
-        if (props.activePhaseIndex <= 1) {
-        // 仿真开始及正常行驶阶段：高俯视全景视角
-        range = 1800
-        pitch = Cesium.Math.toRadians(-75);
-      } else if (props.activePhaseIndex === 2) {
+        if (props.activePhaseIndex === 0) {
+          // 仿真开始阶段：高俯视全景视角
+          range = 1800
+          pitch = Cesium.Math.toRadians(-75);
+        } else if (props.activePhaseIndex === 1) {
+          // 正常行驶阶段
+          if (props.focusedPointId === 'accident_red') {
+            range = 1800
+            pitch = Cesium.Math.toRadians(-75);
+          } else {
+            // 货车追尾现场的正常行驶特定视角
+            range = 400
+            pitch = Cesium.Math.toRadians(-45);
+          }
+        } else if (props.activePhaseIndex === 2) {
         // 事故发生瞬间：货车保持特写，油罐车保持全景
         if (props.focusedPointId === 'accident_red') {
           range = 1200
@@ -1011,6 +1045,10 @@ function applyOrbitView() {
 
 onBeforeUnmount(() => {
   if (animationCheckTimer) clearInterval(animationCheckTimer)
+  if (hoverHandler) {
+    hoverHandler.destroy()
+    hoverHandler = null
+  }
 })
 
 function startAutoRotate() {
@@ -1393,55 +1431,73 @@ function drawCityBoundary(coords, colorStr, name, id) {
     polygon: {
       hierarchy: new Cesium.PolygonHierarchy(positions),
       material: Cesium.Color.fromCssColorString(colorStr).withAlpha(0.15), // 提高透明度让立体感更强
+      classificationType: Cesium.ClassificationType.BOTH,
       outline: false
     }
   });
 }
 
-// 异步加载湖北省仙桃市与黄冈市的行政区划边界数据，并用亮色边界和填充面描绘出来
+// 异步加载湖北省所有市级行政区划边界数据与标注，并用亮色边界和填充面描绘出来
 async function loadCityBoundaries() {
   if (!viewer) return;
 
-  // 1. 仙桃市边界 ( adcode: 429004 ) - 使用亮粉红/粉紫色霓虹发光与半透明面
   try {
-    const response = await fetch('/Dashboard/xiantao.json');
-    if (!response.ok) throw new Error('读取 xiantao.json 失败');
+    const response = await fetch('/Dashboard/hubei_cities.json');
+    if (!response.ok) throw new Error('读取 hubei_cities.json 失败');
     const geojson = await response.json();
     
     geojson.features.forEach(feature => {
+      const properties = feature.properties || {};
+      const name = properties.name || '';
+      const adcode = properties.adcode;
       const geometry = feature.geometry;
-      if (geometry.type === 'Polygon') {
-        drawCityBoundary(geometry.coordinates[0], '#ff007f', '仙桃市', 'city-boundary-xiantao');
-      } else if (geometry.type === 'MultiPolygon') {
-        geometry.coordinates.forEach((polygon, idx) => {
-          drawCityBoundary(polygon[0], '#ff007f', '仙桃市', 'city-boundary-xiantao-' + idx);
-        });
-      }
-    });
-    console.log('[Cesium] 仙桃市行政边界加载成功');
-  } catch (error) {
-    console.error('加载仙桃市行政边界时出错:', error);
-  }
+      if (!name || !geometry) return;
 
-  // 2. 黄冈市边界 ( adcode: 421100 ) - 使用明亮黄/金黄色霓虹发光与半透明面
-  try {
-    const response = await fetch('/Dashboard/huanggang.json');
-    if (!response.ok) throw new Error('读取 huanggang.json 失败');
-    const geojson = await response.json();
-    
-    geojson.features.forEach(feature => {
-      const geometry = feature.geometry;
+      // 为不同的市分配精细的霓虹配色，突出重点城市 (武汉/黄冈/仙桃)
+      let colorStr = '#00ffd8'; // 默认淡青色
+      if (name.includes('武汉')) {
+        colorStr = '#00e5ff'; // 亮青
+      } else if (name.includes('黄冈')) {
+        colorStr = '#ffd700'; // 金黄
+      } else if (name.includes('仙桃')) {
+        colorStr = '#ff007f'; // 霓虹粉
+      }
+
+      // 生成唯一的 ID 标识，用于鼠标悬停和点击事件
+      const cityId = `city-boundary-${adcode}`;
+
+      // 1. 绘制边界多边形及外框线
       if (geometry.type === 'Polygon') {
-        drawCityBoundary(geometry.coordinates[0], '#ffd700', '黄冈市', 'city-boundary-huanggang');
+        drawCityBoundary(geometry.coordinates[0], colorStr, name, cityId);
       } else if (geometry.type === 'MultiPolygon') {
         geometry.coordinates.forEach((polygon, idx) => {
-          drawCityBoundary(polygon[0], '#ffd700', '黄冈市', 'city-boundary-huanggang-' + idx);
+          drawCityBoundary(polygon[0], colorStr, name, `${cityId}-${idx}`);
+        });
+      }
+
+      // 2. 添加市级文字标注（以白字黑边展示）
+      const center = properties.centroid || properties.center;
+      if (center && center.length >= 2) {
+        viewer.entities.add({
+          position: Cesium.Cartesian3.fromDegrees(center[0], center[1], 1000),
+          label: {
+            text: name,
+            font: 'bold 14px "Microsoft YaHei", sans-serif',
+            fillColor: Cesium.Color.WHITE,
+            outlineColor: Cesium.Color.fromCssColorString('#070b19'),
+            outlineWidth: 4,
+            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+            horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+            verticalOrigin: Cesium.VerticalOrigin.CENTER,
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+            eyeOffset: new Cesium.Cartesian3(0, 0, -1000)
+          }
         });
       }
     });
-    console.log('[Cesium] 黄冈市行政边界加载成功');
+    console.log('[Cesium] 湖北省所有市级行政边界及标注加载成功');
   } catch (error) {
-    console.error('加载黄冈市行政边界时出错:', error);
+    console.error('加载湖北省市级行政边界时出错:', error);
   }
 }
 
@@ -1537,10 +1593,10 @@ async function initViewer() {
       const pickedObject = viewer.scene.pick(movement.position);
       if (Cesium.defined(pickedObject) && pickedObject.id) {
         const pickedId = String(pickedObject.id.id);
-        if (pickedId.startsWith('city-boundary-xiantao')) {
+        if (pickedId.startsWith('city-boundary-xiantao') || pickedId.startsWith('city-boundary-429004')) {
           router.push('/simulation?city=xiantao');
           return;
-        } else if (pickedId.startsWith('city-boundary-huanggang')) {
+        } else if (pickedId.startsWith('city-boundary-huanggang') || pickedId.startsWith('city-boundary-421100')) {
           router.push('/simulation?city=huanggang');
           return;
         }
@@ -1556,6 +1612,47 @@ async function initViewer() {
         console.log(`[CLICK_COORDS] lng: ${longitudeString}, lat: ${latitudeString}`);
       }
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+    // 鼠标悬停显示市名
+    hoverHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+    hoverHandler.setInputAction(function (movement) {
+      if (!movement || !movement.endPosition) return;
+      
+      let foundCity = null;
+
+      // 1. 优先使用 scene.pick，确保高可靠性且与点击事件一致
+      const pickedObject = viewer.scene.pick(movement.endPosition);
+      if (Cesium.defined(pickedObject) && pickedObject.id && pickedObject.id.id) {
+        const pickedId = String(pickedObject.id.id);
+        if (pickedId.startsWith('city-boundary-')) {
+          foundCity = pickedObject.id.name;
+        }
+      }
+
+      // 2. 如果 scene.pick 没拿到，使用 drillPick 作为备用方案
+      if (!foundCity) {
+        const pickedObjects = viewer.scene.drillPick(movement.endPosition);
+        for (const picked of pickedObjects) {
+          if (picked.id && picked.id.id) {
+            const pickedId = String(picked.id.id);
+            if (pickedId.startsWith('city-boundary-')) {
+              foundCity = picked.id.name;
+              break;
+            }
+          }
+        }
+      }
+
+      if (foundCity) {
+        hoveredCityName.value = foundCity;
+        tooltipStyle.value = {
+          left: `${movement.endPosition.x + 15}px`,
+          top: `${movement.endPosition.y + 15}px`
+        };
+      } else {
+        hoveredCityName.value = '';
+      }
+    }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 
     viewer.imageryLayers.removeAll()
     console.log('[Cesium] 加载 ArcGIS 影像图层...')
@@ -1908,6 +2005,7 @@ function addEventEntities() {
     })
 
     // 添加波浪闪烁效果
+    const waveColor = Cesium.Color.fromCssColorString(point.color);
     viewer.entities.add({
       id: `wave-${point.id}`,
       position: positionCallback,
@@ -1919,7 +2017,7 @@ function addEventEntities() {
         color: Cesium.Color.TRANSPARENT, // 内部透明，仅保留外圈
         outlineColor: new Cesium.CallbackProperty(() => {
           const t = (Date.now() % 1500) / 1500;
-          return Cesium.Color.fromCssColorString(point.color).withAlpha(1.0 - Math.pow(t, 1.2)); // 调整透明度衰减曲线
+          return waveColor.withAlpha(1.0 - Math.pow(t, 1.2)); // 调整透明度衰减曲线
         }, false),
         outlineWidth: 3, // 增加线宽，看起来是一圈明显的波浪
         disableDepthTestDistance: Number.POSITIVE_INFINITY
@@ -1989,8 +2087,8 @@ function addEventEntities() {
     console.log(`[Cesium] 正在初始化无人机实体: ${config.id}, 路径: ${config.uri}`);
 
     const uavPosition = new Cesium.CallbackProperty(() => {
-      const startLng = Number(uavAdjust.lng) || 113.1072;
-      const startLat = Number(uavAdjust.lat) || 30.38493;
+      const startLng = Number(uavAdjust.lng) || 113.418173;
+      const startLat = Number(uavAdjust.lat) || 30.321919;
       const startHeight = Number(uavAdjust.height) || 18.5;
 
       // 终点位置设在货车事故点 (113.104833, 30.385469) 正上方悬停，高度保持一致
@@ -2567,8 +2665,8 @@ function updatePhaseScene(index) {
     if (isTruckScene && index === 6) {
       rescuePopup.title = '无人装备出动';
       rescuePopup.status = '已出发';
-      rescueCoords.lng = 113.10725;
-      rescueCoords.lat = 30.38491;
+      rescueCoords.lng = 113.418173;
+      rescueCoords.lat = 30.321919;
       rescueCoords.height = 24.0;
       
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
@@ -2593,8 +2691,8 @@ function updatePhaseScene(index) {
     } else if (isTruckScene && index === 9) {
       rescuePopup.title = '救援装备出动';
       rescuePopup.status = '已出发';
-      rescueCoords.lng = 113.10725;
-      rescueCoords.lat = 30.38491;
+      rescueCoords.lng = 113.418173;
+      rescueCoords.lat = 30.321919;
       rescueCoords.height = 24.0;
       
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
@@ -2685,6 +2783,18 @@ function updatePhaseScene(index) {
         viewer.dataSources.remove(currentMissionDataSource);
         currentMissionDataSource = null;
       }
+      
+      // 强力清除可能因为异步加载残留的其他 CZML 数据源
+      if (viewer && viewer.dataSources) {
+        const dsLength = viewer.dataSources.length;
+        for (let i = dsLength - 1; i >= 0; i--) {
+          const ds = viewer.dataSources.get(i);
+          if (ds instanceof Cesium.CzmlDataSource) {
+            viewer.dataSources.remove(ds, true);
+          }
+        }
+      }
+
       // 恢复正常的时间流速，防止粒子和模型动画过快
       viewer.clock.multiplier = 1.0;
     }
@@ -2779,7 +2889,8 @@ function updatePhaseScene(index) {
 
 function updateMarkerVisibility() {
   if (!viewer) return;
-  const showMarkers = (accidentViewLevel.value === 'far');
+  // 当没有聚焦点或者处于远景视角时显示标记
+  const showMarkers = !props.focusedPointId || accidentViewLevel.value === 'far';
   const entitiesToToggle = [
     'marker-accident_blue', 'wave-accident_blue',
     'marker-accident_red', 'wave-accident_red'
@@ -4251,6 +4362,37 @@ onBeforeUnmount(() => {
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
   border-top: 6px solid rgba(7, 11, 25, 0.9);
+}
+
+/* 城市悬浮提示框样式 - 高端玻璃拟态 */
+.city-tooltip {
+  position: absolute;
+  z-index: 1001;
+  pointer-events: none;
+  background: rgba(7, 11, 25, 0.76);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  border-radius: 4px;
+  padding: 6px 12px;
+  color: #ffffff;
+  font-family: "Microsoft YaHei", sans-serif;
+  font-size: 13px;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 8px rgba(0, 229, 255, 0.15);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.15s ease-out;
+}
+
+.city-icon {
+  color: #00ffd8;
+  filter: drop-shadow(0 0 2px rgba(0, 255, 216, 0.6));
+}
+
+.city-name {
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
 }
 
 </style>
