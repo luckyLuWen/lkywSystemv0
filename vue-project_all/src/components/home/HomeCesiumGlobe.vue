@@ -402,7 +402,83 @@
       <div class="ugv-footer" @click="goToSensorManage('node2')">点击查看详情 →</div>
     </div>
 
-    <!-- 悬浮提示框，显示鼠标指向的市级名字 -->
+    <!-- 现场灯光微调工具面板 -->
+    <div class="light-control-panel">
+      <div class="light-panel-header" @click="toggleLightPanel">
+        <span class="light-panel-title">💡 现场灯光微调工具</span>
+        <span class="light-panel-toggle">{{ isLightPanelExpanded ? '▼' : '▲' }}</span>
+      </div>
+      
+      <div v-show="isLightPanelExpanded" class="light-panel-body">
+        <div class="light-control-row">
+          <label class="light-control-label">显示灯光模型</label>
+          <input type="checkbox" v-model="lightAdjust.show" class="light-checkbox" />
+        </div>
+        
+        <div class="light-control-row">
+          <label class="light-control-label">经度 (Lng)</label>
+          <input type="number" v-model.number="lightAdjust.lng" step="0.000001" class="light-input-num" />
+        </div>
+        
+        <div class="light-control-row">
+          <label class="light-control-label">纬度 (Lat)</label>
+          <input type="number" v-model.number="lightAdjust.lat" step="0.000001" class="light-input-num" />
+        </div>
+
+        <div class="light-control-row">
+          <label class="light-control-label">高度 (Height)</label>
+          <div class="light-slider-container">
+            <input type="range" v-model.number="lightAdjust.height" min="-20" max="100" step="0.1" class="light-slider" />
+            <input type="number" v-model.number="lightAdjust.height" step="0.1" class="light-slider-input" />
+          </div>
+        </div>
+
+        <div class="light-control-row">
+          <label class="light-control-label">缩放 (Scale)</label>
+          <div class="light-slider-container">
+            <input type="range" v-model.number="lightAdjust.scale" min="0.001" max="10.0" step="0.001" class="light-slider" />
+            <input type="number" v-model.number="lightAdjust.scale" step="0.001" class="light-slider-input" />
+          </div>
+        </div>
+
+        <div class="light-control-row">
+          <label class="light-control-label">航向 (Heading)</label>
+          <div class="light-slider-container">
+            <input type="range" v-model.number="lightAdjust.heading" min="0" max="360" step="1" class="light-slider" />
+            <input type="number" v-model.number="lightAdjust.heading" step="1" class="light-slider-input" />
+          </div>
+        </div>
+
+        <div class="light-control-row">
+          <label class="light-control-label">俯仰 (Pitch)</label>
+          <div class="light-slider-container">
+            <input type="range" v-model.number="lightAdjust.pitch" min="-180" max="180" step="1" class="light-slider" />
+            <input type="number" v-model.number="lightAdjust.pitch" step="1" class="light-slider-input" />
+          </div>
+        </div>
+
+        <div class="light-control-row">
+          <label class="light-control-label">翻滚 (Roll)</label>
+          <div class="light-slider-container">
+            <input type="range" v-model.number="lightAdjust.roll" min="-180" max="180" step="1" class="light-slider" />
+            <input type="number" v-model.number="lightAdjust.roll" step="1" class="light-slider-input" />
+          </div>
+        </div>
+
+        <div class="light-panel-buttons">
+          <button @click="snapLightTo('truck')" class="light-btn">🚚 定位至货车点</button>
+          <button @click="snapLightTo('tanker')" class="light-btn">⛽ 定位至油罐车点</button>
+        </div>
+
+        <div class="light-panel-buttons">
+          <button @click="copyLightCoords" class="light-btn btn-primary">📋 复制灯光配置参数</button>
+        </div>
+        
+        <div v-if="coordCopiedMessage" class="light-copied-msg">{{ coordCopiedMessage }}</div>
+      </div>
+    </div>
+
+    <!-- 悬浮提示框，显示鼠标指向 of 市级名字 -->
     <div v-show="hoveredCityName" class="city-tooltip" :style="tooltipStyle">
       <span class="city-icon">📍</span>
       <span class="city-name">{{ hoveredCityName }}</span>
@@ -416,6 +492,16 @@ import { useRouter } from 'vue-router'
 import * as Cesium from 'cesium'
 import { getCollaborativeCommandCenterBaseUrl } from '../../config/subsystems'
 
+const props = defineProps({
+  phases: { type: Array, default: () => [] },
+  activePhaseIndex: { type: Number, default: 0 },
+  focusedPointId: { type: String, default: '' },
+  sensorData: { type: Object, default: () => ({}) },
+  isWsConnected: { type: Boolean, default: false }
+})
+
+const emit = defineEmits(['accident-picked', 'models-ready'])
+
 const router = useRouter()
 
 const hoveredCityName = ref('')
@@ -423,6 +509,62 @@ const tooltipStyle = ref({
   left: '0px',
   top: '0px'
 })
+
+// 现场灯光微调相关状态与控制
+const isLightPanelExpanded = ref(true)
+const coordCopiedMessage = ref('')
+
+const lightAdjust = reactive({
+  show: true,
+  lng: 113.105128,
+  lat: 30.38553,
+  height: 8.5,
+  scale: 0.003,
+  heading: 0,
+  pitch: 0,
+  roll: 0
+})
+
+function toggleLightPanel() {
+  isLightPanelExpanded.value = !isLightPanelExpanded.value
+}
+
+function snapLightTo(sceneType) {
+  if (sceneType === 'truck') {
+    lightAdjust.lng = 113.104833 + 0.0003;
+    lightAdjust.lat = 30.385469 - 0.0003;
+    lightAdjust.height = 8.5;
+  } else if (sceneType === 'tanker') {
+    lightAdjust.lng = 114.8945 + 0.0003;
+    lightAdjust.lat = 30.632161 - 0.0003;
+    lightAdjust.height = 8.5;
+  }
+}
+
+function copyLightCoords() {
+  const text = `lng: ${lightAdjust.lng.toFixed(6)}, lat: ${lightAdjust.lat.toFixed(6)}, height: ${lightAdjust.height}, scale: ${lightAdjust.scale}, heading: ${lightAdjust.heading}, pitch: ${lightAdjust.pitch}, roll: ${lightAdjust.roll}`;
+  navigator.clipboard.writeText(text).then(() => {
+    coordCopiedMessage.value = '配置参数已成功复制到剪贴板！';
+    setTimeout(() => {
+      coordCopiedMessage.value = '';
+    }, 2000);
+  }).catch(err => {
+    console.error('复制失败:', err);
+    coordCopiedMessage.value = '复制失败，请手动记录';
+    setTimeout(() => {
+      coordCopiedMessage.value = '';
+    }, 2000);
+  });
+}
+
+// 自动检测场景切换并联动灯光坐标
+watch(() => props.focusedPointId, (newId) => {
+  if (newId === 'accident_red') {
+    snapLightTo('tanker');
+  } else if (newId === 'accident_blue') {
+    snapLightTo('truck');
+  }
+}, { immediate: true });
 
 function goToSensorManage(target = '') {
   const query = target ? { target } : {}
@@ -561,15 +703,7 @@ const currentRescueCarAdjust = computed(() => {
   return currentScene.value === 'truck' ? rescueCarAdjust : tankerRescueCarAdjust
 })
 
-const props = defineProps({
-  phases: { type: Array, default: () => [] },
-  activePhaseIndex: { type: Number, default: 0 },
-  focusedPointId: { type: String, default: '' },
-  sensorData: { type: Object, default: () => ({}) },
-  isWsConnected: { type: Boolean, default: false }
-})
 
-const emit = defineEmits(['accident-picked', 'models-ready'])
 
 // 货车事故分段模型配置 (去重，仅保留唯一物理模型)
 const truckModelConfigs = [
@@ -1911,6 +2045,31 @@ function replayCurrentPhase() {
 }
 
 function addEventEntities() {
+  // 接入 light.glb 3D灯光模型
+  viewer.entities.add({
+    id: 'light-glb-entity',
+    name: '事故现场灯光模型',
+    show: new Cesium.CallbackProperty(() => lightAdjust.show, false),
+    position: new Cesium.CallbackProperty(() => {
+      return Cesium.Cartesian3.fromDegrees(Number(lightAdjust.lng), Number(lightAdjust.lat), Number(lightAdjust.height));
+    }, false),
+    orientation: new Cesium.CallbackProperty(() => {
+      const position = Cesium.Cartesian3.fromDegrees(Number(lightAdjust.lng), Number(lightAdjust.lat), Number(lightAdjust.height));
+      const hpr = new Cesium.HeadingPitchRoll(
+        Cesium.Math.toRadians(Number(lightAdjust.heading)),
+        Cesium.Math.toRadians(Number(lightAdjust.pitch)),
+        Cesium.Math.toRadians(Number(lightAdjust.roll))
+      );
+      return Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
+    }, false),
+    model: {
+      uri: '/Dashboard/models/light.glb',
+      scale: new Cesium.CallbackProperty(() => lightAdjust.scale, false),
+      minimumPixelSize: 32,
+      heightReference: Cesium.HeightReference.NONE
+    }
+  });
+
   focusAreaEntity = viewer.entities.add({
     id: 'event-area',
     show: false,
@@ -4393,6 +4552,203 @@ onBeforeUnmount(() => {
 .city-name {
   letter-spacing: 0.5px;
   text-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
+}
+
+/* 现场灯光微调面板样式 - 高端玻璃拟态 */
+.light-control-panel {
+  position: absolute;
+  bottom: 120px;
+  right: 20px;
+  width: 320px;
+  background: rgba(7, 16, 32, 0.85);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 229, 255, 0.15);
+  backdrop-filter: blur(10px);
+  z-index: 1010;
+  font-family: "Microsoft YaHei", sans-serif;
+  color: #e2f1ff;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.light-panel-header {
+  padding: 10px 14px;
+  background: linear-gradient(90deg, rgba(0, 229, 255, 0.2), rgba(0, 229, 255, 0.05));
+  border-bottom: 1px solid rgba(0, 229, 255, 0.3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.light-panel-title {
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+}
+
+.light-panel-toggle {
+  font-size: 12px;
+  color: rgba(0, 229, 255, 0.8);
+}
+
+.light-panel-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+/* 自定义滚动条 */
+.light-panel-body::-webkit-scrollbar {
+  width: 4px;
+}
+.light-panel-body::-webkit-scrollbar-thumb {
+  background: rgba(0, 229, 255, 0.3);
+  border-radius: 2px;
+}
+
+.light-control-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.light-control-label {
+  font-size: 12px;
+  color: #8fa5c0;
+  min-width: 80px;
+}
+
+.light-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #00ffd8;
+}
+
+.light-input-num {
+  width: 140px;
+  background: rgba(4, 10, 20, 0.8);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: #ffffff;
+  font-size: 12px;
+  text-align: right;
+  transition: border-color 0.2s;
+}
+.light-input-num:focus {
+  border-color: #00ffd8;
+  outline: none;
+  box-shadow: 0 0 5px rgba(0, 255, 216, 0.3);
+}
+
+.light-slider-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 200px;
+}
+
+.light-slider {
+  flex-grow: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  accent-color: #00ffd8;
+}
+
+.light-val-text {
+  font-size: 12px;
+  color: #00ffd8;
+  width: 45px;
+  text-align: right;
+  font-family: monospace;
+}
+
+.light-slider-input {
+  width: 60px;
+  background: rgba(4, 10, 20, 0.8);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 4px;
+  padding: 4px 6px;
+  color: #00ffd8;
+  font-size: 12px;
+  text-align: center;
+  transition: border-color 0.2s;
+  font-family: monospace;
+}
+.light-slider-input:focus {
+  border-color: #00ffd8;
+  outline: none;
+  box-shadow: 0 0 5px rgba(0, 255, 216, 0.3);
+}
+/* 隐藏默认上下箭头 */
+.light-slider-input::-webkit-outer-spin-button,
+.light-slider-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.light-slider-input[type=number] {
+  -moz-appearance: textfield;
+}
+
+.light-panel-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.light-btn {
+  flex-grow: 1;
+  background: rgba(0, 229, 255, 0.1);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  border-radius: 4px;
+  padding: 6px 0;
+  color: #00ffd8;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.light-btn:hover {
+  background: rgba(0, 229, 255, 0.2);
+  border-color: #00ffd8;
+  box-shadow: 0 0 8px rgba(0, 255, 216, 0.3);
+}
+
+.light-btn.btn-primary {
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.3), rgba(0, 255, 216, 0.15));
+  color: #ffffff;
+  border-color: #00ffd8;
+  font-weight: bold;
+}
+.light-btn.btn-primary:hover {
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.45), rgba(0, 255, 216, 0.25));
+  box-shadow: 0 0 12px rgba(0, 255, 216, 0.5);
+}
+
+.light-copied-msg {
+  font-size: 11px;
+  color: #10b981;
+  text-align: center;
+  margin-top: 4px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 </style>
