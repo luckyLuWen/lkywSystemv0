@@ -18,7 +18,7 @@
       </div>
       
       <div class="header-center-title" @click="goTo({ key: 'home', label: '地图大屏', path: '/' })" style="cursor: pointer;">
-        <div class="title-glow">两客一危应急救援协同决策大屏</div>
+        <div class="title-glow">基于数字孪生的交通事故智能决策与救援推演平台</div>
       </div>
       
       <div class="header-right-actions">
@@ -141,12 +141,12 @@
                 <div class="met-details">
                   <div class="met-row">
                     <span class="met-label">实时风速</span>
-                    <span class="met-val">{{ displaySensorData.windSpeed }} m/s</span>
+                    <span class="met-val">{{ isWsConnected ? displaySensorData.windSpeed + ' m/s' : '--' }}</span>
                   </div>
                   <div class="met-divider"></div>
                   <div class="met-row">
                     <span class="met-label">当前风向</span>
-                    <span class="met-val">{{ displaySensorData.windDirection }}</span>
+                    <span class="met-val">{{ isWsConnected ? displaySensorData.windDirection : '--' }}</span>
                   </div>
                 </div>
               </div>
