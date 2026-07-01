@@ -75,3 +75,8 @@ start_sensor_gateway.sh
 *.improve
 subsystems.js
 Collaborative_Response/backend/command_center/runtime/
+
+# 程序自动生成文件（每次运行重新生成，不纳入版本管理）
+Collaborative_Response/backend/command_center/2d_deduction.html
+Collaborative_Response/backend/command_center/path_result.json
+2d_deduction.html
