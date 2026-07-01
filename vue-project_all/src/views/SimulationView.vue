@@ -12,6 +12,12 @@
       <button :class="{ active: viewMode === '3d' }" @click="viewMode = '3d'">🌍 三维仿真</button>
     </div>
 
+    <!-- 城市切换开关 -->
+    <div class="city-toggle">
+      <button :class="{ active: currentCity === 'xiantao' }" @click="flyToCity('xiantao')">📍 仙桃市推演</button>
+      <button :class="{ active: currentCity === 'huanggang' }" @click="flyToCity('huanggang')">📍 黄冈市推演</button>
+    </div>
+
     <div id="simulationCesiumContainer" class="cesium-container" :style="{ visibility: viewMode === '3d' ? 'visible' : 'hidden', position: 'absolute', top: '20px', left: '20px', right: '20px', bottom: '20px', width: 'auto', height: 'auto', zIndex: 1 }"></div>
     
     <div v-if="viewMode === '2d'" class="cesium-container iframe-container" style="position: absolute; top: 20px; left: 20px; right: 20px; bottom: 20px; z-index: 10; width: auto; height: auto;">
@@ -25,6 +31,12 @@
         <button class="retry-btn" @click="generate2DDeduction(currentCity)">重试</button>
       </div>
       <iframe v-else :src="iframeSrc" class="deduction-iframe"></iframe>
+    </div>
+
+    <!-- 悬浮提示框，显示鼠标指向的市级名字 -->
+    <div v-show="hoveredCityName && viewMode === '3d'" class="city-tooltip" :style="tooltipStyle">
+      <span class="city-icon">📍</span>
+      <span class="city-name">{{ hoveredCityName }}</span>
     </div>
   </div>
 </template>
@@ -43,6 +55,11 @@ const viewMode = ref('2d')
 const iframeSrc = ref('')
 const isGenerating2D = ref(false)
 const errorMessage = ref('')
+const hoveredCityName = ref('')
+const tooltipStyle = ref({
+  left: '0px',
+  top: '0px'
+})
 
 let viewer = null
 let currentCzmlDataSource = null
@@ -51,6 +68,8 @@ let fireParticle = null
 let diffusionParticle = null
 let diffusionStartTime = null
 let preRenderListener = null
+let mouseHandler = null
+let persistentCityEntities = []
 const route = useRoute()
 
 function goBackToTimeline() {
@@ -118,74 +137,22 @@ let currentBoundaryLines = [];
 async function loadCityMask(city) {
   if (!viewer) return;
   
-  // 清除旧的蒙版和边界线
+  // 清除旧的蒙版
   if (currentMaskEntity) {
     viewer.entities.remove(currentMaskEntity);
     currentMaskEntity = null;
   }
-  currentBoundaryLines.forEach(line => {
-    viewer.entities.remove(line);
-  });
-  currentBoundaryLines = [];
 
-  // 定义高亮边界线要加载的文件和颜色
-  const outlineFiles = [];
   // 定义遮罩镂空（holes）要加载的文件
   let maskFileName = '';
-
   if (city === 'xiantao') {
-    outlineFiles.push({ name: 'xiantao.json', color: '#ff007f' });
     maskFileName = 'xiantao.json';
   } else {
-    outlineFiles.push({ name: 'huanggang.json', color: '#ffd700' });
-    outlineFiles.push({ name: 'wuhan.json', color: '#00ffd8' }); // 青色高亮武汉边界
-    maskFileName = 'huanggang_wuhan.json'; // 使用合并去边界的geojson作为镂空，避免Cesium多孔相切和自相交渲染黑屏Bug
+    maskFileName = 'huanggang_wuhan.json';
   }
 
   try {
-    // 1. 生成高亮边界线
-    for (const fileInfo of outlineFiles) {
-      const response = await fetch(`/Dashboard/${fileInfo.name}`);
-      if (!response.ok) throw new Error(`读取 ${fileInfo.name} 失败`);
-      const geojson = await response.json();
-
-      geojson.features.forEach(feature => {
-        const geometry = feature.geometry;
-        if (geometry.type === 'Polygon') {
-          const outerRing = convertCoordsToCartesians(geometry.coordinates[0]);
-          const line = viewer.entities.add({
-            polyline: {
-              positions: outerRing,
-              width: 5.5,
-              material: new Cesium.PolylineGlowMaterialProperty({
-                glowPower: 0.26,
-                color: Cesium.Color.fromCssColorString(fileInfo.color)
-              }),
-              clampToGround: true
-            }
-          });
-          currentBoundaryLines.push(line);
-        } else if (geometry.type === 'MultiPolygon') {
-          geometry.coordinates.forEach(polygon => {
-            const outerRing = convertCoordsToCartesians(polygon[0]);
-            const line = viewer.entities.add({
-              polyline: {
-                positions: outerRing,
-                width: 5.5,
-                material: new Cesium.PolylineGlowMaterialProperty({
-                  glowPower: 0.26,
-                  color: Cesium.Color.fromCssColorString(fileInfo.color)
-                }),
-                clampToGround: true
-              }
-            });
-            currentBoundaryLines.push(line);
-          });
-        }
-      });
-    }
-
-    // 2. 加载镂空文件，并生成暗色背景蒙版
+    // 加载镂空文件，并生成暗色背景蒙版
     const holes = [];
     const maskResponse = await fetch(`/Dashboard/${maskFileName}`);
     if (!maskResponse.ok) throw new Error(`读取 ${maskFileName} 失败`);
@@ -217,13 +184,120 @@ async function loadCityMask(city) {
     currentMaskEntity = viewer.entities.add({
       polygon: {
         hierarchy: worldPolygonHierarchy,
-        material: Cesium.Color.fromCssColorString('#070b19').withAlpha(0.96),
+        material: Cesium.Color.fromCssColorString('#070b19').withAlpha(0.94),
         classificationType: Cesium.ClassificationType.BOTH,
         outline: false
       }
     });
   } catch (error) {
-    console.error(`加载 ${city} 行政边界蒙版与高亮时出错:`, error);
+    console.error(`加载 ${city} 行政边界蒙版时出错:`, error);
+  }
+}
+
+async function initCityRegionsAndLabels() {
+  if (!viewer) return;
+  
+  // 清理可能已经存在的持久化实体
+  persistentCityEntities.forEach(entity => {
+    viewer.entities.remove(entity);
+  });
+  persistentCityEntities = [];
+
+  const citiesConfig = [
+    { name: '武汉市', file: 'wuhan.json', color: '#00ffd8', center: [114.30, 30.59] },
+    { name: '黄冈市', file: 'huanggang.json', color: '#ffd700', center: [114.87, 30.61] },
+    { name: '仙桃市', file: 'xiantao.json', color: '#ff007f', center: [113.43, 30.29] }
+  ];
+
+  for (const city of citiesConfig) {
+    try {
+      const response = await fetch(`/Dashboard/${city.file}`);
+      if (!response.ok) throw new Error(`读取 ${city.file} 失败`);
+      const geojson = await response.json();
+
+      geojson.features.forEach(feature => {
+        const geometry = feature.geometry;
+        
+        // 1. 绘制行政边界线
+        if (geometry.type === 'Polygon') {
+          const outerRing = convertCoordsToCartesians(geometry.coordinates[0]);
+          const line = viewer.entities.add({
+            polyline: {
+              positions: outerRing,
+              width: 5.5,
+              material: new Cesium.PolylineGlowMaterialProperty({
+                glowPower: 0.26,
+                color: Cesium.Color.fromCssColorString(city.color)
+              }),
+              clampToGround: true
+            }
+          });
+          persistentCityEntities.push(line);
+
+          // 2. 绘制半透明多边形，用于鼠标移动 hover 拾取
+          const polygonEntity = viewer.entities.add({
+            polygon: {
+              hierarchy: new Cesium.PolygonHierarchy(outerRing),
+              material: Cesium.Color.fromCssColorString(city.color).withAlpha(0.015),
+              classificationType: Cesium.ClassificationType.TERRAIN
+            },
+            properties: {
+              cityName: city.name
+            }
+          });
+          persistentCityEntities.push(polygonEntity);
+        } else if (geometry.type === 'MultiPolygon') {
+          geometry.coordinates.forEach(polygon => {
+            const outerRing = convertCoordsToCartesians(polygon[0]);
+            const line = viewer.entities.add({
+              polyline: {
+                positions: outerRing,
+                width: 5.5,
+                material: new Cesium.PolylineGlowMaterialProperty({
+                  glowPower: 0.26,
+                  color: Cesium.Color.fromCssColorString(city.color)
+                }),
+                clampToGround: true
+              }
+            });
+            persistentCityEntities.push(line);
+
+            const polygonEntity = viewer.entities.add({
+              polygon: {
+                hierarchy: new Cesium.PolygonHierarchy(outerRing),
+                material: Cesium.Color.fromCssColorString(city.color).withAlpha(0.015),
+                classificationType: Cesium.ClassificationType.TERRAIN
+              },
+              properties: {
+                cityName: city.name
+              }
+            });
+            persistentCityEntities.push(polygonEntity);
+          });
+        }
+      });
+
+      // 3. 在各市中心添加文字标注
+      const labelEntity = viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(city.center[0], city.center[1], 100),
+        label: {
+          text: city.name,
+          font: 'bold 16px "Microsoft YaHei", sans-serif',
+          fillColor: Cesium.Color.WHITE,
+          outlineColor: Cesium.Color.fromCssColorString('#070b19'),
+          outlineWidth: 5,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+          verticalOrigin: Cesium.VerticalOrigin.CENTER,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          eyeOffset: new Cesium.Cartesian3(0, 0, -1000) // 让标注稍显突出，不被覆盖
+        }
+      });
+      persistentCityEntities.push(labelEntity);
+
+    } catch (e) {
+      console.error(`初始化 ${city.name} 的持久化边界和标注失败:`, e);
+    }
   }
 }
 
@@ -348,6 +422,35 @@ onMounted(async () => {
       diffusionParticle.maximumSpeed = 5.5 * scaleFactor
     }
   })
+
+  // 初始化各个市级区域和标注
+  await initCityRegionsAndLabels()
+
+  // 注册鼠标移动事件，用于显示市级名字 tooltip
+  mouseHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas)
+  mouseHandler.setInputAction((movement) => {
+    if (viewMode.value !== '3d') {
+      hoveredCityName.value = ''
+      return
+    }
+    const pickedObjects = viewer.scene.drillPick(movement.endPosition)
+    let foundCity = null
+    for (const picked of pickedObjects) {
+      if (picked.id && picked.id.properties && picked.id.properties.cityName) {
+        foundCity = picked.id.properties.cityName.getValue()
+        break
+      }
+    }
+    if (foundCity) {
+      hoveredCityName.value = foundCity
+      tooltipStyle.value = {
+        left: `${movement.endPosition.x + 35}px`,
+        top: `${movement.endPosition.y + 35}px`
+      }
+    } else {
+      hoveredCityName.value = ''
+    }
+  }, Cesium.ScreenSpaceEventType.MOUSE_MOVE)
 })
 
 // 创建烟雾系统
@@ -536,6 +639,14 @@ function updateParticlesVisibility(city) {
 
 onBeforeUnmount(() => {
   if (viewer) {
+    if (mouseHandler) {
+      mouseHandler.destroy();
+      mouseHandler = null;
+    }
+    persistentCityEntities.forEach(entity => {
+      viewer.entities.remove(entity);
+    });
+    persistentCityEntities = [];
     if (preRenderListener) {
       viewer.scene.preRender.removeEventListener(preRenderListener);
       preRenderListener = null;
@@ -577,10 +688,38 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
 }
 
+.city-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(6, 22, 40, 0.85);
+  border: 1px solid rgba(0, 229, 255, 0.6);
+  border-radius: 4px;
+  padding: 6px 12px;
+  color: #fff;
+  font-size: 14px;
+  font-family: var(--font-family, 'Microsoft YaHei', sans-serif);
+  z-index: 9999;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 12px rgba(0, 229, 255, 0.25);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.08s ease-out;
+}
+
+.city-tooltip .city-icon {
+  color: #00e5ff;
+}
+
+.city-tooltip .city-name {
+  font-weight: bold;
+}
+
 .view-toggle {
   position: absolute;
   top: 40px;
-  left: 100px;
+  left: 50%;
+  transform: translateX(-50%);
   background: rgba(6, 22, 40, 0.85);
   border: 1px solid rgba(0, 229, 255, 0.4);
   border-radius: 8px;
@@ -589,6 +728,7 @@ onBeforeUnmount(() => {
   gap: 8px;
   z-index: 1000;
   backdrop-filter: blur(8px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
 }
 
 .view-toggle button {
@@ -607,6 +747,43 @@ onBeforeUnmount(() => {
 }
 
 .view-toggle button.active {
+  background: rgba(0, 229, 255, 0.15);
+  border-color: rgba(0, 229, 255, 0.4);
+  color: #00e5ff;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+}
+
+.city-toggle {
+  position: absolute;
+  top: 40px;
+  right: 30px;
+  background: rgba(6, 22, 40, 0.85);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  gap: 8px;
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
+}
+
+.city-toggle button {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94a3b8;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 600;
+}
+
+.city-toggle button:hover {
+  color: #00e5ff;
+}
+
+.city-toggle button.active {
   background: rgba(0, 229, 255, 0.15);
   border-color: rgba(0, 229, 255, 0.4);
   color: #00e5ff;
