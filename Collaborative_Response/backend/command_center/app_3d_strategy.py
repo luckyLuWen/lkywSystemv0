@@ -47,7 +47,7 @@ START_POINT_NAMES = {
 
 END_POINTS = {
     'leak':  (30.607380528841425, 114.87332066872784),   # 油罐车泄漏现场
-    'crash': (30.385469, 113.104833),                     # 货车追尾现场
+    'crash': (30.63101, 114.89209),                       # 货车追尾现场 (经度114.89209, 纬度30.63101)
 }
 END_POINT_NAMES = {
     'leak':  '市区道路-油罐车泄漏现场',
@@ -69,11 +69,11 @@ NFZ_CONFIG = {
         ],
     },
     'crash': {
-        'nfz':      [{'center': (30.365, 113.28), 'radius': 2000}],  # 三伏潭镇北侧拦截
-        'buffer':   [{'center': (30.34, 113.22),  'radius': 1500}],  # 胡场镇南侧拦截
+        'nfz':      [{'center': (30.610, 114.875), 'radius': 2000}],  # 鄂州城区北侧拦截
+        'buffer':   [{'center': (30.590, 114.855), 'radius': 1500}],  # 鄂州城区南侧拦截
         'congestion': [
-            [30.360, 113.255], [30.360, 113.275],
-            [30.345, 113.275], [30.345, 113.255],
+            [30.620, 114.870], [30.620, 114.895],
+            [30.605, 114.895], [30.605, 114.870],
         ],
     },
 }
@@ -151,6 +151,9 @@ def generate_car_path():
         route = nx.shortest_path(G, orig, dest, weight='weight')
         path_coords = [(G.nodes[n]['y'], G.nodes[n]['x']) for n in route]
         if path_coords[0][0] != START_POINT[0]: path_coords.insert(0, START_POINT)
+        # 确保终点精确对齐到事故点坐标，避免无人机/无人车终点偏离
+        if calculate_distance(path_coords[-1][0], path_coords[-1][1], END_POINT[0], END_POINT[1]) > 10:
+            path_coords.append(END_POINT)
         df = pd.DataFrame(path_coords, columns=['lat', 'lon'])
         df['dist'] = 0.0
         for i in range(1, len(df)): df.loc[i, 'dist'] = calculate_distance(df.loc[i-1,'lat'], df.loc[i-1,'lon'], df.loc[i,'lat'], df.loc[i,'lon'])
@@ -186,17 +189,21 @@ def generate_uav_path(car_time):
     raw_waypoints = [[min_lat + (r / rows) * (max_lat - min_lat), min_lon + (c / cols) * (max_lon - min_lon), 100] for r, c in path]
     raw_df = pd.DataFrame(raw_waypoints, columns=['lat', 'lon', 'alt'])
     smooth_waypoints = b_spline_smooth(raw_waypoints, num_points=len(raw_waypoints)*5, k=3)
+    # 确保无人机终点精确对齐到事故点坐标，与无人车终点一致
+    if smooth_waypoints:
+        smooth_waypoints[-1][0] = END_POINT[0]
+        smooth_waypoints[-1][1] = END_POINT[1]
     df = pd.DataFrame(smooth_waypoints, columns=['lat', 'lon', 'alt'])
-    
+
     total_dist = sum([calculate_distance(df.iloc[i-1]['lat'], df.iloc[i-1]['lon'], df.iloc[i]['lat'], df.iloc[i]['lon']) for i in range(1, len(df))])
     fly_time = total_dist / UAV_SPEED
-    
+
     # 计算延迟
     if SYNC_STRATEGY == 'independent':
-        delay = 0.0 
+        delay = 0.0
     else:
-        delay = max(0, car_time - fly_time) 
-        
+        delay = max(0, car_time - fly_time)
+
     df['time_s'] = np.linspace(0, fly_time, len(df)) + delay
     df['timestamp'] = START_TIME + pd.to_timedelta(df['time_s'], unit='s')
     return df, raw_df, delay
@@ -226,6 +233,9 @@ def generate_car_path_bfs(G=None):
         route = nx.shortest_path(G, orig, dest, weight=None)  # BFS: weight=None = 所有边权重为1
         path_coords = [(G.nodes[n]['y'], G.nodes[n]['x']) for n in route]
         if path_coords[0][0] != START_POINT[0]: path_coords.insert(0, START_POINT)
+        # 确保终点精确对齐到事故点坐标，避免无人机/无人车终点偏离
+        if calculate_distance(path_coords[-1][0], path_coords[-1][1], END_POINT[0], END_POINT[1]) > 10:
+            path_coords.append(END_POINT)
         df = pd.DataFrame(path_coords, columns=['lat', 'lon'])
         df['dist'] = 0.0
         for i in range(1, len(df)): df.loc[i, 'dist'] = calculate_distance(df.loc[i-1,'lat'], df.loc[i-1,'lon'], df.loc[i,'lat'], df.loc[i,'lon'])
@@ -281,6 +291,10 @@ def generate_uav_path_greedy():
     raw_waypoints = [[min_lat+(r/rows)*(max_lat-min_lat), min_lon+(c/cols)*(max_lon-min_lon), 100] for r,c in path]
     raw_df = pd.DataFrame(raw_waypoints, columns=['lat','lon','alt'])
     smooth_waypoints = b_spline_smooth(raw_waypoints, num_points=len(raw_waypoints)*5, k=3)
+    # 确保无人机终点精确对齐到事故点坐标，与无人车终点一致
+    if smooth_waypoints:
+        smooth_waypoints[-1][0] = END_POINT[0]
+        smooth_waypoints[-1][1] = END_POINT[1]
     df = pd.DataFrame(smooth_waypoints, columns=['lat','lon','alt'])
     total_dist = sum(calculate_distance(df.iloc[i-1]['lat'], df.iloc[i-1]['lon'], df.iloc[i]['lat'], df.iloc[i]['lon']) for i in range(1, len(df)))
     fly_time = total_dist / UAV_SPEED
