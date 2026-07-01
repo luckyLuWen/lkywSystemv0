@@ -7,7 +7,7 @@ const nodeState = computed(() => store.nodes.node2)
 
 <template>
   <div class="page-container">
-    <h1>无人车 B - 总体状态</h1>
+    <h1>监测点 B - 总体状态</h1>
 
     <div class="status-banner" :class="{ online: nodeState.online, offline: !nodeState.online }">
       <div class="icon">{{ nodeState.online ? '●' : '○' }}</div>

@@ -388,7 +388,7 @@ onBeforeUnmount(() => {
 
       <div class="card node-card" @click="$router.push('/node2')">
         <div class="card-header">
-          <h3>无人车B</h3>
+          <h3>监测点 B</h3>
           <span class="tag" :class="store.nodes.node2.online ? 'tag-online' : 'tag-offline'">{{ store.nodes.node2.online ? '在线' : '离线' }}</span>
         </div>
         <div class="card-body">
