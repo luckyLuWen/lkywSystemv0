@@ -1156,18 +1156,17 @@ onMounted(() => {
 /* Floating Timeline floating beautifully above the globe */
 .timeline-container {
   position: absolute;
-  bottom: 20px; /* 往上移动一点，贴近视口 */
+  bottom: 12px;
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 40px);
   max-width: 1400px;
-  background: rgba(15, 23, 42, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  padding: 12px 20px;
-  z-index: 5;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+  background: transparent;
+  border: none;
+  padding: 0;
+  z-index: 20;
+  pointer-events: auto;
+  overflow: visible;
 }
 
 /* Right Sidebar elements */
