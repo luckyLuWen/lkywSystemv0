@@ -478,6 +478,53 @@
       </div>
     </div>
 
+    <!-- 两客一危 实时运行动态监管 HUD 挂板 -->
+    <div class="lkyw-monitor-hud">
+      <div class="lkyw-hud-header">
+        <span class="lkyw-hud-title">🚛 两客一危 实时运行动态监管</span>
+        <span class="lkyw-hud-status-badge">● LIVE 监控中</span>
+      </div>
+      <div class="lkyw-hud-grid">
+        <div class="lkyw-hud-card hazard" :class="{ active: activeVehicleFilter === 'hazard' }" @click="toggleVehicleFilter('hazard')">
+          <div class="lkyw-card-header">
+            <span class="lkyw-icon">🧪</span>
+            <span class="lkyw-label">危化品运输车</span>
+          </div>
+          <div class="lkyw-card-body">
+            <span class="lkyw-value red">342</span>
+            <span class="lkyw-unit">辆 在途</span>
+            <span class="lkyw-subbadge red">高危监管</span>
+          </div>
+        </div>
+        <div class="lkyw-hud-card passenger" :class="{ active: activeVehicleFilter === 'passenger' }" @click="toggleVehicleFilter('passenger')">
+          <div class="lkyw-card-header">
+            <span class="lkyw-icon">🚌</span>
+            <span class="lkyw-label">省际/班线客车</span>
+          </div>
+          <div class="lkyw-card-body">
+            <span class="lkyw-value green">856</span>
+            <span class="lkyw-unit">辆 在途</span>
+            <span class="lkyw-subbadge green">合规率 99.4%</span>
+          </div>
+        </div>
+        <div class="lkyw-hud-card tourist" :class="{ active: activeVehicleFilter === 'tourist' }" @click="toggleVehicleFilter('tourist')">
+          <div class="lkyw-card-header">
+            <span class="lkyw-icon">🚐</span>
+            <span class="lkyw-label">旅游包车专线</span>
+          </div>
+          <div class="lkyw-card-body">
+            <span class="lkyw-value blue">512</span>
+            <span class="lkyw-unit">辆 在途</span>
+            <span class="lkyw-subbadge blue">GPS定位 正常</span>
+          </div>
+        </div>
+      </div>
+      <div class="lkyw-hud-footer">
+        <span class="lkyw-footer-item"><i class="dot gold"></i> 背景流光车流: <strong>2,840</strong> 辆</span>
+        <span class="lkyw-footer-item"><i class="dot green"></i> 全省路网运行: <strong>畅通</strong></span>
+      </div>
+    </div>
+
     <!-- 悬浮提示框，显示鼠标指向 of 市级名字 -->
     <div v-show="hoveredCityName" class="city-tooltip" :style="tooltipStyle">
       <span class="city-icon">📍</span>
@@ -1816,6 +1863,12 @@ async function initViewer() {
     }
 
     try {
+      await loadHubeiRoads()
+    } catch (e) {
+      console.warn('初始化湖北省干线路网和两客一危车辆时出现警告:', e.message)
+    }
+
+    try {
       addEventEntities()
     } catch (e) {
       console.warn('添加事件实体时出现警告:', e.message)
@@ -1851,6 +1904,454 @@ async function initViewer() {
     loading.value = false
     console.error('三维地球初始化失败:', error)
   }
+}
+
+// 两客一危在途监控分类筛选与状态
+const activeVehicleFilter = ref('all');
+let lkywVehicles = [];
+let lkywBillboardCollection = null;
+let lkywPointCollection = null;
+let trafficVehicles = [];
+let trafficPointCollection = null;
+let trafficAnimationRemoveListener = null;
+
+function toggleVehicleFilter(filterType) {
+  activeVehicleFilter.value = filterType;
+  if (!lkywVehicles) return;
+  lkywVehicles.forEach(v => {
+    const show = filterType === 'all' || v.category === filterType;
+    v.point.show = show;
+    if (v.billboard) v.billboard.show = show;
+  });
+}
+
+// 动态绘制 "两客一危" 车辆的极简高科技赛博胶囊徽章（Capsule Badge）
+function createVehicleBillboardCanvas(category, plate, speed) {
+  // Retina 2x 超清绘制，保证高分屏与缩放视角下极度精致
+  const scaleFactor = 2;
+  const logicalWidth = 138;
+  const logicalHeight = 30;
+  const canvas = document.createElement('canvas');
+  canvas.width = logicalWidth * scaleFactor;
+  canvas.height = logicalHeight * scaleFactor;
+  const ctx = canvas.getContext('2d');
+
+  ctx.scale(scaleFactor, scaleFactor);
+
+  let themeColor, icon;
+  if (category === 'hazard') {
+    themeColor = '#FF3344'; // 高危红
+    icon = '🧪';
+  } else if (category === 'passenger') {
+    themeColor = '#00E676'; // 班线绿
+    icon = '🚌';
+  } else {
+    themeColor = '#00B0FF'; // 包车蓝
+    icon = '🚐';
+  }
+
+  const cardW = 130;
+  const cardH = 22;
+  const cardX = 4;
+  const cardY = 3;
+
+  // 1. 底层胶囊背景：半透明极光深黑 + 1.2px 边框发光
+  ctx.save();
+  ctx.shadowColor = themeColor;
+  ctx.shadowBlur = 5;
+
+  ctx.fillStyle = 'rgba(6, 12, 24, 0.90)';
+  ctx.strokeStyle = themeColor;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(cardX, cardY, cardW, cardH, 11);
+  } else {
+    ctx.rect(cardX, cardY, cardW, cardH);
+  }
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+
+  // 2. 左侧图标圆圈
+  const iconCx = cardX + 12;
+  const iconCy = cardY + cardH / 2;
+
+  ctx.fillStyle = themeColor;
+  ctx.beginPath();
+  ctx.arc(iconCx, iconCy, 7.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 图标 Emoji
+  ctx.font = '8.5px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(icon, iconCx, iconCy + 0.5);
+
+  // 3. 车牌号 (主标题：纯白 11px 粗体)
+  ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(plate, cardX + 24, cardY + cardH / 2);
+
+  // 4. 实时速度 (右侧鲜黄 10px monospace)
+  ctx.font = 'bold 9.5px monospace';
+  ctx.fillStyle = '#FFD700';
+  ctx.textAlign = 'right';
+  ctx.fillText(`${speed}k/h`, cardX + cardW - 6, cardY + cardH / 2);
+
+  // 5. 底部下沉定位针尖（定位下沉，解决悬浮感）
+  ctx.fillStyle = themeColor;
+  ctx.beginPath();
+  ctx.moveTo(logicalWidth / 2 - 3, cardY + cardH);
+  ctx.lineTo(logicalWidth / 2 + 3, cardY + cardH);
+  ctx.lineTo(logicalWidth / 2, cardY + cardH + 4);
+  ctx.closePath();
+  ctx.fill();
+
+  return canvas;
+}
+
+// 异步加载湖北省主要高速干线路网并初始化车流与在途“两客一危”
+async function loadHubeiRoads() {
+  if (!viewer) return;
+  try {
+    const response = await fetch('/Dashboard/hubei_highways.geojson');
+    if (!response.ok) return;
+    const geojson = await response.json();
+
+    const highwaysSource = await Cesium.GeoJsonDataSource.load(geojson, {
+      clampToGround: true
+    });
+    
+    // 使用纤细雅致暗金线条渲染基础路网
+    const roadMaterial = new Cesium.ColorMaterialProperty(
+      Cesium.Color.fromCssColorString('#d4af37').withAlpha(0.38)
+    );
+
+    highwaysSource.entities.values.forEach(entity => {
+      if (entity.polyline) {
+        entity.polyline.material = roadMaterial;
+        entity.polyline.width = 1.0;
+      }
+    });
+    viewer.dataSources.add(highwaysSource);
+
+    initTrafficVehiclesFromGeoJson(geojson);
+    initLkywVehiclesFromGeoJson(geojson);
+  } catch (error) {
+    console.error('加载湖北省路网数据时出错:', error);
+  }
+}
+
+// 初始化全省干线两客一危（危化品运输车、班线客车、旅游包车）动态巡航监测系统
+function initLkywVehiclesFromGeoJson(geojson) {
+  if (!viewer || !geojson || !geojson.features) return;
+
+  if (lkywBillboardCollection) {
+    viewer.scene.primitives.remove(lkywBillboardCollection);
+    lkywBillboardCollection = null;
+  }
+  if (lkywPointCollection) {
+    viewer.scene.primitives.remove(lkywPointCollection);
+    lkywPointCollection = null;
+  }
+
+  lkywVehicles = [];
+  lkywBillboardCollection = new Cesium.BillboardCollection();
+  lkywPointCollection = new Cesium.PointPrimitiveCollection();
+
+  const majorRoutes = [];
+
+  geojson.features.forEach(feature => {
+    const geom = feature.geometry;
+    if (!geom) return;
+
+    const parseRoute = (coords) => {
+      if (!coords || coords.length < 3) return;
+      const segmentLengths = [0];
+      let totalDist = 0;
+
+      for (let i = 0; i < coords.length - 1; i++) {
+        const ptA = coords[i];
+        const ptB = coords[i + 1];
+        const midLat = (ptA[1] + ptB[1]) / 2;
+        const dx = (ptB[0] - ptA[0]) * 111000 * Math.cos((midLat * Math.PI) / 180);
+        const dy = (ptB[1] - ptA[1]) * 111000;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        totalDist += dist;
+        segmentLengths.push(totalDist);
+      }
+
+      if (totalDist > 2500) {
+        majorRoutes.push({
+          coords,
+          segmentLengths,
+          totalDist,
+          name: feature.properties?.name || '省际高速干线'
+        });
+      }
+    };
+
+    if (geom.type === 'LineString') {
+      parseRoute(geom.coordinates);
+    } else if (geom.type === 'MultiLineString') {
+      geom.coordinates.forEach(coords => parseRoute(coords));
+    }
+  });
+
+  if (majorRoutes.length === 0) return;
+
+  const hazardPlates = ['鄂A·H8921', '鄂A·H3329', '鄂F·H7712', '鄂B·H9021', '鄂D·H5518', '鄂C·H1289', '鄂E·H6610'];
+  const hazardCargos = ['液氨 (3类危化品)', '液化石油气 (LPG)', '汽油 (高危易燃)', '柴油运输', '液氯 (危化品)'];
+  
+  const passengerPlates = ['鄂A·K3512', '鄂A·K9982', '鄂F·K1209', '鄂D·K8812', '鄂C·K5531', '鄂E·K7740'];
+  const passengerRoutes = ['武汉 ➔ 宜昌', '武汉 ➔ 襄阳', '黄冈 ➔ 武汉', '荆州 ➔ 武汉', '十堰 ➔ 襄阳'];
+
+  const touristPlates = ['鄂F·T9918', '鄂A·T8823', '鄂E·T6612', '鄂H·T3390', '鄂C·T1120'];
+  const touristRoutes = ['神农架专线', '武当山专线', '三峡大坝专线', '恩施大峡谷线'];
+
+  const lkywCategories = ['hazard', 'passenger', 'tourist'];
+
+  const totalVehicles = 15;
+  const routeStep = Math.floor(majorRoutes.length / totalVehicles);
+
+  for (let i = 0; i < totalVehicles; i++) {
+    const routeIndex = (i * routeStep + 5) % majorRoutes.length;
+    const route = majorRoutes[routeIndex];
+    const category = lkywCategories[i % 3];
+
+    let plate, cargo, speed, dotColor;
+    if (category === 'hazard') {
+      plate = hazardPlates[i % hazardPlates.length];
+      cargo = hazardCargos[i % hazardCargos.length];
+      speed = 78 + Math.floor(Math.random() * 14);
+      dotColor = '#ff3344';
+    } else if (category === 'passenger') {
+      plate = passengerPlates[i % passengerPlates.length];
+      cargo = passengerRoutes[i % passengerRoutes.length];
+      speed = 85 + Math.floor(Math.random() * 12);
+      dotColor = '#00ffaa';
+    } else {
+      plate = touristPlates[i % touristPlates.length];
+      cargo = touristRoutes[i % touristRoutes.length];
+      speed = 80 + Math.floor(Math.random() * 10);
+      dotColor = '#00e5ff';
+    }
+
+    const startDist = Math.random() * route.totalDist;
+    const travelTime = 3.5 + Math.random() * 3.0;
+    const vehicleSpeed = route.totalDist / travelTime;
+    const isReverse = i % 2 === 1;
+
+    const canvas = createVehicleBillboardCanvas(category, plate, speed);
+
+    const initialPos = getPointAtDistance(route, startDist);
+    if (!initialPos) continue;
+
+    const billboard = lkywBillboardCollection.add({
+      position: initialPos,
+      image: canvas,
+      scale: 0.65,
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+      heightReference: Cesium.HeightReference.NONE,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY
+    });
+
+    const point = lkywPointCollection.add({
+      position: initialPos,
+      color: Cesium.Color.fromCssColorString(dotColor),
+      pixelSize: 4.0,
+      outlineColor: Cesium.Color.WHITE,
+      outlineWidth: 1.0,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY
+    });
+
+    lkywVehicles.push({
+      billboard,
+      point,
+      category,
+      plate,
+      cargo,
+      speed,
+      route,
+      currentDist: startDist,
+      speedVal: vehicleSpeed,
+      direction: isReverse ? -1 : 1
+    });
+  }
+
+  viewer.scene.primitives.add(lkywBillboardCollection);
+  viewer.scene.primitives.add(lkywPointCollection);
+}
+
+function initTrafficVehiclesFromGeoJson(geojson) {
+  if (!viewer || !geojson || !geojson.features) return;
+
+  if (trafficPointCollection) {
+    viewer.scene.primitives.remove(trafficPointCollection);
+    trafficPointCollection = null;
+  }
+  if (trafficAnimationRemoveListener) {
+    trafficAnimationRemoveListener();
+    trafficAnimationRemoveListener = null;
+  }
+
+  trafficVehicles = [];
+  trafficPointCollection = new Cesium.PointPrimitiveCollection();
+
+  const routes = [];
+
+  geojson.features.forEach(feature => {
+    const geom = feature.geometry;
+    if (!geom) return;
+
+    const addRoute = (coords) => {
+      if (!coords || coords.length < 2) return;
+      const segmentLengths = [0];
+      let totalDist = 0;
+
+      for (let i = 0; i < coords.length - 1; i++) {
+        const ptA = coords[i];
+        const ptB = coords[i + 1];
+        const midLat = (ptA[1] + ptB[1]) / 2;
+        const dx = (ptB[0] - ptA[0]) * 111000 * Math.cos((midLat * Math.PI) / 180);
+        const dy = (ptB[1] - ptA[1]) * 111000;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        totalDist += dist;
+        segmentLengths.push(totalDist);
+      }
+
+      if (totalDist > 800) {
+        routes.push({
+          coords,
+          segmentLengths,
+          totalDist
+        });
+      }
+    };
+
+    if (geom.type === 'LineString') {
+      addRoute(geom.coordinates);
+    } else if (geom.type === 'MultiLineString') {
+      geom.coordinates.forEach(coords => addRoute(coords));
+    }
+  });
+
+  if (routes.length === 0) return;
+
+  routes.forEach((route, routeIndex) => {
+    const vehicleCount = route.totalDist > 8000 ? 2 : 1;
+
+    for (let k = 0; k < vehicleCount; k++) {
+      const isReverse = (routeIndex + k) % 2 === 1;
+
+      let color;
+      const colorSeed = Math.random();
+      if (colorSeed < 0.75) {
+        color = isReverse
+          ? Cesium.Color.fromCssColorString('#FFE082').withAlpha(0.85)
+          : Cesium.Color.fromCssColorString('#FFD54F').withAlpha(0.90);
+      } else {
+        color = Cesium.Color.fromCssColorString('#FFFFFF').withAlpha(0.95);
+      }
+      const pixelSize = 1.8;
+
+      const startDist = Math.random() * route.totalDist;
+      const travelTime = 2.5 + Math.random() * 2.0;
+      const speed = route.totalDist / travelTime;
+
+      const initialPos = getPointAtDistance(route, startDist);
+      if (!initialPos) continue;
+
+      const pt = trafficPointCollection.add({
+        position: initialPos,
+        color: color,
+        pixelSize: pixelSize,
+        outlineColor: color.withAlpha(0.2),
+        outlineWidth: 0.8,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY
+      });
+
+      trafficVehicles.push({
+        primitive: pt,
+        route: route,
+        currentDist: startDist,
+        speed: speed,
+        direction: isReverse ? -1 : 1
+      });
+    }
+  });
+
+  viewer.scene.primitives.add(trafficPointCollection);
+
+  let lastTime = performance.now();
+  trafficAnimationRemoveListener = viewer.scene.preRender.addEventListener(() => {
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000.0, 0.1);
+    lastTime = now;
+
+    for (let i = 0; i < trafficVehicles.length; i++) {
+      const v = trafficVehicles[i];
+      v.currentDist += v.direction * v.speed * dt;
+      if (v.currentDist > v.route.totalDist) {
+        v.currentDist = 0;
+      } else if (v.currentDist < 0) {
+        v.currentDist = v.route.totalDist;
+      }
+      const pos = getPointAtDistance(v.route, v.currentDist);
+      if (pos) {
+        v.primitive.position = pos;
+      }
+    }
+
+    if (lkywVehicles && lkywVehicles.length > 0) {
+      for (let i = 0; i < lkywVehicles.length; i++) {
+        const lv = lkywVehicles[i];
+        lv.currentDist += lv.direction * lv.speedVal * dt;
+        if (lv.currentDist > lv.route.totalDist) {
+          lv.currentDist = 0;
+        } else if (lv.currentDist < 0) {
+          lv.currentDist = lv.route.totalDist;
+        }
+        const lpos = getPointAtDistance(lv.route, lv.currentDist);
+        if (lpos) {
+          lv.billboard.position = lpos;
+          lv.point.position = lpos;
+        }
+      }
+    }
+  });
+}
+
+function getPointAtDistance(route, dist) {
+  const lengths = route.segmentLengths;
+  const coords = route.coords;
+  if (!lengths || lengths.length < 2) return null;
+
+  const d = Math.max(0, Math.min(dist, route.totalDist));
+
+  let segIdx = 0;
+  for (let i = 0; i < lengths.length - 1; i++) {
+    if (d >= lengths[i] && d <= lengths[i + 1]) {
+      segIdx = i;
+      break;
+    }
+  }
+
+  const segStartDist = lengths[segIdx];
+  const segEndDist = lengths[segIdx + 1];
+  const segLen = segEndDist - segStartDist;
+  const t = segLen > 0 ? (d - segStartDist) / segLen : 0;
+
+  const pA = coords[segIdx];
+  const pB = coords[segIdx + 1];
+
+  const lng = pA[0] + (pB[0] - pA[0]) * t;
+  const lat = pA[1] + (pB[1] - pA[1]) * t;
+
+  return Cesium.Cartesian3.fromDegrees(lng, lat, 10);
 }
 
 function updateTruckSequence(phaseIndex, pointId = '') {
@@ -4746,10 +5247,171 @@ onBeforeUnmount(() => {
   animation: fadeIn 0.2s ease-out;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-3px); }
-  to { opacity: 1; transform: translateY(0); }
+/* 两客一危 实时运行动态监管 HUD 挂板 CSS */
+.lkyw-monitor-hud {
+  position: absolute;
+  top: 75px;
+  right: 25px;
+  width: 310px;
+  background: rgba(8, 16, 28, 0.88);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  border-radius: 10px;
+  padding: 14px 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 229, 255, 0.15);
+  backdrop-filter: blur(12px);
+  z-index: 99;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  pointer-events: auto;
 }
+
+.lkyw-hud-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.lkyw-hud-title {
+  color: #00ffd8;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.lkyw-hud-status-badge {
+  font-size: 10px;
+  color: #00ffaa;
+  background: rgba(0, 255, 170, 0.12);
+  border: 1px solid rgba(0, 255, 170, 0.3);
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-family: monospace;
+}
+
+.lkyw-hud-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lkyw-hud-card {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.lkyw-hud-card:hover {
+  background: rgba(15, 23, 42, 0.9);
+  transform: translateX(-2px);
+}
+
+.lkyw-hud-card.hazard.active, .lkyw-hud-card.hazard:hover {
+  border-color: rgba(255, 77, 109, 0.6);
+  box-shadow: 0 0 10px rgba(255, 77, 109, 0.2);
+}
+
+.lkyw-hud-card.passenger.active, .lkyw-hud-card.passenger:hover {
+  border-color: rgba(0, 255, 170, 0.6);
+  box-shadow: 0 0 10px rgba(0, 255, 170, 0.2);
+}
+
+.lkyw-hud-card.tourist.active, .lkyw-hud-card.tourist:hover {
+  border-color: rgba(0, 240, 255, 0.6);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+}
+
+.lkyw-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.lkyw-icon {
+  font-size: 13px;
+}
+
+.lkyw-label {
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.lkyw-card-body {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.lkyw-value {
+  font-size: 16px;
+  font-weight: bold;
+  font-family: monospace;
+}
+
+.lkyw-value.red { color: #ff4d6d; }
+.lkyw-value.green { color: #00ffaa; }
+.lkyw-value.blue { color: #00f0ff; }
+
+.lkyw-unit {
+  font-size: 10px;
+  color: #64748b;
+  margin-right: auto;
+}
+
+.lkyw-subbadge {
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.lkyw-subbadge.red {
+  background: rgba(255, 77, 109, 0.15);
+  color: #ff4d6d;
+  border: 0.5px solid rgba(255, 77, 109, 0.4);
+}
+
+.lkyw-subbadge.green {
+  background: rgba(0, 255, 170, 0.15);
+  color: #00ffaa;
+  border: 0.5px solid rgba(0, 255, 170, 0.4);
+}
+
+.lkyw-subbadge.blue {
+  background: rgba(0, 240, 255, 0.15);
+  color: #00f0ff;
+  border: 0.5px solid rgba(0, 240, 255, 0.4);
+}
+
+.lkyw-hud-footer {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.lkyw-footer-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot.gold { background: #ffe082; box-shadow: 0 0 4px #ffe082; }
+.dot.green { background: #00ffaa; box-shadow: 0 0 4px #00ffaa; }
 
 </style>
 
