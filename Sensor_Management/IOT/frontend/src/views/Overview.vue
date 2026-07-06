@@ -13,9 +13,26 @@ const THRESHOLDS = {
   HUM_INTERFERENCE: 80,
 }
 
+// 整合后的网络资源统计 (2Hz, 2台UGV, 1架UAV, 1个固定杆)
+const networkStats = computed(() => {
+  const nodes = store.nodes || {}
+  const total = Object.keys(nodes).length
+  const online = Object.values(nodes).filter(n => n.online).length
+
+  return {
+    aliveRatio: `${online}/${total}`,
+    alivePercent: total ? Math.round((online / total) * 100) : 0,
+    networkType: '应急 Wi-Fi 骨干网',
+    throughput: '1Hz', 
+    ugv: 2,
+    uav: 1,
+    fixedPole: 1,
+  }
+})
+
 const maxVals = computed(() => {
-  const n1 = store.data.node1
-  const n2 = store.data.node2
+  const n1 = store.data.node1 || { temp: 0, hum: 0, smoke: 0, tvoc: 0, co: 0 }
+  const n2 = store.data.node2 || { temp: 0, hum: 0, smoke: 0, tvoc: 0, co: 0 }
   return {
     temp: Math.max(n1.temp, n2.temp),
     hum: Math.max(n1.hum, n2.hum),
@@ -41,7 +58,8 @@ const warningStatus = computed(() => {
 })
 
 const spreadAnalysis = computed(() => {
-  if (store.data.node3.wind > THRESHOLDS.WIND_SPREAD) {
+  const wind = store.data.node3?.wind || 0
+  if (wind > THRESHOLDS.WIND_SPREAD) {
     return { msg: '扩散风险高', color: '#e53e3e' }
   }
   return { msg: '风势平稳', color: '#38a169' }
@@ -71,10 +89,13 @@ const videoStatusText = computed(() => (store.videoOnline ? '视频在线' : '�
 const databaseStatusText = computed(() => (store.databaseOnline ? '数据库正常' : '数据库异常'))
 
 const nodeStatusSummary = computed(() => {
+  const n1 = store.nodes?.node1?.online
+  const n2 = store.nodes?.node2?.online
+  const n3 = store.nodes?.node3?.online
   const entries = [
-    `A ${store.nodes.node1.online ? '在线' : '离线'}`,
-    `B ${store.nodes.node2.online ? '在线' : '离线'}`,
-    `杆 ${store.nodes.node3.online ? '在线' : '离线'}`,
+    `A ${n1 ? '在线' : '离线'}`,
+    `B ${n2 ? '在线' : '离线'}`,
+    `杆 ${n3 ? '在线' : '离线'}`,
   ]
   return entries.join(' / ')
 })
@@ -368,6 +389,28 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
+    <div class="network-overview">
+      <div class="title">感知网络总览</div>
+      <div class="grid">
+        <div class="item">
+          <span>节点存活率</span>
+          <strong>{{ networkStats.alivePercent }}% ({{ networkStats.aliveRatio }})</strong>
+        </div>
+        <div class="item">
+          <span>网络类型</span>
+          <strong>{{ networkStats.networkType }}</strong>
+        </div>
+        <div class="item">
+          <span>数据吞吐频率</span>
+          <strong>{{ networkStats.throughput }}</strong>
+        </div>
+        <div class="item">
+          <span>资源规模</span>
+          <strong>UGV {{ networkStats.ugv }} / UAV {{ networkStats.uav }} / 固定杆 {{ networkStats.fixedPole }}</strong>
+        </div>
+      </div>
+    </div>
+
     <div class="cards-grid">
       <div class="card node-card" @click="$router.push('/node1')">
         <div class="card-header">
@@ -470,6 +513,44 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* --- 新增的网络总览样式 --- */
+.network-overview {
+  background: #fff;
+  padding: 14px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  flex-shrink: 0;
+}
+
+.network-overview .title {
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #2c3e50;
+}
+
+.network-overview .grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.network-overview .item {
+  background: #f7fafc;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.network-overview strong {
+  font-size: 14px;
+  color: #1a202c;
+}
+
+/* --- 原有页面样式 --- */
 .dashboard-container { padding: 15px 25px; max-width: 1600px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
 .page-title { color: #2c3e50; margin: 0 0 10px 0; font-weight: 700; font-size: 1.3rem; }
 
