@@ -322,30 +322,184 @@
           <div v-if="coordCopiedMessage" class="light-copied-msg">{{ coordCopiedMessage }}</div>
         </div>
       </div>
+
+      <!-- 📡 5G通信基站微调工具面板 -->
+      <div v-if="isJizhanPanelExpanded" class="light-control-panel jizhan-control-panel">
+        <div class="light-panel-header" @click="toggleJizhanPanel">
+          <span class="light-panel-title">5G通信基站微调工具 (jizhan.glb)</span>
+          <span class="light-panel-toggle">✕</span>
+        </div>
+        
+        <div class="light-panel-body">
+          <div class="light-control-row">
+            <label class="light-control-label">显示基站模型</label>
+            <input type="checkbox" v-model="jizhanAdjust.show" class="light-checkbox" />
+          </div>
+          
+          <div class="light-control-row">
+            <label class="light-control-label">经度 (Lng)</label>
+            <input type="number" v-model.number="jizhanAdjust.lng" step="0.000001" class="light-input-num" />
+          </div>
+          
+          <div class="light-control-row">
+            <label class="light-control-label">纬度 (Lat)</label>
+            <input type="number" v-model.number="jizhanAdjust.lat" step="0.000001" class="light-input-num" />
+          </div>
+
+          <div class="light-control-row">
+            <label class="light-control-label">高度 (Height)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="jizhanAdjust.height" min="-20" max="100" step="0.1" class="light-slider" />
+              <input type="number" v-model.number="jizhanAdjust.height" step="0.1" class="light-slider-input" />
+            </div>
+          </div>
+
+          <div class="light-control-row">
+            <label class="light-control-label">缩放 (Scale)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="jizhanAdjust.scale" min="0.01" max="50.0" step="0.1" class="light-slider" />
+              <input type="number" v-model.number="jizhanAdjust.scale" step="0.1" class="light-slider-input" />
+            </div>
+          </div>
+
+          <div class="light-control-row">
+            <label class="light-control-label">航向 (Heading)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="jizhanAdjust.heading" min="0" max="360" step="1" class="light-slider" />
+              <input type="number" v-model.number="jizhanAdjust.heading" step="1" class="light-slider-input" />
+            </div>
+          </div>
+
+          <div class="light-control-row">
+            <label class="light-control-label">俯仰 (Pitch)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="jizhanAdjust.pitch" min="-180" max="180" step="1" class="light-slider" />
+              <input type="number" v-model.number="jizhanAdjust.pitch" step="1" class="light-slider-input" />
+            </div>
+          </div>
+
+          <div class="light-control-row">
+            <label class="light-control-label">翻滚 (Roll)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="jizhanAdjust.roll" min="-180" max="180" step="1" class="light-slider" />
+              <input type="number" v-model.number="jizhanAdjust.roll" step="1" class="light-slider-input" />
+            </div>
+          </div>
+
+          <div class="light-panel-buttons">
+            <button @click="snapJizhanToTruck" class="light-btn">重置定位至货车追尾点</button>
+          </div>
+
+          <div class="light-panel-buttons">
+            <button @click="copyJizhanCoords" class="light-btn btn-primary">复制基站配置参数</button>
+          </div>
+          
+          <div v-if="jizhanCopiedMessage" class="light-copied-msg">{{ jizhanCopiedMessage }}</div>
+        </div>
+      </div>
+
+      <!-- 🏷️ 市级行政区文字标注微调面板 -->
+      <div v-if="labelConfig.show" class="camera-adjust-modal label-adjust-modal">
+        <div class="camera-modal-header">
+          <div class="header-title">
+            <span class="icon">🏷️</span>
+            <span>市级行政区划标注字号微调</span>
+          </div>
+          <button class="close-btn" @click="labelConfig.show = false">✕</button>
+        </div>
+
+        <div class="camera-modal-body">
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label">标注字号大小 (px)</span>
+              <span class="val-tag gold-tag">{{ labelConfig.fontSize }} px</span>
+            </div>
+            <div class="slider-control">
+              <input 
+                type="range" 
+                v-model.number="labelConfig.fontSize" 
+                min="12" 
+                max="36" 
+                step="1" 
+                class="cyber-range-slider gold-slider"
+                @input="updateCityLabelsFont"
+              />
+              <input 
+                type="number" 
+                v-model.number="labelConfig.fontSize" 
+                min="12"
+                max="36"
+                class="cyber-num-input gold-input"
+                @change="updateCityLabelsFont"
+              />
+            </div>
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label">外圈描边厚度 (px)</span>
+              <span class="val-tag gold-tag">{{ labelConfig.outlineWidth }} px</span>
+            </div>
+            <div class="slider-control">
+              <input 
+                type="range" 
+                v-model.number="labelConfig.outlineWidth" 
+                min="1" 
+                max="8" 
+                step="1" 
+                class="cyber-range-slider gold-slider"
+                @input="updateCityLabelsFont"
+              />
+              <input 
+                type="number" 
+                v-model.number="labelConfig.outlineWidth" 
+                min="1"
+                max="8"
+                class="cyber-num-input gold-input"
+                @change="updateCityLabelsFont"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 🛠️ 右下角微调控制台：悬浮按钮组 -->
     <div class="bottom-right-tool-dock">
       <button 
+        class="dock-tool-btn label-btn" 
+        :class="{ active: labelConfig.show }" 
+        @click="labelConfig.show = !labelConfig.show"
+      >
+        标注字号微调
+      </button>
+      <button 
         class="dock-tool-btn camera-btn" 
         :class="{ active: cameraAdjust.show }" 
         @click="cameraAdjust.show = !cameraAdjust.show"
       >
-        📹 相机视角微调
+        相机视角微调
       </button>
       <button 
         class="dock-tool-btn traffic-btn" 
         :class="{ active: trafficConfig.show }" 
         @click="trafficConfig.show = !trafficConfig.show"
       >
-        🚗 车流动态微调
+        车流动态微调
       </button>
       <button 
         class="dock-tool-btn light-btn" 
         :class="{ active: isLightPanelExpanded }" 
         @click="toggleLightPanel"
       >
-        💡 现场灯光微调
+        现场灯光微调
+      </button>
+      <button 
+        class="dock-tool-btn jizhan-btn" 
+        :class="{ active: isJizhanPanelExpanded }" 
+        @click="toggleJizhanPanel"
+      >
+        5G基站微调
       </button>
     </div>
 
@@ -659,10 +813,12 @@
       <!-- 头部标题与 LIVE 状态标识 (与左侧边栏 .sidebar-header 规格风格完全一致对齐) -->
       <div class="sidebar-header">
         <div class="header-main-title">
-          <h2 class="sidebar-title">湖北省两客一危 · 智控终端</h2>
-          <span class="sidebar-subtitle">TRAFFIC MONITORING CONTROL TERMINAL</span>
+          <div class="header-title-block">
+            <h2 class="sidebar-title">湖北省两客一危 · 智控终端</h2>
+            <span class="sidebar-subtitle">TRAFFIC MONITORING CONTROL TERMINAL</span>
+          </div>
+          <span class="lkyw-hud-status-badge">● LIVE</span>
         </div>
-        <span class="lkyw-hud-status-badge">● LIVE 计算中</span>
       </div>
 
       <!-- 滚动主体内容区 (与左侧边栏 .sidebar-content 统一样式) -->
@@ -674,54 +830,54 @@
             :class="{ active: activeHudTab === 'overview' }"
             @click="activeHudTab = 'overview'"
           >
-            🌐 全景总览
+            全景总览
           </button>
           <button 
             class="mode-btn" 
             :class="{ active: activeHudTab === 'risk' }"
             @click="activeHudTab = 'risk'"
           >
-            ⚠️ 风险预警
+            风险预警
           </button>
           <button 
             class="mode-btn" 
             :class="{ active: activeHudTab === 'checkpoint' }"
             @click="activeHudTab = 'checkpoint'"
           >
-            🏁 卡口排行
+            卡口排行
           </button>
           <button 
             class="mode-btn" 
             :class="{ active: activeHudTab === 'ai' }"
             @click="activeHudTab = 'ai'"
           >
-            🧠 智能推演
+            智能推演
           </button>
         </div>
 
-      <!-- 0. 🚀 全省 18 省界卡口 · 双向进出省总统计大盘舱 (全景模式展示) -->
+      <!-- 0. 全省 18 省界卡口 · 双向进出省总统计大盘舱 (全景模式展示) -->
       <div v-show="activeHudTab === 'overview'" class="cyber-border-flow-panel">
         <div class="border-panel-header">
-          <span class="border-title">⚡ 省界卡口 · 进出省双向流向</span>
+          <span class="border-title">省界卡口 · 进出省双向流向</span>
           <span class="net-inflow-badge" :class="netInflowCount >= 0 ? 'pos' : 'neg'">
             净流入: {{ netInflowCount >= 0 ? '+' : '' }}{{ netInflowCount.toLocaleString() }} 辆
           </span>
         </div>
         <div class="border-flow-grid">
-          <!-- 🟢 实时累计入省 (INBOUND) -->
+          <!-- 实时累计入省 (INBOUND) -->
           <div class="border-flow-card in">
             <div class="border-flow-top">
-              <span class="flow-label">▲ 累计入省</span>
+              <span class="flow-label">累计入省</span>
               <span class="flow-anim-arrow green">>>></span>
             </div>
             <div class="border-flow-val green">
               {{ totalInboundCount.toLocaleString() }} <span class="flow-unit">辆</span>
             </div>
           </div>
-          <!-- 🟡 实时累计出省 (OUTBOUND) -->
+          <!-- 实时累计出省 (OUTBOUND) -->
           <div class="border-flow-card out">
             <div class="border-flow-top">
-              <span class="flow-label">▼ 累计出省</span>
+              <span class="flow-label">累计出省</span>
               <span class="flow-anim-arrow gold"><<<</span>
             </div>
             <div class="border-flow-val gold">
@@ -740,7 +896,6 @@
           @click="toggleVehicleFilter('hazard')"
         >
           <div class="lkyw-card-header">
-            <span class="lkyw-icon">🧪</span>
             <span class="lkyw-label">危化品运输车</span>
             <span class="lkyw-subbadge red">高危 {{ hazardRatioPercent }}%</span>
           </div>
@@ -754,11 +909,11 @@
             <!-- 赛博强化：进出省对撞数据舱 -->
             <div class="cyber-flow-box-group">
               <div class="cyber-flow-box in" :class="{ flash: trafficStats.hazard.inPulse }">
-                <span class="box-icon">▲ 入省</span>
+                <span class="box-icon">入省</span>
                 <span class="box-val green">{{ trafficStats.hazard.inbound.toLocaleString() }}</span>
               </div>
               <div class="cyber-flow-box out" :class="{ flash: trafficStats.hazard.outPulse }">
-                <span class="box-icon">▼ 出省</span>
+                <span class="box-icon">出省</span>
                 <span class="box-val gold">{{ trafficStats.hazard.outbound.toLocaleString() }}</span>
               </div>
             </div>
@@ -775,7 +930,6 @@
           @click="toggleVehicleFilter('passenger')"
         >
           <div class="lkyw-card-header">
-            <span class="lkyw-icon">🚌</span>
             <span class="lkyw-label">省际/班线客车</span>
             <span class="lkyw-subbadge green">占比 {{ passengerRatioPercent }}%</span>
           </div>
@@ -789,11 +943,11 @@
             <!-- 赛博强化：进出省对撞数据舱 -->
             <div class="cyber-flow-box-group">
               <div class="cyber-flow-box in" :class="{ flash: trafficStats.passenger.inPulse }">
-                <span class="box-icon">▲ 入省</span>
+                <span class="box-icon">入省</span>
                 <span class="box-val green">{{ trafficStats.passenger.inbound.toLocaleString() }}</span>
               </div>
               <div class="cyber-flow-box out" :class="{ flash: trafficStats.passenger.outPulse }">
-                <span class="box-icon">▼ 出省</span>
+                <span class="box-icon">出省</span>
                 <span class="box-val gold">{{ trafficStats.passenger.outbound.toLocaleString() }}</span>
               </div>
             </div>
@@ -810,7 +964,6 @@
           @click="toggleVehicleFilter('tourist')"
         >
           <div class="lkyw-card-header">
-            <span class="lkyw-icon">🚐</span>
             <span class="lkyw-label">旅游包车专线</span>
             <span class="lkyw-subbadge blue">占比 {{ touristRatioPercent }}%</span>
           </div>
@@ -824,11 +977,11 @@
             <!-- 赛博强化：进出省对撞数据舱 -->
             <div class="cyber-flow-box-group">
               <div class="cyber-flow-box in" :class="{ flash: trafficStats.tourist.inPulse }">
-                <span class="box-icon">▲ 入省</span>
+                <span class="box-icon">入省</span>
                 <span class="box-val green">{{ trafficStats.tourist.inbound.toLocaleString() }}</span>
               </div>
               <div class="cyber-flow-box out" :class="{ flash: trafficStats.tourist.outPulse }">
-                <span class="box-icon">▼ 出省</span>
+                <span class="box-icon">出省</span>
                 <span class="box-val gold">{{ trafficStats.tourist.outbound.toLocaleString() }}</span>
               </div>
             </div>
@@ -839,10 +992,10 @@
         </div>
       </div>
 
-      <!-- 2. 🍩 极光 SVG 环形占比饼图 (全景总览模式保留) -->
+      <!-- 2. 极光 SVG 环形占比饼图 (全景总览模式保留) -->
       <div v-show="activeHudTab === 'overview'" class="hud-chart-section pie-section">
         <div class="chart-title-bar">
-          <span class="chart-title">🍩 全省车辆类型占比饼图</span>
+          <span class="chart-title">全省车辆类型占比饼图</span>
           <span class="chart-sub">LIVE 分布</span>
         </div>
         <div class="pie-chart-container">
@@ -902,10 +1055,10 @@
         </div>
       </div>
 
-      <!-- 3. 📊 3D 重点干线流量柱状图 (全景总览模式保留) -->
+      <!-- 3. 3D 重点干线流量柱状图 (全景总览模式保留) -->
       <div v-show="activeHudTab === 'overview'" class="hud-chart-section bar-section">
         <div class="chart-title-bar">
-          <span class="chart-title">📊 重点干线实时流量 Top5 柱状图</span>
+          <span class="chart-title">重点干线实时流量 Top5 柱状图</span>
           <span class="chart-sub">实时监视</span>
         </div>
         <div class="bar-chart-list">
@@ -938,10 +1091,10 @@
         </div>
       </div>
 
-      <!-- 4. 📸 省界卡口实时抓拍与抓拍播报 (全景总览模式保留) -->
+      <!-- 4. 省界卡口实时抓拍与抓拍播报 (全景总览模式保留) -->
       <div v-show="activeHudTab === 'overview'" class="hud-chart-section log-section">
         <div class="chart-title-bar">
-          <span class="chart-title">📸 省界卡口实时抓拍流</span>
+          <span class="chart-title">省界卡口实时抓拍流</span>
           <span class="chart-sub">LIVE 抓拍</span>
         </div>
         <div class="camera-log-list">
@@ -983,7 +1136,7 @@
         </div>
 
         <div class="chart-title-bar" style="margin-top: 10px;">
-          <span class="chart-title">🚨 实时高危车辆告警流</span>
+          <span class="chart-title">实时高危车辆告警流</span>
           <span class="chart-sub">LIVE ALERT</span>
         </div>
 
@@ -995,12 +1148,12 @@
               <span class="risk-level-badge red">高危告警</span>
             </div>
             <div class="risk-card-body">
-              <div class="risk-reason">⚠️ 严重超速 (98km/h) · 罐体压力异常偏高</div>
-              <div class="risk-meta-row">📍 位置: 沪渝高速 G50 KM412 (仙桃段)</div>
-              <div class="risk-meta-row">👨‍✈️ 驾驶员: 李*强 (138****5921)</div>
+              <div class="risk-reason">严重超速 (98km/h) · 罐体压力异常偏高</div>
+              <div class="risk-meta-row">位置: 沪渝高速 G50 KM412 (仙桃段)</div>
+              <div class="risk-meta-row">驾驶员: 李*强 (138****5921)</div>
             </div>
             <button class="risk-action-btn" @click="focusRiskVehicleOnMap(113.45, 30.36)">
-              ✈️ 地图追踪定位
+              地图追踪定位
             </button>
           </div>
 
@@ -1011,12 +1164,12 @@
               <span class="risk-level-badge red">高危告警</span>
             </div>
             <div class="risk-card-body">
-              <div class="risk-reason">⚡ 连续驾驶超 4 小时 (疲劳驾驶警报)</div>
-              <div class="risk-meta-row">📍 位置: 福银高速 G70 KM285 (襄阳段)</div>
-              <div class="risk-meta-row">👨‍✈️ 驾驶员: 王*伟 (139****1842)</div>
+              <div class="risk-reason">连续驾驶超 4 小时 (疲劳驾驶警报)</div>
+              <div class="risk-meta-row">位置: 福银高速 G70 KM285 (襄阳段)</div>
+              <div class="risk-meta-row">驾驶员: 王*伟 (139****1842)</div>
             </div>
             <button class="risk-action-btn" @click="focusRiskVehicleOnMap(112.14, 32.04)">
-              ✈️ 地图追踪定位
+              地图追踪定位
             </button>
           </div>
 
@@ -1027,12 +1180,12 @@
               <span class="risk-level-badge orange">偏离线路</span>
             </div>
             <div class="risk-card-body">
-              <div class="risk-reason">🛑 偏离核定运行线路 (超出 12 公里)</div>
-              <div class="risk-meta-row">📍 位置: 沪蓉高速 G42 KM198 (宜昌段)</div>
-              <div class="risk-meta-row">👨‍✈️ 驾驶员: 张*国 (137****3310)</div>
+              <div class="risk-reason">偏离核定运行线路 (超出 12 公里)</div>
+              <div class="risk-meta-row">位置: 沪蓉高速 G42 KM198 (宜昌段)</div>
+              <div class="risk-meta-row">驾驶员: 张*国 (137****3310)</div>
             </div>
             <button class="risk-action-btn" @click="focusRiskVehicleOnMap(111.28, 30.69)">
-              ✈️ 地图追踪定位
+              地图追踪定位
             </button>
           </div>
 
@@ -1043,21 +1196,21 @@
               <span class="risk-level-badge gold">违规时段</span>
             </div>
             <div class="risk-card-body">
-              <div class="risk-reason">⚠️ 违规夜间 2:00-5:00 仍处于行驶状态</div>
-              <div class="risk-meta-row">📍 位置: 汉十高速 S82 KM120 (十堰段)</div>
-              <div class="risk-meta-row">👨‍✈️ 驾驶员: 陈*龙 (136****9088)</div>
+              <div class="risk-reason">违规夜间 2:00-5:00 仍处于行驶状态</div>
+              <div class="risk-meta-row">位置: 汉十高速 S82 KM120 (十堰段)</div>
+              <div class="risk-meta-row">驾驶员: 陈*龙 (136****9088)</div>
             </div>
             <button class="risk-action-btn" @click="focusRiskVehicleOnMap(110.79, 32.65)">
-              ✈️ 地图追踪定位
+              地图追踪定位
             </button>
           </div>
         </div>
       </div>
 
-      <!-- 6. 🏁 全省省界卡口通行流量排行 Tab 面板 -->
+      <!-- 6. 全省省界卡口通行流量排行 Tab 面板 -->
       <div v-show="activeHudTab === 'checkpoint'" class="hud-tab-pane checkpoint-pane">
         <div class="chart-title-bar">
-          <span class="chart-title">🏁 湖北省界卡口实时流量 Top 5</span>
+          <span class="chart-title">湖北省界卡口实时流量 Top 5</span>
           <span class="chart-sub">CHECKPOINT RANK</span>
         </div>
 
@@ -1066,7 +1219,7 @@
             <div class="cp-rank-header">
               <span class="cp-rank gold">TOP 1</span>
               <span class="cp-name">临湘湖北省界卡口 (G4京港澳)</span>
-              <span class="cp-status green">🟢 畅通</span>
+              <span class="cp-status green">畅通</span>
             </div>
             <div class="cp-stats-row">
               <div class="cp-stat">
@@ -1088,7 +1241,7 @@
             <div class="cp-rank-header">
               <span class="cp-rank gold">TOP 2</span>
               <span class="cp-name">黄梅九江大桥卡口 (G70福银)</span>
-              <span class="cp-status gold">🟡 繁忙</span>
+              <span class="cp-status gold">繁忙</span>
             </div>
             <div class="cp-stats-row">
               <div class="cp-stat">
@@ -1110,7 +1263,7 @@
             <div class="cp-rank-header">
               <span class="cp-rank silver">TOP 3</span>
               <span class="cp-name">荆州长江大桥卡口 (G55二广)</span>
-              <span class="cp-status green">🟢 畅通</span>
+              <span class="cp-status green">畅通</span>
             </div>
             <div class="cp-stats-row">
               <div class="cp-stat">
@@ -1132,7 +1285,7 @@
             <div class="cp-rank-header">
               <span class="cp-rank border">TOP 4</span>
               <span class="cp-name">京港澳赤壁卡口 (G4)</span>
-              <span class="cp-status orange">🟠 缓行</span>
+              <span class="cp-status orange">缓行</span>
             </div>
             <div class="cp-stats-row">
               <div class="cp-stat">
@@ -1154,7 +1307,7 @@
             <div class="cp-rank-header">
               <span class="cp-rank border">TOP 5</span>
               <span class="cp-name">鄂陕界关防卡口 (G7011)</span>
-              <span class="cp-status green">🟢 畅通</span>
+              <span class="cp-status green">畅通</span>
             </div>
             <div class="cp-stats-row">
               <div class="cp-stat">
@@ -1174,10 +1327,10 @@
         </div>
       </div>
 
-      <!-- 7. 🧠 智能推演预测与应急预案 Tab 面板 -->
+      <!-- 7. 智能推演预测与应急预案 Tab 面板 -->
       <div v-show="activeHudTab === 'ai'" class="hud-tab-pane ai-pane">
         <div class="chart-title-bar">
-          <span class="chart-title">🧠 AI 流量预测与风险推演</span>
+          <span class="chart-title">AI 流量预测与风险推演</span>
           <span class="chart-sub">AI PREDICTION</span>
         </div>
 
@@ -1197,34 +1350,30 @@
         </div>
 
         <div class="chart-title-bar" style="margin-top: 10px;">
-          <span class="chart-title">🛡️ 应急资源调度备勤状态</span>
+          <span class="chart-title">应急资源调度备勤状态</span>
           <span class="chart-sub">RESOURCES</span>
         </div>
 
         <div class="resource-grid">
           <div class="resource-card">
-            <span class="res-icon">🚔</span>
             <div class="res-info">
               <span class="res-title">巡逻警车</span>
               <span class="res-val green">18 辆在岗巡查</span>
             </div>
           </div>
           <div class="resource-card">
-            <span class="res-icon">🚁</span>
             <div class="res-info">
               <span class="res-title">救援无人机</span>
               <span class="res-val blue">6 架随时备勤</span>
             </div>
           </div>
           <div class="resource-card">
-            <span class="res-icon">🚒</span>
             <div class="res-info">
               <span class="res-title">危化处置组</span>
               <span class="res-val gold">3 组定点待命</span>
             </div>
           </div>
           <div class="resource-card">
-            <span class="res-icon">🚑</span>
             <div class="res-info">
               <span class="res-title">医疗救援车</span>
               <span class="res-val green">5 辆联动响应</span>
@@ -1233,7 +1382,7 @@
         </div>
 
         <button class="ai-dispatch-btn" @click="handleAutoDispatchTrigger">
-          🤖 启动全省自动预警联动 (AUTO-DISPATCH)
+          启动全省自动预警联动 (AUTO-DISPATCH)
         </button>
       </div>
 
@@ -1297,6 +1446,27 @@ const trafficConfig = reactive({
   vehicleCount: 23,     // 巡航车辆显示数量 (默认 23 辆)
   activeCategory: 'all' // 车辆类型筛选: 'all' | 'hazard' | 'passenger' | 'tourist'
 })
+
+// 🏷️ 市级行政区文字标注微调面板 状态
+const labelConfig = reactive({
+  show: false,
+  fontSize: 31,      // 默认文字大小 31px
+  outlineWidth: 3    // 默认描边厚度 3px
+})
+
+// 保存市级文字标注 Entity 引用
+const cityLabelEntities = []
+
+function updateCityLabelsFont() {
+  if (!viewer) return
+  const fontStr = `bold ${labelConfig.fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+  cityLabelEntities.forEach(entity => {
+    if (entity && entity.label) {
+      entity.label.font = new Cesium.ConstantProperty(fontStr)
+      entity.label.outlineWidth = new Cesium.ConstantProperty(labelConfig.outlineWidth)
+    }
+  })
+}
 
 let cachedHubeiGeojson = null;
 
@@ -1437,6 +1607,51 @@ const lightAdjust = reactive({
   pitch: 0,
   roll: 0
 })
+
+// 📡 5G 通信基站 (jizhan.glb) 模型参数 (接入货车追尾现场)
+const isJizhanPanelExpanded = ref(false)
+const jizhanCopiedMessage = ref('')
+
+const jizhanAdjust = reactive({
+  show: true,
+  lng: 113.105385,
+  lat: 30.385795,
+  height: -1.9,
+  scale: 0.01,
+  heading: 99,
+  pitch: 0,
+  roll: 0
+})
+
+function toggleJizhanPanel() {
+  isJizhanPanelExpanded.value = !isJizhanPanelExpanded.value
+}
+
+function snapJizhanToTruck() {
+  jizhanAdjust.lng = 113.105385;
+  jizhanAdjust.lat = 30.385795;
+  jizhanAdjust.height = -1.9;
+  jizhanAdjust.scale = 0.01;
+  jizhanAdjust.heading = 99;
+  jizhanAdjust.pitch = 0;
+  jizhanAdjust.roll = 0;
+}
+
+function copyJizhanCoords() {
+  const text = `lng: ${jizhanAdjust.lng.toFixed(6)}, lat: ${jizhanAdjust.lat.toFixed(6)}, height: ${jizhanAdjust.height}, scale: ${jizhanAdjust.scale}, heading: ${jizhanAdjust.heading}, pitch: ${jizhanAdjust.pitch}, roll: ${jizhanAdjust.roll}`;
+  navigator.clipboard.writeText(text).then(() => {
+    jizhanCopiedMessage.value = '基站配置参数已成功复制到剪贴板！';
+    setTimeout(() => {
+      jizhanCopiedMessage.value = '';
+    }, 2000);
+  }).catch(err => {
+    console.error('复制失败:', err);
+    jizhanCopiedMessage.value = '复制失败，请手动记录';
+    setTimeout(() => {
+      jizhanCopiedMessage.value = '';
+    }, 2000);
+  });
+}
 
 function toggleLightPanel() {
   isLightPanelExpanded.value = !isLightPanelExpanded.value
@@ -2487,6 +2702,7 @@ function drawCityBoundary(coords, colorStr, name, id) {
 // 异步加载湖北省所有市级行政区划边界数据与标注，并用亮色边界和填充面描绘出来
 async function loadCityBoundaries() {
   if (!viewer) return;
+  cityLabelEntities.length = 0;
 
   try {
     const response = await fetch('/Dashboard/hubei_cities.json');
@@ -2525,21 +2741,26 @@ async function loadCityBoundaries() {
       // 2. 添加市级文字标注（以白字黑边展示）
       const center = properties.centroid || properties.center;
       if (center && center.length >= 2) {
-        viewer.entities.add({
+        const labelEntity = viewer.entities.add({
           position: Cesium.Cartesian3.fromDegrees(center[0], center[1], 1000),
           label: {
             text: name,
-            font: 'bold 14px "Microsoft YaHei", sans-serif',
+            font: `bold ${labelConfig.fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`,
             fillColor: Cesium.Color.WHITE,
             outlineColor: Cesium.Color.fromCssColorString('#070b19'),
-            outlineWidth: 4,
+            outlineWidth: labelConfig.outlineWidth,
             style: Cesium.LabelStyle.FILL_AND_OUTLINE,
             horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
             verticalOrigin: Cesium.VerticalOrigin.CENTER,
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
-            eyeOffset: new Cesium.Cartesian3(0, 0, -1000)
+            eyeOffset: new Cesium.Cartesian3(0, 0, -1000),
+            // 随相机距离自动缩放：近看正常大小，拉远时缩小
+            scaleByDistance: new Cesium.NearFarScalar(300000, 1.0, 2500000, 0.4),
+            // 远距离时逐渐半透明，避免标注拥挤
+            translucencyByDistance: new Cesium.NearFarScalar(800000, 1.0, 2800000, 0.5)
           }
         });
+        cityLabelEntities.push(labelEntity);
       }
     });
     console.log('[Cesium] 湖北省所有市级行政边界及标注加载成功');
@@ -3679,7 +3900,34 @@ function addEventEntities() {
       uri: '/Dashboard/models/light.glb',
       scale: new Cesium.CallbackProperty(() => lightAdjust.scale, false),
       minimumPixelSize: 32,
-      heightReference: Cesium.HeightReference.NONE
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+    }
+  });
+
+  // 📡 接入 jizhan.glb 3D 5G通信基站模型 (货车追尾事故现场)
+  viewer.entities.add({
+    id: 'jizhan-glb-entity',
+    name: '货车追尾现场5G通信基站模型',
+    show: new Cesium.CallbackProperty(() => {
+      return currentScene.value === 'truck' && jizhanAdjust.show;
+    }, false),
+    position: new Cesium.CallbackProperty(() => {
+      return Cesium.Cartesian3.fromDegrees(Number(jizhanAdjust.lng), Number(jizhanAdjust.lat), Number(jizhanAdjust.height));
+    }, false),
+    orientation: new Cesium.CallbackProperty(() => {
+      const position = Cesium.Cartesian3.fromDegrees(Number(jizhanAdjust.lng), Number(jizhanAdjust.lat), Number(jizhanAdjust.height));
+      const hpr = new Cesium.HeadingPitchRoll(
+        Cesium.Math.toRadians(Number(jizhanAdjust.heading)),
+        Cesium.Math.toRadians(Number(jizhanAdjust.pitch)),
+        Cesium.Math.toRadians(Number(jizhanAdjust.roll))
+      );
+      return Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
+    }, false),
+    model: {
+      uri: '/Dashboard/models/jizhan.glb',
+      scale: new Cesium.CallbackProperty(() => jizhanAdjust.scale, false),
+      minimumPixelSize: 32,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
     }
   });
 
@@ -3711,7 +3959,7 @@ function addEventEntities() {
       image: rescueSvgIcon,
       width: 24,
       height: 24,
-      heightReference: Cesium.HeightReference.NONE,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
       disableDepthTestDistance: Number.POSITIVE_INFINITY,
       verticalOrigin: Cesium.VerticalOrigin.BOTTOM
     },
@@ -3722,7 +3970,6 @@ function addEventEntities() {
     id: 'event-popup',
     position: Cesium.Cartesian3.fromDegrees(114.35, 30.55, 500),
     label: {
-      text: '', font: 'bold 15px Microsoft YaHei', fillColor: Cesium.Color.WHITE, showBackground: true,
       backgroundColor: toCesiumColor('#061628', 0.88), backgroundPadding: new Cesium.Cartesian2(16, 12),
       pixelOffset: new Cesium.Cartesian2(0, -60), disableDepthTestDistance: Number.POSITIVE_INFINITY,
       horizontalOrigin: Cesium.HorizontalOrigin.CENTER, verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
@@ -5666,7 +5913,6 @@ onBeforeUnmount(() => {
   border: 1.5px solid rgba(0, 229, 255, 0.6);
   border-radius: 6px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.8), 0 0 12px rgba(0, 229, 255, 0.35);
-  font-family: "Microsoft YaHei", sans-serif;
   overflow: visible;
   pointer-events: auto;
   backdrop-filter: blur(8px);
@@ -5779,7 +6025,6 @@ onBeforeUnmount(() => {
   background: white;
   border-radius: 4px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  font-family: "Microsoft YaHei", sans-serif;
   overflow: visible;
   pointer-events: auto;
 }
@@ -6047,7 +6292,6 @@ onBeforeUnmount(() => {
   background: rgba(7, 11, 25, 0.9);
   border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 229, 255, 0.2);
-  font-family: "Microsoft YaHei", sans-serif;
   overflow: visible;
   pointer-events: auto;
   border: 1px solid rgba(0, 229, 255, 0.3);
@@ -6146,7 +6390,6 @@ onBeforeUnmount(() => {
   border-radius: 4px;
   padding: 6px 12px;
   color: #ffffff;
-  font-family: "Microsoft YaHei", sans-serif;
   font-size: 13px;
   font-weight: bold;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 8px rgba(0, 229, 255, 0.15);
@@ -6179,7 +6422,6 @@ onBeforeUnmount(() => {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 229, 255, 0.15);
   backdrop-filter: blur(10px);
   z-index: 1010;
-  font-family: "Microsoft YaHei", sans-serif;
   color: #e2f1ff;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -6376,7 +6618,7 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(0, 242, 254, 0.22);
   border-radius: 14px;
   z-index: 10;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   pointer-events: auto;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   padding: 0;
@@ -6517,7 +6759,17 @@ onBeforeUnmount(() => {
 .header-main-title {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+
+.header-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
 }
 
 .hud-title-icon {
@@ -6577,7 +6829,7 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 10px rgba(0, 255, 216, 0.3);
 }
 
-/* ⚠️ 风险预警 & 卡口排行 & 智能推演 专属 CSS */
+/* ⚠️ 风险预警 & 卡口排行 & 智能推演 — 统一对称左侧栏风格 CSS */
 .hud-tab-pane {
   display: flex;
   flex-direction: column;
@@ -6585,69 +6837,68 @@ onBeforeUnmount(() => {
   animation: tabFadeIn 0.3s ease-out;
 }
 
-/* 风险矩阵概览 */
+/* 风险矩阵概览 4格统计 */
 .risk-summary-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
 }
 .risk-summary-item {
-  background: rgba(15, 23, 42, 0.65);
+  background: rgba(15, 23, 42, 0.45);
   border: 1px solid rgba(0, 242, 254, 0.15);
   border-radius: 8px;
   padding: 8px 4px;
   text-align: center;
+  transition: border-color 0.2s;
 }
-.risk-summary-item.red { border-color: rgba(255, 45, 85, 0.4); background: rgba(255, 45, 85, 0.1); }
-.risk-summary-item.gold { border-color: rgba(255, 215, 0, 0.4); background: rgba(255, 215, 0, 0.1); }
-.risk-summary-item.orange { border-color: rgba(255, 140, 0, 0.4); background: rgba(255, 140, 0, 0.1); }
-.risk-summary-item.blue { border-color: rgba(0, 176, 255, 0.4); background: rgba(0, 176, 255, 0.1); }
+.risk-summary-item:hover {
+  border-color: rgba(0, 242, 254, 0.35);
+}
+/* 状态色仅用于左侧竖边线，不污染背景 */
+.risk-summary-item.red  { border-left: 3px solid rgba(255, 80, 100, 0.6); }
+.risk-summary-item.gold { border-left: 3px solid rgba(0, 242, 254, 0.5); }
+.risk-summary-item.orange { border-left: 3px solid rgba(200, 220, 255, 0.4); }
+.risk-summary-item.blue { border-left: 3px solid rgba(0, 242, 254, 0.6); }
 
 .risk-num {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 700;
   display: block;
+  color: #00f2fe;
 }
-.risk-summary-item.red .risk-num { color: #ff2d55; text-shadow: 0 0 6px rgba(255,45,85,0.5); }
-.risk-summary-item.gold .risk-num { color: #ffd700; text-shadow: 0 0 6px rgba(255,215,0,0.5); }
-.risk-summary-item.orange .risk-num { color: #ff8c00; text-shadow: 0 0 6px rgba(255,140,0,0.5); }
-.risk-summary-item.blue .risk-num { color: #00b0ff; text-shadow: 0 0 6px rgba(0,176,255,0.5); }
+/* 高危数字用白色+下划线区分，不用红色 */
+.risk-summary-item.red .risk-num { color: #ffffff; }
 
 .risk-lbl {
   font-size: 10px;
-  color: #94a3b8;
+  color: #64748b;
   white-space: nowrap;
 }
 
-/* 风险卡片 */
+/* 风险车辆列表 */
 .risk-vehicle-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 .risk-card-item {
-  background: rgba(10, 19, 35, 0.7);
-  border: 1px solid rgba(0, 242, 254, 0.18);
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(0, 242, 254, 0.15);
   border-radius: 8px;
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
 }
 .risk-card-item:hover {
-  border-color: #00f2fe;
-  box-shadow: 0 0 12px rgba(0, 242, 254, 0.2);
+  border-color: rgba(0, 242, 254, 0.35);
+  background: rgba(15, 23, 42, 0.7);
 }
-.risk-card-item.high-risk {
-  border-left: 4px solid #ff2d55;
-}
-.risk-card-item.mid-risk {
-  border-left: 4px solid #ff8c00;
-}
-.risk-card-item.low-risk {
-  border-left: 4px solid #ffd700;
-}
+/* 风险等级用左侧竖线区分，避免过于刺眼 */
+.risk-card-item.high-risk { border-left: 3px solid rgba(255, 90, 100, 0.7); }
+.risk-card-item.mid-risk  { border-left: 3px solid rgba(0, 242, 254, 0.5); }
+.risk-card-item.low-risk  { border-left: 3px solid rgba(0, 242, 254, 0.25); }
 
 .risk-card-top {
   display: flex;
@@ -6655,72 +6906,81 @@ onBeforeUnmount(() => {
   justify-content: space-between;
 }
 .risk-plate {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 13px;
+  font-weight: 700;
   color: #ffffff;
   letter-spacing: 0.5px;
 }
 .risk-type-tag {
   font-size: 10px;
-  padding: 2px 6px;
+  padding: 1px 6px;
   border-radius: 4px;
+  background: rgba(0, 242, 254, 0.08);
+  color: #00f2fe;
+  border: 1px solid rgba(0, 242, 254, 0.2);
 }
-.risk-type-tag.hazard { background: rgba(255, 45, 85, 0.2); color: #ff8f8f; border: 1px solid rgba(255, 45, 85, 0.4); }
-.risk-type-tag.passenger { background: rgba(0, 230, 118, 0.2); color: #67f7b2; border: 1px solid rgba(0, 230, 118, 0.4); }
-.risk-type-tag.tourist { background: rgba(0, 176, 255, 0.2); color: #70d6ff; border: 1px solid rgba(0, 176, 255, 0.4); }
+/* 不同类型用同色系，仅透明度区分 */
+.risk-type-tag.hazard    { color: #e2e8f0; border-color: rgba(200,200,200,0.2); }
+.risk-type-tag.passenger { color: #00f2fe; }
+.risk-type-tag.tourist   { color: #a5d8ff; border-color: rgba(0,200,255,0.2); }
 
 .risk-level-badge {
   font-size: 10px;
-  font-weight: bold;
-  padding: 2px 6px;
+  font-weight: 600;
+  padding: 1px 6px;
   border-radius: 4px;
 }
-.risk-level-badge.red { background: #ff2d55; color: #ffffff; box-shadow: 0 0 8px rgba(255,45,85,0.4); }
-.risk-level-badge.orange { background: #ff8c00; color: #ffffff; }
-.risk-level-badge.gold { background: rgba(255,215,0,0.2); color: #ffd700; border: 1px solid #ffd700; }
+.risk-level-badge.red    { background: rgba(255,80,100,0.15); color: #fca5a5; border: 1px solid rgba(255,80,100,0.3); }
+.risk-level-badge.orange { background: rgba(0, 242, 254, 0.08); color: #a5d8ff; border: 1px solid rgba(0,242,254,0.2); }
+.risk-level-badge.gold   { background: rgba(0, 242, 254, 0.05); color: #94a3b8; border: 1px solid rgba(0,242,254,0.15); }
 
 .risk-reason {
-  font-size: 12px;
-  color: #ff8f8f;
-  font-weight: 600;
+  font-size: 11px;
+  color: #cbd5e1;
+  font-weight: 500;
 }
 .risk-meta-row {
   font-size: 11px;
-  color: #94a3b8;
+  color: #64748b;
 }
 
 .risk-action-btn {
   align-self: flex-end;
-  background: linear-gradient(90deg, rgba(0, 242, 254, 0.15), rgba(37, 99, 235, 0.15));
-  border: 1px solid rgba(0, 242, 254, 0.35);
+  background: transparent;
+  border: 1px solid rgba(0, 242, 254, 0.3);
   color: #00f2fe;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   padding: 4px 10px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 .risk-action-btn:hover {
-  background: rgba(0, 242, 254, 0.3);
+  background: rgba(0, 242, 254, 0.1);
+  border-color: rgba(0, 242, 254, 0.5);
   color: #ffffff;
-  box-shadow: 0 0 10px rgba(0, 242, 254, 0.4);
 }
 
 /* 卡口排行卡片 */
 .checkpoint-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 .checkpoint-card {
-  background: rgba(10, 19, 35, 0.7);
-  border: 1px solid rgba(0, 242, 254, 0.18);
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(0, 242, 254, 0.15);
   border-radius: 8px;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  transition: all 0.2s;
+}
+.checkpoint-card:hover {
+  border-color: rgba(0, 242, 254, 0.3);
+  background: rgba(15, 23, 42, 0.7);
 }
 .cp-rank-header {
   display: flex;
@@ -6729,59 +6989,63 @@ onBeforeUnmount(() => {
 }
 .cp-rank {
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
 }
-.cp-rank.gold { background: linear-gradient(90deg, #ffd700, #ff8c00); color: #000; }
-.cp-rank.silver { background: linear-gradient(90deg, #e2e8f0, #94a3b8); color: #000; }
-.cp-rank.border { background: rgba(255,255,255,0.1); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.2); }
+/* 排名标识使用青色深色调，避免金色/银色刺眼 */
+.cp-rank.gold   { background: rgba(0, 242, 254, 0.2); color: #ffffff; border: 1px solid rgba(0,242,254,0.4); }
+.cp-rank.silver { background: rgba(0, 242, 254, 0.08); color: #a5d8ff; border: 1px solid rgba(0,242,254,0.2); }
+.cp-rank.border { background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.12); }
 
 .cp-name {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: #ffffff;
   flex: 1;
   margin-left: 8px;
 }
 .cp-status {
   font-size: 10px;
-  font-weight: bold;
+  font-weight: 600;
 }
-.cp-status.green { color: #00ffaa; }
-.cp-status.gold { color: #ffd700; }
-.cp-status.orange { color: #ff8c00; }
+.cp-status.green  { color: #00f2fe; }
+.cp-status.gold   { color: #a5d8ff; }
+.cp-status.orange { color: #94a3b8; }
 
 .cp-stats-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.2);
   padding: 8px;
   border-radius: 6px;
+  border: 1px solid rgba(0, 242, 254, 0.08);
 }
 .cp-stat {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 2px;
 }
 .cp-label {
   font-size: 10px;
-  color: #94a3b8;
+  color: #64748b;
 }
 .cp-val {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
+  color: #00f2fe;
 }
-.cp-val.green { color: #00ffaa; }
-.cp-val.gold { color: #ffd700; }
-.cp-val.orange { color: #ff8c00; }
-.cp-val small { font-size: 9px; font-weight: normal; color: #94a3b8; }
+.cp-val.green  { color: #00f2fe; }
+.cp-val.gold   { color: #a5d8ff; }
+.cp-val.orange { color: #cbd5e1; }
+.cp-val small { font-size: 9px; font-weight: normal; color: #64748b; }
 
 /* 智能推演 */
 .ai-metrics-panel {
-  background: rgba(10, 19, 35, 0.7);
-  border: 1px solid rgba(0, 242, 254, 0.2);
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(0, 242, 254, 0.15);
   border-radius: 8px;
   padding: 12px;
   display: flex;
@@ -6794,11 +7058,11 @@ onBeforeUnmount(() => {
   align-items: center;
   font-size: 12px;
 }
-.ai-lbl { color: #cbd5e1; }
-.ai-val { font-weight: 700; }
-.ai-val.highlight { color: #00f2fe; text-shadow: 0 0 6px rgba(0,242,254,0.4); }
-.ai-val.green { color: #00ffaa; }
-.ai-val.gold { color: #ffd700; }
+.ai-lbl { color: #94a3b8; }
+.ai-val { font-weight: 600; color: #00f2fe; }
+.ai-val.highlight { color: #00f2fe; }
+.ai-val.green     { color: #00f2fe; }
+.ai-val.gold      { color: #a5d8ff; }
 
 .resource-grid {
   display: grid;
@@ -6806,42 +7070,57 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 .resource-card {
-  background: rgba(10, 19, 35, 0.7);
+  background: rgba(15, 23, 42, 0.45);
   border: 1px solid rgba(0, 242, 254, 0.15);
   border-radius: 8px;
   padding: 10px;
   display: flex;
   align-items: center;
   gap: 10px;
+  transition: border-color 0.2s;
 }
-.res-icon { font-size: 20px; }
-.res-info { display: flex; flex-direction: column; }
-.res-title { font-size: 12px; font-weight: bold; color: #ffffff; }
-.res-val { font-size: 11px; font-weight: 600; }
-.res-val.green { color: #00ffaa; }
-.res-val.blue { color: #70d6ff; }
-.res-val.gold { color: #ffd700; }
+.resource-card:hover {
+  border-color: rgba(0, 242, 254, 0.3);
+}
+.res-icon { font-size: 18px; opacity: 0.85; }
+.res-info { display: flex; flex-direction: column; gap: 2px; }
+.res-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+.res-val {
+  font-size: 11px;
+  font-weight: 600;
+  color: #00f2fe;
+}
+.res-val.green { color: #00f2fe; }
+.res-val.blue  { color: #a5d8ff; }
+.res-val.gold  { color: #94a3b8; }
 
 .ai-dispatch-btn {
   width: 100%;
   margin-top: 6px;
   padding: 10px;
   border-radius: 8px;
-  background: linear-gradient(90deg, #00f2fe 0%, #38bdf8 100%);
-  color: #09101f;
+  background: transparent;
+  border: 1px solid rgba(0, 242, 254, 0.4);
+  color: #00f2fe;
   font-size: 13px;
-  font-weight: 800;
-  border: none;
+  font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
+  letter-spacing: 0.5px;
 }
 .ai-dispatch-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 0 22px rgba(0, 242, 254, 0.7);
+  background: rgba(0, 242, 254, 0.12);
+  border-color: rgba(0, 242, 254, 0.7);
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.25);
 }
 
-/* 🚀 赛博高阶：全省省界卡口双向进出省总统计大盘舱 */
+
+
 .cyber-border-flow-panel {
   margin-bottom: 12px;
   background: linear-gradient(135deg, rgba(8, 20, 38, 0.9), rgba(12, 28, 52, 0.9));
@@ -7688,7 +7967,6 @@ onBeforeUnmount(() => {
   border-radius: 12px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 255, 216, 0.25);
   backdrop-filter: blur(12px);
-  font-family: "Microsoft YaHei", -apple-system, sans-serif;
   color: #ffffff;
   overflow: hidden;
   animation: modalFadeIn 0.3s ease-out;
@@ -7893,6 +8171,72 @@ onBeforeUnmount(() => {
   color: #00ffd8;
   text-align: center;
   margin-top: 4px;
+}
+
+/* 🏷️ 地图行政区划标注字号控制台 */
+.map-label-style-control {
+  margin-bottom: 12px;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 0 15px rgba(0, 242, 254, 0.08);
+}
+
+.control-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.control-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.control-value-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #00f2fe;
+  background: rgba(0, 242, 254, 0.1);
+  border: 1px solid rgba(0, 242, 254, 0.3);
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-family: monospace;
+}
+
+.control-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.size-icon {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.size-icon.big {
+  font-size: 14px;
+  color: #00f2fe;
+}
+
+.dock-tool-btn.label-btn {
+  background: rgba(0, 242, 254, 0.1);
+  border-color: rgba(0, 242, 254, 0.3);
+  color: #00f2fe;
+}
+
+.dock-tool-btn.label-btn:hover,
+.dock-tool-btn.label-btn.active {
+  background: rgba(0, 242, 254, 0.25);
+  border-color: #00f2fe;
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.4);
 }
 </style>
 

@@ -1,78 +1,94 @@
 <template>
-  <section class="timeline-shell">
-    <div class="accident-header">
-      <span class="accident-kicker">事故点</span>
-
-      <div class="accident-select-box">
-        <span class="status-dot"></span>
-        <select :value="accidentIndex" @change="onAccidentChange" class="accident-native-select">
-          <option v-for="(acc, index) in accidents" :key="acc.id" :value="index">
-            {{ acc.title }}
-          </option>
-        </select>
-        <span class="select-arrow">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-            <path d="M7 10l5 5 5-5z" />
-          </svg>
-        </span>
-      </div>
-
-      <button class="locate-btn" type="button" @click="handleLocate">
-        <svg class="pin-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+  <div class="timeline-wrapper" :class="{ 'is-collapsed': isCollapsed }">
+    <!-- 🔽 顶端中央折叠/展开收起按钮 -->
+    <button 
+      class="timeline-toggle-btn" 
+      type="button" 
+      @click="isCollapsed = !isCollapsed"
+      :title="isCollapsed ? '展开事故推演时间轴' : '向下折叠收起时间轴'"
+    >
+      <span class="arrow-icon" :class="{ 'is-up': isCollapsed }">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <path d="M7 10l5 5 5-5z" />
         </svg>
-        定位
-      </button>
-    </div>
+      </span>
+    </button>
 
-    <div class="timeline-bar-wrapper">
-      <div class="timeline-bar">
-        <div class="progress-track">
-          <div class="progress-fill" :style="{ width: fillWidth }"></div>
-        </div>
-        
-        <!-- 游标指示器 -->
-        <div class="timeline-cursor" :style="{ left: cursorOffset }">
-          <div class="cursor-arrow">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="#8cf7c5">
+    <section class="timeline-shell">
+      <div class="accident-header">
+        <span class="accident-kicker">事故点</span>
+
+        <div class="accident-select-box">
+          <span class="status-dot"></span>
+          <select :value="accidentIndex" @change="onAccidentChange" class="accident-native-select">
+            <option v-for="(acc, index) in accidents" :key="acc.id" :value="index">
+              {{ acc.title }}
+            </option>
+          </select>
+          <span class="select-arrow">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
               <path d="M7 10l5 5 5-5z" />
             </svg>
-          </div>
-          <div class="cursor-line"></div>
+          </span>
         </div>
 
-        <button
-          v-for="(phase, index) in phases"
-          :key="phase.id"
-          type="button"
-          class="phase-step"
-          :class="{ active: index === modelValue, 'is-staggered': index % 2 !== 0 }"
-          :style="{ left: getPhaseOffset(index) }"
-          @click="selectPhase(index)"
-        >
-          <div class="phase-label-pill">
-            {{ phase.shortLabel }}
-            <span v-if="phasesReady[index]" class="ready-dot" title="模型已就绪"></span>
-          </div>
-          <span class="phase-dot"></span>
+        <button class="locate-btn" type="button" @click="handleLocate">
+          <svg class="pin-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+          </svg>
+          定位
         </button>
       </div>
-    </div>
-    
-    <div class="simulation-status" @click="togglePlay" :class="{ disabled: !isScenarioReady }">
-      <div class="play-trigger">
-        <template v-if="isScenarioReady">
-          <span v-if="!isPlaying" class="status-icon">▶</span>
-          <span v-else class="status-icon">||</span>
-          {{ isPlaying ? '仿真运行中' : '仿真已暂停' }}
-        </template>
-        <template v-else>
-          <span class="loading-spinner"></span>
-          模型加载中...
-        </template>
+
+      <div class="timeline-bar-wrapper">
+        <div class="timeline-bar">
+          <div class="progress-track">
+            <div class="progress-fill" :style="{ width: fillWidth }"></div>
+          </div>
+          
+          <!-- 游标指示器 -->
+          <div class="timeline-cursor" :style="{ left: cursorOffset }">
+            <div class="cursor-arrow">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="#8cf7c5">
+                <path d="M7 10l5 5 5-5z" />
+              </svg>
+            </div>
+            <div class="cursor-line"></div>
+          </div>
+
+          <button
+            v-for="(phase, index) in phases"
+            :key="phase.id"
+            type="button"
+            class="phase-step"
+            :class="{ active: index === modelValue, 'is-staggered': index % 2 !== 0 }"
+            :style="{ left: getPhaseOffset(index) }"
+            @click="selectPhase(index)"
+          >
+            <div class="phase-label-pill">
+              {{ phase.shortLabel }}
+              <span v-if="phasesReady[index]" class="ready-dot" title="模型已就绪"></span>
+            </div>
+            <span class="phase-dot"></span>
+          </button>
+        </div>
       </div>
-    </div>
-  </section>
+      
+      <div class="simulation-status" @click="togglePlay" :class="{ disabled: !isScenarioReady }">
+        <div class="play-trigger">
+          <template v-if="isScenarioReady">
+            <span v-if="!isPlaying" class="status-icon">▶</span>
+            <span v-else class="status-icon">||</span>
+            {{ isPlaying ? '仿真运行中' : '仿真已暂停' }}
+          </template>
+          <template v-else>
+            <span class="loading-spinner"></span>
+            模型加载中...
+          </template>
+        </div>
+      </div>
+    </section>
+  </div>
 </template>
 
 <script setup>
@@ -90,6 +106,7 @@ const emit = defineEmits(['update:modelValue', 'update:accidentIndex', 'locate']
 
 const isPlaying = ref(false)
 const forceReady = ref(false)
+const isCollapsed = ref(false)
 let playbackTimer = null
 let loadTimeout = null
 
@@ -200,6 +217,56 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.timeline-wrapper {
+  position: relative;
+  width: 100%;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.timeline-wrapper.is-collapsed {
+  transform: translateY(calc(100% - 10px));
+}
+
+.timeline-toggle-btn {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 24px;
+  background: rgba(10, 15, 24, 0.95);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  color: #00e5ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 100;
+  box-shadow: 0 -4px 15px rgba(0, 229, 255, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.timeline-toggle-btn:hover {
+  background: rgba(0, 229, 255, 0.25);
+  border-color: #00e5ff;
+  box-shadow: 0 -6px 20px rgba(0, 229, 255, 0.5);
+  height: 26px;
+  top: -26px;
+}
+
+.arrow-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+}
+
+.arrow-icon.is-up {
+  transform: rotate(180deg);
+}
+
 .timeline-shell {
   padding: 12px 24px; /* 减小上下内边距 */
   border-radius: 20px;
