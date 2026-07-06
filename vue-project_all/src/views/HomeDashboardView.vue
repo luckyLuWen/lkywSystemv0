@@ -92,7 +92,7 @@
                 <!-- 无人车 A 卡片 -->
                 <div class="ugv-card">
                   <div class="ugv-header">
-                    <span class="ugv-title">无人车 A</span>
+                    <span class="ugv-title">监测点 A</span>
                     <span class="ugv-status" :class="{ offline: !isWsConnected }">{{ isWsConnected ? '在线' : '离线' }}</span>
                   </div>
                   <div class="ugv-data">
@@ -114,7 +114,7 @@
                 <!-- 无人车 B 卡片 -->
                 <div class="ugv-card">
                   <div class="ugv-header">
-                    <span class="ugv-title">无人车 B</span>
+                    <span class="ugv-title">监测点 B</span>
                     <span class="ugv-status" :class="{ offline: !isWsConnected }">{{ isWsConnected ? '在线' : '离线' }}</span>
                   </div>
                   <div class="ugv-data">
