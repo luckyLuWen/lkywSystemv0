@@ -73,6 +73,12 @@
                 >
                   生成二维推演
                 </button>
+                <select
+                  v-model="cesiumEndpoint"
+                  class="scene-select">
+                  <option value="crash">&#x1F692; 货车追尾现场</option>
+                  <option value="leak">&#x1F6E2; 油罐车泄露现场</option>
+                </select>
                 <button
                   class="dark-btn"
                   :disabled="businessActionPending || !services.commandCenter.online"
@@ -217,6 +223,7 @@ const viewLaunchPending = ref('')
 const streamlitFrameSrc = ref('')
 const strategyFrameSrc = ref('')
 const cesiumFrameSrc = ref('')
+const cesiumEndpoint = ref('crash')
 const streamlitFrameKey = ref(0)
 const strategyFrameKey = ref(0)
 const cesiumFrameKey = ref(0)
@@ -603,7 +610,8 @@ function generateStrategy() {
 }
 
 function generateCesium() {
-  runCommandCenterAction('api/run_3d_cesium', '3d')
+  const ep = cesiumEndpoint.value || 'crash'
+  runCommandCenterAction(`api/run_3d_cesium?end_point=${encodeURIComponent(ep)}`, '3d')
 }
 
 function saveStreamlitUrl() {
@@ -964,6 +972,23 @@ onUnmounted(() => {
   .sidebar {
     width: 100%;
   }
+}
+
+.scene-select {
+  min-height: 42px;
+  padding: 0 32px 0 12px;
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  border-radius: 10px;
+  background: rgba(2, 11, 22, 0.92);
+  color: #fbbf24;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+}
+.scene-select option {
+  background: #1e293b;
+  color: #e2e8f0;
 }
 
 @media (max-width: 768px) {
