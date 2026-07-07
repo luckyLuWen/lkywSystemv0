@@ -92,7 +92,7 @@
                 <!-- 无人车 A 卡片 -->
                 <div class="ugv-card">
                   <div class="ugv-header">
-                    <span class="ugv-title">无人车 A</span>
+                    <span class="ugv-title">监测点 A</span>
                     <span class="ugv-status" :class="{ offline: !isWsConnected }">{{ isWsConnected ? '在线' : '离线' }}</span>
                   </div>
                   <div class="ugv-data">
@@ -114,7 +114,7 @@
                 <!-- 无人车 B 卡片 -->
                 <div class="ugv-card">
                   <div class="ugv-header">
-                    <span class="ugv-title">无人车 B</span>
+                    <span class="ugv-title">监测点 B</span>
                     <span class="ugv-status" :class="{ offline: !isWsConnected }">{{ isWsConnected ? '在线' : '离线' }}</span>
                   </div>
                   <div class="ugv-data">
@@ -1156,18 +1156,17 @@ onMounted(() => {
 /* Floating Timeline floating beautifully above the globe */
 .timeline-container {
   position: absolute;
-  bottom: 20px; /* 往上移动一点，贴近视口 */
+  bottom: 12px;
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 40px);
   max-width: 1400px;
-  background: rgba(15, 23, 42, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  padding: 12px 20px;
-  z-index: 5;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+  background: transparent;
+  border: none;
+  padding: 0;
+  z-index: 20;
+  pointer-events: auto;
+  overflow: visible;
 }
 
 /* Right Sidebar elements */
