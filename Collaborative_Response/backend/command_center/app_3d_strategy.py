@@ -37,17 +37,17 @@ UAV_SPEED = 20.0   # 20 m/s (大型救援无人机)
 
 # 起点按终点分别配置：不同灾情场景由最近的消防站出警
 START_POINTS = {
-    'leak':  (30.713897297892842, 114.7804552777263),   # 武汉市消防救援支队新洲区大队
-    'crash': (30.321919430948842, 113.41817301217728),   # 仙桃市毛嘴镇消防站
+    'leak':  (30.510, 114.920),                           # 黄冈市黄州区路口镇专职消防队
+    'crash': (30.380, 113.150),                           # 仙桃市郑场镇专职消防队
 }
 START_POINT_NAMES = {
-    'leak':  '武汉市消防救援支队新洲区大队',
-    'crash': '仙桃市毛嘴镇消防站',
+    'leak':  '黄冈市黄州区路口镇专职消防队',
+    'crash': '仙桃市郑场镇专职消防队',
 }
 
 END_POINTS = {
-    'leak':  (30.607380528841425, 114.87332066872784),   # 油罐车泄漏现场
-    'crash': (30.63101, 114.89209),                       # 货车追尾现场 (经度114.89209, 纬度30.63101)
+    'leak':  (30.63101, 114.89209),                       # 油罐车泄漏现场
+    'crash': (30.385469, 113.104833),                     # 货车追尾现场
 }
 END_POINT_NAMES = {
     'leak':  '市区道路-油罐车泄漏现场',
@@ -58,23 +58,66 @@ START_POINT_NAME = START_POINT_NAMES[args.end_point]
 END_POINT = END_POINTS[args.end_point]
 END_POINT_NAME = END_POINT_NAMES[args.end_point]
 
-# 禁飞区 & 拥堵区 — 按终点分别配置，确保每条路径都有绕行效果
+# 禁飞区 & 拥堵区 — 双层管制体系（核心区+缓冲区），含完整元数据
 NFZ_CONFIG = {
     'leak': {
-        'nfz':      [{'center': (30.67, 114.82), 'radius': 2000}],   # 新洲→黄冈段 路径中段拦截
-        'buffer':   [{'center': (30.63, 114.85), 'radius': 1500}],   # 路径南侧缓冲区
-        'congestion': [
-            [30.660, 114.815], [30.660, 114.835],
-            [30.645, 114.835], [30.645, 114.815],
+        'nfz': [{  # 核心禁飞区：黄冈城铁站沿线（铁路走廊不规则多边形）
+            'polygon': [
+                [30.555, 114.890], [30.559, 114.896], [30.564, 114.893],
+                [30.571, 114.898], [30.576, 114.904], [30.573, 114.910],
+                [30.567, 114.913], [30.560, 114.909], [30.554, 114.913],
+                [30.549, 114.907], [30.550, 114.901], [30.552, 114.895],
+            ],
+            'name': '黄冈城铁站沿线限飞区',
+            'level': 'RESTRICTED',
+            'ceiling': '300m AGL',
+            'reason': '铁路枢纽安全保障',
+            'authority': '黄冈市应急管理局',
+            'effective': '全时段',
+        }],
+        'buffer': [{  # 缓冲区（核心区外扩200-400m）
+            'polygon': [
+                [30.553, 114.887], [30.557, 114.894], [30.562, 114.891],
+                [30.569, 114.896], [30.575, 114.902], [30.573, 114.909],
+                [30.567, 114.912], [30.561, 114.908], [30.556, 114.912],
+                [30.551, 114.908], [30.552, 114.902], [30.554, 114.896],
+            ],
+        }],
+        'congestion': [  # 黄州城区早高峰拥堵区
+            [30.526, 114.887], [30.532, 114.895], [30.537, 114.902],
+            [30.542, 114.907], [30.548, 114.903], [30.546, 114.895],
+            [30.542, 114.888], [30.536, 114.883], [30.529, 114.882],
         ],
+        'congestion_name': '黄州城区早高峰拥堵区',
+        'congestion_info': '07:00-09:00 常态拥堵 | 通行延时+40%',
     },
     'crash': {
-        'nfz':      [{'center': (30.610, 114.875), 'radius': 2000}],  # 鄂州城区北侧拦截
-        'buffer':   [{'center': (30.590, 114.855), 'radius': 1500}],  # 鄂州城区南侧拦截
-        'congestion': [
-            [30.620, 114.870], [30.620, 114.895],
-            [30.605, 114.895], [30.605, 114.870],
+        'nfz': [{  # 核心禁飞区：跨路径中段（迫使UAV绕行）
+            'polygon': [
+                [30.379, 113.136], [30.381, 113.139], [30.384, 113.138],
+                [30.386, 113.134], [30.385, 113.127], [30.383, 113.123],
+                [30.380, 113.124], [30.378, 113.128], [30.377, 113.133],
+            ],
+            'name': '郑场镇中心限飞区',
+            'level': 'RESTRICTED',
+            'ceiling': '200m AGL',
+            'reason': '人口密集区低空安全',
+            'authority': '仙桃市应急管理局',
+            'effective': '全时段',
+        }],
+        'buffer': [{  # 缓冲区（外扩250m）
+            'polygon': [
+                [30.377, 113.138], [30.380, 113.141], [30.385, 113.140],
+                [30.388, 113.135], [30.387, 113.126], [30.384, 113.121],
+                [30.379, 113.122], [30.376, 113.127], [30.375, 113.133],
+            ],
+        }],
+        'congestion': [  # 集镇集市拥堵区（路径西段，与NFZ不重叠）
+            [30.382, 113.115], [30.384, 113.118], [30.387, 113.116],
+            [30.386, 113.111], [30.383, 113.109], [30.381, 113.112],
         ],
+        'congestion_name': '郑场镇集贸市场拥堵区',
+        'congestion_info': '逢集日 06:00-12:00 | 通行延时+60%',
     },
 }
 NFZ_LIST = NFZ_CONFIG[args.end_point]['nfz']
@@ -121,8 +164,23 @@ def b_spline_smooth(waypoints, num_points=200, k=3):
         u_new = np.linspace(0, 1, num_points)
         new_points = splev(u_new, tck)
         return [[new_points[0][i], new_points[1][i], new_points[2][i]] for i in range(len(u_new))]
-    except: 
+    except:
         return waypoints
+
+def _point_in_polygon(lat, lon, polygon):
+    """射线法判断点是否在多边形内。polygon: [[lat, lon], ...]"""
+    n = len(polygon)
+    inside = False
+    j = n - 1
+    for i in range(n):
+        lat_i, lon_i = polygon[i][0], polygon[i][1]
+        lat_j, lon_j = polygon[j][0], polygon[j][1]
+        # 水平射线（向东）与多边形边的交点计数
+        if ((lat_i > lat) != (lat_j > lat)) and \
+           (lon < (lon_j - lon_i) * (lat - lat_i) / (lat_j - lat_i) + lon_i):
+            inside = not inside
+        j = i
+    return inside
 
 # ==================== 3. 路径生成 ====================
 def generate_car_path():
@@ -161,7 +219,15 @@ def generate_car_path():
         df['time_s'] = np.linspace(0, total_time, len(df))
         df['timestamp'] = START_TIME + pd.to_timedelta(df['time_s'], unit='s')
         return df, total_time, G
-    except Exception as e: return pd.DataFrame([START_POINT, END_POINT], columns=['lat', 'lon']), 100, None
+    except Exception as e:
+        print(f"  [错误] 车辆路径规划失败: {e}")
+        import traceback
+        traceback.print_exc()
+        df = pd.DataFrame([START_POINT, END_POINT], columns=['lat', 'lon'])
+        df['dist'] = [0, calculate_distance(START_POINT[0], START_POINT[1], END_POINT[0], END_POINT[1])]
+        df['time_s'] = [0, df['dist'].sum() / CAR_SPEED]
+        df['timestamp'] = [START_TIME, START_TIME + pd.to_timedelta(df['time_s'].iloc[-1], unit='s')]
+        return df, df['time_s'].iloc[-1], None
 
 def generate_uav_path(car_time):
     pad = 0.05
@@ -172,11 +238,20 @@ def generate_uav_path(car_time):
     
     if UAV_SMOKE:
         for nfz in NFZ_LIST + NEW_NFZ_LIST:
-            r = int((nfz['center'][0] - min_lat) / (max_lat - min_lat) * rows)
-            c = int((nfz['center'][1] - min_lon) / (max_lon - min_lon) * cols)
-            rad_grid = int(nfz['radius'] * 1.1 / GRID_RES)
-            y, x = np.ogrid[-r:rows-r, -c:cols-c]
-            grid[x*x + y*y <= rad_grid*rad_grid] = 1 
+            if 'polygon' in nfz:
+                poly = nfz['polygon']
+                for ri in range(rows):
+                    for ci in range(cols):
+                        cell_lat = min_lat + (ri / rows) * (max_lat - min_lat)
+                        cell_lon = min_lon + (ci / cols) * (max_lon - min_lon)
+                        if _point_in_polygon(cell_lat, cell_lon, poly):
+                            grid[ri][ci] = 1
+            else:
+                r = int((nfz['center'][0] - min_lat) / (max_lat - min_lat) * rows)
+                c = int((nfz['center'][1] - min_lon) / (max_lon - min_lon) * cols)
+                rad_grid = int(nfz['radius'] * 1.1 / GRID_RES)
+                y, x = np.ogrid[-r:rows-r, -c:cols-c]
+                grid[x*x + y*y <= rad_grid*rad_grid] = 1
             
     start_node = (min(rows-1, int((START_POINT[0] - min_lat) / (max_lat - min_lat) * rows)), min(cols-1, int((START_POINT[1] - min_lon) / (max_lon - min_lon) * cols)))
     end_node = (min(rows-1, int((END_POINT[0] - min_lat) / (max_lat - min_lat) * rows)), min(cols-1, int((END_POINT[1] - min_lon) / (max_lon - min_lon) * cols)))
@@ -189,8 +264,10 @@ def generate_uav_path(car_time):
     raw_waypoints = [[min_lat + (r / rows) * (max_lat - min_lat), min_lon + (c / cols) * (max_lon - min_lon), 100] for r, c in path]
     raw_df = pd.DataFrame(raw_waypoints, columns=['lat', 'lon', 'alt'])
     smooth_waypoints = b_spline_smooth(raw_waypoints, num_points=len(raw_waypoints)*5, k=3)
-    # 确保无人机终点精确对齐到事故点坐标，与无人车终点一致
+    # 确保无人机起/终点精确对齐，与无人车一致
     if smooth_waypoints:
+        smooth_waypoints[0][0] = START_POINT[0]
+        smooth_waypoints[0][1] = START_POINT[1]
         smooth_waypoints[-1][0] = END_POINT[0]
         smooth_waypoints[-1][1] = END_POINT[1]
     df = pd.DataFrame(smooth_waypoints, columns=['lat', 'lon', 'alt'])
@@ -257,11 +334,20 @@ def generate_uav_path_greedy():
     grid = np.zeros((rows, cols), dtype=int)
     if UAV_SMOKE:
         for nfz in NFZ_LIST + NEW_NFZ_LIST:
-            r = int((nfz['center'][0] - min_lat) / (max_lat - min_lat) * rows)
-            c = int((nfz['center'][1] - min_lon) / (max_lon - min_lon) * cols)
-            rad = int(nfz['radius'] * 1.1 / GRID_RES)
-            y, x = np.ogrid[-r:rows-r, -c:cols-c]
-            grid[x*x + y*y <= rad*rad] = 1
+            if 'polygon' in nfz:
+                poly = nfz['polygon']
+                for ri in range(rows):
+                    for ci in range(cols):
+                        cell_lat = min_lat + (ri / rows) * (max_lat - min_lat)
+                        cell_lon = min_lon + (ci / cols) * (max_lon - min_lon)
+                        if _point_in_polygon(cell_lat, cell_lon, poly):
+                            grid[ri][ci] = 1
+            else:
+                r = int((nfz['center'][0] - min_lat) / (max_lat - min_lat) * rows)
+                c = int((nfz['center'][1] - min_lon) / (max_lon - min_lon) * cols)
+                rad = int(nfz['radius'] * 1.1 / GRID_RES)
+                y, x = np.ogrid[-r:rows-r, -c:cols-c]
+                grid[x*x + y*y <= rad*rad] = 1
     start_node = (min(rows-1, int((START_POINT[0]-min_lat)/(max_lat-min_lat)*rows)),
                   min(cols-1, int((START_POINT[1]-min_lon)/(max_lon-min_lon)*cols)))
     end_node = (min(rows-1, int((END_POINT[0]-min_lat)/(max_lat-min_lat)*rows)),
@@ -291,8 +377,9 @@ def generate_uav_path_greedy():
     raw_waypoints = [[min_lat+(r/rows)*(max_lat-min_lat), min_lon+(c/cols)*(max_lon-min_lon), 100] for r,c in path]
     raw_df = pd.DataFrame(raw_waypoints, columns=['lat','lon','alt'])
     smooth_waypoints = b_spline_smooth(raw_waypoints, num_points=len(raw_waypoints)*5, k=3)
-    # 确保无人机终点精确对齐到事故点坐标，与无人车终点一致
     if smooth_waypoints:
+        smooth_waypoints[0][0] = START_POINT[0]
+        smooth_waypoints[0][1] = START_POINT[1]
         smooth_waypoints[-1][0] = END_POINT[0]
         smooth_waypoints[-1][1] = END_POINT[1]
     df = pd.DataFrame(smooth_waypoints, columns=['lat','lon','alt'])
@@ -360,16 +447,19 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
             if city_lats and city_lons:
                 m.fit_bounds([[min(city_lats), min(city_lons)], [max(city_lats), max(city_lons)]])
 
-    # 加载高亮边界
+    # 加载高亮边界（文件损坏时跳过，不影响路径规划核心功能）
     for b_file in border_files:
         b_path = os.path.join(base_path, b_file)
         if os.path.exists(b_path):
-            with open(b_path, 'r', encoding='utf-8') as f:
-                b_data = json.load(f)
-            folium.GeoJson(
-                b_data,
-                style_function=lambda x: {'color': '#00e5ff', 'weight': 3, 'fillOpacity': 0, 'dashArray': '5, 5'}
-            ).add_to(m)
+            try:
+                with open(b_path, 'r', encoding='utf-8') as f:
+                    b_data = json.load(f)
+                folium.GeoJson(
+                    b_data,
+                    style_function=lambda x: {'color': '#00e5ff', 'weight': 3, 'fillOpacity': 0, 'dashArray': '5, 5'}
+                ).add_to(m)
+            except (json.JSONDecodeError, Exception):
+                print(f"  [警告] 边界文件 {b_file} 损坏，跳过加载")
     # -----------------------
 
     car_path_group = folium.FeatureGroup(name='车辆路径 (UGV Path)', show=True).add_to(m)
@@ -380,14 +470,110 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
     if COMPARE and uav_greedy_interp is not None:
         uav_base_group = folium.FeatureGroup(name='无人机-基线Greedy (UAV Baseline)', show=True).add_to(m)
 
-    if UGV_BLOCKED:
-        folium.Polygon(locations=CONGESTION_ZONE_POLYGON, color='#3b82f6', weight=2, fill=True, fill_opacity=0.2, tooltip='地面拥堵/救援禁区').add_to(m)
-
     if UAV_SMOKE:
-        nfz = NFZ_LIST[0]
-        folium.Circle(location=nfz['center'], radius=nfz['radius'], color='#ef4444', weight=2, fill=True, fill_opacity=0.3, tooltip='核心禁飞区 (Core NFZ)').add_to(m)
-        new_nfz = NEW_NFZ_LIST[0]
-        folium.Circle(location=new_nfz['center'], radius=new_nfz['radius'], color='#f97316', weight=2, fill=True, fill_opacity=0.25, tooltip='风险缓冲区 (Buffer Zone)').add_to(m)
+        # === 双层禁飞区渲染（航空图风格）===
+        for nfz in NFZ_LIST:
+            if 'polygon' in nfz:
+                poly = nfz['polygon']
+                info = nfz.get('name', '核心禁飞区')
+                level = nfz.get('level', 'RESTRICTED')
+                ceiling = nfz.get('ceiling', '300m AGL')
+                reason = nfz.get('reason', '')
+                authority = nfz.get('authority', '')
+                effective = nfz.get('effective', '全时段')
+                # 计算中心点
+                cen_lat = sum(p[0] for p in poly) / len(poly)
+                cen_lon = sum(p[1] for p in poly) / len(poly)
+                # 边界标记点
+                for i, (plat, plon) in enumerate(poly):
+                    folium.CircleMarker(
+                        location=[plat, plon], radius=3,
+                        color='#dc2626', fill=True, fill_opacity=0.9,
+                        tooltip=f'{info} 边界桩 #{i+1}'
+                    ).add_to(m)
+                # 中心名称标签
+                folium.Marker(
+                    location=[cen_lat, cen_lon],
+                    icon=folium.DivIcon(
+                        html=f'<div style="font-size:11px;font-weight:700;color:#dc2626;'
+                             f'background:rgba(255,255,255,0.85);padding:2px 8px;border-radius:4px;'
+                             f'border:1px solid #dc2626;white-space:nowrap;">'
+                             f'&#x1F6AB; {info}</div>',
+                        icon_size=(200, 24), icon_anchor=(100, 12)
+                    )
+                ).add_to(m)
+                # 详细弹出面板
+                popup_html = f'''
+                    <div style="font-family:Microsoft YaHei,sans-serif;min-width:220px">
+                      <div style="font-size:14px;font-weight:700;color:#dc2626;margin-bottom:8px;
+                                  border-bottom:2px solid #dc2626;padding-bottom:4px">
+                        &#x1F6AB; {info}</div>
+                      <table style="font-size:11px;color:#334155;width:100%;border-collapse:collapse">
+                        <tr><td style="padding:3px 0;color:#64748b" colspan="2">管制信息</td></tr>
+                        <tr><td style="padding:2px 0">管制等级</td>
+                            <td style="color:#dc2626;font-weight:700">{level}</td></tr>
+                        <tr><td style="padding:2px 0">限飞高度</td>
+                            <td style="font-weight:600">{ceiling}</td></tr>
+                        <tr><td style="padding:2px 0">管制原因</td><td>{reason}</td></tr>
+                        <tr><td style="padding:3px 0;color:#64748b" colspan="2">管理信息</td></tr>
+                        <tr><td style="padding:2px 0">发布单位</td><td>{authority}</td></tr>
+                        <tr><td style="padding:2px 0">生效时段</td><td>{effective}</td></tr>
+                        <tr><td style="padding:3px 0;color:#64748b" colspan="2">区域信息</td></tr>
+                        <tr><td style="padding:2px 0">区域面积</td>
+                            <td>约 {sum(abs((poly[(i+1)%len(poly)][1]-p[1])*(poly[(i+1)%len(poly)][0]+p[0])) for i,p in enumerate(poly))/2*111000*96000/1e6:.1f} km²</td></tr>
+                        <tr><td style="padding:2px 0">顶点数</td><td>{len(poly)} 个控制点</td></tr>
+                      </table></div>'''
+                folium.Polygon(
+                    locations=poly,
+                    color='#dc2626', weight=3, dash_array='8, 4',
+                    fill=True, fill_opacity=0.3,
+                    popup=folium.Popup(popup_html, max_width=300),
+                    tooltip=f'&#x1F6AB; {info} | {level} | {ceiling}'
+                ).add_to(m)
+
+        for buf in NEW_NFZ_LIST:
+            if 'polygon' in buf:
+                poly_b = buf['polygon']
+                folium.Polygon(
+                    locations=poly_b,
+                    color='#d97706', weight=2, dash_array='2, 6',
+                    fill=True, fill_opacity=0.12,
+                    tooltip='&#x26A0; 限飞缓冲区 | 需提前报备飞行计划 | 审批时限: 24h'
+                ).add_to(m)
+
+    if UGV_BLOCKED:
+        # === 拥堵区渲染（交通态势风格）===
+        cong_name = NFZ_CONFIG[args.end_point].get('congestion_name', '拥堵地段')
+        cong_info = NFZ_CONFIG[args.end_point].get('congestion_info', '')
+        cen_lat = sum(p[0] for p in CONGESTION_ZONE_POLYGON) / len(CONGESTION_ZONE_POLYGON)
+        cen_lon = sum(p[1] for p in CONGESTION_ZONE_POLYGON) / len(CONGESTION_ZONE_POLYGON)
+        # 拥堵区中心标签
+        folium.Marker(
+            location=[cen_lat, cen_lon],
+            icon=folium.DivIcon(
+                html=f'<div style="font-size:10px;font-weight:600;color:#2563eb;'
+                     f'background:rgba(255,255,255,0.8);padding:1px 6px;border-radius:3px;'
+                     f'border:1px dashed #2563eb;white-space:nowrap;">'
+                     f'&#x1F6D1; {cong_name}</div>',
+                icon_size=(180, 20), icon_anchor=(90, 10)
+            )
+        ).add_to(m)
+        # 内部填充 + 外边框
+        cong_popup = f'''
+            <div style="font-family:Microsoft YaHei,sans-serif;min-width:200px">
+              <div style="font-size:14px;font-weight:700;color:#2563eb;margin-bottom:6px;
+                          border-bottom:2px solid #2563eb;padding-bottom:4px">
+                &#x1F6D1; {cong_name}</div>
+              <div style="font-size:11px;color:#475569;margin-bottom:6px">{cong_info}</div>
+              <div style="font-size:10px;color:#94a3b8">建议: 规划路径自动绕行该区域</div>
+            </div>'''
+        folium.Polygon(
+            locations=CONGESTION_ZONE_POLYGON,
+            color='#2563eb', weight=3, dash_array='10, 5',
+            fill=True, fill_opacity=0.2,
+            popup=folium.Popup(cong_popup, max_width=260),
+            tooltip=f'&#x1F6D1; {cong_name} | {cong_info}'
+        ).add_to(m)
 
     folium.Marker(START_POINT, icon=folium.Icon(color='green', icon='home'), tooltip=f'起点：{START_POINT_NAME}').add_to(m)
     folium.Marker(END_POINT, icon=folium.Icon(color='red', icon='fire'), tooltip=f'终点：{END_POINT_NAME}').add_to(m)
@@ -688,11 +874,24 @@ def save_to_czml(uav_df, car_df, delay):
 
     # 障碍物
     for i, nfz in enumerate(NFZ_LIST + NEW_NFZ_LIST):
-        color = [255, 0, 0, 100] if i==0 else [255, 165, 0, 100]
-        czml.append({
-            "id": f"NFZ_{i}", "position": {"cartographicDegrees": [nfz['center'][1], nfz['center'][0], 200]},
-            "cylinder": {"length": 400, "topRadius": nfz['radius'], "bottomRadius": nfz['radius'], "material": {"solidColor": {"color": {"rgba": color}}}}
-        })
+        color = [255, 0, 0, 100] if i < len(NFZ_LIST) else [255, 165, 0, 100]
+        if 'polygon' in nfz:
+            poly_coords = []
+            for p in nfz['polygon']:
+                poly_coords.extend([p[1], p[0], 200])
+            czml.append({
+                "id": f"NFZ_{i}", "polygon": {
+                    "positions": {"cartographicDegrees": poly_coords},
+                    "material": {"solidColor": {"color": {"rgba": color}}},
+                    "extrudedHeight": 400
+                }
+            })
+        else:
+            czml.append({
+                "id": f"NFZ_{i}", "position": {"cartographicDegrees": [nfz['center'][1], nfz['center'][0], 200]},
+                "cylinder": {"length": 400, "topRadius": nfz['radius'], "bottomRadius": nfz['radius'],
+                             "material": {"solidColor": {"color": {"rgba": color}}}}
+            })
     poly = []
     for p in CONGESTION_ZONE_POLYGON: poly.extend([p[1], p[0], 0])
     czml.append({"id": "Congestion", "polygon": {"positions": {"cartographicDegrees": poly}, "material": {"solidColor": {"color": {"rgba": [0, 0, 255, 80]}}}}})
@@ -794,10 +993,16 @@ if __name__ == '__main__':
             'delay': str(round(delay, 1)),
             'uavEnergy': str(round(uav_flight_min * UAV_SPEED * 3.6, 1)),
         },
-        'obstacles': [
-            {'type': 'polygon', 'color': '#3b82f6', 'positions': [p for point in CONGESTION_ZONE_POLYGON for p in [point[1], point[0]]]},
-            {'type': 'cylinder', 'center': [NFZ_LIST[0]['center'][1], NFZ_LIST[0]['center'][0]], 'radius': NFZ_LIST[0]['radius'], 'color': '#ef4444', 'height': 200},
-        ] if UGV_BLOCKED or UAV_SMOKE else [],
+        'obstacles': (
+            [{'type': 'polygon', 'color': '#3b82f6',
+              'positions': [p for point in CONGESTION_ZONE_POLYGON for p in [point[1], point[0]]]}]
+            + ([{'type': 'polygon', 'color': '#ef4444',
+                 'positions': [p for point in NFZ_LIST[0]['polygon'] for p in [point[1], point[0]]]}]
+               if NFZ_LIST and 'polygon' in NFZ_LIST[0] else
+               [{'type': 'cylinder', 'center': [NFZ_LIST[0]['center'][1], NFZ_LIST[0]['center'][0]],
+                 'radius': NFZ_LIST[0]['radius'], 'color': '#ef4444', 'height': 200}]
+               if NFZ_LIST else [])
+        ) if UGV_BLOCKED or UAV_SMOKE else [],
         'updated_at': datetime.now(timezone.utc).isoformat() if 'timezone' in dir() else datetime.now().isoformat(),
     }
     with open(result_path, 'w', encoding='utf-8') as f:
