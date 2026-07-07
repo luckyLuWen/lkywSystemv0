@@ -12,6 +12,10 @@ os.environ['TORCH_LOAD_WEIGHTS_ONLY'] = '0'
 import cv2
 import numpy as np
 import torch
+from sfga_compat import register_sfga_modules
+
+register_sfga_modules()
+
 from ultralytics import YOLO
 from datetime import datetime
 import base64
@@ -104,16 +108,47 @@ os.makedirs(RESULT_FOLDER, exist_ok=True)
 MODELS = {}
 
 WEIGHTS_DIR = (BASE_DIR / '../../LKYWDataset_weights').resolve()
+PRIMARY_MODEL_NAME = 'SFGA-YOLO26M'
+
+MODEL_DISPLAY_NAMES = {
+    PRIMARY_MODEL_NAME: 'SFGA-YOLO26M（本文主模型）',
+    'yolo26m_BestPt_1': 'YOLO26M（对照）',
+    'yolo26s_BestPt_1': 'YOLO26S（对照）',
+    'yolo26n_BestPt_3407': 'YOLO26N（对照）',
+    'yolo11m_BestPt_0': 'YOLO11M（对照）',
+    'yolo11s_BestPt_1': 'YOLO11S（对照）',
+    'yolo11n_BestPt_42': 'YOLO11N（轻量）',
+}
+
+
+def get_model_display_name(model_name):
+    if model_name in MODEL_DISPLAY_NAMES:
+        return MODEL_DISPLAY_NAMES[model_name]
+    return model_name.split('_')[0]
+
+
+def get_model_sort_key(model_name):
+    if model_name == PRIMARY_MODEL_NAME:
+        return (0, model_name.lower())
+    if model_name.startswith('yolo26'):
+        return (1, model_name.lower())
+    if model_name.startswith('yolo11'):
+        return (2, model_name.lower())
+    return (3, model_name.lower())
+
 
 def get_available_models():
     models_config = {}
     if WEIGHTS_DIR.exists():
-        for model_folder in WEIGHTS_DIR.iterdir():
-            if model_folder.is_dir():
-                weight_file = model_folder / 'best.pt'
-                if weight_file.exists():
-                    # Use folder name as model name (e.g., yolo11n_BestPt_42)
-                    models_config[model_folder.name] = str(weight_file)
+        model_folders = sorted(
+            (item for item in WEIGHTS_DIR.iterdir() if item.is_dir()),
+            key=lambda item: get_model_sort_key(item.name),
+        )
+        for model_folder in model_folders:
+            weight_file = model_folder / 'best.pt'
+            if weight_file.exists():
+                # Use folder name as stable model id, e.g. SFGA-YOLO26M or yolo11n_BestPt_42.
+                models_config[model_folder.name] = str(weight_file)
     return models_config
 
 MODEL_PATHS = get_available_models()
@@ -304,8 +339,10 @@ def get_models():
         if model_path.exists():
             available_models.append({
                 'name': name,
+                'display_name': get_model_display_name(name),
                 'path': str(model_path),
-                'size': model_path.stat().st_size / (1024 * 1024)  # Size in MB
+                'size': model_path.stat().st_size / (1024 * 1024),  # Size in MB
+                'is_primary': name == PRIMARY_MODEL_NAME,
             })
     return jsonify({'models': available_models})
 
@@ -556,6 +593,7 @@ def detect_video():
         conf_threshold = float(request.form.get('conf', 0.25))
         iou_threshold = float(request.form.get('iou', 0.45))
         frame_interval = int(request.form.get('interval', 30))
+        frame_interval = max(frame_interval, 1)
         
         # Save uploaded file
         filename = build_safe_upload_name(file.filename)
@@ -567,38 +605,19 @@ def detect_video():
         # Load model
         model = load_model(model_name)
         
-        # 先打开视频获取帧率信息
+        # 朴素抽帧检测：从第 0 帧开始，按固定帧间隔逐帧取样。
         cap = cv2.VideoCapture(filepath)
-        fps = int(cap.get(cv2.CAP_PROP_FPS))
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        cap.release()
+        if not cap.isOpened():
+            raise ValueError("Unable to open video file")
+
+        fps = float(cap.get(cv2.CAP_PROP_FPS) or 0)
+        if fps <= 0:
+            fps = 30.0
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
         
         # 用于计算平均处理时间
         import time
         total_inference_time = 0
-        
-        # 检查是否有预设的演示帧配置（通过文件名匹配）
-        demo_frames = None
-        
-        # 优先级1: 检查 video_test_folder_config.json（支持小数秒，精确配置）
-        folder_config_path = os.path.join(os.path.dirname(__file__), 'video_test_folder_config.json')
-        if os.path.exists(folder_config_path):
-            try:
-                with open(folder_config_path, 'r', encoding='utf-8') as f:
-                    folder_config = json.load(f)
-                    # 检查文件名是否匹配
-                    for config_name, config_data in folder_config.items():
-                        if config_name in filename or filename in config_name:
-                            # 从秒数转换为帧号
-                            seconds = config_data.get('seconds', [])
-                            demo_frames = [int(s * fps) for s in seconds]
-                            print(f"✓ 检测到 video_test 文件夹配置: {config_name}")
-                            break
-            except Exception as e:
-                print(f"加载 video_test_folder_config 失败: {e}")
-        
-        # Process video (重新打开视频进行处理)
-        cap = cv2.VideoCapture(filepath)
         
         frame_count = 0
         sampled_frames = []
@@ -608,11 +627,7 @@ def detect_video():
             if not ret:
                 break
             
-            should_detect = False
-            if demo_frames is not None:
-                should_detect = frame_count in demo_frames
-            else:
-                should_detect = frame_count % frame_interval == 0
+            should_detect = frame_count % frame_interval == 0
             
             if should_detect:
                 # Perform detection
@@ -681,7 +696,8 @@ def detect_video():
             'total_frames': total_frames,
             'sampled_frames': len(sampled_frames),
             'avg_frame_time': avg_frame_time,
-            'fps': fps,
+            'fps': round(fps, 3),
+            'model': model_name,
             'interval': frame_interval,
             'frames': sampled_frames
         })
