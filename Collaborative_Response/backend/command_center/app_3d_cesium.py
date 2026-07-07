@@ -165,6 +165,11 @@ def generate_uav_path(car_time):
     
     raw_df = pd.DataFrame(raw_waypoints, columns=['lat', 'lon', 'alt'])
     smooth_waypoints = b_spline_smooth(raw_waypoints, num_points=len(raw_waypoints)*5, k=3)
+    if smooth_waypoints:
+        smooth_waypoints[0][0] = START_POINT[0]
+        smooth_waypoints[0][1] = START_POINT[1]
+        smooth_waypoints[-1][0] = END_POINT[0]
+        smooth_waypoints[-1][1] = END_POINT[1]
     df = pd.DataFrame(smooth_waypoints, columns=['lat', 'lon', 'alt'])
     
     total_dist = 0
