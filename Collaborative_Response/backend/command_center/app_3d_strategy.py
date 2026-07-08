@@ -37,12 +37,12 @@ UAV_SPEED = 20.0   # 20 m/s (大型救援无人机)
 
 # 起点按终点分别配置：不同灾情场景由最近的消防站出警
 START_POINTS = {
-    'leak':  (30.510, 114.920),                           # 黄冈市黄州区路口镇专职消防队
-    'crash': (30.380, 113.150),                           # 仙桃市郑场镇专职消防队
+    'leak':  (30.5158, 114.9238),                         # 黄冈市黄州区路口镇专职消防队
+    'crash': (30.3354, 113.4275),                         # 仙桃市毛嘴镇消防站
 }
 START_POINT_NAMES = {
     'leak':  '黄冈市黄州区路口镇专职消防队',
-    'crash': '仙桃市郑场镇专职消防队',
+    'crash': '仙桃市毛嘴镇消防站',
 }
 
 END_POINTS = {
@@ -83,41 +83,35 @@ NFZ_CONFIG = {
                 [30.551, 114.908], [30.552, 114.902], [30.554, 114.896],
             ],
         }],
-        'congestion': [  # 黄州城区早高峰拥堵区
-            [30.526, 114.887], [30.532, 114.895], [30.537, 114.902],
-            [30.542, 114.907], [30.548, 114.903], [30.546, 114.895],
-            [30.542, 114.888], [30.536, 114.883], [30.529, 114.882],
+        'congestion': [  # 黄州城区早高峰拥堵区（覆盖路径40-55%段）
+            [30.540, 114.912], [30.548, 114.920], [30.558, 114.916],
+            [30.555, 114.905], [30.548, 114.900],
         ],
         'congestion_name': '黄州城区早高峰拥堵区',
         'congestion_info': '07:00-09:00 常态拥堵 | 通行延时+40%',
     },
     'crash': {
-        'nfz': [{  # 核心禁飞区：跨路径中段（迫使UAV绕行）
+        'nfz': [{  # 三伏潭镇北侧限飞区
             'polygon': [
-                [30.379, 113.136], [30.381, 113.139], [30.384, 113.138],
-                [30.386, 113.134], [30.385, 113.127], [30.383, 113.123],
-                [30.380, 113.124], [30.378, 113.128], [30.377, 113.133],
+                [30.355, 113.270], [30.360, 113.278], [30.366, 113.275],
+                [30.368, 113.266], [30.364, 113.258], [30.357, 113.260],
             ],
-            'name': '郑场镇中心限飞区',
-            'level': 'RESTRICTED',
-            'ceiling': '200m AGL',
-            'reason': '人口密集区低空安全',
-            'authority': '仙桃市应急管理局',
-            'effective': '全时段',
+            'name': '三伏潭镇限飞区',
+            'level': 'RESTRICTED', 'ceiling': '200m AGL',
+            'reason': '人口密集区低空安全', 'authority': '仙桃市应急管理局', 'effective': '全时段',
         }],
-        'buffer': [{  # 缓冲区（外扩250m）
+        'buffer': [{  # 缓冲区
             'polygon': [
-                [30.377, 113.138], [30.380, 113.141], [30.385, 113.140],
-                [30.388, 113.135], [30.387, 113.126], [30.384, 113.121],
-                [30.379, 113.122], [30.376, 113.127], [30.375, 113.133],
+                [30.352, 113.272], [30.358, 113.282], [30.368, 113.278],
+                [30.371, 113.267], [30.366, 113.255], [30.355, 113.257],
             ],
         }],
-        'congestion': [  # 集镇集市拥堵区（路径西段，与NFZ不重叠）
-            [30.382, 113.115], [30.384, 113.118], [30.387, 113.116],
-            [30.386, 113.111], [30.383, 113.109], [30.381, 113.112],
+        'congestion': [  # 胡场镇路段拥堵区（偏南，非必经之路）
+            [30.355, 113.218], [30.362, 113.226], [30.368, 113.221],
+            [30.365, 113.212], [30.358, 113.210],
         ],
-        'congestion_name': '郑场镇集贸市场拥堵区',
-        'congestion_info': '逢集日 06:00-12:00 | 通行延时+60%',
+        'congestion_name': '胡场镇路段拥堵区',
+        'congestion_info': '集镇路段 08:00-18:00 | 通行延时+50%',
     },
 }
 NFZ_LIST = NFZ_CONFIG[args.end_point]['nfz']
@@ -189,7 +183,7 @@ def generate_car_path():
         fetch_radius = max(int(straight_dist * 1.15), 5000)  # 至少 5km 半径
         print(f"正在拉取底层真实路网... (半径: {fetch_radius/1000:.1f} km)")
         G = load_drive_graph_from_local_or_osm(
-            START_POINT,
+            ((START_POINT[0] + END_POINT[0]) / 2, (START_POINT[1] + END_POINT[1]) / 2),
             dist=fetch_radius,
             network_type='drive',
             simplify=False,
@@ -209,9 +203,11 @@ def generate_car_path():
         route = nx.shortest_path(G, orig, dest, weight='weight')
         path_coords = [(G.nodes[n]['y'], G.nodes[n]['x']) for n in route]
         if path_coords[0][0] != START_POINT[0]: path_coords.insert(0, START_POINT)
-        # 确保终点精确对齐到事故点坐标，避免无人机/无人车终点偏离
-        if calculate_distance(path_coords[-1][0], path_coords[-1][1], END_POINT[0], END_POINT[1]) > 10:
+        end_gap = calculate_distance(path_coords[-1][0], path_coords[-1][1], END_POINT[0], END_POINT[1])
+        if 10 < end_gap < 500:
             path_coords.append(END_POINT)
+        elif end_gap >= 500:
+            print(f"  [注意] 事故点距最近道路 {end_gap/1000:.1f}km，无人车停在最近道路节点")
         df = pd.DataFrame(path_coords, columns=['lat', 'lon'])
         df['dist'] = 0.0
         for i in range(1, len(df)): df.loc[i, 'dist'] = calculate_distance(df.loc[i-1,'lat'], df.loc[i-1,'lon'], df.loc[i,'lat'], df.loc[i,'lon'])
