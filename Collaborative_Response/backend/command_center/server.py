@@ -103,8 +103,12 @@ def load_strategy_metrics() -> dict[str, Any]:
         "message": "已读取当前策略评估结果",
         "end_point": payload.get("end_point", ""),
         "end_point_name": payload.get("end_point_name", ""),
+        "start_point_name": payload.get("start_point_name", ""),
         "strategy": payload.get("strategy", ""),
         "metrics": payload.get("metrics", {}),
+        "comparison": payload.get("comparison"),
+        "scenario": payload.get("scenario"),
+        "speeds": payload.get("speeds"),
         "obstacles": payload.get("obstacles", []),
         "updated_at": file_info(PATH_RESULT_PATH)["updated_at"],
     }
@@ -527,9 +531,8 @@ def run_3d_strategy():
         "--ugv_block", ugv_block,
         "--uav_smoke", uav_smoke,
         "--strategy", strategy,
+        "--compare", "1",  # 始终启用对比模式供前端规划面板展示
     ]
-    if compare == "1":
-        extra_args += ["--compare", "1"]
     result = run_script("app_3d_strategy.py", *extra_args)
     if result.returncode != 0:
         return error_response(
@@ -555,6 +558,7 @@ def run_3d_cesium():
         "--ugv_block", ugv_block,
         "--uav_smoke", uav_smoke,
         "--strategy", strategy,
+        "--compare", "1",  # 始终启用对比模式供前端规划面板展示
     ]
     result = run_script("app_3d_strategy.py", *extra_args)
     if result.returncode != 0:
