@@ -37,12 +37,12 @@ UAV_SPEED = 20.0   # 20 m/s (大型救援无人机)
 
 # 起点按终点分别配置：不同灾情场景由最近的消防站出警
 START_POINTS = {
-    'leak':  (30.510, 114.920),                           # 黄冈市黄州区路口镇专职消防队
-    'crash': (30.380, 113.150),                           # 仙桃市郑场镇专职消防队
+    'leak':  (30.5158, 114.9238),                         # 黄冈市黄州区路口镇专职消防队
+    'crash': (30.3354, 113.4275),                         # 仙桃市毛嘴镇消防站
 }
 START_POINT_NAMES = {
     'leak':  '黄冈市黄州区路口镇专职消防队',
-    'crash': '仙桃市郑场镇专职消防队',
+    'crash': '仙桃市毛嘴镇消防站',
 }
 
 END_POINTS = {
@@ -83,41 +83,35 @@ NFZ_CONFIG = {
                 [30.551, 114.908], [30.552, 114.902], [30.554, 114.896],
             ],
         }],
-        'congestion': [  # 黄州城区早高峰拥堵区
-            [30.526, 114.887], [30.532, 114.895], [30.537, 114.902],
-            [30.542, 114.907], [30.548, 114.903], [30.546, 114.895],
-            [30.542, 114.888], [30.536, 114.883], [30.529, 114.882],
+        'congestion': [  # 黄州城区早高峰拥堵区（覆盖路径40-55%段）
+            [30.540, 114.912], [30.548, 114.920], [30.558, 114.916],
+            [30.555, 114.905], [30.548, 114.900],
         ],
         'congestion_name': '黄州城区早高峰拥堵区',
         'congestion_info': '07:00-09:00 常态拥堵 | 通行延时+40%',
     },
     'crash': {
-        'nfz': [{  # 核心禁飞区：跨路径中段（迫使UAV绕行）
+        'nfz': [{  # 三伏潭镇北侧限飞区
             'polygon': [
-                [30.379, 113.136], [30.381, 113.139], [30.384, 113.138],
-                [30.386, 113.134], [30.385, 113.127], [30.383, 113.123],
-                [30.380, 113.124], [30.378, 113.128], [30.377, 113.133],
+                [30.355, 113.270], [30.360, 113.278], [30.366, 113.275],
+                [30.368, 113.266], [30.364, 113.258], [30.357, 113.260],
             ],
-            'name': '郑场镇中心限飞区',
-            'level': 'RESTRICTED',
-            'ceiling': '200m AGL',
-            'reason': '人口密集区低空安全',
-            'authority': '仙桃市应急管理局',
-            'effective': '全时段',
+            'name': '三伏潭镇限飞区',
+            'level': 'RESTRICTED', 'ceiling': '200m AGL',
+            'reason': '人口密集区低空安全', 'authority': '仙桃市应急管理局', 'effective': '全时段',
         }],
-        'buffer': [{  # 缓冲区（外扩250m）
+        'buffer': [{  # 缓冲区
             'polygon': [
-                [30.377, 113.138], [30.380, 113.141], [30.385, 113.140],
-                [30.388, 113.135], [30.387, 113.126], [30.384, 113.121],
-                [30.379, 113.122], [30.376, 113.127], [30.375, 113.133],
+                [30.352, 113.272], [30.358, 113.282], [30.368, 113.278],
+                [30.371, 113.267], [30.366, 113.255], [30.355, 113.257],
             ],
         }],
-        'congestion': [  # 集镇集市拥堵区（路径西段，与NFZ不重叠）
-            [30.382, 113.115], [30.384, 113.118], [30.387, 113.116],
-            [30.386, 113.111], [30.383, 113.109], [30.381, 113.112],
+        'congestion': [  # 胡场镇路段拥堵区（偏南，非必经之路）
+            [30.355, 113.218], [30.362, 113.226], [30.368, 113.221],
+            [30.365, 113.212], [30.358, 113.210],
         ],
-        'congestion_name': '郑场镇集贸市场拥堵区',
-        'congestion_info': '逢集日 06:00-12:00 | 通行延时+60%',
+        'congestion_name': '胡场镇路段拥堵区',
+        'congestion_info': '集镇路段 08:00-18:00 | 通行延时+50%',
     },
 }
 NFZ_LIST = NFZ_CONFIG[args.end_point]['nfz']
@@ -189,7 +183,7 @@ def generate_car_path():
         fetch_radius = max(int(straight_dist * 1.15), 5000)  # 至少 5km 半径
         print(f"正在拉取底层真实路网... (半径: {fetch_radius/1000:.1f} km)")
         G = load_drive_graph_from_local_or_osm(
-            START_POINT,
+            ((START_POINT[0] + END_POINT[0]) / 2, (START_POINT[1] + END_POINT[1]) / 2),
             dist=fetch_radius,
             network_type='drive',
             simplify=False,
@@ -209,9 +203,11 @@ def generate_car_path():
         route = nx.shortest_path(G, orig, dest, weight='weight')
         path_coords = [(G.nodes[n]['y'], G.nodes[n]['x']) for n in route]
         if path_coords[0][0] != START_POINT[0]: path_coords.insert(0, START_POINT)
-        # 确保终点精确对齐到事故点坐标，避免无人机/无人车终点偏离
-        if calculate_distance(path_coords[-1][0], path_coords[-1][1], END_POINT[0], END_POINT[1]) > 10:
+        end_gap = calculate_distance(path_coords[-1][0], path_coords[-1][1], END_POINT[0], END_POINT[1])
+        if 10 < end_gap < 500:
             path_coords.append(END_POINT)
+        elif end_gap >= 500:
+            print(f"  [注意] 事故点距最近道路 {end_gap/1000:.1f}km，无人车停在最近道路节点")
         df = pd.DataFrame(path_coords, columns=['lat', 'lon'])
         df['dist'] = 0.0
         for i in range(1, len(df)): df.loc[i, 'dist'] = calculate_distance(df.loc[i-1,'lat'], df.loc[i-1,'lon'], df.loc[i,'lat'], df.loc[i,'lon'])
@@ -911,6 +907,7 @@ if __name__ == '__main__':
         car_bfs_df, car_bfs_interp = None, None
         uav_greedy_df, uav_greedy_interp = None, None
     else:
+        cached = None  # 重置缓存标记，确保后续写入 comparison 和 path_data
         print("正在请求路网数据并规划无人车路径...")
         car_df, car_time, car_G = generate_car_path()
         print(f"无人车路径规划完成，预估耗时: {car_time/60:.1f} 分钟。")
@@ -919,21 +916,22 @@ if __name__ == '__main__':
         uav_df, raw_uav_df, delay = generate_uav_path(car_time)
         print(f"无人机规划完成。策略: {SYNC_STRATEGY}, 地面待机时间: {delay:.1f} 秒。")
 
-        # 基线对比算法
+        # 基线对比算法（始终运行，供前端规划数据面板展示）
         car_bfs_df, car_bfs_interp = None, None
         uav_greedy_df, uav_greedy_interp = None, None
-        if COMPARE:
-            print("--- 对比模式：正在运行基线算法 ---")
+        if True:  # 始终计算基线对比数据
+            print("--- 正在运行基线对比算法 ---")
             print("  [基线] BFS 车辆路径 (最少边数, 忽略道路长度)...")
             car_bfs_df, _ = generate_car_path_bfs(G=car_G.copy() if car_G is not None else None)
             bfs_dist = car_bfs_df['dist'].sum() / 1000 if 'dist' in car_bfs_df.columns else 0
             print(f"  [基线] BFS 完成, 路径距离: {bfs_dist:.1f} km")
             print("  [基线] Greedy 无人机路径 (仅朝目标移动, 忽略全局代价)...")
-            uav_greedy_df, _, _ = generate_uav_path_greedy()
+            uav_greedy_df, _, greedy_fly_time = generate_uav_path_greedy()
             greedy_dist = sum(calculate_distance(uav_greedy_df.iloc[i-1]['lat'], uav_greedy_df.iloc[i-1]['lon'], uav_greedy_df.iloc[i]['lat'], uav_greedy_df.iloc[i]['lon']) for i in range(1, len(uav_greedy_df))) / 1000 if len(uav_greedy_df) > 1 else 0
             print(f"  [基线] Greedy 完成, 路径距离: {greedy_dist:.1f} km")
-            car_bfs_interp = interpolate_path(car_bfs_df, ANIMATION_INTERVAL)
-            uav_greedy_interp = interpolate_path(uav_greedy_df, ANIMATION_INTERVAL)
+            if COMPARE:
+                car_bfs_interp = interpolate_path(car_bfs_df, ANIMATION_INTERVAL)
+                uav_greedy_interp = interpolate_path(uav_greedy_df, ANIMATION_INTERVAL)
             car_dist = car_df['dist'].sum() / 1000 if 'dist' in car_df.columns else 0
             uav_dist = sum(calculate_distance(uav_df.iloc[i-1]['lat'], uav_df.iloc[i-1]['lon'], uav_df.iloc[i]['lat'], uav_df.iloc[i]['lon']) for i in range(1, len(uav_df))) / 1000
             print(f"  算法优越性: Dijkstra={car_dist:.1f} vs BFS={bfs_dist:.1f} km (节省{(bfs_dist-car_dist)/bfs_dist*100:.1f}%)")
@@ -983,15 +981,48 @@ if __name__ == '__main__':
     result_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "path_result.json")
     car_time_min = round(car_time / 60, 1)
     uav_flight_min = round((uav_df['time_s'].iloc[-1] - delay) / 60, 1) if len(uav_df) > 0 else 0
+    time_diff = abs(car_time - uav_df['time_s'].iloc[-1]) if len(uav_df) > 0 else 0
+
+    # 基线对比数据（仅在非缓存模式下可用）
+    comparison = None
+    if not cached:
+        car_dist_val = round(car_dist, 1)
+        uav_dist_val = round(uav_dist, 1)
+        comparison = {
+            'carDistKm': car_dist_val,
+            'uavDistKm': uav_dist_val,
+            'baselineCarDistKm': round(bfs_dist, 1),
+            'baselineUavDistKm': round(greedy_dist, 1),
+            'carSavingKm': round(bfs_dist - car_dist_val, 1),
+            'uavSavingKm': round(greedy_dist - uav_dist_val, 1),
+            'carSavingPct': round((bfs_dist - car_dist_val) / bfs_dist * 100, 1) if bfs_dist > 0 else 0,
+            'uavSavingPct': round((greedy_dist - uav_dist_val) / greedy_dist * 100, 1) if greedy_dist > 0 else 0,
+            'totalSavingKm': round((bfs_dist - car_dist_val) + (greedy_dist - uav_dist_val), 1),
+            'avgOptimizationPct': round(((bfs_dist - car_dist_val) / bfs_dist * 100 + (greedy_dist - uav_dist_val) / greedy_dist * 100) / 2, 1) if bfs_dist > 0 and greedy_dist > 0 else 0,
+        }
+
     result_data = {
         'end_point': args.end_point,
         'end_point_name': END_POINT_NAME,
+        'start_point_name': START_POINT_NAME,
         'strategy': SYNC_STRATEGY,
         'metrics': {
             'carTime': str(car_time_min),
             'uavTime': str(uav_flight_min),
             'delay': str(round(delay, 1)),
             'uavEnergy': str(round(uav_flight_min * UAV_SPEED * 3.6, 1)),
+            'timeDiff': str(round(time_diff, 1)),
+        },
+        'scenario': {
+            'ugv_blocked': UGV_BLOCKED,
+            'uav_smoke': UAV_SMOKE,
+            'nfz_count': len(NFZ_LIST) + len(NEW_NFZ_LIST),
+            'congestion_name': NFZ_CONFIG[args.end_point].get('congestion_name', ''),
+            'congestion_info': NFZ_CONFIG[args.end_point].get('congestion_info', ''),
+        },
+        'speeds': {
+            'car_kmh': round(CAR_SPEED * 3.6, 1),
+            'uav_ms': UAV_SPEED,
         },
         'obstacles': (
             [{'type': 'polygon', 'color': '#3b82f6',
@@ -1005,6 +1036,8 @@ if __name__ == '__main__':
         ) if UGV_BLOCKED or UAV_SMOKE else [],
         'updated_at': datetime.now(timezone.utc).isoformat() if 'timezone' in dir() else datetime.now().isoformat(),
     }
+    if comparison:
+        result_data['comparison'] = comparison
     with open(result_path, 'w', encoding='utf-8') as f:
         json.dump(result_data, f, ensure_ascii=False, indent=2)
     
