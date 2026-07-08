@@ -1,6 +1,7 @@
 <template>
   <div class="card">
     <h3>🎬 视频抽帧检测</h3>
+    <ModelMetricsPanel :settings="props.settings" :availableModels="props.availableModels" />
     
     <div class="upload-area" @click="fileInput.click()">
       <div class="upload-icon">🎥</div>
@@ -85,6 +86,7 @@
               v-for="(det, detIdx) in frame.detections" 
               :key="detIdx" 
               class="detection-badge"
+              :style="getClassStyle(det.class)"
             >
               {{ det.class }} ({{ (det.confidence * 100).toFixed(1) }}%)
             </span>
@@ -98,9 +100,15 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import ModelMetricsPanel from './ModelMetricsPanel.vue'
+import { getClassStyle } from '../utils/classColors'
 
 const props = defineProps({
   settings: Object,
+  availableModels: {
+    type: Array,
+    default: () => []
+  },
   safeFetch: Function
 })
 
@@ -304,11 +312,12 @@ const startDetection = async () => {
 }
 
 .detection-badge {
-  background: #10b981;
   color: white;
   padding: 4px 12px;
+  border: 1px solid transparent;
   border-radius: 20px;
   font-size: 12px;
+  font-weight: 700;
 }
 
 .no-detection {

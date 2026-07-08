@@ -227,27 +227,27 @@ runs/detect/lkyw_fire_detection/weights/best.pt
 - 图片检测
 - 视频抽帧检测
 - 本地摄像头实时检测
-- RTSP 流检测，支持 OBS 推流
+- RTMP 流检测，支持 OBS 推流
 - 检测历史与统计接口
 - 与上层 `Integration_Hub` 的事件/命令集成
 
-## RTSP 实时检测
+## RTMP 实时检测
 
-默认 RTSP 地址：
+默认推流地址：
 
 ```text
-rtsp://localhost:8554/live
+rtmp://127.0.0.1:1935/live
 ```
 
 使用 OBS Studio 推流：
 
 1. 安装 OBS Studio。
-2. 安装 `obs-rtspserver` 插件。
-3. 配置 RTSP 服务端口 `8554`。
-4. 在前端选择 RTSP 流模式。
+2. 配置 OBS 推流服务。
+3. 配置推流服务端口 `1935`。
+4. 在前端选择 RTMP 流模式。
 5. 启动实时检测。
 
-RTSP 配置文件：
+推流配置文件：
 
 ```text
 web_app/backend/rtsp_config.json

@@ -107,17 +107,48 @@ os.makedirs(RESULT_FOLDER, exist_ok=True)
 # Load YOLO model
 MODELS = {}
 
-WEIGHTS_DIR = (BASE_DIR / '../../LKYWDataset_weights').resolve()
+WEIGHTS_DIR = Path('../../LKYWDataset_weights')
 PRIMARY_MODEL_NAME = 'SFGA-YOLO26M'
 
 MODEL_DISPLAY_NAMES = {
-    PRIMARY_MODEL_NAME: 'SFGA-YOLO26M（本文主模型）',
-    'yolo26m_BestPt_1': 'YOLO26M（对照）',
-    'yolo26s_BestPt_1': 'YOLO26S（对照）',
-    'yolo26n_BestPt_3407': 'YOLO26N（对照）',
-    'yolo11m_BestPt_0': 'YOLO11M（对照）',
-    'yolo11s_BestPt_1': 'YOLO11S（对照）',
-    'yolo11n_BestPt_42': 'YOLO11N（轻量）',
+    PRIMARY_MODEL_NAME: 'SFGA-YOLO26M（改进模型）',
+    'yolo26M': 'YOLO26M',
+    'yolo11M': 'YOLO11M',
+}
+
+MODEL_PERFORMANCE = {
+    PRIMARY_MODEL_NAME: {
+        'model_name': 'SFGA-YOLO26M',
+        'map50': 0.9168,
+        'map50_95': 0.5922,
+        'recall': 0.8675,
+        'precision': 0.8944,
+        'test_set': 'LKYWDetection Test set',
+    },
+    'yolo26M': {
+        'model_name': 'YOLO26M',
+        'map50': 0.9044,
+        'map50_95': 0.5651,
+        'recall': 0.8415,
+        'precision': 0.8552,
+        'test_set': 'LKYWDetection Test set',
+    },
+    'yolo11M': {
+        'model_name': 'YOLO11M',
+        'map50': 0.9052,
+        'map50_95': 0.5813,
+        'recall': 0.8433,
+        'precision': 0.8745,
+        'test_set': 'LKYWDetection Test set',
+    },
+}
+
+ALLOWED_MODEL_NAMES = set(MODEL_DISPLAY_NAMES)
+
+MODEL_WEIGHT_FOLDERS = {
+    PRIMARY_MODEL_NAME: 'yolo26m_BestPt_1',
+    'yolo26M': PRIMARY_MODEL_NAME,
+    'yolo11M': 'yolo11m_BestPt_0',
 }
 
 
@@ -139,33 +170,66 @@ def get_model_sort_key(model_name):
 
 def get_available_models():
     models_config = {}
-    if WEIGHTS_DIR.exists():
-        model_folders = sorted(
-            (item for item in WEIGHTS_DIR.iterdir() if item.is_dir()),
-            key=lambda item: get_model_sort_key(item.name),
-        )
-        for model_folder in model_folders:
-            weight_file = model_folder / 'best.pt'
+    weights_dir = (BASE_DIR / WEIGHTS_DIR).resolve()
+    if weights_dir.exists():
+        model_names = sorted(ALLOWED_MODEL_NAMES, key=get_model_sort_key)
+        for model_name in model_names:
+            weight_folder_name = MODEL_WEIGHT_FOLDERS.get(model_name, model_name)
+            relative_weight_file = WEIGHTS_DIR / weight_folder_name / 'best.pt'
+            weight_file = (BASE_DIR / relative_weight_file).resolve()
             if weight_file.exists():
-                # Use folder name as stable model id, e.g. SFGA-YOLO26M or yolo11n_BestPt_42.
-                models_config[model_folder.name] = str(weight_file)
+                models_config[model_name] = relative_weight_file.as_posix()
     return models_config
 
 MODEL_PATHS = get_available_models()
 # Ensure at least one default model key exists for frontend compatibility
 if not MODEL_PATHS:
-    MODEL_PATHS = {'default': str(BASE_DIR.parent.parent / 'runs/detect/lkyw_fire_detection/weights/best.pt')}
+    MODEL_PATHS = {'default': '../../runs/detect/lkyw_fire_detection/weights/best.pt'}
 
 for name in MODEL_PATHS:
     MODELS[name] = None
 
 # 类别颜色映射 (BGR格式，OpenCV使用BGR而非RGB)
 CLASS_COLORS = {
-    'car_fire': (0, 0, 255),        # 红色 - 普通车辆火灾（最危险）
-    'car_normal': (0, 255, 0),      # 绿色 - 普通车辆正常
-    'lkyw_fire': (0, 0, 139),       # 深红色 - 两客一危火灾（最高优先级）
-    'lkyw_normal': (255, 144, 30)   # 橙色 - 两客一危正常
+    'car_fire': (30, 30, 230),       # 红色 - 普通车辆火灾
+    'lkyw_fire': (0, 0, 180),        # 深红色 - 两客一危火灾
+    'car_nofire': (0, 205, 255),     # 黄色 - 普通车辆无火
+    'lkyw_nofire': (0, 165, 255),    # 橙黄色 - 两客一危无火
+    'car_normal': (0, 205, 255),
+    'lkyw_normal': (0, 165, 255),
 }
+
+
+def get_class_color(class_name):
+    """Return an OpenCV BGR color for a detection class."""
+    raw_name = str(class_name or "").strip()
+    normalized_name = raw_name.lower().replace("-", "_").replace(" ", "_")
+
+    if raw_name in CLASS_COLORS:
+        return CLASS_COLORS[raw_name]
+    if normalized_name in CLASS_COLORS:
+        return CLASS_COLORS[normalized_name]
+
+    nofire_markers = ("nofire", "no_fire", "non_fire", "normal", "无火", "未起火", "正常")
+    fire_markers = ("fire", "起火", "火灾", "着火")
+
+    if any(marker in normalized_name for marker in nofire_markers):
+        return (0, 205, 255)
+    if any(marker in normalized_name for marker in fire_markers):
+        return (0, 0, 220)
+
+    return (160, 160, 160)
+
+
+def is_fire_class(class_name):
+    normalized_name = str(class_name or "").strip().lower().replace("-", "_").replace(" ", "_")
+    nofire_markers = ("nofire", "no_fire", "non_fire", "normal", "无火", "未起火", "正常")
+    fire_markers = ("fire", "起火", "火灾", "着火")
+
+    if any(marker in normalized_name for marker in nofire_markers):
+        return False
+    return any(marker in normalized_name for marker in fire_markers)
+
 
 # RTSP检测器管理
 rtsp_detectors = {}
@@ -214,7 +278,7 @@ def on_rtsp_detection_event(detection, stats):
     detections = detection.get('detections') or []
     fire_detections = [
         item for item in detections
-        if 'fire' in str(item.get('class', '')).lower() or '火' in str(item.get('class', ''))
+        if is_fire_class(item.get('class', ''))
     ]
 
     if not fire_detections:
@@ -340,9 +404,10 @@ def get_models():
             available_models.append({
                 'name': name,
                 'display_name': get_model_display_name(name),
-                'path': str(model_path),
+                'path': raw_path,
                 'size': model_path.stat().st_size / (1024 * 1024),  # Size in MB
                 'is_primary': name == PRIMARY_MODEL_NAME,
+                'performance': MODEL_PERFORMANCE.get(name),
             })
     return jsonify({'models': available_models})
 
@@ -404,7 +469,7 @@ def detect_image():
             class_name = result.names[cls]
             
             # 根据类别选择颜色
-            color = CLASS_COLORS.get(class_name, (0, 255, 0))  # 默认绿色
+            color = get_class_color(class_name)
             
             # Draw on image
             cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
@@ -510,7 +575,7 @@ def detect_batch():
                     conf = float(box.conf[0])
                     cls = int(box.cls[0])
                     class_name = result.names[cls]
-                    color = CLASS_COLORS.get(class_name, (0, 255, 0))
+                    color = get_class_color(class_name)
                     cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
                     label = f"{class_name} {conf:.2f}"
                     cv2.putText(img, label, (x1, y1 - 10),
@@ -652,7 +717,7 @@ def detect_video():
                     cls = int(box.cls[0])
                     class_name = result.names[cls]
                     
-                    color = CLASS_COLORS.get(class_name, (0, 255, 0))
+                    color = get_class_color(class_name)
                     
                     cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                     label = f"{class_name} {conf:.2f}"
@@ -743,7 +808,7 @@ def detect_webcam():
             cls = int(box.cls[0])
             class_name = result.names[cls]
             
-            color = CLASS_COLORS.get(class_name, (0, 255, 0))
+            color = get_class_color(class_name)
             
             cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
             label = f"{class_name} {conf:.2f}"
@@ -840,7 +905,7 @@ def system_info():
         # Check loaded models
         loaded = [name for name, model in MODELS.items() if model is not None]
         info['model_loaded'] = len(loaded) > 0
-        info['model_name'] = loaded[0] if loaded else ''
+        info['model_name'] = get_model_display_name(loaded[0]) if loaded else ''
     except Exception:
         pass
 
@@ -894,7 +959,11 @@ def start_rtsp_detector(data):
     if stream_id in rtsp_detectors:
         return {'success': True, 'message': 'Stream already running', 'stream_id': stream_id}, 200
 
-    model_path = MODEL_PATHS.get(model_name)
+    raw_model_path = MODEL_PATHS.get(model_name)
+    if raw_model_path is None:
+        return {'error': f'Model not found: {model_name}'}, 404
+
+    model_path = str(resolve_path(raw_model_path))
     detector = RTSPDetector(
         model_path=model_path,
         rtsp_url=rtsp_url,

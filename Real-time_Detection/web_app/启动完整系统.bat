@@ -32,26 +32,26 @@ echo   1️⃣  图片检测 - 上传图片进行火灾检测
 echo   2️⃣  视频检测 - 上传视频进行抽帧检测
 echo   3️⃣  实时检测 - 支持两种模式：
 echo       • 📷 本地摄像头 - 直接使用电脑摄像头
-echo       • 📡 RTSP流 - 接收OBS推流（模拟真实监控）
+echo       • 📡 RTMP流 - 接收OBS推流（模拟真实监控）
 echo.
 echo ╔════════════════════════════════════════════════════════════╗
-echo ║              🎥 使用RTSP实时检测的步骤                      ║
+echo ║              🎥 使用RTMP实时检测的步骤                      ║
 echo ╚════════════════════════════════════════════════════════════╝
 echo.
 echo   1. 打开 OBS Studio
 echo   2. 添加媒体源（选择火灾视频）
-echo   3. 工具 → RTSP服务器设置
-echo      - 端口: 8554
+echo   3. 工具 → 推流服务器设置
+echo      - 端口: 1935
 echo      - 路径: /live
 echo   4. 点击"开始串流"
 echo   5. 在Web界面选择"实时检测"标签
-echo   6. 选择"RTSP流（OBS推流）"
-echo   7. 点击"启动RTSP检测"
+echo   6. 选择"RTMP流（OBS推流）"
+echo   7. 点击"启动推流检测"
 echo.
 echo 💡 提示：
 echo   - 后端地址: http://localhost:5000
-echo   - RTSP地址: rtsp://localhost:8554/live
-echo   - 可以用VLC测试RTSP流是否正常
+echo   - 推流地址: rtmp://127.0.0.1:1935/live
+echo   - 可以用VLC测试推流是否正常
 echo.
 echo ════════════════════════════════════════════════════════════
 echo.

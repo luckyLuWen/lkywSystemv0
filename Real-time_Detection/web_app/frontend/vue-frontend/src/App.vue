@@ -13,18 +13,21 @@
         <ImageDetection
           v-if="activeTab === 'image'"
           :settings="settings"
+          :availableModels="availableModels"
           :safeFetch="safeFetch"
         />
 
         <VideoDetection
           v-if="activeTab === 'video'"
           :settings="settings"
+          :availableModels="availableModels"
           :safeFetch="safeFetch"
         />
 
         <RealtimeDetection
           v-if="activeTab === 'webcam'"
           :settings="settings"
+          :availableModels="availableModels"
           :safeFetch="safeFetch"
           :apiUrl="apiUrl"
         />
@@ -89,7 +92,7 @@
 
     <footer class="cyber-footer">
       <div class="footer-line"></div>
-      <p>REAL-TIME DETECTION SYSTEM // LKYWDetection // AUTHORIZED_ACCESS_ONLY</p>
+      <p>湖北省重点研发项目 // “两客一危”重大交通安全事故智能决策与救援关键技术研究 // “两客一危”事故智能检测</p>
     </footer>
   </div>
 </template>
