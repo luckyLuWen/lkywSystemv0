@@ -191,12 +191,12 @@ for name in MODEL_PATHS:
 
 # 类别颜色映射 (BGR格式，OpenCV使用BGR而非RGB)
 CLASS_COLORS = {
-    'car_fire': (30, 30, 230),       # 红色 - 普通车辆火灾
-    'lkyw_fire': (0, 0, 180),        # 深红色 - 两客一危火灾
-    'car_nofire': (0, 205, 255),     # 黄色 - 普通车辆无火
-    'lkyw_nofire': (0, 165, 255),    # 橙黄色 - 两客一危无火
-    'car_normal': (0, 205, 255),
-    'lkyw_normal': (0, 165, 255),
+    'car_fire': (53, 57, 229),       # 红色 - 普通车辆火灾
+    'lkyw_fire': (91, 24, 194),      # 紫红色 - 两客一危火灾
+    'car_nofire': (53, 216, 253),    # 金黄色 - 普通车辆无火
+    'lkyw_nofire': (0, 140, 251),    # 橙色 - 两客一危无火
+    'car_normal': (53, 216, 253),
+    'lkyw_normal': (0, 140, 251),
 }
 
 
@@ -214,9 +214,9 @@ def get_class_color(class_name):
     fire_markers = ("fire", "起火", "火灾", "着火")
 
     if any(marker in normalized_name for marker in nofire_markers):
-        return (0, 205, 255)
+        return (53, 216, 253)
     if any(marker in normalized_name for marker in fire_markers):
-        return (0, 0, 220)
+        return (53, 57, 229)
 
     return (160, 160, 160)
 

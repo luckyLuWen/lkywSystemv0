@@ -10,12 +10,12 @@ import numpy as np
 
 
 CLASS_COLORS = {
-    "car_fire": (30, 30, 230),
-    "lkyw_fire": (0, 0, 180),
-    "car_nofire": (0, 205, 255),
-    "lkyw_nofire": (0, 165, 255),
-    "car_normal": (0, 205, 255),
-    "lkyw_normal": (0, 165, 255),
+    "car_fire": (53, 57, 229),
+    "lkyw_fire": (91, 24, 194),
+    "car_nofire": (53, 216, 253),
+    "lkyw_nofire": (0, 140, 251),
+    "car_normal": (53, 216, 253),
+    "lkyw_normal": (0, 140, 251),
 }
 
 
@@ -32,9 +32,9 @@ def get_class_color(class_name):
     fire_markers = ("fire", "起火", "火灾", "着火")
 
     if any(marker in normalized_name for marker in nofire_markers):
-        return (0, 205, 255)
+        return (53, 216, 253)
     if any(marker in normalized_name for marker in fire_markers):
-        return (0, 0, 220)
+        return (53, 57, 229)
 
     return (160, 160, 160)
 

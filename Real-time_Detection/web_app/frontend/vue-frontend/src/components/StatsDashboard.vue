@@ -96,7 +96,7 @@ const stats = ref(null)
 
 const CLASS_COLORS_MAP = {
   car_fire: '#E53935',
-  lkyw_fire: '#B71C1C',
+  lkyw_fire: '#C2185B',
   car_nofire: '#FDD835',
   lkyw_nofire: '#FB8C00',
   car_normal: '#FDD835',

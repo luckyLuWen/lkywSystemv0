@@ -1,32 +1,32 @@
 const CLASS_STYLES = {
   car_fire: {
-    background: '#dc2626',
-    borderColor: '#fecaca',
+    background: '#E53935',
+    borderColor: '#FFCDD2',
     color: '#ffffff'
   },
   lkyw_fire: {
-    background: '#991b1b',
-    borderColor: '#fca5a5',
+    background: '#C2185B',
+    borderColor: '#F8BBD0',
     color: '#ffffff'
   },
   car_nofire: {
-    background: '#facc15',
-    borderColor: '#fef08a',
+    background: '#FDD835',
+    borderColor: '#FFF59D',
     color: '#1f2937'
   },
   lkyw_nofire: {
-    background: '#f59e0b',
-    borderColor: '#fde68a',
+    background: '#FB8C00',
+    borderColor: '#FFE0B2',
     color: '#111827'
   },
   car_normal: {
-    background: '#facc15',
-    borderColor: '#fef08a',
+    background: '#FDD835',
+    borderColor: '#FFF59D',
     color: '#1f2937'
   },
   lkyw_normal: {
-    background: '#f59e0b',
-    borderColor: '#fde68a',
+    background: '#FB8C00',
+    borderColor: '#FFE0B2',
     color: '#111827'
   }
 }
@@ -34,9 +34,11 @@ const CLASS_STYLES = {
 export const getClassStyle = (className = '') => {
   const key = String(className).toLowerCase()
   if (CLASS_STYLES[key]) return CLASS_STYLES[key]
-  if (key.includes('fire') || key.includes('火')) return CLASS_STYLES.car_fire
   if (key.includes('nofire') || key.includes('normal') || key.includes('无火') || key.includes('正常')) {
-    return CLASS_STYLES.car_nofire
+    return key.includes('lkyw') ? CLASS_STYLES.lkyw_nofire : CLASS_STYLES.car_nofire
+  }
+  if (key.includes('fire') || key.includes('火')) {
+    return key.includes('lkyw') ? CLASS_STYLES.lkyw_fire : CLASS_STYLES.car_fire
   }
   return {
     background: '#64748b',

@@ -13,7 +13,7 @@
           {{ getModelLabel(model) }}
         </option>
       </select>
-      <div class="tag">支持不同尺寸模型</div>
+      <div class="tag">主模型与对照模型</div>
     </div>
     
     <div class="control-group">

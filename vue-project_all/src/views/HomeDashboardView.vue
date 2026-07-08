@@ -204,7 +204,7 @@
 
             <!-- 检测数据标签页 -->
             <div v-else-if="activeRightTab === 'detection'" class="detection-data-panel">
-              <div class="sensor-section-title">AI 目标检测流</div>
+              <div class="sensor-section-title">交通事故检测</div>
               <RealtimeDetectionCard />
             </div>
 
@@ -457,7 +457,7 @@ const accidentPoints = [
       { id: 't-normal', time: '14:05', shortLabel: '正常行驶', title: '车辆正常行驶阶段', systems: ['边缘网关'], focusPoint: 'accident_blue' },
       { id: 't-accident', time: '14:12', shortLabel: '事故发生', title: '货车追尾事故瞬间', systems: ['实时检测'], focusPoint: 'detection' },
       { id: 't-smoke', time: '14:18', shortLabel: '次生灾害（烟雾）', title: '事故现场产生大量烟雾', systems: ['协同响应'], focusPoint: 'command' },
-      { id: 't-fire', time: '14:26', shortLabel: '次生灾害（起火）', title: '事故车辆开始起火', systems: ['协同响应'], focusPoint: 'response' },
+      { id: 't-fire', time: '14:26', shortLabel: '次生灾害（起火）', title: '事故车辆开始起火', systems: ['实时检测', '协同响应'], focusPoint: 'response' },
       { id: 't-spread', time: '14:40', shortLabel: '次生灾害（大火）', title: '火势进一步扩大蔓延', systems: ['总系统首页'], focusPoint: 'gateway' },
       { id: 't-uav-start', time: '14:45', shortLabel: '无人装备出动', title: '无人装备协同出动', systems: ['协同响应'], focusPoint: 'accident_blue' },
       { id: 't-uav-deploy', time: '14:50', shortLabel: '无人感知部署', title: '无人感知节点部署', systems: ['实时检测'], focusPoint: 'accident_blue' },
