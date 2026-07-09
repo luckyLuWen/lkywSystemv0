@@ -108,16 +108,16 @@ onUnmounted(() => {
 <template>
   <div class="layout">
     <aside class="sidebar">
-      <div class="logo">监控指挥中心</div>
+      <div class="logo">交通事故立体感知传感网</div>
       <nav>
         <div class="nav-group">
           <div class="nav-item group-title" @click="toggleOverview">
-            <span>全站总览大屏</span>
+            <span>立体感知网络总览</span>
             <span class="arrow">{{ isOverviewOpen ? '▼' : '▶' }}</span>
           </div>
 
           <div v-if="isOverviewOpen" class="sub-menu">
-            <router-link to="/" class="nav-item sub-item">实时监控面板</router-link>
+            <router-link to="/" class="nav-item sub-item">立体感知实时态势监测</router-link>
 
             <div class="nav-item sub-item nested-group-title" @click="toggleLogicMenu">
               <span>融合逻辑图谱</span>
@@ -164,7 +164,7 @@ onUnmounted(() => {
         </router-link>
 
         <router-link to="/drone" class="nav-item group-title link-style-drone">
-          <span>无人机实时侦察影像</span>
+          <span>无人机空域动态感知影像</span>
           <span class="arrow">→</span>
         </router-link>
       </nav>

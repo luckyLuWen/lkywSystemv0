@@ -17,7 +17,7 @@ const nodeState = computed(() => store.nodes.node1)
       </div>
     </div>
 
-    <h3 style="margin-top: 30px;">挂载监控项</h3>
+    <h3 style="margin-top: 30px;">多源感知设备管理</h3>
     <div class="device-list">
       <div class="device-item" @click="$router.push('/node1/weather')">
         <div class="device-icon">🌡</div>
