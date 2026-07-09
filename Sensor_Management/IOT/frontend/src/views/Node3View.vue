@@ -141,7 +141,7 @@ onUnmounted(() => {
       <div class="header-left">
         <button class="back-btn" @click="router.back()">返回</button>
         <div>
-          <h2>固定杆风速风向监测</h2>
+          <h2>环境感知单元</h2>
           <p class="subtitle">查看实时风速、风向与历史趋势</p>
         </div>
       </div>

@@ -514,7 +514,7 @@ onBeforeUnmount(() => {
     <div class="cards-grid">
   <div class="card env-card" @click="$router.push('/node1')">
     <div class="card-header">
-      <h2 class="card-title">监测点 A</h2>
+      <h2 class="card-title">感知单元(UGV)-001</h2>
       <span class="tag" :class="store.nodes?.node1?.online ? 'tag-online' : 'tag-offline'">
         {{ store.nodes?.node1?.online ? '在线' : '离线' }}
       </span>
@@ -548,7 +548,7 @@ onBeforeUnmount(() => {
 
   <div class="card env-card" @click="$router.push('/node2')">
     <div class="card-header">
-      <h2 class="card-title">监测点 B</h2>
+      <h2 class="card-title">感知单元(UGV)-002</h2>
       <span class="tag" :class="store.nodes?.node2?.online ? 'tag-online' : 'tag-offline'">
         {{ store.nodes?.node2?.online ? '在线' : '离线' }}
       </span>
@@ -582,7 +582,7 @@ onBeforeUnmount(() => {
 
   <div class="card weather-card" @click="$router.push('/node3')">
     <div class="card-header">
-      <h2 class="card-title">风速风向气象站</h2>
+      <h2 class="card-title">风速风向固定环境感知节点总控</h2>
       <span class="tag" :class="store.nodes?.node3?.online ? 'tag-online blue' : 'tag-offline'">
         {{ store.nodes?.node3?.online ? '在线' : '离线' }}
       </span>
