@@ -82,15 +82,14 @@ const connectWS = () => {
   }
 }
 
+// === 菜单控制状态变量整合 ===
 const isOverviewOpen = ref(true)
 const isLogicMenuOpen = ref(false)
-const isNode1Open = ref(false)
-const isNode2Open = ref(false)
+const isNodeGroupOpen = ref(false) // 统一接管监测点A和B的菜单展开状态
 
 const toggleOverview = () => { isOverviewOpen.value = !isOverviewOpen.value }
 const toggleLogicMenu = () => { isLogicMenuOpen.value = !isLogicMenuOpen.value }
-const toggleNode1 = () => { isNode1Open.value = !isNode1Open.value }
-const toggleNode2 = () => { isNode2Open.value = !isNode2Open.value }
+const toggleNodeGroup = () => { isNodeGroupOpen.value = !isNodeGroupOpen.value }
 
 onMounted(() => {
   connectWS()
@@ -135,36 +134,23 @@ onUnmounted(() => {
         </div>
 
         <div class="nav-group">
-          <div class="nav-item group-title" @click="toggleNode1">
-            <span>监测点 A (ip:219)</span>
-            <span class="arrow">{{ isNode1Open ? '▼' : '▶' }}</span>
+          <div class="nav-item group-title" @click="toggleNodeGroup">
+            <span>地面监测移动节点总控</span>
+            <span class="arrow">{{ isNodeGroupOpen ? '▼' : '▶' }}</span>
           </div>
-          <div v-if="isNode1Open" class="sub-menu">
-            <router-link to="/node1" class="nav-item sub-item">总体状态</router-link>
-            <router-link to="/node1/weather" class="nav-item sub-item">气象监控</router-link>
-            <router-link to="/node1/env" class="nav-item sub-item">环境监控</router-link>
-          </div>
-        </div>
-
-        <div class="nav-group">
-          <div class="nav-item group-title" @click="toggleNode2">
-            <span>监测点 B (ip:241)</span>
-            <span class="arrow">{{ isNode2Open ? '▼' : '▶' }}</span>
-          </div>
-          <div v-if="isNode2Open" class="sub-menu">
-            <router-link to="/node2" class="nav-item sub-item">总体状态</router-link>
-            <router-link to="/node2/weather" class="nav-item sub-item">气象监控</router-link>
-            <router-link to="/node2/env" class="nav-item sub-item">环境监控</router-link>
+          <div v-if="isNodeGroupOpen" class="sub-menu">
+            <router-link to="/node1" class="nav-item sub-item">感知单元(UGV)-001 </router-link>
+            <router-link to="/node2" class="nav-item sub-item">感知单元(UGV)-002 </router-link>
           </div>
         </div>
 
         <router-link to="/node3" class="nav-item group-title link-style">
-          <span>气象站 (ip:71)</span>
+          <span>固定环境感知节点总控</span>
           <span class="arrow">→</span>
         </router-link>
 
         <router-link to="/drone" class="nav-item group-title link-style-drone">
-          <span>无人机空域动态感知影像</span>
+          <span>空域监测移动节点总控</span>
           <span class="arrow">→</span>
         </router-link>
       </nav>
