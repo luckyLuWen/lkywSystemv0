@@ -512,63 +512,102 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="cards-grid">
-      <div class="card node-card" @click="$router.push('/node1')">
-        <div class="card-header">
-          <h3>监测点 A</h3>
-          <span class="tag" :class="store.nodes?.node1?.online ? 'tag-online' : 'tag-offline'">{{ store.nodes?.node1?.online ? '在线' : '离线' }}</span>
+  <div class="card env-card" @click="$router.push('/node1')">
+    <div class="card-header">
+      <h2 class="card-title">监测点 A</h2>
+      <span class="tag" :class="store.nodes?.node1?.online ? 'tag-online' : 'tag-offline'">
+        {{ store.nodes?.node1?.online ? '在线' : '离线' }}
+      </span>
+    </div>
+    <div class="card-body">
+      <div class="sensor-list">
+        <div class="sensor-inline-item">
+          <span class="lbl">温度</span>
+          <span class="val">{{ store.data.node1?.temp || 0 }}</span>
         </div>
-        <div class="card-body">
-          <div class="sensor-grid">
-            <div class="sensor-item"><span class="lbl">温度</span><span class="val">{{ store.data.node1?.temp || 0 }}</span></div>
-            <div class="sensor-item"><span class="lbl">湿度</span><span class="val">{{ store.data.node1?.hum || 0 }}%</span></div>
-            <div class="sensor-item full-width"><span class="lbl">烟雾</span><span class="val">{{ store.data.node1?.smoke || 0 }} ug</span></div>
-            <div class="sensor-item"><span class="lbl">TVOC</span><span class="val">{{ store.data.node1?.tvoc || 0 }}</span></div>
-            <div class="sensor-item"><span class="lbl">CO</span><span class="val">{{ store.data.node1?.co || 0 }}</span></div>
-          </div>
+        <div class="sensor-inline-item">
+          <span class="lbl">湿度</span>
+          <span class="val">{{ store.data.node1?.hum || 0 }}%</span>
         </div>
-        <div class="card-footer">点击查看详情 →</div>
-      </div>
-
-      <div class="card node-card" @click="$router.push('/node2')">
-        <div class="card-header">
-          <h3>监测点 B</h3>
-          <span class="tag" :class="store.nodes?.node2?.online ? 'tag-online' : 'tag-offline'">{{ store.nodes?.node2?.online ? '在线' : '离线' }}</span>
+        <div class="sensor-inline-item">
+          <span class="lbl">烟雾</span>
+          <span class="val">{{ store.data.node1?.smoke || 0 }} ug</span>
         </div>
-        <div class="card-body">
-          <div class="sensor-grid">
-            <div class="sensor-item"><span class="lbl">温度</span><span class="val">{{ store.data.node2?.temp || 0 }}</span></div>
-            <div class="sensor-item"><span class="lbl">湿度</span><span class="val">{{ store.data.node2?.hum || 0 }}%</span></div>
-            <div class="sensor-item full-width"><span class="lbl">烟雾</span><span class="val">{{ store.data.node2?.smoke || 0 }} ug</span></div>
-            <div class="sensor-item"><span class="lbl">TVOC</span><span class="val">{{ store.data.node2?.tvoc || 0 }}</span></div>
-            <div class="sensor-item"><span class="lbl">CO</span><span class="val">{{ store.data.node2?.co || 0 }}</span></div>
-          </div>
+        <div class="sensor-inline-item">
+          <span class="lbl">TVOC</span>
+          <span class="val">{{ store.data.node1?.tvoc || 0 }}</span>
         </div>
-        <div class="card-footer">点击查看详情 →</div>
-      </div>
-
-      <div class="card node-card" @click="$router.push('/node3')">
-        <div class="card-header">
-          <h3>风速风向气象站</h3>
-          <span class="tag" :class="store.nodes?.node3?.online ? 'tag-online blue' : 'tag-offline'">{{ store.nodes?.node3?.online ? '在线' : '离线' }}</span>
+        <div class="sensor-inline-item">
+          <span class="lbl">CO</span>
+          <span class="val">{{ store.data.node1?.co || 0 }}</span>
         </div>
-        <div class="card-body">
-          <div class="sensor-grid two-rows">
-            <div class="sensor-item large-item">
-              <span class="lbl">风速 (m/s)</span>
-              <span class="val big-val">{{ store.data.node3?.wind || 0 }}</span>
-            </div>
-            <div class="sensor-item large-item">
-              <span class="lbl">风向</span>
-              <span class="val big-val">{{ store.data.node3?.wind_dir || 0 }}</span>
-            </div>
-          </div>
-          <div class="wind-grade">
-            等级: {{ (store.data.node3?.wind || 0) > 10.7 ? '强风' : ((store.data.node3?.wind || 0) > 5.4 ? '和风' : '微风') }}
-          </div>
-        </div>
-        <div class="card-footer">点击查看详情 →</div>
       </div>
     </div>
+    <div class="card-footer">点击查看详情 →</div>
+  </div>
+
+  <div class="card env-card" @click="$router.push('/node2')">
+    <div class="card-header">
+      <h2 class="card-title">监测点 B</h2>
+      <span class="tag" :class="store.nodes?.node2?.online ? 'tag-online' : 'tag-offline'">
+        {{ store.nodes?.node2?.online ? '在线' : '离线' }}
+      </span>
+    </div>
+    <div class="card-body">
+      <div class="sensor-list">
+        <div class="sensor-inline-item">
+          <span class="lbl">温度</span>
+          <span class="val">{{ store.data.node2?.temp || 0 }}</span>
+        </div>
+        <div class="sensor-inline-item">
+          <span class="lbl">湿度</span>
+          <span class="val">{{ store.data.node2?.hum || 0 }}%</span>
+        </div>
+        <div class="sensor-inline-item">
+          <span class="lbl">烟雾</span>
+          <span class="val">{{ store.data.node2?.smoke || 0 }} ug</span>
+        </div>
+        <div class="sensor-inline-item">
+          <span class="lbl">TVOC</span>
+          <span class="val">{{ store.data.node2?.tvoc || 0 }}</span>
+        </div>
+        <div class="sensor-inline-item">
+          <span class="lbl">CO</span>
+          <span class="val">{{ store.data.node2?.co || 0 }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">点击查看详情 →</div>
+  </div>
+
+  <div class="card weather-card" @click="$router.push('/node3')">
+    <div class="card-header">
+      <h2 class="card-title">风速风向气象站</h2>
+      <span class="tag" :class="store.nodes?.node3?.online ? 'tag-online blue' : 'tag-offline'">
+        {{ store.nodes?.node3?.online ? '在线' : '离线' }}
+      </span>
+    </div>
+    <div class="card-body">
+      <div class="weather-list">
+        <div class="sensor-inline-item highlight-item">
+          <span class="lbl">风速 (m/s)</span>
+          <span class="val big-val">{{ store.data.node3?.wind || 0 }}</span>
+        </div>
+        <div class="sensor-inline-item highlight-item">
+          <span class="lbl">风向</span>
+          <span class="val big-val">{{ store.data.node3?.wind_dir || 0 }}</span>
+        </div>
+      </div>
+      <div class="wind-grade-box">
+        <span class="lbl">当前风力等级</span>
+        <span class="val grade-val">
+          {{ (store.data.node3?.wind || 0) > 10.7 ? '强风' : ((store.data.node3?.wind || 0) > 5.4 ? '和风' : '微风') }}
+        </span>
+      </div>
+    </div>
+    <div class="card-footer">点击查看详情 →</div>
+  </div>
+</div>
 
     <div class="bottom-panel">
       <div class="log-section">
@@ -613,216 +652,17 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* --- 实体资源状态样式 --- */
-.flex-1 {
-  flex: 1;
-}
-.sub-status-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 5px;
-}
-.mini-status {
-  font-size: 0.7rem;
-  padding: 2px 6px;
-  border-radius: 4px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  border: 1px solid transparent;
-  font-weight: normal;
-}
-.mini-status.on {
-  background: #f0fff4;
-  color: #2f855a;
-  border-color: #c6f6d5;
-}
-.mini-status.off {
-  background: #fff5f5;
-  color: #c53030;
-  border-color: #fed7d7;
-}
-.mini-status.on::before {
-  content: '';
-  display: block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #48bb78;
-  box-shadow: 0 0 4px #48bb78;
-  animation: pulse-dot 2s infinite;
-}
-.mini-status.off::before {
-  content: '';
-  display: block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #e53e3e;
-}
-@keyframes pulse-dot {
-  0% { transform: scale(0.95); opacity: 1; }
-  50% { transform: scale(1.2); opacity: 0.7; }
-  100% { transform: scale(0.95); opacity: 1; }
-}
-
-/* --- 感知网络与构网资源效能样式 --- */
-.capability-panel {
-  background: #fff;
-  border-radius: 10px;
-  margin-bottom: 15px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  border: 1px solid #eee;
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-}
-.panel-header {
-  padding: 10px 15px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #eee;
-  border-radius: 10px 10px 0 0;
-}
-.panel-header h3 {
-  margin: 0;
-  font-size: 0.95rem;
-  color: #2c3e50;
-  font-weight: bold;
-}
-.capability-grid {
-  display: grid;
-  grid-template-columns: 1.3fr 1fr 1fr;
-  gap: 20px;
-  padding: 15px;
-}
-.cap-group {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.cap-title {
-  font-size: 0.8rem;
-  color: #718096;
-  font-weight: bold;
-  border-left: 3px solid #3182ce;
-  padding-left: 8px;
-  margin-bottom: 4px;
-}
-.cap-items {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.cap-item {
-  background: #f9fafc;
-  border: 1px solid #f0f2f5;
-  border-radius: 6px;
-  padding: 8px 12px;
-}
-.cap-item.icon-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.cap-icon {
-  font-size: 1.3rem;
-}
-.cap-info {
-  display: flex;
-  flex-direction: column;
-}
-.row-flex {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.c-lbl {
-  font-size: 0.75rem;
-  color: #4a5568;
-}
-.c-val {
-  font-size: 0.85rem;
-  color: #2d3748;
-  font-weight: bold;
-}
-.c-sub {
-  color: #a0aec0;
-  font-weight: normal;
-  font-size: 0.7rem;
-}
-.tag-blue {
-  background: #ebf8ff;
-  color: #3182ce;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-}
-.highlight {
-  color: #38a169;
-}
-.progress-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 120px;
-}
-.progress-bar {
-  flex: 1;
-  height: 6px;
-  background: #e2e8f0;
-  border-radius: 3px;
-  overflow: hidden;
-}
-.progress-fill {
-  height: 100%;
-  background: #48bb78;
-  transition: width 0.3s;
-}
-
-.data-stats {
-  flex-direction: row;
-  height: 100%;
-}
-.stat-box {
-  flex: 1;
-  background: #f0f4f8;
-  border-radius: 6px;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #e2e8f0;
-}
-.s-lbl {
-  font-size: 0.75rem;
-  color: #718096;
-  margin-bottom: 4px;
-}
-.s-val {
-  font-size: 1.4rem;
-  color: #2b6cb0;
-  font-weight: bold;
-  line-height: 1.2;
-}
-.s-val small {
-  font-size: 0.8rem;
-  color: #4a5568;
-  font-weight: normal;
-}
-.s-desc {
-  font-size: 0.7rem;
-  color: #a0aec0;
-  margin-top: 4px;
-}
-
-/* --- 原有页面基础样式保留 --- */
+/* ================= 全局 & 原有页面基础样式 ================= */
 .dashboard-container { padding: 15px 25px; max-width: 1600px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
 .page-title { color: #2c3e50; margin: 0 0 10px 0; font-weight: 700; font-size: 1.3rem; }
 
 .top-section { display: flex; gap: 15px; margin-bottom: 15px; height: 240px; min-height: 240px; flex-shrink: 0; }
 
+/* 全局公用标签与文本属性 (保留原有以防影响其他面板) */
+.lbl { font-size: 0.75rem; color: #909399; margin-bottom: 2px; }
+.val { font-size: 0.95rem; font-weight: bold; color: #2c3e50; }
+
+/* ================= 决策与状态面板 (保留原有) ================= */
 .decision-panel { flex: 5; background: white; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid #ccc; }
 .decision-panel.success { border-left-color: #48bb78; background: #f0fff4; }
 .decision-panel.warning { border-left-color: #ecc94b; background: #fffff0; }
@@ -835,33 +675,13 @@ onBeforeUnmount(() => {
 .status-text p { margin: 0; font-size: 0.75rem; color: #718096; }
 .status-actions { display: flex; align-items: center; gap: 8px; }
 
-.link-btn, .ctrl-link-btn {
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: 0.2s;
-}
+.link-btn, .ctrl-link-btn { border: 1px solid #dcdfe6; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; transition: 0.2s; }
 .link-btn { background: none; color: #606266; }
 .link-btn:hover { color: #409eff; border-color: #409eff; background: #ecf5ff; }
 .ctrl-link-btn { color: white; border-color: transparent; }
 
-.gateway-strip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 10px;
-}
-.gateway-pill {
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: rgba(255,255,255,0.7);
-  border: 1px solid rgba(0,0,0,0.05);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
+.gateway-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+.gateway-pill { padding: 10px 12px; border-radius: 8px; background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 4px; }
 .gateway-pill.wide { grid-column: span 1; }
 .gateway-pill span { font-size: 0.72rem; color: #718096; }
 .gateway-pill strong { font-size: 0.85rem; color: #2d3748; }
@@ -874,6 +694,7 @@ onBeforeUnmount(() => {
 .logic-footer { display: flex; gap: 10px; margin-top: auto; flex-wrap: wrap; }
 .mini-tag { background: rgba(255,255,255,0.7); padding: 1px 6px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.05); font-size: 0.75rem; color: #4a5568; }
 
+/* ================= 无人机面板 (保留原有) ================= */
 .drone-panel { flex: 4; background: white; border-radius: 10px; padding: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
 .drone-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.9rem; font-weight: bold; color: #2c3e50; }
 .status-indicator { font-size: 0.7rem; color: #718096; font-weight: normal; }
@@ -892,30 +713,168 @@ onBeforeUnmount(() => {
 .btn-active { background: #3182ce; animation: pulse 2s infinite; }
 .mini-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px; flex-shrink: 0; }
-.node-card { background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s; border: 1px solid #eee; display: flex; flex-direction: column; }
-.node-card:hover { transform: translateY(-3px); border-color: #42b983; }
-.card-header { padding: 10px 15px; background: #f8f9fa; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-.card-header h3 { margin: 0; font-size: 1rem; color: #333; }
-.tag { padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+/* ================= 实体资源与效能状态 (保留原有) ================= */
+.flex-1 { flex: 1; }
+.sub-status-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+.mini-status { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid transparent; font-weight: normal; }
+.mini-status.on { background: #f0fff4; color: #2f855a; border-color: #c6f6d5; }
+.mini-status.off { background: #fff5f5; color: #c53030; border-color: #fed7d7; }
+.mini-status.on::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; background: #48bb78; box-shadow: 0 0 4px #48bb78; animation: pulse-dot 2s infinite; }
+.mini-status.off::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; background: #e53e3e; }
+
+.capability-panel { background: #fff; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #eee; display: flex; flex-direction: column; flex-shrink: 0; }
+.panel-header { padding: 10px 15px; background: #f8f9fa; border-bottom: 1px solid #eee; border-radius: 10px 10px 0 0; }
+.panel-header h3 { margin: 0; font-size: 0.95rem; color: #2c3e50; font-weight: bold; }
+.capability-grid { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 20px; padding: 15px; }
+.cap-group { display: flex; flex-direction: column; gap: 10px; }
+.cap-title { font-size: 0.8rem; color: #718096; font-weight: bold; border-left: 3px solid #3182ce; padding-left: 8px; margin-bottom: 4px; }
+.cap-items { display: flex; flex-direction: column; gap: 8px; }
+.cap-item { background: #f9fafc; border: 1px solid #f0f2f5; border-radius: 6px; padding: 8px 12px; }
+.cap-item.icon-item { display: flex; align-items: center; gap: 12px; }
+.cap-icon { font-size: 1.3rem; }
+.cap-info { display: flex; flex-direction: column; }
+.row-flex { display: flex; justify-content: space-between; align-items: center; }
+.c-lbl { font-size: 0.75rem; color: #4a5568; }
+.c-val { font-size: 0.85rem; color: #2d3748; font-weight: bold; }
+.c-sub { color: #a0aec0; font-weight: normal; font-size: 0.7rem; }
+.tag-blue { background: #ebf8ff; color: #3182ce; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; }
+.highlight { color: #38a169; }
+.progress-wrap { display: flex; align-items: center; gap: 8px; width: 120px; }
+.progress-bar { flex: 1; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: #48bb78; transition: width 0.3s; }
+
+.data-stats { flex-direction: row; height: 100%; }
+.stat-box { flex: 1; background: #f0f4f8; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #e2e8f0; }
+.s-lbl { font-size: 0.75rem; color: #718096; margin-bottom: 4px; }
+.s-val { font-size: 1.4rem; color: #2b6cb0; font-weight: bold; line-height: 1.2; }
+.s-val small { font-size: 0.8rem; color: #4a5568; font-weight: normal; }
+.s-desc { font-size: 0.7rem; color: #a0aec0; margin-top: 4px; }
+
+
+/* ================= 【深度整合】传感器卡片模块 ================= */
+.cards-grid { 
+  display: grid; 
+  /* 融合原有与新版布局：自适应排列，响应式更强 */
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+  gap: 20px; 
+  margin-bottom: 15px; 
+  flex-shrink: 0; 
+  font-size: 16px; /* 提升卡片整体基础字号 */
+}
+
+/* 卡片外层基础统一 */
+.node-card { 
+  background: white; 
+  border-radius: 12px; 
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+  cursor: pointer; 
+  transition: transform 0.2s, box-shadow 0.2s; 
+  border: 1px solid #eee; 
+  display: flex; 
+  flex-direction: column; 
+}
+.node-card:hover { 
+  transform: translateY(-5px); 
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  border-color: #42b983; 
+}
+
+/* 卡片类型差异化主题 */
+.env-card { border-top: 5px solid #4CAF50; }
+.weather-card { 
+  background: linear-gradient(145deg, #f0f7ff 0%, #e6f0fa 100%); 
+  border-top: 5px solid #2196F3; 
+}
+
+/* 卡片头部与大标题 */
+.card-header { 
+  padding: 12px 15px; 
+  background: #f8f9fa; 
+  border-bottom: 1px solid #eee; 
+  border-radius: 11px 11px 0 0; /* 适配圆角 */
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+}
+.card-title { 
+  margin: 0; 
+  font-size: 1.6rem; /* 标题保持最大层级 */
+  color: #333; 
+  font-weight: bold; 
+}
+
+/* 状态标签(在线/离线)统一大小 */
+.tag { 
+  padding: 4px 10px; 
+  border-radius: 6px; 
+  font-size: 0.85rem; 
+  font-weight: bold; 
+}
 .tag-online { background: #e6fffa; color: #38a169; }
 .tag-online.blue { background: #ebf8ff; color: #3182ce; }
 .tag-offline { background: #fff5f5; color: #e53e3e; }
-.card-body { padding: 12px; flex: 1; }
 
-.sensor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.sensor-item { background: #f9fafc; padding: 6px 8px; border-radius: 6px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; border: 1px solid #f0f2f5; }
-.sensor-item.full-width { grid-column: span 2; flex-direction: row; justify-content: space-between; align-items: center; }
-.lbl { font-size: 0.75rem; color: #909399; margin-bottom: 2px; }
-.full-width .lbl { margin-bottom: 0; }
-.val { font-size: 0.95rem; font-weight: bold; color: #2c3e50; }
+/* 卡片主体与内联列表样式 */
+.card-body { padding: 15px; flex: 1; }
 
-.two-rows { grid-template-columns: 1fr 1fr; height: 100%; align-content: center; }
-.large-item { align-items: center; padding: 15px 5px; }
-.big-val { font-size: 1.4rem; color: #3182ce; }
-.wind-grade { text-align: center; margin-top: 10px; font-size: 0.8rem; color: #999; background: #f4f4f5; padding: 4px; border-radius: 4px; }
-.card-footer { padding: 8px 15px; font-size: 0.75rem; color: #999; text-align: right; border-top: 1px solid #f8f9fa; }
+.sensor-list { display: flex; flex-direction: column; gap: 12px; }
 
+.sensor-inline-item {
+  display: flex;
+  justify-content: space-between; 
+  align-items: center;
+  font-size: 1.35rem; /* 大字号 */
+  background: rgba(0,0,0,0.02);
+  padding: 12px 15px; 
+  border-radius: 8px;
+}
+/* 严格作用域，防止污染全局 .lbl 和 .val */
+.sensor-inline-item .lbl { 
+  color: #666; 
+  font-weight: 500; 
+  margin-bottom: 0; 
+  font-size: inherit; 
+}
+.sensor-inline-item .val { 
+  color: #222; 
+  font-weight: bold; 
+  font-size: inherit; 
+}
+
+/* 气象卡片特殊大字与排版 */
+.weather-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
+.weather-card .highlight-item { 
+  background: #ffffff; 
+  box-shadow: 0 2px 6px rgba(33, 150, 243, 0.1); 
+}
+.weather-card .big-val { font-size: 1.5rem; color: #1976D2; }
+
+.wind-grade-box {
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center;
+  background-color: #1976D2; 
+  color: white;
+  padding: 12px 15px; 
+  border-radius: 8px;
+  font-size: 1.35rem; 
+}
+.wind-grade-box .lbl { color: rgba(255,255,255,0.9); margin-bottom: 0; font-size: inherit;}
+.wind-grade-box .grade-val { font-weight: bold; font-size: 1.45rem; }
+
+/* 底部交互提示 */
+.card-footer { 
+  padding: 10px 15px; 
+  font-size: 0.9rem; 
+  color: #999; 
+  text-align: right; 
+  border-top: 1px solid #eee; 
+  margin-top: auto; 
+}
+.node-card:hover .card-footer { color: #2196F3; }
+
+
+/* ================= 底部日志与系统面板 (保留原有) ================= */
 .bottom-panel { background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; gap: 20px; padding: 15px; border: 1px solid #eee; height: 180px; flex-shrink: 0; margin-bottom: 20px; }
 .log-section { flex: 3; display: flex; flex-direction: column; }
 .log-header { font-size: 0.85rem; font-weight: bold; color: #4a5568; margin-bottom: 8px; display: flex; justify-content: space-between; }
@@ -935,7 +894,10 @@ onBeforeUnmount(() => {
 .sys-val.good { color: #48bb78; }
 .sys-val.bad { color: #e53e3e; }
 
+
+/* ================= 动画与响应式 (保留并整合) ================= */
 @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+@keyframes pulse-dot { 0% { transform: scale(0.95); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.7; } 100% { transform: scale(0.95); opacity: 1; } }
 
 @media (max-width: 1200px) {
   .top-section { height: auto; flex-direction: column; }

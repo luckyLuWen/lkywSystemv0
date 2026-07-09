@@ -10,6 +10,7 @@
     <div class="view-toggle">
       <button :class="{ active: viewMode === '2d' }" @click="viewMode = '2d'">🗺️ 二维推演</button>
       <button :class="{ active: viewMode === '3d' }" @click="viewMode = '3d'">🌍 三维仿真</button>
+      <button :class="{ active: viewMode === 'physics' }" @click="viewMode = 'physics'">⚙️ 物理仿真</button>
     </div>
 
     <!-- 城市切换开关 -->
@@ -33,10 +34,32 @@
       <iframe v-else :src="iframeSrc" class="deduction-iframe"></iframe>
     </div>
 
-    <!-- 悬浮提示框，显示鼠标指向的市级名字 -->
+    <!-- 物理仿真视图（占位或接入端） -->
+    <div v-if="viewMode === 'physics'" class="cesium-container iframe-container" style="position: absolute; top: 20px; left: 20px; right: 20px; bottom: 20px; z-index: 10; width: auto; height: auto;">
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #00e5ff; gap: 16px;">
+        <div style="font-size: 48px;">⚙️</div>
+        <div style="font-size: 24px; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);">物理仿真系统接入中...</div>
+        <div style="font-size: 14px; color: #94a3b8;">等待后端服务与刚体动力学引擎就绪</div>
+      </div>
+    </div>
+
+    <!-- 悬浮提示框，显示鼠标指向的市级名字 - 赛博战术 HUD 样式 -->
     <div v-show="hoveredCityName && viewMode === '3d'" class="city-tooltip" :style="tooltipStyle">
-      <span class="city-icon">📍</span>
-      <span class="city-name">{{ hoveredCityName }}</span>
+      <div class="hud-corner top-left"></div>
+      <div class="hud-corner top-right"></div>
+      <div class="hud-corner bottom-left"></div>
+      <div class="hud-corner bottom-right"></div>
+      <div class="hud-content">
+        <div class="hud-icon-wrap">
+          <span class="hud-radar-dot"></span>
+          <svg viewBox="0 0 24 24" class="hud-radar-svg"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+        </div>
+        <div class="hud-text-wrap">
+          <span class="hud-sub-label">SECTOR / REGION</span>
+          <span class="hud-main-title">{{ hoveredCityName }}</span>
+        </div>
+      </div>
+      <div class="hud-glow-line"></div>
     </div>
   </div>
 </template>
@@ -103,21 +126,22 @@ const generate2DDeduction = async (city) => {
   const endpoint = city === 'xiantao' ? 'crash' : 'leak'
   isGenerating2D.value = true
   errorMessage.value = ''
+  const baseUrl = getCollaborativeCommandCenterBaseUrl()
   try {
-    const baseUrl = getCollaborativeCommandCenterBaseUrl()
     const response = await fetch(`${baseUrl}/api/run_3d_strategy?end_point=${endpoint}`)
-    if (response.ok) {
-      iframeSrc.value = `${baseUrl}/2d_deduction.html?t=${Date.now()}`
-      // 生成成功后，异步加载并播放 3D 仿真轨迹
-      await loadMission()
-    } else {
-      errorMessage.value = '二维推演生成失败，后端返回错误。'
-      console.error('二维推演生成失败')
+    if (!response.ok) {
+      console.warn('后端生成策略返回非200状态码，将启用本地/历史二维推演缓存显示。')
     }
   } catch (error) {
-    errorMessage.value = '请求生成二维推演时出错，请确保后端服务已启动。'
-    console.error('请求生成二维推演时出错:', error)
+    console.warn('请求生成二维推演接口出现异常，自动降级为加载默认二维推演界面:', error)
   } finally {
+    // 无论后端动态生成接口成功或异常，始终正常加载并展示二维仿真推演界面（优雅降级）
+    iframeSrc.value = `${baseUrl}/2d_deduction.html?t=${Date.now()}`
+    try {
+      await loadMission()
+    } catch (e) {
+      console.error('加载轨迹异常:', e)
+    }
     isGenerating2D.value = false
   }
 }
@@ -688,31 +712,116 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
 }
 
+/* 城市悬浮提示框样式 - 赛博朋克高阶战术 HUD 标签 */
 .city-tooltip {
   position: absolute;
-  pointer-events: none;
-  background: rgba(6, 22, 40, 0.85);
-  border: 1px solid rgba(0, 229, 255, 0.6);
-  border-radius: 4px;
-  padding: 6px 12px;
-  color: #fff;
-  font-size: 14px;
-  font-family: var(--font-family, 'Microsoft YaHei', sans-serif);
   z-index: 9999;
-  backdrop-filter: blur(6px);
-  box-shadow: 0 4px 12px rgba(0, 229, 255, 0.25);
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(6, 18, 38, 0.92) 0%, rgba(10, 28, 54, 0.88) 100%);
+  border: 1px solid rgba(0, 255, 216, 0.45);
+  border-radius: 6px;
+  padding: 8px 14px 10px 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75), 0 0 16px rgba(0, 255, 216, 0.25), inset 0 0 12px rgba(0, 255, 216, 0.12);
+  backdrop-filter: blur(10px);
+  min-width: 125px;
+  transform: translate(-10%, -120%);
+  transition: opacity 0.15s ease-out, transform 0.15s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.hud-glow-line {
+  position: absolute;
+  bottom: 0;
+  left: 15%;
+  right: 15%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ffd8, transparent);
+  box-shadow: 0 0 8px #00ffd8;
+}
+
+.hud-corner {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-color: #00ffd8;
+  border-style: solid;
+  border-width: 0;
+}
+.hud-corner.top-left { top: -1px; left: -1px; border-top-width: 2px; border-left-width: 2px; }
+.hud-corner.top-right { top: -1px; right: -1px; border-top-width: 2px; border-right-width: 2px; }
+.hud-corner.bottom-left { bottom: -1px; left: -1px; border-bottom-width: 2px; border-left-width: 2px; }
+.hud-corner.bottom-right { bottom: -1px; right: -1px; border-bottom-width: 2px; border-right-width: 2px; }
+
+.hud-content {
   display: flex;
   align-items: center;
-  gap: 6px;
-  transition: transform 0.08s ease-out;
+  gap: 10px;
 }
 
-.city-tooltip .city-icon {
-  color: #00e5ff;
+.hud-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: rgba(0, 255, 216, 0.12);
+  border: 1px solid rgba(0, 255, 216, 0.5);
+  border-radius: 4px;
+  color: #00ffd8;
 }
 
-.city-tooltip .city-name {
-  font-weight: bold;
+.hud-radar-svg {
+  width: 18px;
+  height: 18px;
+  animation: hud-radar-spin 5s linear infinite;
+}
+
+@keyframes hud-radar-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.hud-radar-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 5px;
+  height: 5px;
+  background: #00ff66;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #00ff66;
+  animation: hud-dot-pulse 1.2s infinite ease-in-out;
+}
+
+@keyframes hud-dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(1.5); }
+}
+
+.hud-text-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.hud-sub-label {
+  font-size: 9px;
+  color: #00ffd8;
+  letter-spacing: 1px;
+  opacity: 0.85;
+  font-family: 'Courier New', Courier, monospace;
+  margin-bottom: 2px;
+}
+
+.hud-main-title {
+  color: #ffffff;
+  font-family: "Microsoft YaHei", sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-shadow: 0 0 8px rgba(0, 255, 216, 0.6), 0 0 16px rgba(0, 255, 216, 0.3);
+  background: linear-gradient(180deg, #ffffff 0%, #c1f3ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .view-toggle {

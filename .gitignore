@@ -42,6 +42,11 @@ Collaborative_Response/backend/command_center/cache/
 *.pt
 *.onnx
 *.engine
+*.dbf
+*.shp
+*.shx
+*.cpg
+*.prj
 
 # 编辑器文件
 .DS_Store

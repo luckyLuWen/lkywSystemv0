@@ -546,7 +546,17 @@ def run_3d_strategy():
 
 @app.route("/api/run_3d_cesium")
 def run_3d_cesium():
-    result = run_script("app_3d_cesium.py")
+    end_point = request.args.get("end_point", "crash")
+    ugv_block = request.args.get("ugv_block", "1")
+    uav_smoke = request.args.get("uav_smoke", "1")
+    strategy = request.args.get("strategy", "rcd")
+    extra_args = [
+        "--end_point", end_point,
+        "--ugv_block", ugv_block,
+        "--uav_smoke", uav_smoke,
+        "--strategy", strategy,
+    ]
+    result = run_script("app_3d_strategy.py", *extra_args)
     if result.returncode != 0:
         return error_response(
             "三维态势地图生成失败",
@@ -557,6 +567,7 @@ def run_3d_cesium():
         "三维态势地图已刷新",
         url="/cesium_viewer",
         mission=file_info(MISSION_PATH),
+        end_point=end_point,
     )
 
 
