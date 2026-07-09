@@ -578,7 +578,16 @@
         </div>
 
         <div class="detection-control-panel story-result-panel">
-          <div class="panel-section-title">模型检测结果</div>
+          <div class="panel-section-title story-panel-title-row">
+            <span>模型检测结果</span>
+            <span
+              v-if="detectionPopup.state !== 'detecting'"
+              class="status-indicator"
+              :class="currentStoryDetectionScenario.level === 'critical' ? 'critical' : 'warning'"
+            >
+              {{ currentStoryDetectionScenario.statusBadge }}
+            </span>
+          </div>
           <div class="story-model-row">
             <span>检测模型</span>
             <strong>SFGA-YOLO26M</strong>
@@ -592,11 +601,6 @@
           </div>
 
           <div v-else class="state-results-wrap story-results-wrap">
-            <div class="result-summary story-result-summary">
-              <span class="status-indicator" :class="currentStoryDetectionScenario.level === 'critical' ? 'critical' : 'warning'">
-                {{ currentStoryDetectionScenario.statusBadge }}
-              </span>
-            </div>
             <div class="story-confidence-grid">
               <div class="story-confidence-card">
                 <span class="confidence-label">检测类别</span>
@@ -619,13 +623,17 @@
               </div>
             </div>
 
-            <div class="report-box story-report-box">
-              <strong>研判结果:</strong> {{ currentStoryDetectionScenario.report }}
-            </div>
             <div v-if="detectionPopup.error" class="story-detection-note">{{ detectionPopup.error }}</div>
-            <button class="reset-btn" @click="rerunStoryDetection">重新检测</button>
           </div>
         </div>
+      </div>
+
+      <div v-if="detectionPopup.state !== 'detecting'" class="story-advice-bar">
+        <div class="story-advice-main">
+          <span class="story-advice-title">应对建议</span>
+          <span class="story-advice-text">{{ currentStoryDetectionScenario.report }}</span>
+        </div>
+        <button class="reset-btn story-advice-action" @click="rerunStoryDetection">重新检测</button>
       </div>
 
       <div class="detection-popup-arrow"></div>
@@ -2067,7 +2075,7 @@ function updateStoryDetectionPopupPosition() {
   const canvas = viewer?.scene?.canvas
   const width = canvas?.clientWidth || window.innerWidth || 1200
   detectionPopup.x = width * 0.5
-  detectionPopup.y = 460
+  detectionPopup.y = 76
 }
 
 function isTruckStoryline() {
@@ -5804,7 +5812,7 @@ onBeforeUnmount(() => {
   padding: 6px 10px;
   display: flex;
   align-items: center;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .detect-item .item-icon {
@@ -5854,7 +5862,21 @@ onBeforeUnmount(() => {
 
 
 .story-detection-alert {
-  width: 660px;
+  width: 760px;
+  max-height: calc(100vh - 96px);
+  transform: translateX(-50%);
+  animation: storyDetectionPanelFadeIn 0.25s ease-out;
+}
+
+@keyframes storyDetectionPanelFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
 }
 
 .story-detection-alert.is-warning {
@@ -5885,18 +5907,33 @@ onBeforeUnmount(() => {
   color: #fecaca;
 }
 
+.story-detection-alert .detection-popup-header {
+  min-height: 38px;
+  padding: 8px 12px;
+}
+
+.story-detection-alert .header-title {
+  font-size: 17px;
+}
+
+.story-detection-alert .close-btn {
+  font-size: 16px;
+}
+
 .story-detection-alert.is-warning .pulse-dot {
   background-color: #f59e0b;
   box-shadow: 0 0 8px #f59e0b;
 }
 
 .story-detection-content {
-  align-items: stretch;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 10px 12px 12px;
 }
 
 .story-detection-img-container {
-  width: 330px;
-  height: 232px;
+  width: 410px;
+  height: 246px;
   border-color: rgba(255, 255, 255, 0.18);
 }
 
@@ -5907,6 +5944,25 @@ onBeforeUnmount(() => {
 .story-result-panel {
   flex: 1;
   min-width: 0;
+  padding: 4px 8px 0;
+}
+
+.story-result-panel .panel-section-title {
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.story-panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.story-panel-title-row .status-indicator {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  font-size: 12px;
 }
 
 .story-model-row {
@@ -5914,15 +5970,15 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  padding: 8px 0;
+  padding: 5px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.09);
-  font-size: 13px;
+  font-size: 16px;
   color: #dbeafe;
 }
 
 .story-model-row strong {
   color: #f8fafc;
-  font-size: 13px;
+  font-size: 16px;
   text-align: right;
 }
 
@@ -5931,7 +5987,7 @@ onBeforeUnmount(() => {
 }
 
 .story-results-wrap {
-  margin-top: 10px;
+  margin-top: 6px;
 }
 
 .story-result-summary {
@@ -5941,12 +5997,12 @@ onBeforeUnmount(() => {
 .story-confidence-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 10px;
+  gap: 8px;
+  margin-top: 6px;
 }
 
 .story-confidence-card {
-  min-height: 58px;
+  min-height: 68px;
   padding: 10px 12px;
   border-radius: 6px;
   border: 1px solid rgba(148, 163, 184, 0.22);
@@ -5964,13 +6020,13 @@ onBeforeUnmount(() => {
 
 .confidence-label {
   color: rgba(226, 232, 240, 0.72);
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .story-confidence-card strong {
   color: #f8fafc;
-  font-size: 18px;
-  line-height: 1.15;
+  font-size: 24px;
+  line-height: 1.12;
   letter-spacing: 0;
 }
 
@@ -5995,7 +6051,91 @@ onBeforeUnmount(() => {
 }
 
 .story-detection-items {
-  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.story-detection-items .detect-item {
+  min-height: 28px;
+  padding: 5px 8px;
+  font-size: 15px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.story-advice-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  align-items: stretch;
+  gap: 10px;
+  margin: 0 12px 12px;
+}
+
+.story-advice-main {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 50px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  border-left: 3px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  color: #fcd34d;
+}
+
+.story-detection-alert.is-critical .story-advice-main {
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  color: #fecaca;
+}
+
+.story-advice-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(245, 158, 11, 0.48);
+  background: rgba(245, 158, 11, 0.18);
+  color: #fde68a;
+  font-size: 15px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.story-detection-alert.is-critical .story-advice-title {
+  border-color: rgba(239, 68, 68, 0.52);
+  background: rgba(239, 68, 68, 0.18);
+  color: #fecaca;
+}
+
+.story-advice-text {
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.story-advice-action {
+  width: 100%;
+  height: auto !important;
+  margin-top: 0 !important;
+  font-size: 14px !important;
+}
+
+.story-report-box {
+  font-size: 14px;
+  line-height: 1.45;
+  padding: 7px 8px;
+}
+
+.story-detection-alert .reset-btn {
+  height: 30px;
+  margin-top: 8px;
+  font-size: 14px;
 }
 
 .detect-item.warning-event {
@@ -6004,14 +6144,14 @@ onBeforeUnmount(() => {
 }
 
 .story-report-box {
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .story-detection-note {
   margin-top: 8px;
   color: rgba(255, 255, 255, 0.52);
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .story-detection-alert .box-rect {

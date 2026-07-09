@@ -69,13 +69,13 @@
         <button class="toggle-btn toggle-btn-right" type="button" @click="isRightCollapsed = !isRightCollapsed">
           {{ isRightCollapsed ? '▶' : '◀' }}
         </button>
-        <div class="sidebar-header">
+        <div v-if="activeRightTab !== 'detection'" class="sidebar-header">
           <h2 class="sidebar-title">
             {{ activeRightTab === 'sensor' ? '传感器数据' : activeRightTab === 'detection' ? '检测数据' : '规划数据' }}
           </h2>
-          <span class="sidebar-subtitle">
+          <!-- <span class="sidebar-subtitle">
             {{ activeRightTab === 'sensor' ? 'Sensor Data Gateway' : activeRightTab === 'detection' ? 'Real-time Detection' : 'Collaborative Planning' }}
-          </span>
+          </span> -->
         </div>
         <div class="sidebar-content right-sidebar-flex-content">
           <div class="right-tab-panel">
@@ -204,7 +204,6 @@
 
             <!-- 检测数据标签页 -->
             <div v-else-if="activeRightTab === 'detection'" class="detection-data-panel">
-              <div class="sensor-section-title">交通事故检测</div>
               <RealtimeDetectionCard />
             </div>
 
@@ -1746,6 +1745,215 @@ onMounted(() => {
 .right-sidebar :deep(.status-label),
 .right-sidebar :deep(.service-label) {
   color: #94a3b8 !important;
+}
+
+/* Detection data card readability overrides */
+.right-sidebar :deep(.realtime-detection-card) {
+  gap: 20px !important;
+  padding: 18px !important;
+  font-size: 17px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .card-head) {
+  padding-bottom: 16px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .card-title) {
+  font-size: 26px !important;
+  line-height: 1.25 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .card-subtitle) {
+  font-size: 22px !important;
+  line-height: 1.45 !important;
+  font-weight: 600 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .scroll-container) {
+  gap: 20px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .card-section) {
+  gap: 16px !important;
+  padding-bottom: 20px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .section-subtitle-text) {
+  font-size: 22px !important;
+  letter-spacing: 0 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .model-select-group) {
+  padding: 16px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .control-label-text),
+.right-sidebar :deep(.realtime-detection-card .slider-label-row),
+.right-sidebar :deep(.realtime-detection-card .telemetry-col-label) {
+  font-size: 18px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .cyber-select-compact) {
+  min-height: 54px !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .tag-compact),
+.right-sidebar :deep(.realtime-detection-card .slider-val-text),
+.right-sidebar :deep(.realtime-detection-card .legend-val),
+.right-sidebar :deep(.realtime-detection-card .usage-name),
+.right-sidebar :deep(.realtime-detection-card .usage-val) {
+  font-size: 18px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .performance-grid) {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .performance-item) {
+  min-height: 74px !important;
+  padding: 12px 14px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .performance-item.wide) {
+  grid-column: 1 / -1 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .map50-item) {
+  min-height: 82px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .perf-label) {
+  font-size: 17px !important;
+  line-height: 1.25 !important;
+  font-weight: 700 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .performance-item strong) {
+  font-size: 24px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .performance-item small) {
+  font-size: 15px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .telemetry-row) {
+  padding: 11px 0 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .telemetry-col-val) {
+  font-size: 16px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .telemetry-row) {
+  gap: 14px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .telemetry-col-label) {
+  flex: 0 0 96px !important;
+  white-space: nowrap !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .telemetry-col-val) {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .mini-metrics-row) {
+  gap: 8px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .metric-block) {
+  min-height: 66px !important;
+  padding: 8px 6px !important;
+  justify-content: center !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .metric-val) {
+  font-size: 24px !important;
+  line-height: 1.05 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .metric-lbl) {
+  font-size: 14px !important;
+  line-height: 1.15 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .chart-title-label) {
+  font-size: 19px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .doughnut-chart) {
+  width: 154px !important;
+  height: 154px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .doughnut-hole) {
+  width: 104px !important;
+  height: 104px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .total-text) {
+  font-size: 20px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legends-grid) {
+  grid-template-columns: 1fr !important;
+  gap: 6px !important;
+  padding: 8px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legend-item) {
+  gap: 8px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legend-name),
+.right-sidebar :deep(.realtime-detection-card .legend-val) {
+  white-space: nowrap !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legend-name) {
+  min-width: 0 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legend-val) {
+  flex: 0 0 auto !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legend-item),
+.right-sidebar :deep(.realtime-detection-card .usage-label-row) {
+  font-size: 15px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legend-dot) {
+  width: 11px !important;
+  height: 11px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .usage-track) {
+  height: 12px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .model-usage-list) {
+  gap: 16px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .model-usage-item) {
+  gap: 8px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .usage-name),
+.right-sidebar :deep(.realtime-detection-card .usage-val) {
+  font-size: 20px !important;
+  font-weight: 700 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .usage-fill) {
+  min-width: 8px !important;
 }
 
 /* Sidebar UGV Cards - 赛博朋克深色主题 */

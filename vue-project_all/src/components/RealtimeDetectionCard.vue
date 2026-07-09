@@ -3,7 +3,7 @@
     <!-- 头部区域 -->
     <div class="card-head">
       <div>
-        <h3 class="card-title">实时检测服务</h3>
+        <h3 class="card-title">两客一危交通事故检测</h3>
         <p class="card-subtitle">{{ detectionBaseUrl }}</p>
       </div>
       <span class="status-badge" :class="backendOnline ? 'online' : 'offline'">
@@ -72,7 +72,7 @@
       <div v-if="!onlyControl" class="card-section">
         <div class="section-title-wrapper">
           <span class="bracket">[</span>
-          <h4 class="section-subtitle-text">模型性能指标</h4>
+          <h2 class="section-subtitle-text">模型性能指标</h2>
           <span class="bracket">]</span>
         </div>
 
@@ -81,17 +81,17 @@
             <span class="perf-label">模型名称</span>
             <strong>{{ selectedModelPerformance.model_name || selectedModelLabel }}</strong>
           </div>
-          <div class="performance-item">
-            <span class="perf-label">mAP50</span>
+          <div class="performance-item wide map50-item">
+            <span class="perf-label">平均精度均值（mAP50）</span>
             <strong>≥85%</strong>
             <small>{{ formatMetric(selectedModelPerformance.map50) }}</small>
           </div>
           <div class="performance-item">
-            <span class="perf-label">Precision</span>
+            <span class="perf-label">精确率（Precision）</span>
             <strong>{{ formatMetric(selectedModelPerformance.precision) }}</strong>
           </div>
           <div class="performance-item">
-            <span class="perf-label">Recall</span>
+            <span class="perf-label">召回率（Recall）</span>
             <strong>{{ formatMetric(selectedModelPerformance.recall) }}</strong>
           </div>
           <div class="performance-item wide">
@@ -106,7 +106,7 @@
       <div v-if="!onlyControl && backendOnline && systemInfoData" class="card-section">
         <div class="section-title-wrapper">
           <span class="bracket">[</span>
-          <h4 class="section-subtitle-text">核心监测指标</h4>
+          <h4 class="section-subtitle-text">算法推理监控面板</h4>
           <span class="bracket">]</span>
         </div>
 
@@ -116,23 +116,23 @@
             <span class="telemetry-col-val text-cyan-glow">{{ systemInfoData.gpu_name || '--' }}</span>
           </div>
           <div class="telemetry-row">
-            <span class="telemetry-col-label">CUDA</span>
+            <span class="telemetry-col-label">CUDA算力版本</span>
             <span class="telemetry-col-val text-cyan-glow">{{ systemInfoData.cuda_version || '--' }}</span>
           </div>
           <div class="telemetry-row">
-            <span class="telemetry-col-label">VRAM</span>
+            <span class="telemetry-col-label">显存占用</span>
             <span class="telemetry-col-val">{{ systemInfoData.vram_used_gb || 0 }} / {{ systemInfoData.vram_total_gb || 0 }} GB</span>
           </div>
           <div class="telemetry-row">
-            <span class="telemetry-col-label">GPU_温度</span>
+            <span class="telemetry-col-label">显卡温度</span>
             <span class="telemetry-col-val">{{ systemInfoData.gpu_temp || '--' }}°C</span>
           </div>
           <div class="telemetry-row">
-            <span class="telemetry-col-label">GPU_利用率</span>
+            <span class="telemetry-col-label">显卡负载率</span>
             <span class="telemetry-col-val">{{ systemInfoData.gpu_util || '--' }}%</span>
           </div>
           <div class="telemetry-row">
-            <span class="telemetry-col-label">已加载模型</span>
+            <span class="telemetry-col-label">推理模型状态</span>
             <span class="telemetry-col-val" :class="{ 'text-cyan-glow': systemInfoData.model_loaded }">
               {{ systemInfoData.model_loaded ? cleanModelName(systemInfoData.model_name) : '待加载' }}
             </span>
@@ -174,7 +174,7 @@
           </div>
           <div class="metric-block">
             <span class="metric-val">{{ statsData.avg_inference_time_s }}s</span>
-            <span class="metric-lbl">平均推理</span>
+            <span class="metric-lbl">平均推理时间</span>
           </div>
         </div>
 
@@ -564,8 +564,8 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  gap: 16px;
-  padding: 20px;
+  gap: 18px;
+  padding: 22px;
   border: 1px solid rgba(255, 184, 77, 0.28);
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(13, 25, 41, 0.94) 0%, rgba(8, 16, 28, 0.94) 100%);
@@ -585,13 +585,13 @@ onBeforeUnmount(() => {
 .card-title {
   margin: 0;
   color: #ffcf8b;
-  font-size: 20px;
+  font-size: 30px;
   line-height: 1.2;
 }
 
 .card-subtitle {
   margin: 4px 0 0 0;
-  font-size: 13px;
+  font-size: 14px;
   color: rgba(255, 255, 255, 0.72);
   word-break: break-all;
 }
@@ -600,7 +600,7 @@ onBeforeUnmount(() => {
 .scroll-container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 22px;
   overflow-y: auto;
   flex: 1;
   padding-right: 4px;
@@ -619,8 +619,8 @@ onBeforeUnmount(() => {
 .card-section {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding-bottom: 18px;
+  gap: 16px;
+  padding-bottom: 20px;
   border-bottom: 1px dashed rgba(255, 184, 77, 0.12);
 }
 .card-section:last-child {
@@ -643,9 +643,9 @@ onBeforeUnmount(() => {
 .section-subtitle-text {
   margin: 0;
   color: #00f2fe;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: bold;
-  letter-spacing: 1px;
+  letter-spacing: 0;
   text-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
 }
 
@@ -660,7 +660,7 @@ onBeforeUnmount(() => {
 }
 
 .control-label-text {
-  font-size: 13px;
+  font-size: 15px;
   color: rgba(255, 255, 255, 0.6);
 }
 
@@ -684,7 +684,7 @@ onBeforeUnmount(() => {
   display: flex;
 }
 .tag-compact {
-  font-size: 11px;
+  font-size: 12px;
   padding: 2px 6px;
   background: #ffb84d;
   color: #000;
@@ -700,7 +700,7 @@ onBeforeUnmount(() => {
 .slider-label-row {
   display: flex;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: 15px;
   color: rgba(255, 255, 255, 0.82);
 }
 
@@ -735,12 +735,12 @@ onBeforeUnmount(() => {
 .performance-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .performance-item {
-  min-height: 58px;
-  padding: 10px 12px;
+  min-height: 72px;
+  padding: 12px 14px;
   border-radius: 6px;
   border: 1px solid rgba(255, 184, 77, 0.18);
   background: rgba(255, 184, 77, 0.07);
@@ -755,19 +755,19 @@ onBeforeUnmount(() => {
 }
 
 .perf-label {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.56);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .performance-item strong {
   color: #fff3bf;
-  font-size: 15px;
+  font-size: 19px;
   line-height: 1.25;
 }
 
 .performance-item small {
   color: #ffcf8b;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1;
 }
 
@@ -910,7 +910,7 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 0;
+  padding: 11px 0;
   border-bottom: 1px solid rgba(0, 242, 254, 0.05);
 }
 .telemetry-row:last-child {
@@ -918,13 +918,13 @@ onBeforeUnmount(() => {
 }
 
 .telemetry-col-label {
-  font-size: 13px;
+  font-size: 15px;
   color: rgba(255, 255, 255, 0.6);
   font-family: monospace;
 }
 
 .telemetry-col-val {
-  font-size: 14px;
+  font-size: 16px;
   color: #fff;
   font-weight: bold;
   font-family: monospace;
@@ -962,14 +962,15 @@ onBeforeUnmount(() => {
 .mini-metrics-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 10px;
 }
 
 .metric-block {
   background: rgba(10, 19, 35, 0.6);
   border: 1px solid rgba(0, 242, 254, 0.1);
   border-radius: 6px;
-  padding: 10px 4px;
+  min-height: 78px;
+  padding: 12px 6px;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -977,14 +978,14 @@ onBeforeUnmount(() => {
 }
 
 .metric-val {
-  font-size: 18px;
+  font-size: 24px;
   font-weight: bold;
   font-family: monospace;
 }
 
 .metric-lbl {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.72);
   white-space: nowrap;
 }
 
@@ -997,15 +998,15 @@ onBeforeUnmount(() => {
 }
 
 .chart-title-label {
-  font-size: 13px;
+  font-size: 16px;
   color: #ffb84d;
   font-weight: bold;
   margin-bottom: 4px;
 }
 
 .doughnut-chart {
-  width: 120px;
-  height: 120px;
+  width: 136px;
+  height: 136px;
   border-radius: 50%;
   position: relative;
   display: flex;
@@ -1017,8 +1018,8 @@ onBeforeUnmount(() => {
 }
 
 .doughnut-hole {
-  width: 84px;
-  height: 84px;
+  width: 92px;
+  height: 92px;
   border-radius: 50%;
   background: #0b1524;
   display: flex;
@@ -1027,7 +1028,7 @@ onBeforeUnmount(() => {
 }
 
 .total-text {
-  font-size: 14px;
+  font-size: 17px;
   color: #ffcf8b;
   font-weight: bold;
 }
@@ -1045,7 +1046,7 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .legend-name {
@@ -1056,8 +1057,8 @@ onBeforeUnmount(() => {
 }
 
 .legend-dot {
-  width: 6px;
-  height: 6px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   display: inline-block;
 }
@@ -1071,7 +1072,7 @@ onBeforeUnmount(() => {
 .model-usage-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .model-usage-item {
@@ -1084,7 +1085,7 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .usage-name {
@@ -1098,7 +1099,7 @@ onBeforeUnmount(() => {
 }
 
 .usage-track {
-  height: 5px;
+  height: 7px;
   background: rgba(255, 255, 255, 0.06);
   border-radius: 2.5px;
   overflow: hidden;
