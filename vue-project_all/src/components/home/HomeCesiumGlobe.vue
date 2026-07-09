@@ -1679,7 +1679,7 @@ const initialPhaseCameraConfigs = {
     5: { range: 630, pitch: -25, heading: 33 },
     6: { range: 1600, pitch: -45, heading: 0 },
     7: { range: 100000, pitch: -90, heading: -3 },
-    8: { range: 1200, pitch: -30, heading: -10 },
+    8: { range: 641, pitch: -26, heading: -25 },
     9: { range: 500, pitch: -21, heading: 28 },
     10: { range: 2200, pitch: -50, heading: 0 }
   },
