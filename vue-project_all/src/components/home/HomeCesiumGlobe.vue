@@ -607,6 +607,374 @@
         </div>
       </div>
 
+      <!-- 🚗 无人车已就位/出发悬浮窗微调面板 -->
+      <div v-if="isUgvPopupPanelExpanded" class="light-control-panel ugvpopup-control-panel">
+        <div class="light-panel-header" @click="toggleUgvPopupPanel">
+          <span class="light-panel-title">🚗 无人车悬浮窗微调</span>
+          <span class="light-panel-toggle">✕</span>
+        </div>
+        
+        <div class="light-panel-body">
+          <div class="light-control-row">
+            <label class="light-control-label">强制显示浮窗</label>
+            <input type="checkbox" v-model="ugvPopup.show" class="light-checkbox" />
+          </div>
+          
+          <div class="light-control-row">
+            <label class="light-control-label">水平偏移 (X Offset)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="ugvPopup.xOffset" min="-200" max="200" step="1" class="light-slider" />
+              <input type="number" v-model.number="ugvPopup.xOffset" step="1" class="light-slider-input" />
+            </div>
+          </div>
+          
+          <div class="light-control-row">
+            <label class="light-control-label">垂直偏移 (Y Offset)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="ugvPopup.yOffset" min="-200" max="200" step="1" class="light-slider" />
+              <input type="number" v-model.number="ugvPopup.yOffset" step="1" class="light-slider-input" />
+            </div>
+          </div>
+
+          <div class="light-control-row">
+            <label class="light-control-label">浮窗标题</label>
+            <input type="text" v-model="ugvPopup.title" class="light-input-num" style="width: 100%; text-align: left; padding-left: 6px;" />
+          </div>
+
+          <div class="light-control-row">
+            <label class="light-control-label">出动状态</label>
+            <select v-model="ugvPopup.status" class="phase-select" style="width: 100%; background: rgba(5, 10, 40, 0.85); color: #fff; border: 1px solid rgba(70, 130, 255, 0.4); padding: 4px; border-radius: 4px;">
+              <option value="已出发">已出发</option>
+              <option value="已就位">已就位</option>
+              <option value="传感器布设中">传感器布设中</option>
+              <option value="执行中">执行中</option>
+            </select>
+          </div>
+
+          <div class="light-panel-buttons" style="flex-direction: column; gap: 6px;">
+            <button @click="resetUgvPopupCoords" class="light-btn btn-primary">🔄 重置默认偏移</button>
+            <button @click="copyUgvPopupParams" class="light-btn">📋 复制当前悬浮窗参数</button>
+          </div>
+
+          <div v-if="ugvPopupCopiedMessage" class="light-copied-msg">{{ ugvPopupCopiedMessage }}</div>
+        </div>
+      </div>
+
+      <!-- 🚁 无人机已就位/出发悬浮窗微调面板 -->
+      <div v-if="isUavPopupPanelExpanded" class="light-control-panel uavpopup-control-panel">
+        <div class="light-panel-header" @click="toggleUavPopupPanel">
+          <span class="light-panel-title">🚁 无人机悬浮窗微调</span>
+          <span class="light-panel-toggle">✕</span>
+        </div>
+        
+        <div class="light-panel-body">
+          <div class="light-control-row">
+            <label class="light-control-label">强制显示浮窗</label>
+            <input type="checkbox" v-model="rescuePopup.show" class="light-checkbox" />
+          </div>
+          
+          <div class="light-control-row">
+            <label class="light-control-label">水平偏移 (X Offset)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="rescuePopup.xOffset" min="-200" max="200" step="1" class="light-slider" />
+              <input type="number" v-model.number="rescuePopup.xOffset" step="1" class="light-slider-input" />
+            </div>
+          </div>
+          
+          <div class="light-control-row">
+            <label class="light-control-label">垂直偏移 (Y Offset)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="rescuePopup.yOffset" min="-200" max="200" step="1" class="light-slider" />
+              <input type="number" v-model.number="rescuePopup.yOffset" step="1" class="light-slider-input" />
+            </div>
+          </div>
+
+          <div class="light-control-row">
+            <label class="light-control-label">浮窗标题</label>
+            <input type="text" v-model="rescuePopup.title" class="light-input-num" style="width: 100%; text-align: left; padding-left: 6px;" />
+          </div>
+
+          <div class="light-control-row">
+            <label class="light-control-label">出动状态</label>
+            <select v-model="rescuePopup.status" class="phase-select" style="width: 100%; background: rgba(5, 10, 40, 0.85); color: #fff; border: 1px solid rgba(70, 130, 255, 0.4); padding: 4px; border-radius: 4px;">
+              <option value="已出发">已出发</option>
+              <option value="已到达">已到达</option>
+              <option value="感知部署中">感知部署中</option>
+              <option value="执行中">执行中</option>
+            </select>
+          </div>
+
+          <div class="light-panel-buttons" style="flex-direction: column; gap: 6px;">
+            <button @click="resetUavPopupCoords" class="light-btn btn-primary">🔄 重置默认偏移</button>
+            <button @click="copyUavPopupParams" class="light-btn">📋 复制当前悬浮窗参数</button>
+          </div>
+
+          <div v-if="uavPopupCopiedMessage" class="light-copied-msg">{{ uavPopupCopiedMessage }}</div>
+        </div>
+      </div>
+
+      <!-- 📊 仿真推演悬浮窗微调面板 -->
+      <div v-if="isSimulationPopupPanelExpanded" class="light-control-panel simpopup-control-panel">
+        <div class="light-panel-header" @click="toggleSimulationPopupPanel">
+          <span class="light-panel-title">📊 仿真推演悬浮窗微调</span>
+          <span class="light-panel-toggle">✕</span>
+        </div>
+        
+        <div class="light-panel-body">
+          <div class="light-control-row">
+            <label class="light-control-label">强制显示浮窗</label>
+            <input type="checkbox" v-model="simulationPopup.show" class="light-checkbox" />
+          </div>
+          
+          <div class="light-control-row">
+            <label class="light-control-label">水平偏移 (X Offset)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="simulationPopup.xOffset" min="-400" max="400" step="1" class="light-slider" />
+              <input type="number" v-model.number="simulationPopup.xOffset" step="1" class="light-slider-input" />
+            </div>
+          </div>
+          
+          <div class="light-control-row">
+            <label class="light-control-label">垂直偏移 (Y Offset)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="simulationPopup.yOffset" min="-400" max="400" step="1" class="light-slider" />
+              <input type="number" v-model.number="simulationPopup.yOffset" step="1" class="light-slider-input" />
+            </div>
+          </div>
+
+          <div class="light-panel-buttons" style="flex-direction: column; gap: 6px;">
+            <button @click="resetSimulationPopupCoords" class="light-btn btn-primary">🔄 重置默认偏移</button>
+            <button @click="copySimulationPopupParams" class="light-btn">📋 复制当前悬浮窗参数</button>
+          </div>
+
+          <div v-if="simulationPopupCopiedMessage" class="light-copied-msg">{{ simulationPopupCopiedMessage }}</div>
+        </div>
+      </div>
+
+      <!-- 🔥💨 无人感知部署/执行阶段粒子微调面板 -->
+      <div v-if="isLateFirePanelExpanded" class="light-control-panel latefire-control-panel">
+        <div class="light-panel-header" @click="toggleLateFirePanel">
+          <span class="light-panel-title">🔥💨 后期感知阶段粒子微调</span>
+          <span class="light-panel-toggle">✕</span>
+        </div>
+        
+        <div class="light-panel-body" style="padding-top: 8px;">
+          <!-- 粒子类型切换标签页 -->
+          <div class="particle-tabs" style="display: flex; border-bottom: 1px solid rgba(0, 229, 255, 0.25); margin-bottom: 12px; gap: 4px;">
+            <div 
+              class="particle-tab" 
+              @click="activeParticleTab = 'fire'"
+              :style="{
+                flex: 1,
+                textAlign: 'center',
+                padding: '6px 0',
+                cursor: 'pointer',
+                fontSize: '12px',
+                transition: 'all 0.3s',
+                borderBottom: activeParticleTab === 'fire' ? '2px solid #00e5ff' : '2px solid transparent',
+                color: activeParticleTab === 'fire' ? '#00e5ff' : '#8fa5c0',
+                textShadow: activeParticleTab === 'fire' ? '0 0 8px rgba(0,229,255,0.5)' : 'none',
+                fontWeight: activeParticleTab === 'fire' ? 'bold' : 'normal'
+              }"
+            >
+              🔥 火焰粒子
+            </div>
+            <div 
+              class="particle-tab" 
+              @click="activeParticleTab = 'smoke'"
+              :style="{
+                flex: 1,
+                textAlign: 'center',
+                padding: '6px 0',
+                cursor: 'pointer',
+                fontSize: '12px',
+                transition: 'all 0.3s',
+                borderBottom: activeParticleTab === 'smoke' ? '2px solid #00e5ff' : '2px solid transparent',
+                color: activeParticleTab === 'smoke' ? '#00e5ff' : '#8fa5c0',
+                textShadow: activeParticleTab === 'smoke' ? '0 0 8px rgba(0,229,255,0.5)' : 'none',
+                fontWeight: activeParticleTab === 'smoke' ? 'bold' : 'normal'
+              }"
+            >
+              💨 烟雾粒子
+            </div>
+          </div>
+
+          <!-- 火焰粒子微调 -->
+          <div v-if="activeParticleTab === 'fire'">
+            <!-- 粒子大小维度 (宽高) -->
+            <div class="light-control-row">
+              <label class="light-control-label">粒子宽度 (Width)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateFireAdjust.imageWidth" min="2" max="40" step="1" class="light-slider" />
+                <input type="number" v-model.number="lateFireAdjust.imageWidth" class="light-slider-input" />
+              </div>
+            </div>
+            <div class="light-control-row">
+              <label class="light-control-label">粒子高度 (Height)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateFireAdjust.imageHeight" min="2" max="80" step="1" class="light-slider" />
+                <input type="number" v-model.number="lateFireAdjust.imageHeight" class="light-slider-input" />
+              </div>
+            </div>
+            
+            <!-- 发射速率 -->
+            <div class="light-control-row">
+              <label class="light-control-label">发射速率 (emissionRate)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateFireAdjust.emissionRate" min="5" max="100" step="1" class="light-slider" />
+                <input type="number" v-model.number="lateFireAdjust.emissionRate" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 缩放系数上限 -->
+            <div class="light-control-row">
+              <label class="light-control-label">最大缩放 (endScale)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateFireAdjust.endScale" min="0.1" max="2.0" step="0.05" class="light-slider" />
+                <input type="number" v-model.number="lateFireAdjust.endScale" step="0.05" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 喷射最大速度 -->
+            <div class="light-control-row">
+              <label class="light-control-label">最大初速度 (maxSpeed)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateFireAdjust.maxSpeed" min="0.1" max="4.0" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="lateFireAdjust.maxSpeed" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 上升气流加速度 -->
+            <div class="light-control-row">
+              <label class="light-control-label">上升推力 (gravity)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateFireAdjust.gravity" min="0.0" max="3.0" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="lateFireAdjust.gravity" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 空气阻尼阻力 -->
+            <div class="light-control-row">
+              <label class="light-control-label">空气阻力 (drag)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateFireAdjust.drag" min="0.80" max="1.00" step="0.01" class="light-slider" />
+                <input type="number" v-model.number="lateFireAdjust.drag" step="0.01" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 粒子寿命范围 -->
+            <div class="light-control-row">
+              <label class="light-control-label">最小寿命 (minLife)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateFireAdjust.minLife" min="0.5" max="10.0" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="lateFireAdjust.minLife" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <div class="light-control-row">
+              <label class="light-control-label">最大寿命 (maxLife)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateFireAdjust.maxLife" min="0.5" max="10.0" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="lateFireAdjust.maxLife" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <div class="light-panel-buttons" style="flex-direction: column; gap: 6px; margin-top: 10px;">
+              <button @click="resetLateFireParams" class="light-btn btn-primary">🔄 重置火焰参数</button>
+              <button @click="copyLateFireParams" class="light-btn">📋 复制当前火焰参数</button>
+            </div>
+          </div>
+
+          <!-- 烟雾粒子微调 -->
+          <div v-if="activeParticleTab === 'smoke'">
+            <!-- 粒子大小维度 (宽高) -->
+            <div class="light-control-row">
+              <label class="light-control-label">粒子宽度 (Width)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateSmokeAdjust.imageWidth" min="2" max="40" step="1" class="light-slider" />
+                <input type="number" v-model.number="lateSmokeAdjust.imageWidth" class="light-slider-input" />
+              </div>
+            </div>
+            <div class="light-control-row">
+              <label class="light-control-label">粒子高度 (Height)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateSmokeAdjust.imageHeight" min="2" max="80" step="1" class="light-slider" />
+                <input type="number" v-model.number="lateSmokeAdjust.imageHeight" class="light-slider-input" />
+              </div>
+            </div>
+            
+            <!-- 发射速率 -->
+            <div class="light-control-row">
+              <label class="light-control-label">发射速率 (emissionRate)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateSmokeAdjust.emissionRate" min="5" max="100" step="1" class="light-slider" />
+                <input type="number" v-model.number="lateSmokeAdjust.emissionRate" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 缩放系数上限 -->
+            <div class="light-control-row">
+              <label class="light-control-label">最大缩放 (endScale)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateSmokeAdjust.endScale" min="0.1" max="4.0" step="0.05" class="light-slider" />
+                <input type="number" v-model.number="lateSmokeAdjust.endScale" step="0.05" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 喷射最大速度 -->
+            <div class="light-control-row">
+              <label class="light-control-label">最大初速度 (maxSpeed)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateSmokeAdjust.maxSpeed" min="0.1" max="4.0" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="lateSmokeAdjust.maxSpeed" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 上升气流加速度 -->
+            <div class="light-control-row">
+              <label class="light-control-label">上升推力 (gravity)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateSmokeAdjust.gravity" min="0.0" max="5.0" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="lateSmokeAdjust.gravity" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 空气阻尼阻力 -->
+            <div class="light-control-row">
+              <label class="light-control-label">空气阻力 (drag)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateSmokeAdjust.drag" min="0.80" max="1.00" step="0.01" class="light-slider" />
+                <input type="number" v-model.number="lateSmokeAdjust.drag" step="0.01" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 粒子寿命范围 -->
+            <div class="light-control-row">
+              <label class="light-control-label">最小寿命 (minLife)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateSmokeAdjust.minLife" min="0.5" max="10.0" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="lateSmokeAdjust.minLife" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <div class="light-control-row">
+              <label class="light-control-label">最大寿命 (maxLife)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateSmokeAdjust.maxLife" min="0.5" max="10.0" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="lateSmokeAdjust.maxLife" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <div class="light-panel-buttons" style="flex-direction: column; gap: 6px; margin-top: 10px;">
+              <button @click="resetLateSmokeParams" class="light-btn btn-primary">🔄 重置烟雾参数</button>
+              <button @click="copyLateSmokeParams" class="light-btn">📋 复制当前烟雾参数</button>
+            </div>
+          </div>
+
+          <div v-if="lateFireCopiedMessage" class="light-copied-msg">{{ lateFireCopiedMessage }}</div>
+        </div>
+      </div>
+
       <!-- 🏷️ 市级行政区文字标注微调面板 -->
       <div v-if="labelConfig.show" class="camera-adjust-modal label-adjust-modal">
         <div class="camera-modal-header">
@@ -674,25 +1042,29 @@
     </div>
 
     <!-- 🛠️ 右下角微调控制台：悬浮按钮组 -->
-    <div class="bottom-right-tool-dock">
+    <div class="bottom-right-tool-dock" :class="{ collapsed: isDockCollapsed }">
+      <!-- 收缩/展开控制按钮 -->
+      <div class="dock-toggle-handle" @click="isDockCollapsed = !isDockCollapsed" title="显示/隐藏微调控制台">
+        <span class="toggle-arrow">{{ isDockCollapsed ? '◀' : '▶' }}</span>
+      </div>
       <button 
         class="dock-tool-btn label-btn" 
         :class="{ active: labelConfig.show }" 
-        @click="labelConfig.show = !labelConfig.show"
+        @click="togglePanel('label')"
       >
         标注字号微调
       </button>
       <button 
         class="dock-tool-btn camera-btn" 
         :class="{ active: cameraAdjust.show }" 
-        @click="cameraAdjust.show = !cameraAdjust.show"
+        @click="togglePanel('camera')"
       >
         相机视角微调
       </button>
       <button 
         class="dock-tool-btn traffic-btn" 
         :class="{ active: trafficConfig.show }" 
-        @click="trafficConfig.show = !trafficConfig.show"
+        @click="togglePanel('traffic')"
       >
         车流动态微调
       </button>
@@ -724,8 +1096,68 @@
       >
         装备微调
       </button>
+      <button 
+        class="dock-tool-btn ugvpopup-btn" 
+        :class="{ active: isUgvPopupPanelExpanded }" 
+        @click="toggleUgvPopupPanel"
+      >
+        车浮窗微调
+      </button>
+      <button 
+        class="dock-tool-btn uavpopup-btn" 
+        :class="{ active: isUavPopupPanelExpanded }" 
+        @click="toggleUavPopupPanel"
+      >
+        机浮窗微调
+      </button>
+      <button 
+        class="dock-tool-btn simpopup-btn" 
+        :class="{ active: isSimulationPopupPanelExpanded }" 
+        @click="toggleSimulationPopupPanel"
+      >
+        推演浮窗微调
+      </button>
+      <button 
+        class="dock-tool-btn fire-btn" 
+        :class="{ active: isLateFirePanelExpanded }" 
+        @click="toggleLateFirePanel"
+      >
+        后期粒子微调
+      </button>
     </div>
 
+    <!-- 🗺️ 湖北省地图车辆运行图例 (位于右上角空白区域，与右侧栏联动) -->
+    <div 
+      class="hubei-map-legend" 
+      :style="{ right: legendRightOffset }"
+      v-if="activeHudTab === 'overview'"
+    >
+      <div class="legend-header">
+        <span class="legend-title">两客一危 运行图例</span>
+      </div>
+      <div class="legend-body">
+        <!-- 危化品车 -->
+        <div class="legend-row hazard-row">
+          <span class="legend-glow-dot red"></span>
+          <span class="legend-text-main">危化品运输车</span>
+          <span class="legend-text-sub">如: 鄂A·H8921</span>
+        </div>
+
+        <!-- 班线客车 -->
+        <div class="legend-row passenger-row">
+          <span class="legend-glow-dot green"></span>
+          <span class="legend-text-main">班线客车</span>
+          <span class="legend-text-sub">如: 鄂A·K3512</span>
+        </div>
+
+        <!-- 旅游包车 -->
+        <div class="legend-row tourist-row">
+          <span class="legend-glow-dot blue"></span>
+          <span class="legend-text-main">旅游包车</span>
+          <span class="legend-text-sub">如: 鄂F·T9918</span>
+        </div>
+      </div>
+    </div>
 
     <div v-if="loading" class="globe-mask">三维地球加载中...</div>
     <div v-else-if="errorMessage" class="globe-mask is-error">{{ errorMessage }}</div>
@@ -964,7 +1396,7 @@
       <div class="shelter-popup-arrow"></div>
     </div>
 
-    <!-- 🚗 无人车出发悬浮窗 -->
+    <!-- 🚗 无人车出发悬浮窗 (含传感器实时数据) -->
     <div 
       v-if="ugvPopup.show" 
       class="shelter-popup-panel ugv-dispatch-popup"
@@ -997,6 +1429,40 @@
           </tr>
         </tbody>
       </table>
+
+      <!-- 无人车 A / B 实时传感数据面板 (从出发阶段起显示) -->
+      <div v-if="props.activePhaseIndex >= 6 && props.sensorData" class="ugv-sensor-section">
+        <div class="ugv-sensor-tabs">
+          <button 
+            :class="['ugv-sensor-tab', { active: activeUgvSensorTab === 'A' }]" 
+            @click="activeUgvSensorTab = 'A'"
+          >无人车 A <span class="ugv-tab-status" :class="{ offline: !props.isWsConnected }">{{ props.isWsConnected ? '在线' : '离线' }}</span></button>
+          <button 
+            :class="['ugv-sensor-tab', { active: activeUgvSensorTab === 'B' }]" 
+            @click="activeUgvSensorTab = 'B'"
+          >无人车 B <span class="ugv-tab-status" :class="{ offline: !props.isWsConnected }">{{ props.isWsConnected ? '在线' : '离线' }}</span></button>
+        </div>
+        <div class="ugv-sensor-body">
+          <!-- 无人车 A 数据 -->
+          <div v-if="activeUgvSensorTab === 'A'" class="ugv-sensor-grid">
+            <div class="ugv-sensor-item"><span class="ugv-sensor-label">温度</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvA.temp : '--' }}</span></div>
+            <div class="ugv-sensor-item"><span class="ugv-sensor-label">湿度</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvA.hum + '%' : '--' }}</span></div>
+            <div class="ugv-sensor-item"><span class="ugv-sensor-label">TVOC</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvA.tvoc : '--' }}</span></div>
+            <div class="ugv-sensor-item"><span class="ugv-sensor-label">CO</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvA.co : '--' }}</span></div>
+            <div class="ugv-sensor-item wide"><span class="ugv-sensor-label">烟雾</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvA.smoke + ' ug' : '--' }}</span></div>
+          </div>
+          <!-- 无人车 B 数据 -->
+          <div v-if="activeUgvSensorTab === 'B'" class="ugv-sensor-grid">
+            <div class="ugv-sensor-item"><span class="ugv-sensor-label">温度</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvB.temp : '--' }}</span></div>
+            <div class="ugv-sensor-item"><span class="ugv-sensor-label">湿度</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvB.hum + '%' : '--' }}</span></div>
+            <div class="ugv-sensor-item"><span class="ugv-sensor-label">TVOC</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvB.tvoc : '--' }}</span></div>
+            <div class="ugv-sensor-item"><span class="ugv-sensor-label">CO</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvB.co : '--' }}</span></div>
+            <div class="ugv-sensor-item wide"><span class="ugv-sensor-label">烟雾</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvB.smoke + ' ug' : '--' }}</span></div>
+          </div>
+          <div class="ugv-sensor-detail-link" @click="goToSensorManage(activeUgvSensorTab === 'A' ? 'node1' : 'node2')">点击查看详情 →</div>
+        </div>
+      </div>
+
       <div class="shelter-popup-arrow ugv-arrow"></div>
     </div>
 
@@ -1060,57 +1526,7 @@
       </div>
     </div>
 
-    <!-- 无人车 A 实时数据悬浮窗 (仅在有传感器数据时显示) -->
-    <div 
-      v-if="props.activePhaseIndex >= 7 && ugvA.x !== -1000 && props.sensorData" 
-      class="ugv-panel"
-      :style="{ left: ugvA.x + 'px', top: ugvA.y + 'px' }"
-    >
-      <div class="ugv-header">
-        <span class="ugv-title">无人车 A</span>
-        <span class="ugv-status" :class="{ offline: !props.isWsConnected }">{{ props.isWsConnected ? '在线' : '离线' }}</span>
-      </div>
-      <div class="ugv-data">
-        <div class="ugv-row">
-          <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ props.isWsConnected ? ugvA.temp : '--' }}</span></div>
-          <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ props.isWsConnected ? ugvA.hum + '%' : '--' }}</span></div>
-        </div>
-        <div class="ugv-row">
-          <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ props.isWsConnected ? ugvA.smoke + ' ug' : '--' }}</span></div>
-        </div>
-        <div class="ugv-row">
-          <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ props.isWsConnected ? ugvA.tvoc : '--' }}</span></div>
-          <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ props.isWsConnected ? ugvA.co : '--' }}</span></div>
-        </div>
-      </div>
-      <div class="ugv-footer" @click="goToSensorManage('node1')">点击查看详情 →</div>
-    </div>
-
-    <!-- 无人车 B 实时数据悬浮窗 (仅在有传感器数据时显示) -->
-    <div 
-      v-if="props.activePhaseIndex >= 7 && ugvB.x !== -1000 && props.sensorData" 
-      class="ugv-panel"
-      :style="{ left: ugvB.x + 'px', top: ugvB.y + 'px' }"
-    >
-      <div class="ugv-header">
-        <span class="ugv-title">无人车 B</span>
-        <span class="ugv-status" :class="{ offline: !props.isWsConnected }">{{ props.isWsConnected ? '在线' : '离线' }}</span>
-      </div>
-      <div class="ugv-data">
-        <div class="ugv-row">
-          <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ props.isWsConnected ? ugvB.temp : '--' }}</span></div>
-          <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ props.isWsConnected ? ugvB.hum + '%' : '--' }}</span></div>
-        </div>
-        <div class="ugv-row">
-          <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ props.isWsConnected ? ugvB.smoke + ' ug' : '--' }}</span></div>
-        </div>
-        <div class="ugv-row">
-          <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ props.isWsConnected ? ugvB.tvoc : '--' }}</span></div>
-          <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ props.isWsConnected ? ugvB.co : '--' }}</span></div>
-        </div>
-      </div>
-      <div class="ugv-footer" @click="goToSensorManage('node2')">点击查看详情 →</div>
-    </div>
+    <!-- 无人车 A/B 实时数据已合并至上方无人车出发悬浮窗中 -->
 
 
 
@@ -1621,7 +2037,7 @@ const cameraAdjust = reactive({
 // 🚗 全省车流与巡航动态控制面板 状态
 const trafficConfig = reactive({
   show: false,
-  speedFactor: 1.0,     // 速度倍率 (0.1x ~ 10.0x)
+  speedFactor: 0.1,     // 速度倍率 (0.1x ~ 10.0x)
   minDistance: 43000,   // 最短行驶路线段长度 (默认 43.0 km)
   vehicleCount: 23,     // 巡航车辆显示数量 (默认 23 辆)
   activeCategory: 'all' // 车辆类型筛选: 'all' | 'hazard' | 'passenger' | 'tourist'
@@ -1657,7 +2073,7 @@ function reApplyTrafficRoutes() {
 }
 
 function resetTrafficConfig() {
-  trafficConfig.speedFactor = 1.0;
+  trafficConfig.speedFactor = 0.1;
   trafficConfig.minDistance = 43000;
   trafficConfig.vehicleCount = 23;
   trafficConfig.activeCategory = 'all';
@@ -1904,8 +2320,70 @@ const jizhanAdjust = reactive({
   roll: 0
 })
 
+function togglePanel(panelName) {
+  if (panelName === 'label') {
+    const nextVal = !labelConfig.show;
+    closeAllPanelsExcept(panelName);
+    labelConfig.show = nextVal;
+  } else if (panelName === 'camera') {
+    const nextVal = !cameraAdjust.show;
+    closeAllPanelsExcept(panelName);
+    cameraAdjust.show = nextVal;
+  } else if (panelName === 'traffic') {
+    const nextVal = !trafficConfig.show;
+    closeAllPanelsExcept(panelName);
+    trafficConfig.show = nextVal;
+  } else if (panelName === 'light') {
+    const nextVal = !isLightPanelExpanded.value;
+    closeAllPanelsExcept(panelName);
+    isLightPanelExpanded.value = nextVal;
+  } else if (panelName === 'jizhan') {
+    const nextVal = !isJizhanPanelExpanded.value;
+    closeAllPanelsExcept(panelName);
+    isJizhanPanelExpanded.value = nextVal;
+  } else if (panelName === 'tanker') {
+    const nextVal = !isTankerPanelExpanded.value;
+    closeAllPanelsExcept(panelName);
+    isTankerPanelExpanded.value = nextVal;
+  } else if (panelName === 'uavugv') {
+    const nextVal = !isUavUgvPanelExpanded.value;
+    closeAllPanelsExcept(panelName);
+    isUavUgvPanelExpanded.value = nextVal;
+  } else if (panelName === 'ugvPopup') {
+    const nextVal = !isUgvPopupPanelExpanded.value;
+    closeAllPanelsExcept(panelName);
+    isUgvPopupPanelExpanded.value = nextVal;
+  } else if (panelName === 'uavPopup') {
+    const nextVal = !isUavPopupPanelExpanded.value;
+    closeAllPanelsExcept(panelName);
+    isUavPopupPanelExpanded.value = nextVal;
+  } else if (panelName === 'simulationPopup') {
+    const nextVal = !isSimulationPopupPanelExpanded.value;
+    closeAllPanelsExcept(panelName);
+    isSimulationPopupPanelExpanded.value = nextVal;
+  } else if (panelName === 'lateFire') {
+    const nextVal = !isLateFirePanelExpanded.value;
+    closeAllPanelsExcept(panelName);
+    isLateFirePanelExpanded.value = nextVal;
+  }
+}
+
+function closeAllPanelsExcept(exceptPanel) {
+  if (exceptPanel !== 'label') labelConfig.show = false;
+  if (exceptPanel !== 'camera') cameraAdjust.show = false;
+  if (exceptPanel !== 'traffic') trafficConfig.show = false;
+  if (exceptPanel !== 'light') isLightPanelExpanded.value = false;
+  if (exceptPanel !== 'jizhan') isJizhanPanelExpanded.value = false;
+  if (exceptPanel !== 'tanker') isTankerPanelExpanded.value = false;
+  if (exceptPanel !== 'uavugv') isUavUgvPanelExpanded.value = false;
+  if (exceptPanel !== 'ugvPopup') isUgvPopupPanelExpanded.value = false;
+  if (exceptPanel !== 'uavPopup') isUavPopupPanelExpanded.value = false;
+  if (exceptPanel !== 'simulationPopup') isSimulationPopupPanelExpanded.value = false;
+  if (exceptPanel !== 'lateFire') isLateFirePanelExpanded.value = false;
+}
+
 function toggleJizhanPanel() {
-  isJizhanPanelExpanded.value = !isJizhanPanelExpanded.value
+  togglePanel('jizhan');
 }
 
 function snapJizhanToTruck() {
@@ -1935,7 +2413,7 @@ function copyJizhanCoords() {
 }
 
 function toggleLightPanel() {
-  isLightPanelExpanded.value = !isLightPanelExpanded.value
+  togglePanel('light');
 }
 
 function snapLightTo(sceneType) {
@@ -1978,125 +2456,330 @@ function copyAllLightsCoords() {
     }, 2500);
   }).catch(err => {
     console.error('复制失败:', err);
-    coordCopiedMessage.value = '复制失败';
+    coordCopiedMessage.value = '复制失败'const lateFireAdjust = reactive({
+  imageWidth: 10,
+  imageHeight: 10,
+  emissionRate: 20.0,
+  endScale: 0.6,
+  maxSpeed: 0.4,
+  gravity: 0.2,
+  drag: 0.92,
+  minSpeed: 0.1,
+  startScale: 0.2,
+  minLife: 2.0,
+  maxLife: 4.0
+});
+
+function resetLateFireParams() {
+  lateFireAdjust.imageWidth = 10;
+  lateFireAdjust.imageHeight = 10;
+  lateFireAdjust.emissionRate = 20.0;
+  lateFireAdjust.endScale = 0.6;
+  lateFireAdjust.maxSpeed = 0.4;
+  lateFireAdjust.gravity = 0.2;
+  lateFireAdjust.drag = 0.92;
+  lateFireAdjust.minSpeed = 0.1;
+  lateFireAdjust.startScale = 0.2;
+  lateFireAdjust.minLife = 2.0;
+  lateFireAdjust.maxLife = 4.0;
+}
+
+function copyLateFireParams() {
+  const params = `lateFireAdjust.imageWidth = ${lateFireAdjust.imageWidth};\nlateFireAdjust.imageHeight = ${lateFireAdjust.imageHeight};\nlateFireAdjust.emissionRate = ${lateFireAdjust.emissionRate};\nlateFireAdjust.endScale = ${lateFireAdjust.endScale};\nlateFireAdjust.maxSpeed = ${lateFireAdjust.maxSpeed};\nlateFireAdjust.gravity = ${lateFireAdjust.gravity};\nlateFireAdjust.drag = ${lateFireAdjust.drag};\nlateFireAdjust.minSpeed = ${lateFireAdjust.minSpeed};\nlateFireAdjust.startScale = ${lateFireAdjust.startScale};\nlateFireAdjust.minLife = ${lateFireAdjust.minLife};\nlateFireAdjust.maxLife = ${lateFireAdjust.maxLife};`;
+  navigator.clipboard.writeText(params).then(() => {
+    lateFireCopiedMessage.value = '已成功复制火焰参数到剪贴板！';
     setTimeout(() => {
-      coordCopiedMessage.value = '';
-    }, 2000);
-  });
-}
-
-// ⛽ 油罐车模型与泄漏烟雾位置微调相关状态与控制
-const isTankerPanelExpanded = ref(false)
-const tankerCopiedMessage = ref('')
-const activeTankerTarget = ref('model') // 'model' or 'leakPoint'
-
-function toggleTankerPanel() {
-  isTankerPanelExpanded.value = !isTankerPanelExpanded.value
-}
-
-function snapTankerToDefault() {
-  if (activeTankerTarget.value === 'model') {
-    tankerAdjust.lng = 114.894463;
-    tankerAdjust.lat = 30.632121;
-    tankerAdjust.height = -1.2;
-    tankerAdjust.scale = 0.26;
-    tankerAdjust.heading = -29;
-  } else {
-    tankerPointAdjust.lng = 114.89209;
-    tankerPointAdjust.lat = 30.63101;
-  }
-}
-
-function copyTankerCoords() {
-  let text = '';
-  if (activeTankerTarget.value === 'model') {
-    text = `lng: ${tankerAdjust.lng.toFixed(6)}, lat: ${tankerAdjust.lat.toFixed(6)}, height: ${tankerAdjust.height}, scale: ${tankerAdjust.scale}, heading: ${tankerAdjust.heading}`;
-  } else {
-    text = `lng: ${tankerPointAdjust.lng.toFixed(6)}, lat: ${tankerPointAdjust.lat.toFixed(6)}`;
-  }
-  
-  navigator.clipboard.writeText(text).then(() => {
-    tankerCopiedMessage.value = activeTankerTarget.value === 'model' 
-      ? '油罐车模型配置已成功复制到剪贴板！' 
-      : '泄漏烟雾点配置已成功复制到剪贴板！';
-    setTimeout(() => {
-      tankerCopiedMessage.value = '';
+      lateFireCopiedMessage.value = '';
     }, 2000);
   }).catch(err => {
     console.error('复制失败:', err);
-    tankerCopiedMessage.value = '复制失败，请手动记录';
+    lateFireCopiedMessage.value = '复制失败，请手动记录';
     setTimeout(() => {
-      tankerCopiedMessage.value = '';
+      lateFireCopiedMessage.value = '';
     }, 2000);
   });
 }
 
-// 🤖 无人机与无人车模型微调相关状态与控制
-const isUavUgvPanelExpanded = ref(false)
-const activeUavUgvTarget = ref('uav') // 'uav' or 'ugv'
-const uavUgvCopiedMessage = ref('')
+// 实时监听微调面板数值变化，热更新火焰粒子系统参数
+watch(lateFireAdjust, (newVals) => {
+  if (fireParticle && props.activePhaseIndex >= 7) {
+    const isBigFire = (props.activePhaseIndex === 5);
+    const fireScaleBase = isBigFire ? 2.0 : 1.0;
 
-function toggleUavUgvPanel() {
-  isUavUgvPanelExpanded.value = !isUavUgvPanelExpanded.value
-}
+    fireParticle.startScale = newVals.startScale * fireScaleBase;
+    fireParticle.endScale = newVals.endScale * fireScaleBase;
+    fireParticle.emissionRate = newVals.emissionRate;
+    fireParticle.imageSize = new Cesium.Cartesian2(newVals.imageWidth, newVals.imageHeight);
+    fireParticle.minimumSpeed = newVals.minSpeed;
+    fireParticle.maximumSpeed = newVals.maxSpeed;
+    fireParticle.minimumParticleLife = newVals.minLife;
+    fireParticle.maximumParticleLife = newVals.maxLife;
+    fireParticle.updateCallback = (particle, dt) => {
+      const gravityScratch = new Cesium.Cartesian3();
+      Cesium.Cartesian3.normalize(particle.position, gravityScratch);
+      Cesium.Cartesian3.multiplyByScalar(gravityScratch, newVals.gravity * dt, gravityScratch);
+      Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
 
-function snapUavUgvToDefault() {
-  const isTruck = currentScene.value === 'truck';
-  if (activeUavUgvTarget.value === 'uav') {
-    if (isTruck) {
-      uavAdjust.scale = 58.3;
-      uavAdjust.heading = 18;
-      uavAdjust.lng = 113.4275;
-      uavAdjust.lat = 30.3354;
-      uavAdjust.height = 98.8;
-    } else {
-      tankerUavAdjust.scale = 6;
-      tankerUavAdjust.heading = 34;
-      tankerUavAdjust.lng = 114.89539;
-      tankerUavAdjust.lat = 30.63129;
-      tankerUavAdjust.height = 11.5;
-    }
-  } else {
-    if (isTruck) {
-      rescueCarAdjust.scale = 260.7;
-      rescueCarAdjust.heading = 195;
-      rescueCarAdjust.lng = 113.1073;
-      rescueCarAdjust.lat = 30.3849;
-      rescueCarAdjust.height = -1.8;
-    } else {
-      tankerRescueCarAdjust.scale = 250;
-      tankerRescueCarAdjust.heading = 155;
-      tankerRescueCarAdjust.lng = 114.89417;
-      tankerRescueCarAdjust.lat = 30.63182;
-      tankerRescueCarAdjust.height = 6.5;
-    }
+      const dragFactor = Math.pow(newVals.drag, dt * 60);
+      particle.velocity.x *= dragFactor;
+      particle.velocity.y *= dragFactor;
+      particle.velocity.z *= dragFactor;
+    };
   }
+}, { deep: true });
+
+// 💨 烟雾粒子微调参数与控制
+const lateSmokeAdjust = reactive({
+  imageWidth: 15,
+  imageHeight: 15,
+  emissionRate: 20.0,
+  endScale: 2.0,
+  maxSpeed: 1.5,
+  gravity: 1.0,
+  drag: 0.95,
+  minSpeed: 0.5,
+  startScale: 0.5,
+  minLife: 3.0,
+  maxLife: 6.0
+});
+
+function resetLateSmokeParams() {
+  lateSmokeAdjust.imageWidth = 15;
+  lateSmokeAdjust.imageHeight = 15;
+  lateSmokeAdjust.emissionRate = 20.0;
+  lateSmokeAdjust.endScale = 2.0;
+  lateSmokeAdjust.maxSpeed = 1.5;
+  lateSmokeAdjust.gravity = 1.0;
+  lateSmokeAdjust.drag = 0.95;
+  lateSmokeAdjust.minSpeed = 0.5;
+  lateSmokeAdjust.startScale = 0.5;
+  lateSmokeAdjust.minLife = 3.0;
+  lateSmokeAdjust.maxLife = 6.0;
 }
 
-function copyUavUgvCoords() {
-  let text = '';
-  const isTruck = currentScene.value === 'truck';
-  const targetObj = activeUavUgvTarget.value === 'uav' 
-    ? (isTruck ? uavAdjust : tankerUavAdjust) 
-    : (isTruck ? rescueCarAdjust : tankerRescueCarAdjust);
-    
-  text = `lng: ${targetObj.lng.toFixed(6)}, lat: ${targetObj.lat.toFixed(6)}, height: ${targetObj.height}, scale: ${targetObj.scale}, heading: ${targetObj.heading}`;
-  
-  navigator.clipboard.writeText(text).then(() => {
-    uavUgvCopiedMessage.value = activeUavUgvTarget.value === 'uav' 
-      ? '无人机模型配置已成功复制到剪贴板！' 
-      : '无人车模型配置已成功复制到剪贴板！';
+function copyLateSmokeParams() {
+  const params = `lateSmokeAdjust.imageWidth = ${lateSmokeAdjust.imageWidth};\nlateSmokeAdjust.imageHeight = ${lateSmokeAdjust.imageHeight};\nlateSmokeAdjust.emissionRate = ${lateSmokeAdjust.emissionRate};\nlateSmokeAdjust.endScale = ${lateSmokeAdjust.endScale};\nlateSmokeAdjust.maxSpeed = ${lateSmokeAdjust.maxSpeed};\nlateSmokeAdjust.gravity = ${lateSmokeAdjust.gravity};\nlateSmokeAdjust.drag = ${lateSmokeAdjust.drag};\nlateSmokeAdjust.minSpeed = ${lateSmokeAdjust.minSpeed};\nlateSmokeAdjust.startScale = ${lateSmokeAdjust.startScale};\nlateSmokeAdjust.minLife = ${lateSmokeAdjust.minLife};\nlateSmokeAdjust.maxLife = ${lateSmokeAdjust.maxLife};`;
+  navigator.clipboard.writeText(params).then(() => {
+    lateFireCopiedMessage.value = '已成功复制烟雾参数到剪贴板！';
     setTimeout(() => {
-      uavUgvCopiedMessage.value = '';
+      lateFireCopiedMessage.value = '';
     }, 2000);
   }).catch(err => {
     console.error('复制失败:', err);
-    uavUgvCopiedMessage.value = '复制失败，请手动记录';
+    lateFireCopiedMessage.value = '复制失败，请手动记录';
     setTimeout(() => {
-      uavUgvCopiedMessage.value = '';
+      lateFireCopiedMessage.value = '';
     }, 2000);
   });
 }
+
+// 实时监听微调面板数值变化，热更新烟雾粒子系统参数
+watch(lateSmokeAdjust, (newVals) => {
+  if (smokeParticle && props.activePhaseIndex >= 7) {
+    const smokeScaleBase = 0.35;
+
+    smokeParticle.startScale = newVals.startScale * smokeScaleBase;
+    smokeParticle.endScale = newVals.endScale * smokeScaleBase;
+    smokeParticle.emissionRate = newVals.emissionRate;
+    smokeParticle.imageSize = new Cesium.Cartesian2(newVals.imageWidth, newVals.imageHeight);
+    smokeParticle.minimumSpeed = newVals.minSpeed;
+    smokeParticle.maximumSpeed = newVals.maxSpeed;
+    smokeParticle.minimumParticleLife = newVals.minLife;
+    smokeParticle.maximumParticleLife = newVals.maxLife;
+    smokeParticle.updateCallback = (particle, dt) => {
+      const gravityScratch = new Cesium.Cartesian3();
+      Cesium.Cartesian3.normalize(particle.position, gravityScratch);
+      Cesium.Cartesian3.multiplyByScalar(gravityScratch, newVals.gravity * dt, gravityScratch);
+      Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
+
+      const dragFactor = Math.pow(newVals.drag, dt * 60);
+      particle.velocity.x *= dragFactor;
+      particle.velocity.y *= dragFactor;
+      particle.velocity.z *= dragFactor;
+    };
+  }
+}, { deep: true });age.value = '已成功复制偏移参数到剪贴板！';
+    setTimeout(() => {
+      uavPopupCopiedMessage.value = '';
+    }, 2000);
+  }).catch(err => {
+    console.error('复制失败:', err);
+    uavPopupCopiedMessage.value = '复制失败，请手动记录';
+    setTimeout(() => {
+      uavPopupCopiedMessage.value = '';
+    }, 2000);
+  });
+}
+
+function resetSimulationPopupCoords() {
+  simulationPopup.xOffset = -342;
+  simulationPopup.yOffset = -90;
+}
+
+function copySimulationPopupParams() {
+  const params = `simulationPopup.xOffset = ${simulationPopup.xOffset};\nsimulationPopup.yOffset = ${simulationPopup.yOffset};`;
+  navigator.clipboard.writeText(params).then(() => {
+    simulationPopupCopiedMessage.value = '已成功复制偏移参数到剪贴板！';
+    setTimeout(() => {
+      simulationPopupCopiedMessage.value = '';
+    }, 2000);
+  }).catch(err => {
+    console.error('复制失败:', err);
+    simulationPopupCopiedMessage.value = '复制失败，请手动记录';
+    setTimeout(() => {
+      simulationPopupCopiedMessage.value = '';
+    }, 2000);
+  });
+}
+
+// 🔥💨 后期感知阶段（7阶段及以后）粒子微调参数与控制
+const isLateFirePanelExpanded = ref(false);
+const lateFireCopiedMessage = ref('');
+const activeParticleTab = ref('fire');
+
+function toggleLateFirePanel() {
+  togglePanel('lateFire');
+}
+
+const lateFireAdjust = reactive({
+  imageSize: 10,
+  emissionRate: 20.0,
+  endScale: 0.6,
+  maxSpeed: 0.4,
+  gravity: 0.2,
+  drag: 0.92,
+  minSpeed: 0.1,
+  startScale: 0.2,
+  minLife: 2.0,
+  maxLife: 4.0
+});
+
+function resetLateFireParams() {
+  lateFireAdjust.imageSize = 10;
+  lateFireAdjust.emissionRate = 20.0;
+  lateFireAdjust.endScale = 0.6;
+  lateFireAdjust.maxSpeed = 0.4;
+  lateFireAdjust.gravity = 0.2;
+  lateFireAdjust.drag = 0.92;
+  lateFireAdjust.minSpeed = 0.1;
+  lateFireAdjust.startScale = 0.2;
+  lateFireAdjust.minLife = 2.0;
+  lateFireAdjust.maxLife = 4.0;
+}
+
+function copyLateFireParams() {
+  const params = `lateFireAdjust.imageSize = ${lateFireAdjust.imageSize};\nlateFireAdjust.emissionRate = ${lateFireAdjust.emissionRate};\nlateFireAdjust.endScale = ${lateFireAdjust.endScale};\nlateFireAdjust.maxSpeed = ${lateFireAdjust.maxSpeed};\nlateFireAdjust.gravity = ${lateFireAdjust.gravity};\nlateFireAdjust.drag = ${lateFireAdjust.drag};\nlateFireAdjust.minSpeed = ${lateFireAdjust.minSpeed};\nlateFireAdjust.startScale = ${lateFireAdjust.startScale};\nlateFireAdjust.minLife = ${lateFireAdjust.minLife};\nlateFireAdjust.maxLife = ${lateFireAdjust.maxLife};`;
+  navigator.clipboard.writeText(params).then(() => {
+    lateFireCopiedMessage.value = '已成功复制火焰参数到剪贴板！';
+    setTimeout(() => {
+      lateFireCopiedMessage.value = '';
+    }, 2000);
+  }).catch(err => {
+    console.error('复制失败:', err);
+    lateFireCopiedMessage.value = '复制失败，请手动记录';
+    setTimeout(() => {
+      lateFireCopiedMessage.value = '';
+    }, 2000);
+  });
+}
+
+// 实时监听微调面板数值变化，热更新火焰粒子系统参数
+watch(lateFireAdjust, (newVals) => {
+  if (fireParticle && props.activePhaseIndex >= 7) {
+    const isBigFire = (props.activePhaseIndex === 5);
+    const fireScaleBase = isBigFire ? 2.0 : 1.0;
+
+    fireParticle.startScale = newVals.startScale * fireScaleBase;
+    fireParticle.endScale = newVals.endScale * fireScaleBase;
+    fireParticle.emissionRate = newVals.emissionRate;
+    fireParticle.imageSize = new Cesium.Cartesian2(newVals.imageSize, newVals.imageSize);
+    fireParticle.minimumSpeed = newVals.minSpeed;
+    fireParticle.maximumSpeed = newVals.maxSpeed;
+    fireParticle.minimumParticleLife = newVals.minLife;
+    fireParticle.maximumParticleLife = newVals.maxLife;
+    fireParticle.updateCallback = (particle, dt) => {
+      const gravityScratch = new Cesium.Cartesian3();
+      Cesium.Cartesian3.normalize(particle.position, gravityScratch);
+      Cesium.Cartesian3.multiplyByScalar(gravityScratch, newVals.gravity * dt, gravityScratch);
+      Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
+
+      const dragFactor = Math.pow(newVals.drag, dt * 60);
+      particle.velocity.x *= dragFactor;
+      particle.velocity.y *= dragFactor;
+      particle.velocity.z *= dragFactor;
+    };
+  }
+}, { deep: true });
+
+// 💨 烟雾粒子微调参数与控制
+const lateSmokeAdjust = reactive({
+  imageSize: 15,
+  emissionRate: 20.0,
+  endScale: 2.0,
+  maxSpeed: 1.5,
+  gravity: 1.0,
+  drag: 0.95,
+  minSpeed: 0.5,
+  startScale: 0.5,
+  minLife: 3.0,
+  maxLife: 6.0
+});
+
+function resetLateSmokeParams() {
+  lateSmokeAdjust.imageSize = 15;
+  lateSmokeAdjust.emissionRate = 20.0;
+  lateSmokeAdjust.endScale = 2.0;
+  lateSmokeAdjust.maxSpeed = 1.5;
+  lateSmokeAdjust.gravity = 1.0;
+  lateSmokeAdjust.drag = 0.95;
+  lateSmokeAdjust.minSpeed = 0.5;
+  lateSmokeAdjust.startScale = 0.5;
+  lateSmokeAdjust.minLife = 3.0;
+  lateSmokeAdjust.maxLife = 6.0;
+}
+
+function copyLateSmokeParams() {
+  const params = `lateSmokeAdjust.imageSize = ${lateSmokeAdjust.imageSize};\nlateSmokeAdjust.emissionRate = ${lateSmokeAdjust.emissionRate};\nlateSmokeAdjust.endScale = ${lateSmokeAdjust.endScale};\nlateSmokeAdjust.maxSpeed = ${lateSmokeAdjust.maxSpeed};\nlateSmokeAdjust.gravity = ${lateSmokeAdjust.gravity};\nlateSmokeAdjust.drag = ${lateSmokeAdjust.drag};\nlateSmokeAdjust.minSpeed = ${lateSmokeAdjust.minSpeed};\nlateSmokeAdjust.startScale = ${lateSmokeAdjust.startScale};\nlateSmokeAdjust.minLife = ${lateSmokeAdjust.minLife};\nlateSmokeAdjust.maxLife = ${lateSmokeAdjust.maxLife};`;
+  navigator.clipboard.writeText(params).then(() => {
+    lateFireCopiedMessage.value = '已成功复制烟雾参数到剪贴板！';
+    setTimeout(() => {
+      lateFireCopiedMessage.value = '';
+    }, 2000);
+  }).catch(err => {
+    console.error('复制失败:', err);
+    lateFireCopiedMessage.value = '复制失败，请手动记录';
+    setTimeout(() => {
+      lateFireCopiedMessage.value = '';
+    }, 2000);
+  });
+}
+
+// 实时监听微调面板数值变化，热更新烟雾粒子系统参数
+watch(lateSmokeAdjust, (newVals) => {
+  if (smokeParticle && props.activePhaseIndex >= 7) {
+    const smokeScaleBase = 0.35;
+
+    smokeParticle.startScale = newVals.startScale * smokeScaleBase;
+    smokeParticle.endScale = newVals.endScale * smokeScaleBase;
+    smokeParticle.emissionRate = newVals.emissionRate;
+    smokeParticle.imageSize = new Cesium.Cartesian2(newVals.imageSize, newVals.imageSize);
+    smokeParticle.minimumSpeed = newVals.minSpeed;
+    smokeParticle.maximumSpeed = newVals.maxSpeed;
+    smokeParticle.minimumParticleLife = newVals.minLife;
+    smokeParticle.maximumParticleLife = newVals.maxLife;
+    smokeParticle.updateCallback = (particle, dt) => {
+      const gravityScratch = new Cesium.Cartesian3();
+      Cesium.Cartesian3.normalize(particle.position, gravityScratch);
+      Cesium.Cartesian3.multiplyByScalar(gravityScratch, newVals.gravity * dt, gravityScratch);
+      Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
+
+      const dragFactor = Math.pow(newVals.drag, dt * 60);
+      particle.velocity.x *= dragFactor;
+      particle.velocity.y *= dragFactor;
+      particle.velocity.z *= dragFactor;
+    };
+  }
+}, { deep: true });
 
 // 自动检测场景切换并联动灯光坐标
 watch(() => props.focusedPointId, (newId) => {
@@ -2199,29 +2882,36 @@ function triggerPhotoAnimation(index, cartesianPos) {
 const rescueCoords = reactive({ lng: 113.10725, lat: 30.38491, height: 24.0 });
 
 const rescuePopup = reactive({
-  show: false,
+  show: true,
   title: '无人机出发',
   model: 'DJI M300 RTK',
   altitude: '100 m',
   speed: '15 m/s',
   status: '已出发',
   x: 0,
-  y: 0
+  y: 0,
+  xOffset: -10,
+  yOffset: 15
 });
 
 // 无人车出动状态与坐标
 const ugvCoords = reactive({ lng: 113.10725, lat: 30.38491, height: 5.0 });
 
 const ugvPopup = reactive({
-  show: false,
+  show: true,
   title: '无人车出发',
   model: 'SCOUT 2.0',
   count: '2 辆',
   speed: '5 km/h',
   status: '已出发',
   x: 0,
-  y: 0
+  y: 0,
+  xOffset: -27,
+  yOffset: -133
 });
+
+// 无人车传感器面板的 A/B 切换标签
+const activeUgvSensorTab = ref('A');
 
 // 城市高亮上浮高度 (仙桃与黄冈)
 const xiantaoHeight = ref(0);
@@ -2461,7 +3151,9 @@ function resetDetection() {
 const simulationPopup = reactive({
   show: false,
   x: 0,
-  y: 0
+  y: 0,
+  xOffset: -342,
+  yOffset: -90
 })
 
 function enterSimulation() {
@@ -2477,7 +3169,6 @@ const modelsReadyStatus = reactive({});
 let lastEmitTime = 0;
 const primitiveCache = new Map(); // 缓存找到的 primitive，避免重复递归搜索
 let readyCheckFrameCounter = 0; // 帧计数器，用于节流
-
 let currentMissionDataSource = null;
 let currentLoadMissionId = 0;
 
@@ -2520,6 +3211,18 @@ const loadMission = async () => {
     dataSource._lastEndpoint = endpoint;
     currentMissionDataSource = dataSource;
     viewer.dataSources.add(dataSource);
+
+    // 确保从 CZML 加载的规划路线实体在地图上显式可见
+    const uavPath = dataSource.entities.getById('UAV_Path');
+    if (uavPath) {
+      uavPath.show = true;
+      if (uavPath.polyline) uavPath.polyline.show = true;
+    }
+    const carPath = dataSource.entities.getById('Car_Path');
+    if (carPath) {
+      carPath.show = true;
+      if (carPath.polyline) carPath.polyline.show = true;
+    }
 
     // 根据用户要求，加快无人机无人车行走的时间
     viewer.clock.multiplier = 20.0;
@@ -2962,8 +3665,8 @@ function updatePopupPosition() {
     const cartesian = Cesium.Cartesian3.fromDegrees(rescueCoords.lng, rescueCoords.lat, rescueCoords.height);
     const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
     if (canvasPosition) {
-      rescuePopup.x = canvasPosition.x - 10;
-      rescuePopup.y = canvasPosition.y - 45;
+      rescuePopup.x = canvasPosition.x + (rescuePopup.xOffset !== undefined ? rescuePopup.xOffset : (rescuePopup.title === '无人机已到达' ? 161 : -10));
+      rescuePopup.y = canvasPosition.y + (rescuePopup.yOffset !== undefined ? rescuePopup.yOffset : (rescuePopup.title === '无人机已到达' ? -62 : 15));
     }
   }
 
@@ -2987,8 +3690,8 @@ function updatePopupPosition() {
     const cartesian = Cesium.Cartesian3.fromDegrees(ugvCoords.lng, ugvCoords.lat, ugvCoords.height);
     const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
     if (canvasPosition) {
-      ugvPopup.x = canvasPosition.x + 10;
-      ugvPopup.y = canvasPosition.y - 45;
+      ugvPopup.x = canvasPosition.x + (ugvPopup.xOffset !== undefined ? ugvPopup.xOffset : (ugvPopup.title === '无人车已就位' ? -200 : -27));
+      ugvPopup.y = canvasPosition.y + (ugvPopup.yOffset !== undefined ? ugvPopup.yOffset : (ugvPopup.title === '无人车已就位' ? 143 : -133));
     }
   }
 
@@ -3018,8 +3721,8 @@ function updatePopupPosition() {
     const cartesian = Cesium.Cartesian3.fromDegrees(lng, lat, 20.0);
     const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
     if (canvasPosition) {
-      simulationPopup.x = canvasPosition.x;
-      simulationPopup.y = canvasPosition.y - 120;
+      simulationPopup.x = canvasPosition.x + (simulationPopup.xOffset || 0);
+      simulationPopup.y = canvasPosition.y + (simulationPopup.yOffset || 0);
     }
   }
 
@@ -3042,11 +3745,25 @@ function updatePopupPosition() {
     }
   }
 
-  // 更新无人车浮窗坐标与数据 (仅在到达现场后显示，也就是 activePhaseIndex >= 7)
-  if (props.activePhaseIndex >= 7) {
+  // 更新无人车浮窗坐标与数据 (从出发阶段起更新，也就是 activePhaseIndex >= 6)
+  if (props.activePhaseIndex >= 6) {
     const isTanker = props.focusedPointId === 'accident_red';
     const carPosCallback = isTanker ? sharedTankerRescueCarPosition : sharedTruckRescueCarPosition;
     
+    // 关联真实的全局传感数据
+    ugvA.temp = props.sensorData?.temp || 0;
+    ugvA.hum = props.sensorData?.humidity || 0;
+    ugvA.smoke = props.sensorData?.smoke || 0;
+    ugvA.tvoc = props.sensorData?.tvoc || 0;
+    ugvA.co = props.sensorData?.co || 0;
+
+    // 无人车 B 作为辅助节点，制造合理的微小偏差以体现多设备空间差异
+    ugvB.temp = +(ugvA.temp - 0.45).toFixed(2);
+    ugvB.hum = +(ugvA.hum - 2.12).toFixed(2);
+    ugvB.smoke = Math.max(0, Math.floor(ugvA.smoke * 0.95));
+    ugvB.tvoc = Math.max(0, +(ugvA.tvoc * 0.88).toFixed(3));
+    ugvB.co = Math.max(0, +(ugvA.co * 0.92).toFixed(1));
+
     if (carPosCallback) {
       const pos = carPosCallback.getValue(viewer.clock.currentTime);
       if (pos) {
@@ -3057,20 +3774,6 @@ function updatePopupPosition() {
           ugvA.y = canvasPos.y - 120;
           ugvB.x = canvasPos.x + 20;
           ugvB.y = canvasPos.y - 120;
-
-          // 关联真实的全局传感数据
-          ugvA.temp = props.sensorData?.temp || 0;
-          ugvA.hum = props.sensorData?.humidity || 0;
-          ugvA.smoke = props.sensorData?.smoke || 0;
-          ugvA.tvoc = props.sensorData?.tvoc || 0;
-          ugvA.co = props.sensorData?.co || 0;
-
-          // 无人车 B 作为辅助节点，制造合理的微小偏差以体现多设备空间差异
-          ugvB.temp = +(ugvA.temp - 0.45).toFixed(2);
-          ugvB.hum = +(ugvA.hum - 2.12).toFixed(2);
-          ugvB.smoke = Math.max(0, Math.floor(ugvA.smoke * 0.95));
-          ugvB.tvoc = Math.max(0, +(ugvA.tvoc * 0.88).toFixed(3));
-          ugvB.co = Math.max(0, +(ugvA.co * 0.92).toFixed(1));
         } else {
           ugvA.x = -1000; ugvA.y = -1000;
           ugvB.x = -1000; ugvB.y = -1000;
@@ -3592,6 +4295,10 @@ const handleAutoDispatchTrigger = () => {
 };
 // 🛠️ 右侧智控终端面板 展开/收起 状态
 const isHudCollapsed = ref(false);
+
+const legendRightOffset = computed(() => {
+  return isHudCollapsed.value ? '20px' : '450px';
+});
 
 const activeHazardDemoCount = computed(() => {
   if (!lkywVehicles) return 0;
@@ -4414,22 +5121,105 @@ function updateTruckSequence(phaseIndex, pointId = '') {
   const isTruckFocus = pointId === 'accident_blue' || props.focusedPointId === 'accident_blue';
 
   const isBigFire = (phaseIndex === 5);
-  const smokeScaleBase = isBigFire ? 2.8 : 1.0;
+  let smokeScaleBase = 1.0;
+  let smokeEmissionRate = 60.0;
+
+  if (isBigFire) {
+    smokeScaleBase = 2.8;
+    smokeEmissionRate = 60.0;
+  } else if (phaseIndex === 7 || phaseIndex === 8) {
+    smokeScaleBase = 0.35;
+    smokeEmissionRate = 20.0;
+  }
+
   const fireScaleBase = isBigFire ? 2.0 : 1.0;
 
   if (smokeParticle) {
     // 只有在聚焦该点且阶段 >= 3 时才显示，防止回退时粒子残留
     smokeParticle.show = isTruckFocus && (phaseIndex >= 3);
-    smokeParticle.startScale = 0.5 * smokeScaleBase;
-    smokeParticle.endScale = 2.0 * smokeScaleBase;
-    smokeParticle.emissionRate = (phaseIndex >= 3) ? 60.0 : 0.0;
+    
+    if (phaseIndex >= 7) {
+      // 7 阶段及以后：事故中后期烟雾自动减弱，使用微调参数
+      smokeParticle.startScale = lateSmokeAdjust.startScale * smokeScaleBase;
+      smokeParticle.endScale = lateSmokeAdjust.endScale * smokeScaleBase;
+      smokeParticle.emissionRate = lateSmokeAdjust.emissionRate;
+      smokeParticle.imageSize = new Cesium.Cartesian2(lateSmokeAdjust.imageSize, lateSmokeAdjust.imageSize);
+      smokeParticle.minimumSpeed = lateSmokeAdjust.minSpeed;
+      smokeParticle.maximumSpeed = lateSmokeAdjust.maxSpeed;
+      smokeParticle.minimumParticleLife = lateSmokeAdjust.minLife;
+      smokeParticle.maximumParticleLife = lateSmokeAdjust.maxLife;
+      smokeParticle.updateCallback = (particle, dt) => {
+        const gravityScratch = new Cesium.Cartesian3();
+        Cesium.Cartesian3.normalize(particle.position, gravityScratch);
+        Cesium.Cartesian3.multiplyByScalar(gravityScratch, lateSmokeAdjust.gravity * dt, gravityScratch);
+        Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
+        
+        const dragFactor = Math.pow(lateSmokeAdjust.drag, dt * 60);
+        particle.velocity.x *= dragFactor;
+        particle.velocity.y *= dragFactor;
+        particle.velocity.z *= dragFactor;
+      };
+    } else {
+      // 3, 4, 5, 6 阶段 (正常行驶/事故爆发烟雾)
+      smokeParticle.startScale = 0.5 * smokeScaleBase;
+      smokeParticle.endScale = 2.0 * smokeScaleBase;
+      smokeParticle.emissionRate = (phaseIndex >= 3) ? smokeEmissionRate : 0.0;
+      smokeParticle.imageSize = new Cesium.Cartesian2(25, 25);
+      smokeParticle.minimumSpeed = 2.0;
+      smokeParticle.maximumSpeed = 5.0;
+      smokeParticle.minimumParticleLife = 2.0;
+      smokeParticle.maximumParticleLife = 4.5;
+      smokeParticle.updateCallback = (particle, dt) => {
+        const gravityScratch = new Cesium.Cartesian3();
+        Cesium.Cartesian3.normalize(particle.position, gravityScratch);
+        Cesium.Cartesian3.multiplyByScalar(gravityScratch, 2.5 * dt, gravityScratch);
+        Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
+      };
+    }
   }
   if (fireParticle) {
     // 只有在聚焦该点且阶段 >= 4 时才显示
     fireParticle.show = isTruckFocus && (phaseIndex >= 4);
-    fireParticle.startScale = 0.3 * fireScaleBase;
-    fireParticle.endScale = 1.2 * fireScaleBase;
-    fireParticle.emissionRate = (phaseIndex >= 4) ? 80.0 : 0.0;
+    
+    if (phaseIndex >= 7) {
+      // 7 阶段及以后 (无人感知部署、感知执行等)：事故中后期火势自然减弱，使用微调参数
+      fireParticle.startScale = lateFireAdjust.startScale * fireScaleBase;
+      fireParticle.endScale = lateFireAdjust.endScale * fireScaleBase;
+      fireParticle.emissionRate = lateFireAdjust.emissionRate; 
+      fireParticle.imageSize = new Cesium.Cartesian2(lateFireAdjust.imageSize, lateFireAdjust.imageSize); 
+      fireParticle.minimumSpeed = lateFireAdjust.minSpeed; 
+      fireParticle.maximumSpeed = lateFireAdjust.maxSpeed;
+      fireParticle.minimumParticleLife = lateFireAdjust.minLife;
+      fireParticle.maximumParticleLife = lateFireAdjust.maxLife;
+      fireParticle.updateCallback = (particle, dt) => {
+        const gravityScratch = new Cesium.Cartesian3();
+        Cesium.Cartesian3.normalize(particle.position, gravityScratch);
+        Cesium.Cartesian3.multiplyByScalar(gravityScratch, lateFireAdjust.gravity * dt, gravityScratch); 
+        Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
+        
+        const dragFactor = Math.pow(lateFireAdjust.drag, dt * 60);
+        particle.velocity.x *= dragFactor;
+        particle.velocity.y *= dragFactor;
+        particle.velocity.z *= dragFactor;
+      };
+    } else {
+      // 4, 5, 6 阶段 (起火、大火等爆发期)：猛烈燃烧，喷射速度快，范围大
+      fireParticle.startScale = 0.5 * fireScaleBase;
+      fireParticle.endScale = 1.8 * fireScaleBase;
+      fireParticle.emissionRate = 80.0; // 极高发射密度
+      fireParticle.imageSize = new Cesium.Cartesian2(25, 25);
+      fireParticle.minimumSpeed = 3.0;
+      fireParticle.maximumSpeed = 7.0;
+      fireParticle.minimumParticleLife = 1.0;
+      fireParticle.maximumParticleLife = 2.5;
+      fireParticle.updateCallback = (particle, dt) => {
+        // 快速喷射和上升
+        const gravityScratch = new Cesium.Cartesian3();
+        Cesium.Cartesian3.normalize(particle.position, gravityScratch);
+        Cesium.Cartesian3.multiplyByScalar(gravityScratch, 5.0 * dt, gravityScratch); 
+        Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
+      };
+    }
   }
 }
 
@@ -4618,6 +5408,60 @@ function addEventEntities() {
     }
   });
 
+  // 🗺️ 无人机绕飞盘旋轨迹 (货车追尾场景)
+  viewer.entities.add({
+    id: 'uav-orbit-path-truck',
+    name: '货车场景无人机盘旋轨迹',
+    show: false,
+    polyline: {
+      positions: new Cesium.CallbackProperty(() => {
+        const targetLng = Number(truckAdjust.lng) || 113.104833;
+        const targetLat = Number(truckAdjust.lat) || 30.385469;
+        const targetHeight = Number(uavAdjust.height) || 18.5;
+        const pts = [];
+        for (let i = 0; i <= 72; i++) {
+          const angle = (i / 72) * 2.0 * Math.PI;
+          const lng = targetLng + 0.00055 * Math.cos(angle);
+          const lat = targetLat + 0.00045 * Math.sin(angle);
+          pts.push(Cesium.Cartesian3.fromDegrees(lng, lat, targetHeight));
+        }
+        return pts;
+      }, false),
+      width: 3.0,
+      material: new Cesium.PolylineDashMaterialProperty({
+        color: Cesium.Color.fromCssColorString('#00f2fe'),
+        dashLength: 16.0
+      })
+    }
+  });
+
+  // 🗺️ 无人机绕飞盘旋轨迹 (油罐车泄漏场景)
+  viewer.entities.add({
+    id: 'uav-orbit-path-tanker',
+    name: '油罐车场景无人机盘旋轨迹',
+    show: false,
+    polyline: {
+      positions: new Cesium.CallbackProperty(() => {
+        const targetLng = Number(tankerPointAdjust.lng) || 114.8945;
+        const targetLat = Number(tankerPointAdjust.lat) || 30.632161;
+        const targetHeight = Number(tankerUavAdjust.height) || 11.5;
+        const pts = [];
+        for (let i = 0; i <= 72; i++) {
+          const angle = (i / 72) * 2.0 * Math.PI;
+          const lng = targetLng + 0.00055 * Math.cos(angle);
+          const lat = targetLat + 0.00045 * Math.sin(angle);
+          pts.push(Cesium.Cartesian3.fromDegrees(lng, lat, targetHeight));
+        }
+        return pts;
+      }, false),
+      width: 3.0,
+      material: new Cesium.PolylineDashMaterialProperty({
+        color: Cesium.Color.fromCssColorString('#00f2fe'),
+        dashLength: 16.0
+      })
+    }
+  });
+
   focusAreaEntity = viewer.entities.add({
     id: 'event-area',
     show: false,
@@ -4683,6 +5527,8 @@ function addEventEntities() {
       show: false
     }
   })
+
+
 
   Object.values(scenarioPoints).filter(p => p.id.startsWith('accident_')).forEach(point => {
     let positionCallback;
@@ -4753,7 +5599,9 @@ function addEventEntities() {
         minimumPixelSize: 1, // 关键：强制 Cesium 始终渲染该模型，从而触发加载
         heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, // 使用 Cesium 原生贴地
         // 关闭原生动画循环，交由 updateTruckSequence 和 playEntityAnimation 手动控制只播一次并定格
-        runAnimations: false
+        runAnimations: false,
+        silhouetteColor: Cesium.Color.fromCssColorString('#00f2fe'),
+        silhouetteSize: 2.0
       }
     })
     entity.show = true // 强制开启显示以触发加载
@@ -4781,7 +5629,9 @@ function addEventEntities() {
         minimumPixelSize: 1, // 关键：强制加载
         heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, // 使用 Cesium 原生贴地
         // 关闭原生动画循环，手动控制
-        runAnimations: false
+        runAnimations: false,
+        silhouetteColor: Cesium.Color.fromCssColorString('#ff3344'),
+        silhouetteSize: 2.0
       }
     })
     entity.show = true
@@ -4828,23 +5678,33 @@ function addEventEntities() {
           if (pathEntity && pathEntity.polyline && pathEntity.polyline.positions) {
             const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime);
             if (positions && positions.length > 1) {
-              const segmentCount = positions.length - 1;
-              const scaledT = easeT * segmentCount;
-              const idx = Math.min(Math.floor(scaledT), segmentCount - 1);
-              const localT = scaledT - idx;
-              const p0 = positions[idx];
-              const p1 = positions[idx + 1];
-              // 在三维空间插值位置，并给一个离地高度，比如比折线本身高 120 米（或者保留折线自带高度，再偏置点高度以体现空中飞行）
-              const interpolated = Cesium.Cartesian3.lerp(p0, p1, localT, new Cesium.Cartesian3());
-              // 如果折线本身是贴地的，我们需要让它飞在空中
-              const carto = Cesium.Cartographic.fromCartesian(interpolated);
-              // 如果高度太低，设为 120 米
-              const finalHeight = carto.height < 10.0 ? 120.0 : carto.height;
-              return Cesium.Cartesian3.fromDegrees(
-                Cesium.Math.toDegrees(carto.longitude),
-                Cesium.Math.toDegrees(carto.latitude),
-                finalHeight
-              );
+              const pEnd = positions[positions.length - 1];
+              let startIndex = 0;
+              const targetDistance = 180.0;
+              for (let i = positions.length - 2; i >= 0; i--) {
+                const dist = Cesium.Cartesian3.distance(positions[i], pEnd);
+                if (dist >= targetDistance) {
+                  startIndex = i;
+                  break;
+                }
+              }
+              const subPositions = positions.slice(startIndex);
+              if (subPositions.length > 1) {
+                const segmentCount = subPositions.length - 1;
+                const scaledT = easeT * segmentCount;
+                const idx = Math.min(Math.floor(scaledT), segmentCount - 1);
+                const localT = scaledT - idx;
+                const p0 = subPositions[idx];
+                const p1 = subPositions[idx + 1];
+                const interpolated = Cesium.Cartesian3.lerp(p0, p1, localT, new Cesium.Cartesian3());
+                const carto = Cesium.Cartographic.fromCartesian(interpolated);
+                const finalHeight = carto.height < 10.0 ? 120.0 : carto.height;
+                return Cesium.Cartesian3.fromDegrees(
+                  Cesium.Math.toDegrees(carto.longitude),
+                  Cesium.Math.toDegrees(carto.latitude),
+                  finalHeight
+                );
+              }
             }
           }
         }
@@ -4932,22 +5792,36 @@ function addEventEntities() {
           if (pathEntity && pathEntity.polyline && pathEntity.polyline.positions) {
             const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime);
             if (positions && positions.length > 1) {
-              const elapsed = Date.now() - phase7StartTime;
-              const duration = 6000;
-              const t = Math.min((elapsed + 100) / duration, 1.0);
-              const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-              const segmentCount = positions.length - 1;
-              const scaledT = easeT * segmentCount;
-              const idx = Math.min(Math.floor(scaledT), segmentCount - 1);
-              const localT = scaledT - idx;
-              const nextPos = Cesium.Cartesian3.lerp(positions[idx], positions[idx + 1], localT, new Cesium.Cartesian3());
-              
-              const cartoCur = Cesium.Cartographic.fromCartesian(pos);
-              const cartoNext = Cesium.Cartographic.fromCartesian(nextPos);
-              headingRad = Math.PI / 2 - Math.atan2(
-                Cesium.Math.toDegrees(cartoNext.latitude) - Cesium.Math.toDegrees(cartoCur.latitude),
-                Cesium.Math.toDegrees(cartoNext.longitude) - Cesium.Math.toDegrees(cartoCur.longitude)
-              );
+              const pEnd = positions[positions.length - 1];
+              let startIndex = 0;
+              const targetDistance = 180.0;
+              for (let i = positions.length - 2; i >= 0; i--) {
+                const dist = Cesium.Cartesian3.distance(positions[i], pEnd);
+                if (dist >= targetDistance) {
+                  startIndex = i;
+                  break;
+                }
+              }
+              const subPositions = positions.slice(startIndex);
+              if (subPositions.length > 1) {
+                const segmentCount = subPositions.length - 1;
+                const elapsed = Date.now() - phase7StartTime;
+                const duration = 6000;
+                const t = Math.min((elapsed + 100) / duration, 1.0);
+                const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                
+                const scaledT = easeT * segmentCount;
+                const idx = Math.min(Math.floor(scaledT), segmentCount - 1);
+                const localT = scaledT - idx;
+                const nextPos = Cesium.Cartesian3.lerp(subPositions[idx], subPositions[idx + 1], localT, new Cesium.Cartesian3());
+                
+                const cartoCur = Cesium.Cartographic.fromCartesian(pos);
+                const cartoNext = Cesium.Cartographic.fromCartesian(nextPos);
+                headingRad = Math.PI / 2 - Math.atan2(
+                  Cesium.Math.toDegrees(cartoNext.latitude) - Cesium.Math.toDegrees(cartoCur.latitude),
+                  Cesium.Math.toDegrees(cartoNext.longitude) - Cesium.Math.toDegrees(cartoCur.longitude)
+                );
+              }
             }
           }
         }
@@ -4988,7 +5862,9 @@ function addEventEntities() {
         minimumPixelSize: 1, // 改为 1 像素，使无人机完全遵循真实的 3D 空间透视，随视角远近自然缩放
         heightReference: Cesium.HeightReference.NONE,
         // 关闭 Entity 自带的动画调度，避免与手动 addAll 产生冲突
-        runAnimations: false
+        runAnimations: false,
+        silhouetteColor: Cesium.Color.fromCssColorString('#00f2fe'),
+        silhouetteSize: 2.0
       }
     });
     uavEntities.push(entity);
@@ -5091,7 +5967,9 @@ function addEventEntities() {
         scale: new Cesium.CallbackProperty(() => Number(rescueCarAdjust.scale) || 1.0, false),
         minimumPixelSize: 16, // 保底 16 像素，防止模型物理尺寸过小导致完全不可见，但不至于像 64 那样完全覆盖微调效果
         heightReference: Cesium.HeightReference.NONE, // 移除自动贴地，完全由用户通过 Z 轴微调高度，防止模型原点错误导致深埋地下
-        runAnimations: true
+        runAnimations: true,
+        silhouetteColor: Cesium.Color.fromCssColorString('#00ffaa'),
+        silhouetteSize: 2.0
       }
     });
     rescueCarEntities.push(entity);
@@ -5132,21 +6010,33 @@ function addEventEntities() {
           if (pathEntity && pathEntity.polyline && pathEntity.polyline.positions) {
             const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime);
             if (positions && positions.length > 1) {
-              const segmentCount = positions.length - 1;
-              const scaledT = easeT * segmentCount;
-              const idx = Math.min(Math.floor(scaledT), segmentCount - 1);
-              const localT = scaledT - idx;
-              const p0 = positions[idx];
-              const p1 = positions[idx + 1];
-              // 在三维空间插值位置，飞在 120 米高空（或者使用折线本身的高度）
-              const interpolated = Cesium.Cartesian3.lerp(p0, p1, localT, new Cesium.Cartesian3());
-              const carto = Cesium.Cartographic.fromCartesian(interpolated);
-              const finalHeight = carto.height < 10.0 ? 120.0 : carto.height;
-              return Cesium.Cartesian3.fromDegrees(
-                Cesium.Math.toDegrees(carto.longitude),
-                Cesium.Math.toDegrees(carto.latitude),
-                finalHeight
-              );
+              const pEnd = positions[positions.length - 1];
+              let startIndex = 0;
+              const targetDistance = 180.0;
+              for (let i = positions.length - 2; i >= 0; i--) {
+                const dist = Cesium.Cartesian3.distance(positions[i], pEnd);
+                if (dist >= targetDistance) {
+                  startIndex = i;
+                  break;
+                }
+              }
+              const subPositions = positions.slice(startIndex);
+              if (subPositions.length > 1) {
+                const segmentCount = subPositions.length - 1;
+                const scaledT = easeT * segmentCount;
+                const idx = Math.min(Math.floor(scaledT), segmentCount - 1);
+                const localT = scaledT - idx;
+                const p0 = subPositions[idx];
+                const p1 = subPositions[idx + 1];
+                const interpolated = Cesium.Cartesian3.lerp(p0, p1, localT, new Cesium.Cartesian3());
+                const carto = Cesium.Cartographic.fromCartesian(interpolated);
+                const finalHeight = carto.height < 10.0 ? 120.0 : carto.height;
+                return Cesium.Cartesian3.fromDegrees(
+                  Cesium.Math.toDegrees(carto.longitude),
+                  Cesium.Math.toDegrees(carto.latitude),
+                  finalHeight
+                );
+              }
             }
           }
         }
@@ -5265,22 +6155,36 @@ function addEventEntities() {
           if (pathEntity && pathEntity.polyline && pathEntity.polyline.positions) {
             const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime);
             if (positions && positions.length > 1) {
-              const elapsed = Date.now() - phase7StartTime;
-              const duration = 6000;
-              const t = Math.min((elapsed + 100) / duration, 1.0);
-              const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-              const segmentCount = positions.length - 1;
-              const scaledT = easeT * segmentCount;
-              const idx = Math.min(Math.floor(scaledT), segmentCount - 1);
-              const localT = scaledT - idx;
-              const nextPos = Cesium.Cartesian3.lerp(positions[idx], positions[idx + 1], localT, new Cesium.Cartesian3());
-              
-              const cartoCur = Cesium.Cartographic.fromCartesian(pos);
-              const cartoNext = Cesium.Cartographic.fromCartesian(nextPos);
-              headingRad = Math.PI / 2 - Math.atan2(
-                Cesium.Math.toDegrees(cartoNext.latitude) - Cesium.Math.toDegrees(cartoCur.latitude),
-                Cesium.Math.toDegrees(cartoNext.longitude) - Cesium.Math.toDegrees(cartoCur.longitude)
-              );
+              const pEnd = positions[positions.length - 1];
+              let startIndex = 0;
+              const targetDistance = 180.0;
+              for (let i = positions.length - 2; i >= 0; i--) {
+                const dist = Cesium.Cartesian3.distance(positions[i], pEnd);
+                if (dist >= targetDistance) {
+                  startIndex = i;
+                  break;
+                }
+              }
+              const subPositions = positions.slice(startIndex);
+              if (subPositions.length > 1) {
+                const segmentCount = subPositions.length - 1;
+                const elapsed = Date.now() - phase7StartTime;
+                const duration = 6000;
+                const t = Math.min((elapsed + 100) / duration, 1.0);
+                const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                
+                const scaledT = easeT * segmentCount;
+                const idx = Math.min(Math.floor(scaledT), segmentCount - 1);
+                const localT = scaledT - idx;
+                const nextPos = Cesium.Cartesian3.lerp(subPositions[idx], subPositions[idx + 1], localT, new Cesium.Cartesian3());
+                
+                const cartoCur = Cesium.Cartographic.fromCartesian(pos);
+                const cartoNext = Cesium.Cartographic.fromCartesian(nextPos);
+                headingRad = Math.PI / 2 - Math.atan2(
+                  Cesium.Math.toDegrees(cartoNext.latitude) - Cesium.Math.toDegrees(cartoCur.latitude),
+                  Cesium.Math.toDegrees(cartoNext.longitude) - Cesium.Math.toDegrees(cartoCur.longitude)
+                );
+              }
             }
           }
         }
@@ -5318,7 +6222,9 @@ function addEventEntities() {
         scale: new Cesium.CallbackProperty(() => tankerUavAdjust.scale > 0 ? tankerUavAdjust.scale : 0.1, false),
         minimumPixelSize: 1, // 改为 1 像素，使无人机完全遵循真实的 3D 空间透视，随视角远近自然缩放
         heightReference: Cesium.HeightReference.NONE,
-        runAnimations: false
+        runAnimations: false,
+        silhouetteColor: Cesium.Color.fromCssColorString('#00f2fe'),
+        silhouetteSize: 2.0
       }
     });
     tankerUavEntities.push(entity);
@@ -5419,7 +6325,9 @@ function addEventEntities() {
         scale: new Cesium.CallbackProperty(() => Number(tankerRescueCarAdjust.scale) || 1.0, false),
         minimumPixelSize: 16,
         heightReference: Cesium.HeightReference.NONE,
-        runAnimations: true
+        runAnimations: true,
+        silhouetteColor: Cesium.Color.fromCssColorString('#00ffaa'),
+        silhouetteSize: 2.0
       }
     });
     tankerRescueCarEntities.push(entity);
@@ -5493,6 +6401,16 @@ function updatePhaseScene(index, animate = false) {
     }
     const phase = props.phases[index] || props.phases[0]
     const pointId = props.focusedPointId || phase.focusPoint || 'gateway'
+
+    // 🗺️ 控制无人机盘旋轨迹的显示/隐藏 (仅在第8阶段“无人感知执行”时显示)
+    const orbitPathTruck = viewer.entities.getById('uav-orbit-path-truck');
+    if (orbitPathTruck) {
+      orbitPathTruck.show = (pointId === 'accident_blue' && index === 8);
+    }
+    const orbitPathTanker = viewer.entities.getById('uav-orbit-path-tanker');
+    if (orbitPathTanker) {
+      orbitPathTanker.show = (pointId === 'accident_red' && index === 8);
+    }
     const point = scenarioPoints[pointId] || scenarioPoints.gateway
 
     let lng = point.longitude, lat = point.latitude;
@@ -5552,6 +6470,8 @@ function updatePhaseScene(index, animate = false) {
       rescuePopup.altitude = '100 m';
       rescuePopup.speed = '15 m/s';
       rescuePopup.status = '已出发';
+      rescuePopup.xOffset = -10;
+      rescuePopup.yOffset = 15;
       rescueCoords.lng = 113.4275;
       rescueCoords.lat = 30.3354;
       rescueCoords.height = 120.0;
@@ -5561,6 +6481,8 @@ function updatePhaseScene(index, animate = false) {
       ugvPopup.count = '2 辆';
       ugvPopup.speed = '5 km/h';
       ugvPopup.status = '已出发';
+      ugvPopup.xOffset = -27;
+      ugvPopup.yOffset = -133;
       ugvCoords.lng = 113.4275;
       ugvCoords.lat = 30.3354;
       ugvCoords.height = 10.0;
@@ -5574,11 +6496,15 @@ function updatePhaseScene(index, animate = false) {
       rescuePopup.altitude = '100 m';
       rescuePopup.speed = '0 m/s';
       rescuePopup.status = '感知部署中';
+      rescuePopup.xOffset = 161;
+      rescuePopup.yOffset = -62;
       rescueCoords.lng = 113.104833;
       rescueCoords.lat = 30.385469;
       rescueCoords.height = 120.0;
       ugvPopup.title = '无人车已就位';
       ugvPopup.status = '传感器布设中';
+      ugvPopup.xOffset = -200;
+      ugvPopup.yOffset = 143;
       ugvCoords.lng = 113.104833;
       ugvCoords.lat = 30.385469;
       ugvCoords.height = 10.0;
@@ -5600,6 +6526,8 @@ function updatePhaseScene(index, animate = false) {
       rescuePopup.altitude = '100 m';
       rescuePopup.speed = '15 m/s';
       rescuePopup.status = '已出发';
+      rescuePopup.xOffset = -10;
+      rescuePopup.yOffset = 15;
       rescueCoords.lng = 113.4275;
       rescueCoords.lat = 30.3354;
       rescueCoords.height = 120.0;
@@ -5608,6 +6536,8 @@ function updatePhaseScene(index, animate = false) {
       ugvPopup.count = '2 辆';
       ugvPopup.speed = '5 km/h';
       ugvPopup.status = '已出发';
+      ugvPopup.xOffset = -27;
+      ugvPopup.yOffset = -133;
       ugvCoords.lng = 113.4275;
       ugvCoords.lat = 30.3354;
       ugvCoords.height = 10.0;
@@ -5637,6 +6567,8 @@ function updatePhaseScene(index, animate = false) {
       rescuePopup.altitude = String(Math.round(tankerUavAdjust.height)) + ' m';
       rescuePopup.speed = '12 m/s';
       rescuePopup.status = '已出发';
+      rescuePopup.xOffset = -10;
+      rescuePopup.yOffset = 15;
       rescueCoords.lng = 114.9238;
       rescueCoords.lat = 30.5158;
       rescueCoords.height = tankerUavAdjust.height + 10.0;
@@ -5646,6 +6578,8 @@ function updatePhaseScene(index, animate = false) {
       ugvPopup.count = '2 辆';
       ugvPopup.speed = '5 km/h';
       ugvPopup.status = '已出发';
+      ugvPopup.xOffset = -27;
+      ugvPopup.yOffset = -133;
       ugvCoords.lng = 114.9238;
       ugvCoords.lat = 30.5158;
       ugvCoords.height = 15.0;
@@ -5659,11 +6593,15 @@ function updatePhaseScene(index, animate = false) {
       rescuePopup.altitude = String(Math.round(tankerUavAdjust.height)) + ' m';
       rescuePopup.speed = '0 m/s';
       rescuePopup.status = '感知部署中';
+      rescuePopup.xOffset = 161;
+      rescuePopup.yOffset = -62;
       rescueCoords.lng = tankerPointAdjust.lng;
       rescueCoords.lat = tankerPointAdjust.lat;
       rescueCoords.height = 17.0;
       ugvPopup.title = '无人车已就位';
       ugvPopup.status = '传感器布设中';
+      ugvPopup.xOffset = -200;
+      ugvPopup.yOffset = 143;
       ugvCoords.lng = tankerPointAdjust.lng;
       ugvCoords.lat = tankerPointAdjust.lat;
       ugvCoords.height = 10.0;
@@ -5685,6 +6623,8 @@ function updatePhaseScene(index, animate = false) {
       rescuePopup.altitude = '80 m';
       rescuePopup.speed = '12 m/s';
       rescuePopup.status = '已出发';
+      rescuePopup.xOffset = -10;
+      rescuePopup.yOffset = 15;
       rescueCoords.lng = tankerPointAdjust.lng;
       rescueCoords.lat = tankerPointAdjust.lat;
       rescueCoords.height = 17.0;
@@ -5693,6 +6633,8 @@ function updatePhaseScene(index, animate = false) {
       ugvPopup.count = '2 辆';
       ugvPopup.speed = '5 km/h';
       ugvPopup.status = '已出发';
+      ugvPopup.xOffset = -27;
+      ugvPopup.yOffset = -133;
       ugvCoords.lng = tankerPointAdjust.lng;
       ugvCoords.lat = tankerPointAdjust.lat;
       ugvCoords.height = 10.0;
@@ -5725,6 +6667,18 @@ function updatePhaseScene(index, animate = false) {
       const expectedEndpoint = currentScene.value === 'truck' ? 'crash' : 'leak';
       if (!currentMissionDataSource || currentMissionDataSource._lastEndpoint !== expectedEndpoint) {
         loadMission();
+      } else {
+        // 如果数据源已加载，显式确保规划路线可见
+        const uavPath = currentMissionDataSource.entities.getById('UAV_Path');
+        if (uavPath) {
+          uavPath.show = true;
+          if (uavPath.polyline) uavPath.polyline.show = true;
+        }
+        const carPath = currentMissionDataSource.entities.getById('Car_Path');
+        if (carPath) {
+          carPath.show = true;
+          if (carPath.polyline) carPath.polyline.show = true;
+        }
       }
     } else {
       if (currentMissionDataSource) {
@@ -5776,11 +6730,13 @@ function updatePhaseScene(index, animate = false) {
           tankerUavEntities.forEach(entity => { entity.show = false })
           tankerRescueCarEntities.forEach(entity => { entity.show = false })
           
-          // 隐藏所有粒子效果，只保留模型
-          if (smokeParticle) smokeParticle.show = false
-          if (fireParticle) fireParticle.show = false
+          // 隐藏所有泄露和扩散粒子，但保留货车场景所需的烟雾与火焰粒子（由 updateTruckSequence 控制其具体大小）
           if (leakParticle) leakParticle.show = false
           if (diffusionParticle) diffusionParticle.show = false
+          if (index >= 9) {
+            if (smokeParticle) smokeParticle.show = false
+            if (fireParticle) fireParticle.show = false
+          }
         } else if (pointId === 'accident_red') {
           // 在油罐车泄露现场的无人机阶段显示无人机模型和救援车并隐藏所有粒子效果
           tankerUavEntities.forEach(entity => {
@@ -7060,6 +8016,15 @@ onBeforeUnmount(() => {
   border-radius: 6px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6), 0 0 14px rgba(0, 229, 255, 0.2);
   backdrop-filter: blur(12px);
+  transform: translate(-50%, 0) !important; /* 朝下显示：移除向上的-100%偏移 */
+}
+
+.uav-dispatch-popup .shelter-popup-arrow {
+  top: -6px;
+  bottom: auto;
+  border-top: 0;
+  border-bottom: 6px solid rgba(5, 18, 38, 0.95);
+  filter: drop-shadow(0 -2px 2px rgba(0, 0, 0, 0.15));
 }
 
 .uav-dispatch-header {
@@ -7068,9 +8033,9 @@ onBeforeUnmount(() => {
   padding: 6px 10px !important;
 }
 
-/* 🚗 无人车出发浮窗 — 蓝色科技主题 */
+/* 🚗 无人车出发浮窗 — 蓝色科技主题 (含传感器数据) */
 .ugv-dispatch-popup {
-  width: 190px;
+  width: 220px;
   background: rgba(5, 10, 40, 0.95);
   border: 1px solid rgba(70, 130, 255, 0.5);
   border-radius: 6px;
@@ -7154,6 +8119,115 @@ onBeforeUnmount(() => {
   color: #00ff88 !important;
   font-weight: bold !important;
   text-shadow: 0 0 5px rgba(0, 255, 136, 0.4);
+}
+
+/* 无人车传感器数据合并面板样式 */
+.ugv-sensor-section {
+  border-top: 1px solid rgba(70, 130, 255, 0.25);
+}
+
+.ugv-sensor-tabs {
+  display: flex;
+  gap: 0;
+  background: rgba(20, 40, 90, 0.3);
+}
+
+.ugv-sensor-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: bold;
+  color: #8aafcc;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.ugv-sensor-tab:hover {
+  color: #b0d8ff;
+  background: rgba(70, 130, 255, 0.1);
+}
+
+.ugv-sensor-tab.active {
+  color: #6aabff;
+  border-bottom-color: #6aabff;
+  background: rgba(70, 130, 255, 0.15);
+}
+
+.ugv-tab-status {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.25);
+  color: #00ff88;
+  font-weight: bold;
+}
+
+.ugv-tab-status.offline {
+  color: #ffb4b4;
+  background: rgba(168, 54, 54, 0.18);
+  border-color: rgba(255, 180, 180, 0.28);
+}
+
+.ugv-sensor-body {
+  padding: 6px;
+}
+
+.ugv-sensor-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.ugv-sensor-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ugv-sensor-item.wide {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ugv-sensor-label {
+  font-size: 10px;
+  color: #8fa3b0;
+}
+
+.ugv-sensor-val {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e0f2fe;
+  text-shadow: 0 0 4px rgba(224, 242, 254, 0.3);
+  font-family: "JetBrains Mono", monospace;
+}
+
+.ugv-sensor-detail-link {
+  text-align: right;
+  padding: 5px 6px 3px;
+  font-size: 9px;
+  color: #6aabff;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.ugv-sensor-detail-link:hover {
+  color: #a0cfff;
 }
 
 .globe-mask {
@@ -8855,17 +9929,195 @@ onBeforeUnmount(() => {
 /* 🛠️ 右下角微调控制台 悬浮按钮 Dock */
 .bottom-right-tool-dock {
   position: absolute;
-  bottom: 20px;
+  top: 50%;
   right: 20px;
+  transform: translate(0, -50%);
   z-index: 1025;
   display: flex;
+  flex-direction: column;
   gap: 10px;
   background: rgba(5, 14, 26, 0.88);
-  padding: 8px 14px;
+  padding: 14px 10px;
   border-radius: 10px;
   border: 1px solid rgba(0, 229, 255, 0.35);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7), 0 0 15px rgba(0, 229, 255, 0.15);
   backdrop-filter: blur(12px);
+  width: 130px;
+  box-sizing: border-box;
+  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.bottom-right-tool-dock.collapsed {
+  transform: translate(calc(100% + 20px), -50%);
+}
+
+.dock-toggle-handle {
+  position: absolute;
+  left: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 60px;
+  background: rgba(5, 14, 26, 0.95);
+  border-left: 1px solid rgba(0, 229, 255, 0.4);
+  border-top: 1px solid rgba(0, 229, 255, 0.4);
+  border-bottom: 1px solid rgba(0, 229, 255, 0.4);
+  border-radius: 8px 0 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: -4px 0 10px rgba(0, 0, 0, 0.5);
+  color: #00e5ff;
+  font-size: 10px;
+  z-index: 1026;
+  transition: all 0.25s ease;
+}
+
+.dock-toggle-handle:hover {
+  background: rgba(0, 229, 255, 0.2);
+  color: #ffffff;
+  box-shadow: -4px 0 15px rgba(0, 229, 255, 0.4);
+}
+
+/* 🗺️ 湖北省地图车辆运行图例 Style */
+.hubei-map-legend {
+  position: absolute;
+  top: 90px;
+  width: 290px;
+  background: rgba(10, 20, 38, 0.85);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), inset 0 0 15px rgba(0, 242, 254, 0.1);
+  border-radius: 12px;
+  padding: 14px 16px;
+  z-index: 99;
+  backdrop-filter: blur(20px);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto;
+}
+
+.legend-header {
+  border-bottom: 1px solid rgba(0, 242, 254, 0.15);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.legend-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #00f2fe;
+  letter-spacing: 1px;
+  text-shadow: 0 0 8px rgba(0, 242, 254, 0.35);
+}
+
+.legend-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 单行胶囊设计 */
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(6, 12, 24, 0.85);
+  border-radius: 8px;
+  padding: 8px 12px;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.legend-row:hover {
+  background: rgba(12, 24, 48, 0.95);
+}
+
+.hazard-row {
+  border-color: rgba(255, 51, 68, 0.25);
+  box-shadow: 0 0 10px rgba(255, 51, 68, 0.08), inset 0 0 8px rgba(255, 51, 68, 0.05);
+}
+.hazard-row:hover {
+  border-color: rgba(255, 51, 68, 0.5);
+  box-shadow: 0 0 12px rgba(255, 51, 68, 0.2);
+}
+
+.passenger-row {
+  border-color: rgba(0, 255, 170, 0.25);
+  box-shadow: 0 0 10px rgba(0, 255, 170, 0.08), inset 0 0 8px rgba(0, 255, 170, 0.05);
+}
+.passenger-row:hover {
+  border-color: rgba(0, 255, 170, 0.5);
+  box-shadow: 0 0 12px rgba(0, 255, 170, 0.2);
+}
+
+.tourist-row {
+  border-color: rgba(0, 229, 255, 0.25);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.08), inset 0 0 8px rgba(0, 229, 255, 0.05);
+}
+.tourist-row:hover {
+  border-color: rgba(0, 229, 255, 0.5);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
+}
+
+/* 呼吸发光点 */
+.legend-glow-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: relative;
+}
+
+.legend-glow-dot::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.4;
+  animation: dot-pulse 1.8s infinite ease-in-out;
+}
+
+@keyframes dot-pulse {
+  0% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 0.4; }
+}
+
+.legend-glow-dot.red {
+  background-color: #ff3344;
+  box-shadow: 0 0 8px #ff3344;
+}
+
+.legend-glow-dot.green {
+  background-color: #00ffaa;
+  box-shadow: 0 0 8px #00ffaa;
+}
+
+.legend-glow-dot.blue {
+  background-color: #00e5ff;
+  box-shadow: 0 0 8px #00e5ff;
+}
+
+/* 文字排版 */
+.legend-text-main {
+  font-size: 12px;
+  font-weight: bold;
+  color: #ffffff;
+  flex: 1;
+}
+
+.legend-text-sub {
+  font-size: 10px;
+  color: #8fa0dd;
+  font-family: monospace;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 .dock-tool-btn {
@@ -8879,8 +10131,13 @@ onBeforeUnmount(() => {
   transition: all 0.25s ease;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   user-select: none;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .dock-tool-btn.camera-btn {
@@ -8922,14 +10179,14 @@ onBeforeUnmount(() => {
 /* 🛠️ 右下角微调弹窗面板堆叠容器 */
 .bottom-right-panels-stack {
   position: absolute;
-  bottom: 75px;
-  right: 20px;
+  bottom: 120px;
+  right: 160px;
   z-index: 1020;
   display: flex;
   flex-direction: column-reverse;
   align-items: flex-end;
   gap: 12px;
-  max-height: calc(100vh - 150px);
+  max-height: calc(100vh - 200px);
   overflow-y: auto;
   pointer-events: none;
   padding-right: 2px;
@@ -9184,6 +10441,15 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 8px rgba(0, 255, 216, 0.4);
 }
 
+.cyber-num-input::-webkit-outer-spin-button,
+.cyber-num-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.cyber-num-input[type=number] {
+  -moz-appearance: textfield;
+}
+
 /* 按钮组 */
 .btn-group {
   display: flex;
@@ -9407,6 +10673,52 @@ onBeforeUnmount(() => {
   border-color: #10b981 !important;
   color: #ffffff !important;
   box-shadow: 0 0 8px rgba(16, 185, 129, 0.2) !important;
+}
+
+/* 🚗 无人车悬浮窗微调面板专属蓝色高端拟态样式 */
+.dock-tool-btn.ugvpopup-btn {
+  border: 1px dashed #3b82f6;
+  color: #3b82f6;
+}
+.dock-tool-btn.ugvpopup-btn:hover,
+.dock-tool-btn.ugvpopup-btn.active {
+  background: rgba(59, 130, 246, 0.25);
+  border-style: solid;
+  border-color: #3b82f6;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+}
+
+.ugvpopup-control-panel {
+  border-color: rgba(59, 130, 246, 0.4) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 15px rgba(59, 130, 246, 0.15) !important;
+}
+
+.ugvpopup-control-panel .light-panel-header {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.05)) !important;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.3) !important;
+}
+
+/* 🚁 无人机悬浮窗微调面板专属青色高端拟态样式 */
+.dock-tool-btn.uavpopup-btn {
+  border: 1px dashed #00e5ff;
+  color: #00e5ff;
+}
+.dock-tool-btn.uavpopup-btn:hover,
+.dock-tool-btn.uavpopup-btn.active {
+  background: rgba(0, 229, 255, 0.25);
+  border-style: solid;
+  border-color: #00e5ff;
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.5);
+}
+
+.uavpopup-control-panel {
+  border-color: rgba(0, 229, 255, 0.4) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 229, 255, 0.15) !important;
+}
+
+.uavpopup-control-panel .light-panel-header {
+  background: linear-gradient(90deg, rgba(0, 229, 255, 0.2), rgba(0, 229, 255, 0.05)) !important;
+  border-bottom: 1px solid rgba(0, 229, 255, 0.3) !important;
 }
 </style>
 
