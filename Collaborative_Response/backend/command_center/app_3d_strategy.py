@@ -800,18 +800,38 @@ def _load_path_from_json(endpoint, strategy, ugv_block, uav_smoke):
     data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "path_data", f"path_{endpoint}_{block_key}.json")
     if not os.path.exists(data_path):
         return None
-    with open(data_path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    if data.get('strategy', '') != strategy:
+    try:
+        with open(data_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        if data.get('ugv_block') != ugv_block or data.get('uav_smoke') != uav_smoke:
+            return None
+        
+        car_df = pd.DataFrame(data['car_path'])
+        uav_df = pd.DataFrame(data['uav_path'])
+        
+        car_bfs_df = pd.DataFrame(data['car_bfs_path']) if data.get('car_bfs_path') is not None else None
+        uav_greedy_df = pd.DataFrame(data['uav_greedy_path']) if data.get('uav_greedy_path') is not None else None
+        comparison = data.get('comparison')
+        
+        # 动态根据当前策略调整无人机的时间与延迟
+        orig_delay = data.get('metrics', {}).get('delay_sec', 0)
+        uav_df['time_s'] = uav_df['time_s'] - orig_delay
+        fly_time = uav_df['time_s'].iloc[-1] if len(uav_df) > 0 else 0
+        car_time = car_df['time_s'].iloc[-1] if len(car_df) > 0 else 0
+        
+        if strategy == 'independent':
+            delay = 0.0
+        else:
+            delay = max(0, car_time - fly_time)
+            
+        uav_df['time_s'] = uav_df['time_s'] + delay
+        uav_df['timestamp'] = START_TIME + pd.to_timedelta(uav_df['time_s'], unit='s')
+        
+        return car_df, uav_df, car_time, delay, car_bfs_df, uav_greedy_df, comparison
+    except Exception as e:
+        print(f"  [缓存加载失败] 读取 {data_path} 异常: {e}")
         return None
-    if data.get('ugv_block') != ugv_block or data.get('uav_smoke') != uav_smoke:
-        return None
-    metrics = data.get('metrics', {})
-    car_df = pd.DataFrame(data['car_path'])
-    uav_df = pd.DataFrame(data['uav_path'])
-    car_time = metrics.get('car_time_min', 0) * 60
-    delay = metrics.get('delay_sec', 0)
-    return car_df, uav_df, car_time, delay
+
 
 def save_to_czml(uav_df, car_df, delay):
     print("[CZML] Exporting CZML file...")
@@ -898,14 +918,18 @@ def save_to_czml(uav_df, car_df, delay):
     print("[CZML] CZML file generated successfully!")
 
 if __name__ == '__main__':
-    # 快速重载：如果路径数据 JSON 已存在且策略匹配，直接加载跳过路网下载和路径规划
+    # 快速重载：如果路径数据 JSON 已存在，直接加载跳过路网下载和路径规划
     cached = _load_path_from_json(args.end_point, SYNC_STRATEGY, UGV_BLOCKED, UAV_SMOKE)
-    if cached and not COMPARE:
-        car_df, uav_df, car_time, delay = cached
+    if cached:
+        car_df, uav_df, car_time, delay, car_bfs_df, uav_greedy_df, comparison = cached
         raw_uav_df = uav_df  # 快速模式复用平滑路径
-        print(f"[快速模式] 从缓存 JSON 加载路径 (终点={args.end_point})，跳过路网下载与路径规划")
-        car_bfs_df, car_bfs_interp = None, None
-        uav_greedy_df, uav_greedy_interp = None, None
+        print(f"[快速模式] 从缓存 JSON 加载路径 (终点={args.end_point})，已加载对比数据并更新时空同步策略")
+        car_bfs_interp = None
+        uav_greedy_interp = None
+        if COMPARE and car_bfs_df is not None:
+            car_bfs_interp = interpolate_path(car_bfs_df, ANIMATION_INTERVAL)
+        if COMPARE and uav_greedy_df is not None:
+            uav_greedy_interp = interpolate_path(uav_greedy_df, ANIMATION_INTERVAL)
     else:
         cached = None  # 重置缓存标记，确保后续写入 comparison 和 path_data
         print("正在请求路网数据并规划无人车路径...")
@@ -952,6 +976,25 @@ if __name__ == '__main__':
         car_time_min = round(car_time / 60, 1)
         uav_flight_min = round((uav_df['time_s'].iloc[-1] - delay) / 60, 1) if len(uav_df) > 0 else 0
         car_dist = round(car_df['dist'].sum() / 1000, 2) if 'dist' in car_df.columns else 0
+        
+        # 预计算 comparison
+        bfs_dist = car_bfs_df['dist'].sum() / 1000 if car_bfs_df is not None and 'dist' in car_bfs_df.columns else 0
+        greedy_dist = sum(calculate_distance(uav_greedy_df.iloc[i-1]['lat'], uav_greedy_df.iloc[i-1]['lon'], uav_greedy_df.iloc[i]['lat'], uav_greedy_df.iloc[i]['lon']) for i in range(1, len(uav_greedy_df))) / 1000 if uav_greedy_df is not None and len(uav_greedy_df) > 1 else 0
+        car_dist_val = round(car_dist, 1)
+        uav_dist_val = round(uav_dist, 1)
+        comparison = {
+            'carDistKm': car_dist_val,
+            'uavDistKm': uav_dist_val,
+            'baselineCarDistKm': round(bfs_dist, 1),
+            'baselineUavDistKm': round(greedy_dist, 1),
+            'carSavingKm': round(bfs_dist - car_dist_val, 1),
+            'uavSavingKm': round(greedy_dist - uav_dist_val, 1),
+            'carSavingPct': round((bfs_dist - car_dist_val) / bfs_dist * 100, 1) if bfs_dist > 0 else 0,
+            'uavSavingPct': round((greedy_dist - uav_dist_val) / greedy_dist * 100, 1) if greedy_dist > 0 else 0,
+            'totalSavingKm': round((bfs_dist - car_dist_val) + (greedy_dist - uav_dist_val), 1),
+            'avgOptimizationPct': round(((bfs_dist - car_dist_val) / bfs_dist * 100 + (greedy_dist - uav_dist_val) / greedy_dist * 100) / 2, 1) if bfs_dist > 0 and greedy_dist > 0 else 0,
+        }
+
         path_data = {
             'end_point': args.end_point,
             'end_point_name': END_POINT_NAME,
@@ -962,6 +1005,9 @@ if __name__ == '__main__':
             'end_point_coord': {'lat': END_POINT[0], 'lon': END_POINT[1]},
             'car_path': car_records,
             'uav_path': uav_records,
+            'car_bfs_path': car_bfs_df[['lat', 'lon', 'time_s']].to_dict(orient='records') if car_bfs_df is not None else None,
+            'uav_greedy_path': uav_greedy_df[['lat', 'lon', 'alt', 'time_s']].to_dict(orient='records') if uav_greedy_df is not None else None,
+            'comparison': comparison,
             'metrics': {
                 'car_time_min': car_time_min,
                 'uav_flight_time_min': uav_flight_min,
@@ -983,24 +1029,7 @@ if __name__ == '__main__':
     uav_flight_min = round((uav_df['time_s'].iloc[-1] - delay) / 60, 1) if len(uav_df) > 0 else 0
     time_diff = abs(car_time - uav_df['time_s'].iloc[-1]) if len(uav_df) > 0 else 0
 
-    # 基线对比数据（仅在非缓存模式下可用）
-    comparison = None
-    if not cached:
-        car_dist_val = round(car_dist, 1)
-        uav_dist_val = round(uav_dist, 1)
-        comparison = {
-            'carDistKm': car_dist_val,
-            'uavDistKm': uav_dist_val,
-            'baselineCarDistKm': round(bfs_dist, 1),
-            'baselineUavDistKm': round(greedy_dist, 1),
-            'carSavingKm': round(bfs_dist - car_dist_val, 1),
-            'uavSavingKm': round(greedy_dist - uav_dist_val, 1),
-            'carSavingPct': round((bfs_dist - car_dist_val) / bfs_dist * 100, 1) if bfs_dist > 0 else 0,
-            'uavSavingPct': round((greedy_dist - uav_dist_val) / greedy_dist * 100, 1) if greedy_dist > 0 else 0,
-            'totalSavingKm': round((bfs_dist - car_dist_val) + (greedy_dist - uav_dist_val), 1),
-            'avgOptimizationPct': round(((bfs_dist - car_dist_val) / bfs_dist * 100 + (greedy_dist - uav_dist_val) / greedy_dist * 100) / 2, 1) if bfs_dist > 0 and greedy_dist > 0 else 0,
-        }
-
+    # 基线对比数据
     result_data = {
         'end_point': args.end_point,
         'end_point_name': END_POINT_NAME,
