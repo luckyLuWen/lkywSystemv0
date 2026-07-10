@@ -36,7 +36,7 @@
           :class="['action-btn', isPlaying ? 'btn-disconnect' : 'btn-connect']" 
           @click="toggle"
         >
-          {{ isPlaying ? "⏹ 断开 WebRTC 图传" : "▶ 启动 WebRTC 连接" }}
+          {{ isPlaying ? "⏹ 断开 WebRTC 图传" : "▶ 实时视频流智能接入(WebRTc) 连接" }}
         </button>
         <span class="status-indicator" :class="statusClass">{{ statusText }}</span>
       </div>
@@ -58,7 +58,7 @@
       </div>
 
       <div class="task-card">
-        <div class="card-title">🎥 录像存证</div>
+        <div class="card-title">🎥 事故现场视频证据采集</div>
         <button 
           @click="toggleRecording" 
           :disabled="!isStreamReceived" 
@@ -161,7 +161,7 @@ async function createPeer() {
 async function start() {
   try {
     isPlaying.value = true
-    addSysLog("启动 WebRTC 协商...", "info")
+    addSysLog("实时视频流智能接入(WebRTc) 协商...", "info")
     await createPeer()
   } catch (e) {
     addSysLog("连接异常，准备重试", "error")
@@ -257,7 +257,7 @@ const uploadVideo = async () => {
     const res = await fetch(`${API_BASE}/save_drone_video`, { method: 'POST', body: formData })
     if (res.ok) {
       uploadStatus.value = '✅ 保存成功'
-      addSysLog("录像存证已上传", "success")
+      addSysLog("事故现场视频证据采集已上传", "success")
     } else {
       uploadStatus.value = '❌ 保存失败'
     }

@@ -1,268 +1,226 @@
 <template>
   <section class="collaborative-response-card">
-    <div class="card-head">
-      <div>
-        <h3 class="card-title">协同响应服务</h3>
-        <p class="card-subtitle">{{ controllerBaseUrl }}</p>
+    <template v-if="strategyMetrics">
+      <!-- ===== 头部 ===== -->
+      <div class="card-head">
+        <div>
+          <h3 class="card-title">协同响应规划</h3>
+          <p class="card-subtitle">{{ strategyMetrics.end_point_name }}</p>
+        </div>
+        <span class="status-badge online">数据就绪</span>
       </div>
-      <span class="status-badge" :class="controllerOnline ? 'online' : 'offline'">
-        {{ controllerOnline ? '控制层在线' : '控制层离线' }}
-      </span>
-    </div>
 
-    <div class="config-row">
-      <input
-        v-model.trim="controllerDraft"
-        type="text"
-        class="config-input"
-        placeholder="例如：http://127.0.0.1:18601"
-      />
-      <button class="action-btn secondary" @click="saveControllerBaseUrl">保存控制层</button>
-    </div>
+      <!-- ===== 滚动内容区 ===== -->
+      <div class="scroll-container">
 
-    <div class="config-row">
-      <input
-        v-model.trim="commandCenterDraft"
-        type="text"
-        class="config-input"
-        placeholder="例如：http://127.0.0.1:5000"
-      />
-      <button class="action-btn secondary" @click="saveCommandCenterBaseUrl">保存指挥后端</button>
-    </div>
+        <!-- 1. 场景概况 -->
+        <div class="card-section">
+          <div class="section-title-wrapper">
+            <span class="bracket">[</span>
+            <h4 class="section-subtitle-text">场景概况</h4>
+            <span class="bracket">]</span>
+          </div>
+          <div class="info-table">
+            <div class="info-row">
+              <span class="info-label">灾害场景</span>
+              <span class="info-val scene-color">{{ strategyMetrics.end_point_name }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">救援起点</span>
+              <span class="info-val">{{ strategyMetrics.start_point_name || '--' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">协同机制</span>
+              <span class="info-val mech-color">{{ strategyLabel }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">更新时间</span>
+              <span class="info-val">{{ updateTimeStr }}</span>
+            </div>
+          </div>
+        </div>
 
-    <div class="config-row">
-      <input
-        v-model.trim="streamlitDraft"
-        type="text"
-        class="config-input"
-        placeholder="例如：http://127.0.0.1:8501/?embed=true"
-      />
-      <button class="action-btn secondary" @click="saveStreamlitUrl">保存调度平台</button>
-    </div>
+        <!-- 2. 协同效能指标 -->
+        <div class="card-section">
+          <div class="section-title-wrapper">
+            <span class="bracket">[</span>
+            <h4 class="section-subtitle-text">协同效能指标</h4>
+            <span class="bracket">]</span>
+          </div>
 
-    <div class="status-grid">
-      <div class="status-item">
-        <span class="status-label">指挥后端</span>
-        <span class="status-value" :class="services.commandCenter.online ? 'ok' : 'warn'">
-          {{ services.commandCenter.online ? '在线' : '离线' }}
-        </span>
+          <!-- 时间指标 2列 -->
+          <div class="mini-metrics-row two-col">
+            <div class="metric-block">
+              <span class="metric-val text-cyan">{{ strategyMetrics.metrics.carTime }} <small>min</small></span>
+              <span class="metric-lbl">车辆 (UGV) 耗时</span>
+            </div>
+            <div class="metric-block">
+              <span class="metric-val text-cyan">{{ strategyMetrics.metrics.uavTime }} <small>min</small></span>
+              <span class="metric-lbl">无人机 (UAV) 飞行</span>
+            </div>
+            <div class="metric-block delay-block">
+              <span class="metric-val text-amber">{{ strategyMetrics.metrics.delay }} <small>s</small></span>
+              <span class="metric-lbl">无人机地面待机</span>
+            </div>
+            <div class="metric-block sync-block" :class="{ perfect: timeDiffVal === 0 }">
+              <span class="metric-val" :class="timeDiffVal === 0 ? 'text-green' : ''">{{ strategyMetrics.metrics.timeDiff || '0.0' }} <small>s</small></span>
+              <span class="metric-lbl">协同终端时间差</span>
+            </div>
+          </div>
+
+          <!-- 距离/能耗 2列，含算法对比 -->
+          <div class="mini-metrics-row two-col" style="margin-top: 8px;">
+            <div class="metric-block dist-block">
+              <span class="metric-val text-purple">{{ comparison?.carDistKm || '--' }} <small>km</small></span>
+              <span class="metric-lbl">车辆行驶距离 (Dijkstra)</span>
+              <span v-if="comparison" class="metric-vs">vs BFS {{ comparison.baselineCarDistKm }}km ▼{{ comparison.carSavingKm }}km</span>
+            </div>
+            <div class="metric-block dist-block">
+              <span class="metric-val text-purple">{{ comparison?.uavDistKm || '--' }} <small>km</small></span>
+              <span class="metric-lbl">无人机飞行距离 (A*)</span>
+              <span v-if="comparison" class="metric-vs">vs Greedy {{ comparison.baselineUavDistKm }}km ▼{{ comparison.uavSavingKm }}km</span>
+            </div>
+            <div class="metric-block">
+              <span class="metric-val text-pink">{{ strategyMetrics.metrics.uavEnergy }} <small>Wh</small></span>
+              <span class="metric-lbl">无人机能源消耗</span>
+            </div>
+            <div class="metric-block">
+              <span class="metric-val text-cyan dim">{{ speeds.carKmh || 80 }} / {{ speeds.uavMs || 20 }}</span>
+              <span class="metric-lbl">车辆(km/h) / 无人机(m/s)</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 3. 环境约束与参数 -->
+        <div v-if="scenario" class="card-section">
+          <div class="section-title-wrapper">
+            <span class="bracket">[</span>
+            <h4 class="section-subtitle-text">环境约束与参数</h4>
+            <span class="bracket">]</span>
+          </div>
+          <div class="env-grid">
+            <div class="env-item" :class="{ active: scenario.ugv_blocked }">
+              <span class="env-dot" :class="{ on: scenario.ugv_blocked }"></span>
+              <div class="env-body">
+                <span class="env-label">拥堵区</span>
+                <span class="env-state">{{ scenario.ugv_blocked ? '已启用' : '未启用' }}</span>
+              </div>
+            </div>
+            <div class="env-item" :class="{ active: scenario.uav_smoke }">
+              <span class="env-dot" :class="{ on: scenario.uav_smoke }"></span>
+              <div class="env-body">
+                <span class="env-label">禁飞区×{{ scenario.nfz_count }}</span>
+                <span class="env-state">{{ scenario.uav_smoke ? '已启用' : '未启用' }}</span>
+              </div>
+            </div>
+          </div>
+          <div v-if="scenario.congestion_name" class="congestion-info">
+            <span class="congestion-name">{{ scenario.congestion_name }}</span>
+            <span class="congestion-detail">{{ scenario.congestion_info }}</span>
+          </div>
+        </div>
+
+        <!-- 4. 路径规划与技术参数 -->
+        <div class="card-section">
+          <div class="section-title-wrapper">
+            <span class="bracket">[</span>
+            <h4 class="section-subtitle-text">路径规划摘要</h4>
+            <span class="bracket">]</span>
+          </div>
+          <div class="info-table">
+            <div class="info-row">
+              <span class="info-label">车辆算法</span>
+              <span class="info-val">Dijkstra 加权最短路径</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">无人机算法</span>
+              <span class="info-val">A* 全局搜索 + B-Spline 平滑</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">路网数据源</span>
+              <span class="info-val">OpenStreetMap 真实路网</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">无人机避障</span>
+              <span class="info-val">8方向网格 + 禁飞区约束</span>
+            </div>
+          </div>
+        </div>
+
       </div>
-      <div class="status-item">
-        <span class="status-label">协同调度平台</span>
-        <span class="status-value" :class="services.streamlit.online ? 'ok' : 'warn'">
-          {{ services.streamlit.online ? '在线' : '离线' }}
-        </span>
-      </div>
+    </template>
+
+    <!-- 空状态 -->
+    <div v-if="!strategyMetrics && !lastError" class="empty-state">
+      <div class="empty-icon">📋</div>
+      <p class="empty-text">暂无协同响应数据</p>
+      <p class="empty-hint">请先在协同响应面板中生成二维推演或三维态势</p>
     </div>
 
-    <div class="meta-row">
-      <span class="meta-chip">指挥后端 {{ resolvedCommandCenterBaseUrl }}</span>
-      <span class="meta-chip">调度平台 {{ resolvedStreamlitUrl }}</span>
-    </div>
-
-    <div class="service-row">
-      <span class="service-label">指挥后端启停</span>
-      <button
-        class="action-btn primary"
-        :disabled="services.commandCenter.pending || !controllerOnline"
-        @click="toggleService('commandCenter', !services.commandCenter.running)"
-      >
-        {{ services.commandCenter.running ? '停止服务' : '启动服务' }}
-      </button>
-    </div>
-
-    <div class="service-row">
-      <span class="service-label">协同调度启停</span>
-      <button
-        class="action-btn primary"
-        :disabled="services.streamlit.pending || !controllerOnline"
-        @click="toggleService('streamlit', !services.streamlit.running)"
-      >
-        {{ services.streamlit.running ? '停止服务' : '启动服务' }}
-      </button>
-    </div>
-
-    <div class="action-row">
-      <button class="action-btn secondary" @click="refreshStatus">刷新状态</button>
-      <button class="action-btn ghost" @click="goToCoordination">进入协同响应</button>
-    </div>
-
-    <div v-if="strategyMetrics" class="strategy-metrics-panel">
-      <h4 class="metrics-title">📊 协同策略评估结果</h4>
-      <div class="metrics-grid">
-        <div class="metric-item" style="grid-column: span 2;">
-          <span class="metric-label">灾害场景</span>
-          <span class="metric-value highlight">{{ strategyMetrics.end_point_name }}</span>
-        </div>
-        <div class="metric-item">
-          <span class="metric-label">协同机制</span>
-          <span class="metric-value highlight">
-            {{ strategyMetrics.strategy === 'rcd' ? 'RCD 逆向推演' : (strategyMetrics.strategy === 'independent' ? 'ISD 极速独立' : 'CAS 基地待命') }}
-          </span>
-        </div>
-        <div class="metric-item">
-          <span class="metric-label">无人机地面待机</span>
-          <span class="metric-value warning">{{ strategyMetrics.metrics.delay }} s</span>
-        </div>
-        <div class="metric-item">
-          <span class="metric-label">无人车(UGV)耗时</span>
-          <span class="metric-value">{{ strategyMetrics.metrics.carTime }} min</span>
-        </div>
-        <div class="metric-item">
-          <span class="metric-label">无人机(UAV)飞行</span>
-          <span class="metric-value">{{ strategyMetrics.metrics.uavTime }} min</span>
-        </div>
-      </div>
-    </div>
-
-    <p v-if="lastError" class="error-text">最近错误：{{ lastError }}</p>
+    <p v-if="lastError" class="error-text">{{ lastError }}</p>
   </section>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   buildCollaborativeApiUrl,
-  getCollaborativeCommandCenterBaseUrl,
   getCollaborativeControllerBaseUrl,
-  getCollaborativeStreamlitUrl,
-  persistCollaborativeCommandCenterBaseUrl,
-  persistCollaborativeControllerBaseUrl,
-  persistCollaborativeStreamlitUrl,
 } from '../config/subsystems'
 
-const router = useRouter()
 const controllerBaseUrl = ref(getCollaborativeControllerBaseUrl())
-const commandCenterBaseUrl = ref(getCollaborativeCommandCenterBaseUrl())
-const streamlitUrl = ref(getCollaborativeStreamlitUrl())
-const controllerDraft = ref(controllerBaseUrl.value)
-const commandCenterDraft = ref(commandCenterBaseUrl.value)
-const streamlitDraft = ref(streamlitUrl.value)
-const controllerOnline = ref(false)
 const lastError = ref('')
 const strategyMetrics = ref(null)
 
-const services = reactive({
-  commandCenter: createServiceState(),
-  streamlit: createServiceState(),
-})
-
 let pollingTimer = null
 
-function createServiceState() {
-  return {
-    online: false,
-    running: false,
-    pending: false,
-    publicUrl: '',
-  }
-}
+const strategyLabel = computed(() => {
+  const s = strategyMetrics.value?.strategy
+  if (s === 'rcd') return 'RCD 逆向推演'
+  if (s === 'independent') return 'ISD 极速独立'
+  if (s === 'wait') return 'CAS 基地待命'
+  return s || '--'
+})
 
-const resolvedCommandCenterBaseUrl = computed(
-  () => services.commandCenter.publicUrl || commandCenterBaseUrl.value
-)
-const resolvedStreamlitUrl = computed(() => services.streamlit.publicUrl || streamlitUrl.value)
+const comparison = computed(() => strategyMetrics.value?.comparison || null)
+const scenario = computed(() => strategyMetrics.value?.scenario || null)
+const speeds = computed(() => strategyMetrics.value?.speeds || { carKmh: 80, uavMs: 20 })
 
-function updateService(serviceId, payload = {}, fallbackUrl = '') {
-  services[serviceId].online = Boolean(payload.reachable ?? payload.running)
-  services[serviceId].running = Boolean(payload.running ?? payload.reachable)
-  services[serviceId].publicUrl = payload.public_url || fallbackUrl
-}
+const timeDiffVal = computed(() => {
+  const v = parseFloat(strategyMetrics.value?.metrics?.timeDiff)
+  return isNaN(v) ? null : v
+})
 
-async function probeDirectService(url) {
+const updateTimeStr = computed(() => {
+  const t = strategyMetrics.value?.updated_at
+  if (!t) return '--'
   try {
-    const response = await fetch(url, { cache: 'no-store' })
-    return response.ok
+    return new Date(t).toLocaleTimeString('zh-CN', { hour12: false })
   } catch {
-    return false
+    return '--'
   }
-}
+})
 
 async function refreshStatus() {
   try {
-    const response = await fetch(buildCollaborativeApiUrl('api/health', controllerBaseUrl.value), {
-      cache: 'no-store',
-    })
+    const response = await fetch(
+      buildCollaborativeApiUrl('api/health', controllerBaseUrl.value),
+      { cache: 'no-store' }
+    )
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
     const payload = await response.json()
-    controllerOnline.value = Boolean(payload.ok)
-    updateService('commandCenter', payload.services?.commandCenter, commandCenterBaseUrl.value)
-    updateService('streamlit', payload.services?.streamlit, streamlitUrl.value)
     if (payload.strategy_metrics && payload.strategy_metrics.available) {
       strategyMetrics.value = payload.strategy_metrics
     } else {
       strategyMetrics.value = null
     }
     lastError.value = ''
-    return
   } catch (error) {
-    controllerOnline.value = false
     strategyMetrics.value = null
     lastError.value = error instanceof Error ? error.message : '无法连接控制层'
   }
-
-  const [commandCenterOnline, streamlitOnline] = await Promise.all([
-    probeDirectService(`${commandCenterBaseUrl.value}/api/health`),
-    probeDirectService(streamlitUrl.value),
-  ])
-
-  updateService(
-    'commandCenter',
-    { reachable: commandCenterOnline, running: commandCenterOnline, public_url: commandCenterBaseUrl.value },
-    commandCenterBaseUrl.value
-  )
-  updateService(
-    'streamlit',
-    { reachable: streamlitOnline, running: streamlitOnline, public_url: streamlitUrl.value },
-    streamlitUrl.value
-  )
-}
-
-async function toggleService(serviceId, nextRunning) {
-  if (!controllerOnline.value) {
-    lastError.value = '控制层离线，无法远程启停服务'
-    return
-  }
-
-  services[serviceId].pending = true
-  try {
-    const action = nextRunning ? 'start' : 'stop'
-    const response = await fetch(
-      buildCollaborativeApiUrl(`api/services/${serviceId}/${action}`, controllerBaseUrl.value),
-      { method: 'POST' }
-    )
-    const payload = await response.json().catch(() => ({}))
-    if (!response.ok || !payload.ok) throw new Error(payload.error || `HTTP ${response.status}`)
-    await refreshStatus()
-  } catch (error) {
-    lastError.value = error instanceof Error ? error.message : '服务控制失败'
-  } finally {
-    services[serviceId].pending = false
-  }
-}
-
-function saveControllerBaseUrl() {
-  controllerBaseUrl.value = persistCollaborativeControllerBaseUrl(controllerDraft.value)
-  controllerDraft.value = controllerBaseUrl.value
-  refreshStatus()
-}
-
-function saveCommandCenterBaseUrl() {
-  commandCenterBaseUrl.value = persistCollaborativeCommandCenterBaseUrl(commandCenterDraft.value)
-  commandCenterDraft.value = commandCenterBaseUrl.value
-  refreshStatus()
-}
-
-function saveStreamlitUrl() {
-  streamlitUrl.value = persistCollaborativeStreamlitUrl(streamlitDraft.value)
-  streamlitDraft.value = streamlitUrl.value
-  refreshStatus()
-}
-
-function goToCoordination() {
-  router.push('/coordination')
 }
 
 onMounted(() => {
@@ -279,174 +237,312 @@ onBeforeUnmount(() => {
 .collaborative-response-card {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 18px;
+  height: 100%;
+  gap: 16px;
+  padding: 20px;
   border: 1px solid rgba(96, 165, 250, 0.28);
   border-radius: 12px;
-  background: linear-gradient(180deg, rgba(10, 22, 48, 0.92) 0%, rgba(8, 16, 34, 0.92) 100%);
+  background: linear-gradient(180deg, rgba(13, 25, 41, 0.94) 0%, rgba(8, 16, 28, 0.94) 100%);
   box-shadow: 0 0 24px rgba(96, 165, 250, 0.14);
+  backdrop-filter: blur(10px);
 }
+
+/* ===== 头部 ===== */
 .card-head {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   gap: 12px;
+  border-bottom: 1px solid rgba(96, 165, 250, 0.18);
+  padding-bottom: 12px;
 }
+
 .card-title {
   margin: 0;
-  color: #bfdcff;
-  font-size: 18px;
+  color: #93c5fd;
+  font-size: 20px;
+  line-height: 1.2;
 }
-.card-subtitle,
-.error-text {
-  margin: 0;
-  font-size: 12px;
-}
+
 .card-subtitle {
+  margin: 4px 0 0 0;
+  font-size: 13px;
   color: rgba(255, 255, 255, 0.72);
-  word-break: break-all;
 }
-.config-row,
-.action-row,
-.meta-row {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.config-input {
-  flex: 1 1 220px;
-  min-height: 38px;
-  padding: 0 12px;
-  border: 1px solid rgba(96, 165, 250, 0.24);
-  border-radius: 8px;
-  background: rgba(8, 13, 26, 0.94);
-  color: #fff;
-}
-.status-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-.status-item,
-.service-row {
-  padding: 12px;
-  border-radius: 10px;
-  background: rgba(8, 16, 34, 0.72);
-  border: 1px solid rgba(96, 165, 250, 0.14);
-}
-.status-label {
-  display: block;
-  margin-bottom: 8px;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 12px;
-}
-.status-badge,
-.status-value,
-.meta-chip {
+
+.status-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 28px;
+  min-height: 26px;
   padding: 0 10px;
   border-radius: 999px;
   font-size: 12px;
 }
-.status-badge.online,
-.status-value.ok,
-.meta-chip {
-  color: #bfdcff;
+
+.status-badge.online {
+  color: #93c5fd;
   background: rgba(96, 165, 250, 0.16);
   border: 1px solid rgba(96, 165, 250, 0.24);
 }
-.status-badge.offline,
-.status-value.warn {
-  color: #ffb4b4;
-  background: rgba(168, 54, 54, 0.18);
-  border: 1px solid rgba(255, 180, 180, 0.28);
-}
-.service-row {
+
+/* ===== 滚动容器 ===== */
+.scroll-container {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.service-label {
-  color: #e2e8f0;
-  font-size: 13px;
-  font-weight: 700;
-}
-.action-btn {
-  min-height: 36px;
-  padding: 0 14px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  font-size: 13px;
-}
-.action-btn.primary {
-  color: #081220;
-  background: linear-gradient(90deg, #7db6ff 0%, #bfdcff 100%);
-}
-.action-btn.secondary {
-  color: #bfdcff;
-  background: rgba(96, 165, 250, 0.08);
-  border-color: rgba(96, 165, 250, 0.24);
-}
-.action-btn.ghost {
-  color: rgba(255, 255, 255, 0.82);
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
-}
-.error-text {
-  color: #ffb4b4;
-}
-@media (max-width: 768px) {
-  .status-grid {
-    grid-template-columns: 1fr;
-  }
-  .service-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 4px;
 }
 
-.strategy-metrics-panel {
-  margin-top: 4px;
-  padding: 14px;
-  border-radius: 10px;
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+.scroll-container::-webkit-scrollbar {
+  width: 5px;
 }
-.metrics-title {
-  margin: 0 0 12px 0;
-  font-size: 14px;
-  color: #34d399;
+
+.scroll-container::-webkit-scrollbar-thumb {
+  background: rgba(96, 165, 250, 0.25);
+  border-radius: 2.5px;
 }
-.metrics-grid {
+
+/* ===== 各板块通用 ===== */
+.card-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px dashed rgba(96, 165, 250, 0.12);
+}
+
+.card-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.section-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bracket {
+  color: #60a5fa;
+  font-weight: bold;
+  font-size: 20px;
+  text-shadow: 0 0 6px rgba(96, 165, 250, 0.5);
+}
+
+.section-subtitle-text {
+  margin: 0;
+  color: #60a5fa;
+  font-size: 15px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+/* ===== 信息表格 ===== */
+.info-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(96, 165, 250, 0.06);
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.info-val {
+  font-size: 13px;
+  color: #fff;
+  font-weight: 600;
+  text-align: right;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.info-val.scene-color { color: #fbbf24; }
+.info-val.mech-color { color: #34d399; }
+
+/* ===== 指标卡片网格 ===== */
+.mini-metrics-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 8px;
 }
-.metric-item {
+
+.mini-metrics-row.two-col {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.metric-block {
+  background: rgba(10, 19, 35, 0.55);
+  border: 1px solid rgba(96, 165, 250, 0.12);
+  border-radius: 6px;
+  padding: 10px 8px;
+  text-align: center;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
 }
-.metric-label {
-  font-size: 11px;
-  color: #94a3b8;
+
+.metric-block.delay-block {
+  border-color: rgba(245, 158, 11, 0.25);
+  background: rgba(245, 158, 11, 0.06);
 }
-.metric-value {
-  font-size: 13px;
-  font-weight: 600;
+
+.metric-block.sync-block.perfect {
+  border-color: rgba(52, 211, 153, 0.25);
+  background: rgba(52, 211, 153, 0.06);
+}
+
+.metric-val {
+  font-size: 18px;
+  font-weight: bold;
+  font-family: 'JetBrains Mono', Consolas, monospace;
   color: #e2e8f0;
 }
-.metric-value.highlight {
-  color: #60a5fa;
+
+.metric-val small {
+  font-size: 10px;
+  font-weight: 400;
+  color: #64748b;
 }
-.metric-value.warning {
-  color: #fbbf24;
+
+.metric-val.text-cyan { color: #60a5fa; }
+.metric-val.text-amber { color: #fbbf24; }
+.metric-val.text-green { color: #34d399; }
+.metric-val.text-purple { color: #a78bfa; }
+.metric-val.text-pink { color: #f472b6; }
+.metric-val.dim { font-size: 14px; color: #cbd5e1; }
+
+.metric-lbl {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+
+/* ===== 环境约束 ===== */
+.env-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.env-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.env-item.active {
+  border-color: rgba(249, 115, 22, 0.25);
+  background: rgba(249, 115, 22, 0.06);
+}
+
+.env-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #475569;
+  flex-shrink: 0;
+}
+
+.env-dot.on {
+  background: #f97316;
+  box-shadow: 0 0 6px rgba(249, 115, 22, 0.5);
+}
+
+.env-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.env-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.env-state {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.env-item.active .env-state {
+  color: #fdba74;
+}
+
+.congestion-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  background: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: 6px;
+}
+
+.congestion-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #93c5fd;
+}
+
+.congestion-detail {
+  font-size: 11px;
+  color: rgba(147, 197, 253, 0.7);
+}
+
+/* ===== 距离卡片算法对比 ===== */
+.metric-block.dist-block {
+  position: relative;
+}
+
+.metric-vs {
+  font-size: 9px;
+  color: #4ade80;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+/* ===== 空状态 ===== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 16px;
+  text-align: center;
+}
+
+.empty-icon { font-size: 32px; opacity: 0.4; }
+
+.empty-text { margin: 0; color: #94a3b8; font-size: 14px; font-weight: 600; }
+
+.empty-hint { margin: 0; color: rgba(148, 163, 184, 0.45); font-size: 11px; }
+
+.error-text {
+  margin: 0;
+  font-size: 11px;
+  color: #ffb4b4;
+  text-align: center;
 }
 </style>

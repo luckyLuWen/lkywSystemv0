@@ -907,6 +907,7 @@ if __name__ == '__main__':
         car_bfs_df, car_bfs_interp = None, None
         uav_greedy_df, uav_greedy_interp = None, None
     else:
+        cached = None  # 重置缓存标记，确保后续写入 comparison 和 path_data
         print("正在请求路网数据并规划无人车路径...")
         car_df, car_time, car_G = generate_car_path()
         print(f"无人车路径规划完成，预估耗时: {car_time/60:.1f} 分钟。")
@@ -915,21 +916,22 @@ if __name__ == '__main__':
         uav_df, raw_uav_df, delay = generate_uav_path(car_time)
         print(f"无人机规划完成。策略: {SYNC_STRATEGY}, 地面待机时间: {delay:.1f} 秒。")
 
-        # 基线对比算法
+        # 基线对比算法（始终运行，供前端规划数据面板展示）
         car_bfs_df, car_bfs_interp = None, None
         uav_greedy_df, uav_greedy_interp = None, None
-        if COMPARE:
-            print("--- 对比模式：正在运行基线算法 ---")
+        if True:  # 始终计算基线对比数据
+            print("--- 正在运行基线对比算法 ---")
             print("  [基线] BFS 车辆路径 (最少边数, 忽略道路长度)...")
             car_bfs_df, _ = generate_car_path_bfs(G=car_G.copy() if car_G is not None else None)
             bfs_dist = car_bfs_df['dist'].sum() / 1000 if 'dist' in car_bfs_df.columns else 0
             print(f"  [基线] BFS 完成, 路径距离: {bfs_dist:.1f} km")
             print("  [基线] Greedy 无人机路径 (仅朝目标移动, 忽略全局代价)...")
-            uav_greedy_df, _, _ = generate_uav_path_greedy()
+            uav_greedy_df, _, greedy_fly_time = generate_uav_path_greedy()
             greedy_dist = sum(calculate_distance(uav_greedy_df.iloc[i-1]['lat'], uav_greedy_df.iloc[i-1]['lon'], uav_greedy_df.iloc[i]['lat'], uav_greedy_df.iloc[i]['lon']) for i in range(1, len(uav_greedy_df))) / 1000 if len(uav_greedy_df) > 1 else 0
             print(f"  [基线] Greedy 完成, 路径距离: {greedy_dist:.1f} km")
-            car_bfs_interp = interpolate_path(car_bfs_df, ANIMATION_INTERVAL)
-            uav_greedy_interp = interpolate_path(uav_greedy_df, ANIMATION_INTERVAL)
+            if COMPARE:
+                car_bfs_interp = interpolate_path(car_bfs_df, ANIMATION_INTERVAL)
+                uav_greedy_interp = interpolate_path(uav_greedy_df, ANIMATION_INTERVAL)
             car_dist = car_df['dist'].sum() / 1000 if 'dist' in car_df.columns else 0
             uav_dist = sum(calculate_distance(uav_df.iloc[i-1]['lat'], uav_df.iloc[i-1]['lon'], uav_df.iloc[i]['lat'], uav_df.iloc[i]['lon']) for i in range(1, len(uav_df))) / 1000
             print(f"  算法优越性: Dijkstra={car_dist:.1f} vs BFS={bfs_dist:.1f} km (节省{(bfs_dist-car_dist)/bfs_dist*100:.1f}%)")
@@ -979,15 +981,48 @@ if __name__ == '__main__':
     result_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "path_result.json")
     car_time_min = round(car_time / 60, 1)
     uav_flight_min = round((uav_df['time_s'].iloc[-1] - delay) / 60, 1) if len(uav_df) > 0 else 0
+    time_diff = abs(car_time - uav_df['time_s'].iloc[-1]) if len(uav_df) > 0 else 0
+
+    # 基线对比数据（仅在非缓存模式下可用）
+    comparison = None
+    if not cached:
+        car_dist_val = round(car_dist, 1)
+        uav_dist_val = round(uav_dist, 1)
+        comparison = {
+            'carDistKm': car_dist_val,
+            'uavDistKm': uav_dist_val,
+            'baselineCarDistKm': round(bfs_dist, 1),
+            'baselineUavDistKm': round(greedy_dist, 1),
+            'carSavingKm': round(bfs_dist - car_dist_val, 1),
+            'uavSavingKm': round(greedy_dist - uav_dist_val, 1),
+            'carSavingPct': round((bfs_dist - car_dist_val) / bfs_dist * 100, 1) if bfs_dist > 0 else 0,
+            'uavSavingPct': round((greedy_dist - uav_dist_val) / greedy_dist * 100, 1) if greedy_dist > 0 else 0,
+            'totalSavingKm': round((bfs_dist - car_dist_val) + (greedy_dist - uav_dist_val), 1),
+            'avgOptimizationPct': round(((bfs_dist - car_dist_val) / bfs_dist * 100 + (greedy_dist - uav_dist_val) / greedy_dist * 100) / 2, 1) if bfs_dist > 0 and greedy_dist > 0 else 0,
+        }
+
     result_data = {
         'end_point': args.end_point,
         'end_point_name': END_POINT_NAME,
+        'start_point_name': START_POINT_NAME,
         'strategy': SYNC_STRATEGY,
         'metrics': {
             'carTime': str(car_time_min),
             'uavTime': str(uav_flight_min),
             'delay': str(round(delay, 1)),
             'uavEnergy': str(round(uav_flight_min * UAV_SPEED * 3.6, 1)),
+            'timeDiff': str(round(time_diff, 1)),
+        },
+        'scenario': {
+            'ugv_blocked': UGV_BLOCKED,
+            'uav_smoke': UAV_SMOKE,
+            'nfz_count': len(NFZ_LIST) + len(NEW_NFZ_LIST),
+            'congestion_name': NFZ_CONFIG[args.end_point].get('congestion_name', ''),
+            'congestion_info': NFZ_CONFIG[args.end_point].get('congestion_info', ''),
+        },
+        'speeds': {
+            'car_kmh': round(CAR_SPEED * 3.6, 1),
+            'uav_ms': UAV_SPEED,
         },
         'obstacles': (
             [{'type': 'polygon', 'color': '#3b82f6',
@@ -1001,6 +1036,8 @@ if __name__ == '__main__':
         ) if UGV_BLOCKED or UAV_SMOKE else [],
         'updated_at': datetime.now(timezone.utc).isoformat() if 'timezone' in dir() else datetime.now().isoformat(),
     }
+    if comparison:
+        result_data['comparison'] = comparison
     with open(result_path, 'w', encoding='utf-8') as f:
         json.dump(result_data, f, ensure_ascii=False, indent=2)
     
