@@ -83,8 +83,8 @@
           </div>
           <div class="performance-item wide map50-item">
             <span class="perf-label">平均精度均值（mAP50）</span>
-            <strong>≥85%</strong>
-            <small>{{ formatMetric(selectedModelPerformance.map50) }}</small>
+            <strong style="font-size: 20px !important;">≥85%</strong>
+            <small style="font-size: 30px !important;">{{ formatMetric(selectedModelPerformance.map50) }}</small>
           </div>
           <div class="performance-item">
             <span class="perf-label">精确率（Precision）</span>
@@ -761,7 +761,7 @@ onBeforeUnmount(() => {
 
 .performance-item strong {
   color: #fff3bf;
-  font-size: 19px;
+  font-size: 16px;
   line-height: 1.25;
 }
 
