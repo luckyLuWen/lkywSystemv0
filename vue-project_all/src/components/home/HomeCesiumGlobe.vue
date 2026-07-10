@@ -2456,7 +2456,70 @@ function copyAllLightsCoords() {
     }, 2500);
   }).catch(err => {
     console.error('复制失败:', err);
-    coordCopiedMessage.value = '复制失败'const lateFireAdjust = reactive({
+coordCopiedMessage.value = '复制失败，请手动记录';
+  });
+}
+
+const uavPopupCopiedMessage = ref('');
+const simulationPopupCopiedMessage = ref('');
+
+function resetUavPopupCoords() {
+  if (rescuePopup.title === '无人机已到达') {
+    rescuePopup.xOffset = 161;
+    rescuePopup.yOffset = -62;
+  } else {
+    rescuePopup.xOffset = -10;
+    rescuePopup.yOffset = 15;
+  }
+}
+
+function copyUavPopupParams() {
+  const params = `rescuePopup.xOffset = ${rescuePopup.xOffset};\nrescuePopup.yOffset = ${rescuePopup.yOffset};`;
+  navigator.clipboard.writeText(params).then(() => {
+    uavPopupCopiedMessage.value = '已成功复制偏移参数到剪贴板！';
+    setTimeout(() => {
+      uavPopupCopiedMessage.value = '';
+    }, 2000);
+  }).catch(err => {
+    console.error('复制失败:', err);
+    uavPopupCopiedMessage.value = '复制失败，请手动记录';
+    setTimeout(() => {
+      uavPopupCopiedMessage.value = '';
+    }, 2000);
+  });
+}
+
+function resetSimulationPopupCoords() {
+  simulationPopup.xOffset = -342;
+  simulationPopup.yOffset = -90;
+}
+
+function copySimulationPopupParams() {
+  const params = `simulationPopup.xOffset = ${simulationPopup.xOffset};\nsimulationPopup.yOffset = ${simulationPopup.yOffset};`;
+  navigator.clipboard.writeText(params).then(() => {
+    simulationPopupCopiedMessage.value = '已成功复制偏移参数到剪贴板！';
+    setTimeout(() => {
+      simulationPopupCopiedMessage.value = '';
+    }, 2000);
+  }).catch(err => {
+    console.error('复制失败:', err);
+    simulationPopupCopiedMessage.value = '复制失败，请手动记录';
+    setTimeout(() => {
+      simulationPopupCopiedMessage.value = '';
+    }, 2000);
+  });
+}
+
+// 🔥💨 后期感知阶段（7阶段及以后）粒子微调参数与控制
+const isLateFirePanelExpanded = ref(false);
+const lateFireCopiedMessage = ref('');
+const activeParticleTab = ref('fire');
+
+function toggleLateFirePanel() {
+  togglePanel('lateFire');
+}
+
+const lateFireAdjust = reactive({
   imageWidth: 10,
   imageHeight: 10,
   emissionRate: 20.0,
@@ -2582,187 +2645,6 @@ watch(lateSmokeAdjust, (newVals) => {
     smokeParticle.endScale = newVals.endScale * smokeScaleBase;
     smokeParticle.emissionRate = newVals.emissionRate;
     smokeParticle.imageSize = new Cesium.Cartesian2(newVals.imageWidth, newVals.imageHeight);
-    smokeParticle.minimumSpeed = newVals.minSpeed;
-    smokeParticle.maximumSpeed = newVals.maxSpeed;
-    smokeParticle.minimumParticleLife = newVals.minLife;
-    smokeParticle.maximumParticleLife = newVals.maxLife;
-    smokeParticle.updateCallback = (particle, dt) => {
-      const gravityScratch = new Cesium.Cartesian3();
-      Cesium.Cartesian3.normalize(particle.position, gravityScratch);
-      Cesium.Cartesian3.multiplyByScalar(gravityScratch, newVals.gravity * dt, gravityScratch);
-      Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
-
-      const dragFactor = Math.pow(newVals.drag, dt * 60);
-      particle.velocity.x *= dragFactor;
-      particle.velocity.y *= dragFactor;
-      particle.velocity.z *= dragFactor;
-    };
-  }
-}, { deep: true });age.value = '已成功复制偏移参数到剪贴板！';
-    setTimeout(() => {
-      uavPopupCopiedMessage.value = '';
-    }, 2000);
-  }).catch(err => {
-    console.error('复制失败:', err);
-    uavPopupCopiedMessage.value = '复制失败，请手动记录';
-    setTimeout(() => {
-      uavPopupCopiedMessage.value = '';
-    }, 2000);
-  });
-}
-
-function resetSimulationPopupCoords() {
-  simulationPopup.xOffset = -342;
-  simulationPopup.yOffset = -90;
-}
-
-function copySimulationPopupParams() {
-  const params = `simulationPopup.xOffset = ${simulationPopup.xOffset};\nsimulationPopup.yOffset = ${simulationPopup.yOffset};`;
-  navigator.clipboard.writeText(params).then(() => {
-    simulationPopupCopiedMessage.value = '已成功复制偏移参数到剪贴板！';
-    setTimeout(() => {
-      simulationPopupCopiedMessage.value = '';
-    }, 2000);
-  }).catch(err => {
-    console.error('复制失败:', err);
-    simulationPopupCopiedMessage.value = '复制失败，请手动记录';
-    setTimeout(() => {
-      simulationPopupCopiedMessage.value = '';
-    }, 2000);
-  });
-}
-
-// 🔥💨 后期感知阶段（7阶段及以后）粒子微调参数与控制
-const isLateFirePanelExpanded = ref(false);
-const lateFireCopiedMessage = ref('');
-const activeParticleTab = ref('fire');
-
-function toggleLateFirePanel() {
-  togglePanel('lateFire');
-}
-
-const lateFireAdjust = reactive({
-  imageSize: 10,
-  emissionRate: 20.0,
-  endScale: 0.6,
-  maxSpeed: 0.4,
-  gravity: 0.2,
-  drag: 0.92,
-  minSpeed: 0.1,
-  startScale: 0.2,
-  minLife: 2.0,
-  maxLife: 4.0
-});
-
-function resetLateFireParams() {
-  lateFireAdjust.imageSize = 10;
-  lateFireAdjust.emissionRate = 20.0;
-  lateFireAdjust.endScale = 0.6;
-  lateFireAdjust.maxSpeed = 0.4;
-  lateFireAdjust.gravity = 0.2;
-  lateFireAdjust.drag = 0.92;
-  lateFireAdjust.minSpeed = 0.1;
-  lateFireAdjust.startScale = 0.2;
-  lateFireAdjust.minLife = 2.0;
-  lateFireAdjust.maxLife = 4.0;
-}
-
-function copyLateFireParams() {
-  const params = `lateFireAdjust.imageSize = ${lateFireAdjust.imageSize};\nlateFireAdjust.emissionRate = ${lateFireAdjust.emissionRate};\nlateFireAdjust.endScale = ${lateFireAdjust.endScale};\nlateFireAdjust.maxSpeed = ${lateFireAdjust.maxSpeed};\nlateFireAdjust.gravity = ${lateFireAdjust.gravity};\nlateFireAdjust.drag = ${lateFireAdjust.drag};\nlateFireAdjust.minSpeed = ${lateFireAdjust.minSpeed};\nlateFireAdjust.startScale = ${lateFireAdjust.startScale};\nlateFireAdjust.minLife = ${lateFireAdjust.minLife};\nlateFireAdjust.maxLife = ${lateFireAdjust.maxLife};`;
-  navigator.clipboard.writeText(params).then(() => {
-    lateFireCopiedMessage.value = '已成功复制火焰参数到剪贴板！';
-    setTimeout(() => {
-      lateFireCopiedMessage.value = '';
-    }, 2000);
-  }).catch(err => {
-    console.error('复制失败:', err);
-    lateFireCopiedMessage.value = '复制失败，请手动记录';
-    setTimeout(() => {
-      lateFireCopiedMessage.value = '';
-    }, 2000);
-  });
-}
-
-// 实时监听微调面板数值变化，热更新火焰粒子系统参数
-watch(lateFireAdjust, (newVals) => {
-  if (fireParticle && props.activePhaseIndex >= 7) {
-    const isBigFire = (props.activePhaseIndex === 5);
-    const fireScaleBase = isBigFire ? 2.0 : 1.0;
-
-    fireParticle.startScale = newVals.startScale * fireScaleBase;
-    fireParticle.endScale = newVals.endScale * fireScaleBase;
-    fireParticle.emissionRate = newVals.emissionRate;
-    fireParticle.imageSize = new Cesium.Cartesian2(newVals.imageSize, newVals.imageSize);
-    fireParticle.minimumSpeed = newVals.minSpeed;
-    fireParticle.maximumSpeed = newVals.maxSpeed;
-    fireParticle.minimumParticleLife = newVals.minLife;
-    fireParticle.maximumParticleLife = newVals.maxLife;
-    fireParticle.updateCallback = (particle, dt) => {
-      const gravityScratch = new Cesium.Cartesian3();
-      Cesium.Cartesian3.normalize(particle.position, gravityScratch);
-      Cesium.Cartesian3.multiplyByScalar(gravityScratch, newVals.gravity * dt, gravityScratch);
-      Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
-
-      const dragFactor = Math.pow(newVals.drag, dt * 60);
-      particle.velocity.x *= dragFactor;
-      particle.velocity.y *= dragFactor;
-      particle.velocity.z *= dragFactor;
-    };
-  }
-}, { deep: true });
-
-// 💨 烟雾粒子微调参数与控制
-const lateSmokeAdjust = reactive({
-  imageSize: 15,
-  emissionRate: 20.0,
-  endScale: 2.0,
-  maxSpeed: 1.5,
-  gravity: 1.0,
-  drag: 0.95,
-  minSpeed: 0.5,
-  startScale: 0.5,
-  minLife: 3.0,
-  maxLife: 6.0
-});
-
-function resetLateSmokeParams() {
-  lateSmokeAdjust.imageSize = 15;
-  lateSmokeAdjust.emissionRate = 20.0;
-  lateSmokeAdjust.endScale = 2.0;
-  lateSmokeAdjust.maxSpeed = 1.5;
-  lateSmokeAdjust.gravity = 1.0;
-  lateSmokeAdjust.drag = 0.95;
-  lateSmokeAdjust.minSpeed = 0.5;
-  lateSmokeAdjust.startScale = 0.5;
-  lateSmokeAdjust.minLife = 3.0;
-  lateSmokeAdjust.maxLife = 6.0;
-}
-
-function copyLateSmokeParams() {
-  const params = `lateSmokeAdjust.imageSize = ${lateSmokeAdjust.imageSize};\nlateSmokeAdjust.emissionRate = ${lateSmokeAdjust.emissionRate};\nlateSmokeAdjust.endScale = ${lateSmokeAdjust.endScale};\nlateSmokeAdjust.maxSpeed = ${lateSmokeAdjust.maxSpeed};\nlateSmokeAdjust.gravity = ${lateSmokeAdjust.gravity};\nlateSmokeAdjust.drag = ${lateSmokeAdjust.drag};\nlateSmokeAdjust.minSpeed = ${lateSmokeAdjust.minSpeed};\nlateSmokeAdjust.startScale = ${lateSmokeAdjust.startScale};\nlateSmokeAdjust.minLife = ${lateSmokeAdjust.minLife};\nlateSmokeAdjust.maxLife = ${lateSmokeAdjust.maxLife};`;
-  navigator.clipboard.writeText(params).then(() => {
-    lateFireCopiedMessage.value = '已成功复制烟雾参数到剪贴板！';
-    setTimeout(() => {
-      lateFireCopiedMessage.value = '';
-    }, 2000);
-  }).catch(err => {
-    console.error('复制失败:', err);
-    lateFireCopiedMessage.value = '复制失败，请手动记录';
-    setTimeout(() => {
-      lateFireCopiedMessage.value = '';
-    }, 2000);
-  });
-}
-
-// 实时监听微调面板数值变化，热更新烟雾粒子系统参数
-watch(lateSmokeAdjust, (newVals) => {
-  if (smokeParticle && props.activePhaseIndex >= 7) {
-    const smokeScaleBase = 0.35;
-
-    smokeParticle.startScale = newVals.startScale * smokeScaleBase;
-    smokeParticle.endScale = newVals.endScale * smokeScaleBase;
-    smokeParticle.emissionRate = newVals.emissionRate;
-    smokeParticle.imageSize = new Cesium.Cartesian2(newVals.imageSize, newVals.imageSize);
     smokeParticle.minimumSpeed = newVals.minSpeed;
     smokeParticle.maximumSpeed = newVals.maxSpeed;
     smokeParticle.minimumParticleLife = newVals.minLife;
@@ -5143,7 +5025,7 @@ function updateTruckSequence(phaseIndex, pointId = '') {
       smokeParticle.startScale = lateSmokeAdjust.startScale * smokeScaleBase;
       smokeParticle.endScale = lateSmokeAdjust.endScale * smokeScaleBase;
       smokeParticle.emissionRate = lateSmokeAdjust.emissionRate;
-      smokeParticle.imageSize = new Cesium.Cartesian2(lateSmokeAdjust.imageSize, lateSmokeAdjust.imageSize);
+      smokeParticle.imageSize = new Cesium.Cartesian2(lateSmokeAdjust.imageWidth, lateSmokeAdjust.imageHeight);
       smokeParticle.minimumSpeed = lateSmokeAdjust.minSpeed;
       smokeParticle.maximumSpeed = lateSmokeAdjust.maxSpeed;
       smokeParticle.minimumParticleLife = lateSmokeAdjust.minLife;
@@ -5186,7 +5068,7 @@ function updateTruckSequence(phaseIndex, pointId = '') {
       fireParticle.startScale = lateFireAdjust.startScale * fireScaleBase;
       fireParticle.endScale = lateFireAdjust.endScale * fireScaleBase;
       fireParticle.emissionRate = lateFireAdjust.emissionRate; 
-      fireParticle.imageSize = new Cesium.Cartesian2(lateFireAdjust.imageSize, lateFireAdjust.imageSize); 
+      fireParticle.imageSize = new Cesium.Cartesian2(lateFireAdjust.imageWidth, lateFireAdjust.imageHeight); 
       fireParticle.minimumSpeed = lateFireAdjust.minSpeed; 
       fireParticle.maximumSpeed = lateFireAdjust.maxSpeed;
       fireParticle.minimumParticleLife = lateFireAdjust.minLife;
