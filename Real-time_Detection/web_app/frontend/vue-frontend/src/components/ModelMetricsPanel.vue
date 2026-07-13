@@ -6,21 +6,21 @@
         <span class="metric-label">模型名称</span>
         <strong>{{ performance.model_name || modelLabel }}</strong>
       </div>
-      <div class="metric-item">
-        <span class="metric-label">mAP50</span>
+      <div class="metric-item wide map50-item">
+        <span class="metric-label">平均精度均值（mAP50）</span>
         <strong>{{ formatPercent(performance.map50) }}</strong>
         <small>验收要求 ≥85%</small>
       </div>
       <div class="metric-item">
-        <span class="metric-label">mAP50:95</span>
+        <span class="metric-label">高阈值平均精度均值（mAP50:95）</span>
         <strong>{{ formatPercent(performance.map50_95) }}</strong>
       </div>
       <div class="metric-item">
-        <span class="metric-label">Precision</span>
+        <span class="metric-label">精确率（Precision）</span>
         <strong>{{ formatPercent(performance.precision) }}</strong>
       </div>
       <div class="metric-item">
-        <span class="metric-label">Recall</span>
+        <span class="metric-label">召回率（Recall）</span>
         <strong>{{ formatPercent(performance.recall) }}</strong>
       </div>
       <div class="metric-item wide">
@@ -71,7 +71,7 @@ const formatPercent = (value) => {
 
 .metrics-title {
   color: var(--primary-cyan);
-  font-size: 18px;
+  font-size: 30px;
   letter-spacing: 1px;
   margin-bottom: 14px;
 }
@@ -90,27 +90,33 @@ const formatPercent = (value) => {
 }
 
 .metric-item.wide {
-  grid-column: span 2;
+  grid-column: 1 / -1;
+}
+
+.metric-item.map50-item {
+  min-height: 86px;
+  border-color: rgba(255, 179, 0, 0.34);
+  background: rgba(255, 179, 0, 0.08);
 }
 
 .metric-label {
   display: block;
   color: var(--text-dim);
-  font-size: 13px;
+  font-size: 20px;
   margin-bottom: 6px;
 }
 
 .metric-item strong {
   display: block;
   color: #fff3bf;
-  font-size: 18px;
+  font-size: 27px;
   line-height: 1.25;
 }
 
 .metric-item small {
   display: block;
   color: #fbbf24;
-  font-size: 12px;
+  font-size: 19px;
   margin-top: 4px;
 }
 

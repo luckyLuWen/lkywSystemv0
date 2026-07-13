@@ -46,21 +46,21 @@
     <!-- RTSP Section -->
     <div v-if="source === 'rtsp'" class="rtsp-section">
       <div class="info-box-blue">
-        <h4>💡 使用说明</h4>
+        <h4 style="font-size: 30px;">💡 使用说明</h4>
         <p>1. 确保OBS Studio已启动并开始推流</p>
         <p>2. 默认推流地址: rtmp://127.0.0.1:1935/live</p>
-        <p>3. 点击"启动检测"开始实时检测</p>
+        <p>3. 点击"启动推流检测"开始实时检测</p>
       </div>
       
       <div class="input-group">
-        <label>推流地址:</label>
-        <input type="text" v-model="rtspUrl" placeholder="rtmp://127.0.0.1:1935/live">
+        <label style="font-size: 30px;">推流地址:</label>
+        <input type="text" style="font-size: 25px;" v-model="rtspUrl" placeholder="rtmp://127.0.0.1:1935/live">
       </div>
       
       <div class="video-container">
         <img v-if="rtspStreaming" :src="rtspFeedUrl" alt="RTSP Stream" class="rtsp-stream">
         <div v-else class="placeholder">
-          <p>📡 等待启动推流检测...</p>
+          <p style="font-size: 30px;">📡 等待启动推流检测...</p>
         </div>
       </div>
       
@@ -353,7 +353,7 @@ video, .rtsp-stream {
 }
 
 .info-box h4 {
-  color: #667eea;
+  color: #0c0c0c;
   margin-bottom: 5px;
   font-size: 14px;
 }
@@ -361,6 +361,7 @@ video, .rtsp-stream {
 .info-box p {
   font-size: 20px;
   font-weight: bold;
+  color: #0c0c0c;
 }
 
 .detection-list {

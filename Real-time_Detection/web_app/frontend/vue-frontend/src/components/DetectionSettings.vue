@@ -2,7 +2,7 @@
   <div class="card settings-card">
     <div class="card-header">
       <span class="bracket">[</span>
-      <h2>模型配置</h2>
+      <h2 style="font-size:40px">模型配置</h2>
       <span class="bracket">]</span>
     </div>
     
@@ -18,7 +18,7 @@
     
     <div class="control-group">
       <div class="control-label">
-        <span>置信度设置</span>
+        <span style="font-size:30px">置信度设置</span>
         <span class="value">{{ settings.conf }}</span>
       </div>
       <input type="range" v-model.number="settings.conf" min="0.1" max="0.9" step="0.05" class="cyber-range">
@@ -26,7 +26,7 @@
     
     <div class="control-group">
       <div class="control-label">
-        <span>IOU阈值设置</span>
+        <span style="font-size:30px">IOU阈值设置</span>
         <span class="value">{{ settings.iou }}</span>
       </div>
       <input type="range" v-model.number="settings.iou" min="0.1" max="0.9" step="0.05" class="cyber-range">
@@ -75,7 +75,7 @@ const getModelLabel = (model) => {
 }
 
 .label {
-  font-size: 23px;
+  font-size: 28px;
   color: var(--text-dim);
 }
 
@@ -106,7 +106,7 @@ const getModelLabel = (model) => {
 }
 
 .tag {
-  font-size: 20px;
+  font-size: 23px;
   display: inline-block;
   padding: 5px 12px;
   background: var(--accent-amber);
