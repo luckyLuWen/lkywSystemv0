@@ -26,16 +26,33 @@
               <span class="info-val scene-color">{{ strategyMetrics.end_point_name }}</span>
             </div>
             <div class="info-row">
-              <span class="info-label">救援起点</span>
-              <span class="info-val">{{ strategyMetrics.start_point_name || '--' }}</span>
-            </div>
-            <div class="info-row">
               <span class="info-label">协同机制</span>
               <span class="info-val mech-color">{{ strategyLabel }}</span>
             </div>
             <div class="info-row">
               <span class="info-label">更新时间</span>
               <span class="info-val">{{ updateTimeStr }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1.5 候选救援点 -->
+        <div v-if="candidatePoints.length > 0" class="card-section">
+          <div class="section-title-wrapper">
+            <span class="bracket">[</span>
+            <h4 class="section-subtitle-text">救援点选取</h4>
+            <span class="bracket">]</span>
+          </div>
+          <div class="candidate-list">
+            <div
+              v-for="(p, idx) in candidatePoints"
+              :key="idx"
+              class="candidate-row"
+              :class="{ selected: p.selected }"
+            >
+              <span class="candidate-dot" :class="{ on: p.selected }"></span>
+              <span class="candidate-name">{{ p.name }}</span>
+              <span class="candidate-dist">{{ p.dist_km }} km</span>
             </div>
           </div>
         </div>
@@ -184,6 +201,7 @@ const strategyLabel = computed(() => {
 })
 
 const comparison = computed(() => strategyMetrics.value?.comparison || null)
+const candidatePoints = computed(() => strategyMetrics.value?.candidate_points || [])
 const scenario = computed(() => strategyMetrics.value?.scenario || null)
 const speeds = computed(() => strategyMetrics.value?.speeds || { carKmh: 80, uavMs: 20 })
 
@@ -509,6 +527,60 @@ onBeforeUnmount(() => {
 .congestion-detail {
   font-size: 11px;
   color: rgba(147, 197, 253, 0.7);
+}
+
+/* ===== 候选救援点列表 ===== */
+.candidate-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.candidate-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.candidate-row.selected {
+  color: #fff;
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+}
+
+.candidate-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #475569;
+  flex-shrink: 0;
+}
+
+.candidate-dot.on {
+  background: #34d399;
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.6);
+}
+
+.candidate-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.candidate-row.selected .candidate-name {
+  font-weight: 600;
+  color: #fff;
+}
+
+.candidate-dist {
+  font-family: monospace;
+  font-size: 10px;
+  color: inherit;
+  flex-shrink: 0;
 }
 
 /* ===== 距离卡片算法对比 ===== */
