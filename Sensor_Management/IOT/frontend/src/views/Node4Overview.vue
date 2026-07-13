@@ -16,7 +16,7 @@ const chartTvocRef = ref(null)
 const chartCoRef = ref(null)
 
 // State
-const nodeState = computed(() => store.nodes.node1 || { online: false, address: '' })
+const nodeState = computed(() => store.nodes.node2 || { online: false, address: '' })
 const isSystemRunning = ref(false)
 const isAutoRefresh = ref(true)
 const queryStart = ref('')
@@ -40,7 +40,7 @@ const envSensors = [
 function createChart(element, title, color) {
   const chart = echarts.init(element)
   chart.setOption({
-    title: { 
+   title: { 
   text: title, 
   left: 'center', 
   top: 8, // 让标题距离顶部有一定呼吸感
@@ -74,7 +74,7 @@ function toBackendDateTime(value) {
 }
 
 function getMetricStatus(sensor) {
-  const value = Number(store.data.node1?.[sensor.key] ?? 0)
+  const value = Number(store.data.node2?.[sensor.key] ?? 0)
   return value >= sensor.threshold ? 'abnormal' : 'normal'
 }
 
@@ -205,7 +205,7 @@ onUnmounted(() => {
     
     <div class="header-bar">
       <div class="title-wrapper">
-        <h2>多源数据感知单元-001</h2>
+        <h2>多源数据感知单元-004</h2>
         <span class="status-badge" :class="nodeState.online ? 'online' : 'offline'">
           {{ nodeState.online ? '● 设备在线' : '○ 设备离线' }}
         </span>
@@ -248,14 +248,14 @@ onUnmounted(() => {
       <div class="metric-card warm">
         <span class="metric-label huge-label">🌡️ 实时温度</span>
         <div class="metric-body">
-          <strong class="metric-value huge-value">{{ store.data.node1?.temp ?? '--' }}</strong>
+          <strong class="metric-value huge-value">{{ store.data.node2?.temp ?? '--' }}</strong>
           <span class="metric-unit">°C</span>
         </div>
       </div>
       <div class="metric-card cool">
         <span class="metric-label huge-label">💧 实时湿度</span>
         <div class="metric-body">
-          <strong class="metric-value huge-value">{{ store.data.node1?.hum ?? '--' }}</strong>
+          <strong class="metric-value huge-value">{{ store.data.node2?.hum ?? '--' }}</strong>
           <span class="metric-unit">%</span>
         </div>
       </div>
@@ -276,7 +276,7 @@ onUnmounted(() => {
           </span>
         </div>
         <div class="metric-body">
-          <strong class="metric-value">{{ store.data.node1?.[sensor.key] ?? '--' }}</strong>
+          <strong class="metric-value">{{ store.data.node2?.[sensor.key] ?? '--' }}</strong>
           <span class="metric-unit">{{ sensor.unit }}</span>
         </div>
       </div>

@@ -6,7 +6,7 @@ import {
   buildGatewayApiUrl,
   buildGatewayExportUrl,
   buildGatewayHistoryUrl,
-} from '../gateway-config'
+} from '../gateway-config.js'
 
 // DOM Refs for Charts
 const chartTempRef = ref(null)
@@ -40,9 +40,14 @@ const envSensors = [
 function createChart(element, title, color) {
   const chart = echarts.init(element)
   chart.setOption({
-    title: { text: title, left: 'center', textStyle: { color, fontSize: 14, fontWeight: '600' } },
-    tooltip: { trigger: 'axis' },
-    grid: { left: '5%', right: '5%', bottom: '15%', containLabel: true },
+    title: { 
+  text: title, 
+  left: 'center', 
+  top: 8, // 让标题距离顶部有一定呼吸感
+  textStyle: { color, fontSize: 16, fontWeight: '700' } // 提升字号与字重
+},
+tooltip: { trigger: 'axis' },
+grid: { left: '5%', right: '5%', top: 55, bottom: '15%', containLabel: true }, // 显式增加 top 间距，防止标题与图表重叠
     dataZoom: [{ type: 'slider', show: true, bottom: 4, height: 16 }, { type: 'inside' }],
     xAxis: { type: 'category', boundaryGap: false, data: [] },
     yAxis: { type: 'value' },
