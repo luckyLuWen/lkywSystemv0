@@ -63,13 +63,13 @@
         <button class="toggle-btn toggle-btn-right" type="button" @click="isRightCollapsed = !isRightCollapsed">
           {{ isRightCollapsed ? '▶' : '◀' }}
         </button>
-        <div class="sidebar-header">
+        <div v-if="activeRightTab !== 'detection'" class="sidebar-header">
           <h2 class="sidebar-title">
             {{ activeRightTab === 'sensor' ? '传感器数据' : activeRightTab === 'detection' ? '检测数据' : '规划数据' }}
           </h2>
-          <span class="sidebar-subtitle">
+          <!-- <span class="sidebar-subtitle">
             {{ activeRightTab === 'sensor' ? 'Sensor Data Gateway' : activeRightTab === 'detection' ? 'Real-time Detection' : 'Collaborative Planning' }}
-          </span>
+          </span> -->
         </div>
         <div class="sidebar-content right-sidebar-flex-content">
           <div class="right-tab-panel">
@@ -465,7 +465,6 @@
             </div>
 
             <div v-else-if="activeRightTab === 'detection'" class="detection-data-panel">
-              <div class="sensor-section-title">AI 目标检测流</div>
               <RealtimeDetectionCard />
             </div>
 
@@ -510,7 +509,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, computed, reactive } from 'vue' // 新增 reactive
+import { ref, onMounted, onBeforeUnmount, watch, computed, nextTick, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import CollaborativeResponseCard from '../components/CollaborativeResponseCard.vue'
 import RealtimeDetectionCard from '../components/RealtimeDetectionCard.vue'
@@ -703,7 +702,7 @@ const accidentPoints = [
       { id: 't-normal', time: '14:05', shortLabel: '正常行驶', title: '车辆正常行驶阶段', systems: ['边缘网关'], focusPoint: 'accident_blue' },
       { id: 't-accident', time: '14:12', shortLabel: '事故发生', title: '货车追尾事故瞬间', systems: ['实时检测'], focusPoint: 'detection' },
       { id: 't-smoke', time: '14:18', shortLabel: '次生灾害（烟雾）', title: '事故现场产生大量烟雾', systems: ['协同响应'], focusPoint: 'command' },
-      { id: 't-fire', time: '14:26', shortLabel: '次生灾害（起火）', title: '事故车辆开始起火', systems: ['协同响应'], focusPoint: 'response' },
+      { id: 't-fire', time: '14:26', shortLabel: '次生灾害（起火）', title: '事故车辆开始起火', systems: ['实时检测', '协同响应'], focusPoint: 'response' },
       { id: 't-spread', time: '14:40', shortLabel: '次生灾害（大火）', title: '火势进一步扩大蔓延', systems: ['总系统首页'], focusPoint: 'gateway' },
       { id: 't-uav-start', time: '14:45', shortLabel: '无人装备出动', title: '无人装备协同出动', systems: ['协同响应'], focusPoint: 'accident_blue' },
       { id: 't-uav-deploy', time: '14:50', shortLabel: '无人感知部署', title: '无人感知节点部署', systems: ['实时检测'], focusPoint: 'accident_blue' },
@@ -735,13 +734,29 @@ const timelinePhases = computed(() => {
 })
 
 const phaseToModelMap = {
-  1: 'model_normal', 2: 'model_accident', 3: 'model_accident', 4: 'model_accident', 5: 'model_accident', 
-  6: 'model_accident', 7: 'model_accident', 8: 'model_accident', 9: 'model_accident', 10: 'model_accident'
+  1: 'model_normal',
+  2: 'model_accident',
+  3: 'model_accident',
+  4: 'model_accident',
+  5: 'model_accident',
+  6: 'model_accident',
+  7: 'model_accident',
+  8: 'model_accident',
+  9: 'model_accident',
+  10: 'model_accident'
 }
 
 const tankerPhaseToModelMap = {
-  1: 'tanker_normal', 2: 'tanker_accident', 3: 'tanker_accident', 4: 'tanker_accident', 5: 'tanker_accident', 
-  6: 'tanker_accident', 7: 'tanker_accident', 8: 'tanker_accident', 9: 'tanker_accident', 10: 'tanker_accident'
+  1: 'tanker_normal',
+  2: 'tanker_accident',
+  3: 'tanker_accident',
+  4: 'tanker_accident',
+  5: 'tanker_accident',
+  6: 'tanker_accident',
+  7: 'tanker_accident',
+  8: 'tanker_accident',
+  9: 'tanker_accident',
+  10: 'tanker_accident'
 }
 
 const phasesReady = computed(() => {
@@ -760,6 +775,7 @@ function goTo(item) {
     if (globeRef.value) globeRef.value.resetView()
     currentFocusedPoint.value = ''
     activeServiceId.value = ''
+    // 返回首页时重置所有事故场景的时间线到“仿真开始”阶段
     accidentPhaseIndices.value = { 'rear-end': 0, 'leakage': 0 }
   }
   activeMenuKey.value = item.key
@@ -837,6 +853,7 @@ watch(
     }
   }
 )
+
 </script>
 <style scoped>
 /* Main Layout structure */
@@ -1358,13 +1375,17 @@ watch(
 /* Floating Timeline floating beautifully above the globe */
 .timeline-container {
   position: absolute;
-  bottom: 20px; /* 往上移动一点，贴近视口 */
+  bottom: 12px;
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 40px);
   max-width: 1400px;
-  z-index: 5;
+  background: transparent;
+  border: none;
+  padding: 0;
+  z-index: 20;
   pointer-events: none;
+  overflow: visible;
 }
 .timeline-container > * {
   pointer-events: auto;
@@ -1947,6 +1968,215 @@ watch(
 .right-sidebar :deep(.status-label),
 .right-sidebar :deep(.service-label) {
   color: #94a3b8 !important;
+}
+
+/* Detection data card readability overrides */
+.right-sidebar :deep(.realtime-detection-card) {
+  gap: 20px !important;
+  padding: 18px !important;
+  font-size: 17px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .card-head) {
+  padding-bottom: 16px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .card-title) {
+  font-size: 26px !important;
+  line-height: 1.25 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .card-subtitle) {
+  font-size: 22px !important;
+  line-height: 1.45 !important;
+  font-weight: 600 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .scroll-container) {
+  gap: 20px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .card-section) {
+  gap: 16px !important;
+  padding-bottom: 20px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .section-subtitle-text) {
+  font-size: 22px !important;
+  letter-spacing: 0 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .model-select-group) {
+  padding: 16px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .control-label-text),
+.right-sidebar :deep(.realtime-detection-card .slider-label-row),
+.right-sidebar :deep(.realtime-detection-card .telemetry-col-label) {
+  font-size: 18px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .cyber-select-compact) {
+  min-height: 54px !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .tag-compact),
+.right-sidebar :deep(.realtime-detection-card .slider-val-text),
+.right-sidebar :deep(.realtime-detection-card .legend-val),
+.right-sidebar :deep(.realtime-detection-card .usage-name),
+.right-sidebar :deep(.realtime-detection-card .usage-val) {
+  font-size: 18px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .performance-grid) {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .performance-item) {
+  min-height: 74px !important;
+  padding: 12px 14px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .performance-item.wide) {
+  grid-column: 1 / -1 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .map50-item) {
+  min-height: 82px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .perf-label) {
+  font-size: 17px !important;
+  line-height: 1.25 !important;
+  font-weight: 700 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .performance-item strong) {
+  font-size: 24px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .performance-item small) {
+  font-size: 15px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .telemetry-row) {
+  padding: 11px 0 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .telemetry-col-val) {
+  font-size: 16px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .telemetry-row) {
+  gap: 14px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .telemetry-col-label) {
+  flex: 0 0 96px !important;
+  white-space: nowrap !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .telemetry-col-val) {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .mini-metrics-row) {
+  gap: 8px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .metric-block) {
+  min-height: 66px !important;
+  padding: 8px 6px !important;
+  justify-content: center !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .metric-val) {
+  font-size: 24px !important;
+  line-height: 1.05 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .metric-lbl) {
+  font-size: 14px !important;
+  line-height: 1.15 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .chart-title-label) {
+  font-size: 19px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .doughnut-chart) {
+  width: 154px !important;
+  height: 154px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .doughnut-hole) {
+  width: 104px !important;
+  height: 104px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .total-text) {
+  font-size: 20px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legends-grid) {
+  grid-template-columns: 1fr !important;
+  gap: 6px !important;
+  padding: 8px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legend-item) {
+  gap: 8px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legend-name),
+.right-sidebar :deep(.realtime-detection-card .legend-val) {
+  white-space: nowrap !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legend-name) {
+  min-width: 0 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legend-val) {
+  flex: 0 0 auto !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legend-item),
+.right-sidebar :deep(.realtime-detection-card .usage-label-row) {
+  font-size: 15px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legend-dot) {
+  width: 11px !important;
+  height: 11px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .usage-track) {
+  height: 12px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .model-usage-list) {
+  gap: 16px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .model-usage-item) {
+  gap: 8px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .usage-name),
+.right-sidebar :deep(.realtime-detection-card .usage-val) {
+  font-size: 20px !important;
+  font-weight: 700 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .usage-fill) {
+  min-width: 8px !important;
 }
 
 /* Sidebar UGV Cards - 赛博朋克深色主题 */

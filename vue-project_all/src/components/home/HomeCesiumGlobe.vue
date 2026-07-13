@@ -1158,7 +1158,6 @@
         </div>
       </div>
     </div>
-
     <div v-if="loading" class="globe-mask">三维地球加载中...</div>
     <div v-else-if="errorMessage" class="globe-mask is-error">{{ errorMessage }}</div>
 
@@ -1184,154 +1183,113 @@
       <div class="accident-detail-arrow"></div>
     </div>
 
-    <!-- 实时视频识别与检测悬浮窗 (次生灾害阶段) -->
+    <!-- 故事线检测告警弹窗：事故发生 / 次生灾害起火 -->
     <div 
-      v-if="detectionPopup.show && ((props.activePhaseIndex === 4 && props.focusedPointId === 'accident_blue') || (props.activePhaseIndex === 3 && props.focusedPointId === 'accident_red'))" 
-      class="detection-popup-panel"
+      v-if="detectionPopup.show && currentStoryDetectionScenario" 
+      class="detection-popup-panel story-detection-alert"
+      :class="`is-${currentStoryDetectionScenario.level}`"
       :style="{ left: detectionPopup.x + 'px', top: detectionPopup.y + 'px' }"
     >
       <div class="detection-popup-header">
         <div class="header-title-wrap">
           <span class="pulse-dot"></span>
-          <span class="header-title">实时检测</span>
+          <span class="header-title">{{ currentStoryDetectionScenario.title }}</span>
         </div>
         <button class="close-btn" @click="detectionPopup.show = false">×</button>
       </div>
-      
-      <div class="detection-popup-content">
-        <!-- Left side: Image and Bounding Boxes -->
-        <div class="detection-img-container">
-          <img 
-            :src="props.focusedPointId === 'accident_red' ? '/Dashboard/images/tanker_aerial_photo.png' : '/Dashboard/images/uav_aerial_photo.png'" 
-            class="detection-raw-img" 
-          />
-          
-          <!-- SVG Bounding Box Overlay -->
-          <svg v-if="detectionPopup.state === 'detected'" class="detection-svg-overlay">
-            <template v-if="props.focusedPointId === 'accident_red'">
-              <!-- Tanker Box -->
-              <g class="box-group truck-box">
-                <rect x="35%" y="40%" width="45%" height="35%" class="box-rect rect-truck" />
-                <text x="35%" y="37%" class="box-label label-truck">🚚 Tanker: 99.4%</text>
-              </g>
-              <!-- Leak Box -->
-              <g class="box-group leak-box">
-                <rect x="20%" y="45%" width="25%" height="40%" class="box-rect rect-leak" />
-                <text x="20%" y="42%" class="box-label label-leak">💧 Leak: 97.8%</text>
-              </g>
-              <!-- Vapor Box -->
-              <g class="box-group smoke-box">
-                <rect x="15%" y="15%" width="50%" height="35%" class="box-rect rect-smoke" />
-                <text x="15%" y="12%" class="box-label label-smoke">💨 Vapor: 92.1%</text>
-              </g>
-            </template>
-            <template v-else>
-              <!-- Fire Box -->
-              <g class="box-group fire-box">
-                <rect x="52%" y="42%" width="22%" height="24%" class="box-rect rect-fire" />
-                <text x="52%" y="39%" class="box-label label-fire">🔥 Fire: 98.6%</text>
-              </g>
-              <!-- Truck Box -->
-              <g class="box-group truck-box">
-                <rect x="42%" y="35%" width="40%" height="45%" class="box-rect rect-truck" />
-                <text x="42%" y="32%" class="box-label label-truck">🚚 Truck: 99.2%</text>
-              </g>
-              <!-- Smoke Box -->
-              <g class="box-group smoke-box">
-                <rect x="48%" y="15%" width="32%" height="25%" class="box-rect rect-smoke" />
-                <text x="48%" y="12%" class="box-label label-smoke">💨 Smoke: 94.5%</text>
-              </g>
-            </template>
+
+      <div class="detection-popup-content story-detection-content">
+        <div class="detection-img-container story-detection-img-container">
+          <img :src="currentStoryDetectionScenario.imageSrc" class="detection-raw-img" alt="事故检测画面" />
+
+          <svg v-if="detectionPopup.state === 'detected'" class="detection-svg-overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <g
+              v-for="box in detectionPopup.boxes"
+              :key="box.label"
+              class="box-group"
+            >
+              <rect
+                :x="box.x"
+                :y="box.y"
+                :width="box.width"
+                :height="box.height"
+                class="box-rect"
+                :class="box.kind === 'fire' ? 'rect-story-fire' : 'rect-story-warning'"
+              />
+              <text
+                :x="box.x"
+                :y="Math.max(6, box.y - 3)"
+                class="box-label story-box-label"
+                :class="box.kind === 'fire' ? 'label-story-fire' : 'label-story-warning'"
+              >
+                {{ box.label }}
+              </text>
+            </g>
           </svg>
-          
-          <!-- Scanning/Radar sweep effect when detecting -->
+
           <div v-if="detectionPopup.state === 'detecting'" class="scanning-line"></div>
-          <div v-if="detectionPopup.state === 'detecting'" class="scanning-overlay">AI 图像推理中...</div>
+          <div v-if="detectionPopup.state === 'detecting'" class="scanning-overlay">SFGA-YOLO26M 图像推理中...</div>
         </div>
-        
-        <!-- Right side: Detection Control Panel -->
-        <div class="detection-control-panel">
-          <div class="panel-section-title">检测控制区</div>
-          
-          <!-- State 1: Idle (Not started) -->
-          <div v-if="detectionPopup.state === 'idle'" class="state-idle-wrap">
-            <p class="desc-text">
-              {{ props.focusedPointId === 'accident_red' 
-                ? '已接入当前边缘网关视频源，可对现场危化品罐体破损泄露及气体扩散状况进行实时智能分析。' 
-                : '已接入当前边缘摄像机视频源，可对现场次生灾害起火及烟雾状况进行实时智能分析。' 
-              }}
-            </p>
-            <button class="detect-btn pulse-button" @click="startDetection">
-              <span class="btn-icon">⚡</span> 点击进行检测
-            </button>
+
+        <div class="detection-control-panel story-result-panel">
+          <div class="panel-section-title story-panel-title-row">
+            <span>模型检测结果</span>
+            <span
+              v-if="detectionPopup.state !== 'detecting'"
+              class="status-indicator"
+              :class="currentStoryDetectionScenario.level === 'critical' ? 'critical' : 'warning'"
+            >
+              {{ currentStoryDetectionScenario.statusBadge }}
+            </span>
           </div>
-          
-          <!-- State 2: Detecting (Loading) -->
-          <div v-if="detectionPopup.state === 'detecting'" class="state-detecting-wrap">
+          <div class="story-model-row">
+            <span>检测模型</span>
+            <strong>SFGA-YOLO26M</strong>
+          </div>
+          <div v-if="detectionPopup.state === 'detecting'" class="state-detecting-wrap story-detecting-wrap">
             <div class="spinner"></div>
             <p class="loading-text">正在运行推理：{{ detectionPopup.progress }}%</p>
             <div class="progress-bar-container">
               <div class="progress-bar-fill" :style="{ width: detectionPopup.progress + '%' }"></div>
             </div>
           </div>
-          
-          <!-- State 3: Detected (Results) -->
-          <div v-if="detectionPopup.state === 'detected'" class="state-results-wrap">
-            <div class="result-summary">
-              <span class="status-indicator warning">存在险情</span>
-              <span class="result-count">检出目标: 3</span>
+
+          <div v-else class="state-results-wrap story-results-wrap">
+            <div class="story-confidence-grid">
+              <div class="story-confidence-card">
+                <span class="confidence-label">检测类别</span>
+                <strong>{{ detectionPopup.modelClass || '--' }}</strong>
+              </div>
+              <div class="story-confidence-card emphasis">
+                <span class="confidence-label">置信度</span>
+                <strong>{{ formatDetectionConfidence(detectionPopup.confidence) }}</strong>
+              </div>
             </div>
-            
-            <div class="detection-items-list">
-              <template v-if="props.focusedPointId === 'accident_red'">
-                <div class="detect-item truck">
-                  <span class="item-icon">🚚</span>
-                  <span class="item-name">危化品车</span>
-                  <span class="item-conf">99.4%</span>
-                </div>
-                <div class="detect-item leak">
-                  <span class="item-icon">💧</span>
-                  <span class="item-name">液体泄漏</span>
-                  <span class="item-conf">97.8%</span>
-                </div>
-                <div class="detect-item smoke">
-                  <span class="item-icon">💨</span>
-                  <span class="item-name">挥发气体</span>
-                  <span class="item-conf">92.1%</span>
-                </div>
-              </template>
-              <template v-else>
-                <div class="detect-item fire">
-                  <span class="item-icon">🔥</span>
-                  <span class="item-name">明火区域</span>
-                  <span class="item-conf">98.6%</span>
-                </div>
-                <div class="detect-item truck">
-                  <span class="item-icon">🚚</span>
-                  <span class="item-name">重型卡车</span>
-                  <span class="item-conf">99.2%</span>
-                </div>
-                <div class="detect-item smoke">
-                  <span class="item-icon">💨</span>
-                  <span class="item-name">扩散烟雾</span>
-                  <span class="item-conf">94.5%</span>
-                </div>
-              </template>
+
+            <div class="detection-items-list story-detection-items">
+              <div
+                v-for="item in currentStoryDetectionScenario.results"
+                :key="item"
+                class="detect-item"
+                :class="currentStoryDetectionScenario.level === 'critical' ? 'fire' : 'warning-event'"
+              >
+                <span class="item-name">{{ item }}</span>
+              </div>
             </div>
-            
-            <div class="report-box">
-              <strong>研判结果:</strong> 
-              {{ props.focusedPointId === 'accident_red'
-                ? '检测到危化品储罐开裂及液体大面积泄漏，并伴有有害气体挥发。建议立即启动危化品事故应急预案，部署无人防爆侦测装备及水幕稀释装置。'
-                : '监测到明火伴随大量烟雾，火焰呈扩大趋势，建议立刻通知消防队伍出动泡沫车进行扑灭。'
-              }}
-            </div>
-            
-            <button class="reset-btn" @click="resetDetection">重新检测</button>
+
+            <div v-if="detectionPopup.error" class="story-detection-note">{{ detectionPopup.error }}</div>
           </div>
         </div>
       </div>
-      
+
+      <div v-if="detectionPopup.state !== 'detecting'" class="story-advice-bar">
+        <div class="story-advice-main">
+          <span class="story-advice-title">应对建议</span>
+          <span class="story-advice-text">{{ currentStoryDetectionScenario.report }}</span>
+        </div>
+        <button class="reset-btn story-advice-action" @click="rerunStoryDetection">重新检测</button>
+      </div>
+
       <div class="detection-popup-arrow"></div>
     </div>
 
@@ -2003,7 +1961,11 @@
 import { onBeforeUnmount, onMounted, ref, watch, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import * as Cesium from 'cesium'
-import { getCollaborativeCommandCenterBaseUrl } from '../../config/subsystems'
+import {
+  buildRealtimeDetectionApiUrl,
+  getCollaborativeCommandCenterBaseUrl,
+  getRealtimeDetectionBaseUrl,
+} from '../../config/subsystems'
 
 const props = defineProps({
   phases: { type: Array, default: () => [] },
@@ -2013,9 +1975,51 @@ const props = defineProps({
   isWsConnected: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['accident-picked', 'models-ready', 'update:activePhaseIndex'])
+const emit = defineEmits(['accident-picked', 'models-ready'])
 
 const router = useRouter()
+
+const STORY_DETECTION_MODEL = 'SFGA-YOLO26M'
+
+const STORY_DETECTION_SCENARIOS = {
+  accident: {
+    key: 'accident',
+    phaseIndex: 2,
+    level: 'warning',
+    title: '事故发生检测告警',
+    phaseLabel: '事故发生',
+    statusBadge: '黄色告警',
+    imageSrc: '/Dashboard/images/story-accident-detection.png',
+    fileName: 'story-accident-detection.png',
+    imageWidth: 1456,
+    imageHeight: 1024,
+    results: ['两客一危车辆', '碰撞无火'],
+    report: '检测到两客一危车辆发生碰撞，当前画面未识别明火，建议进入事故确认与现场管控流程。',
+    boxes: [
+      { x: 18, y: 43, width: 52, height: 24, label: '两客一危车辆', kind: 'warning' },
+      { x: 39, y: 50, width: 12, height: 12, label: '碰撞无火', kind: 'warning' }
+    ]
+  },
+  fire: {
+    key: 'fire',
+    phaseIndex: 4,
+    level: 'critical',
+    title: '次生灾害起火告警',
+    phaseLabel: '次生灾害（起火）',
+    statusBadge: '红色告警',
+    imageSrc: '/Dashboard/images/story-fire-detection.png',
+    fileName: 'story-fire-detection.png',
+    imageWidth: 1456,
+    imageHeight: 1024,
+    results: ['两客一危车辆', '碰撞起火'],
+    report: '检测到事故车辆起火并伴随浓烟，建议立即触发消防救援与交通封控联动。',
+    boxes: [
+      { x: 24, y: 42, width: 61, height: 25, label: '两客一危车辆', kind: 'fire' },
+      { x: 37, y: 21, width: 34, height: 43, label: '碰撞起火', kind: 'fire' }
+    ]
+  }
+}
+
 
 const hoveredCityName = ref('')
 const tooltipStyle = ref({
@@ -2995,38 +2999,176 @@ const accidentDetailPopup = reactive({
   pointId: ''
 })
 
-// 实时检测模块弹窗状态
+// 故事线实时检测告警弹窗状态
 const detectionPopup = reactive({
   show: false,
   state: 'idle', // 'idle' | 'detecting' | 'detected'
   progress: 0,
   x: 0,
-  y: 0
+  y: 0,
+  scenarioKey: '',
+  confidence: null,
+  modelClass: '',
+  boxes: [],
+  error: ''
 })
 
 let detectionTimer = null
-function startDetection() {
-  if (detectionTimer) clearInterval(detectionTimer)
-  detectionPopup.state = 'detecting'
-  detectionPopup.progress = 0
-  
-  detectionTimer = setInterval(() => {
-    detectionPopup.progress += 5
-    if (detectionPopup.progress >= 100) {
-      clearInterval(detectionTimer)
-      detectionTimer = null
-      detectionPopup.state = 'detected'
-    }
-  }, 75)
+let storyDetectionRequestId = 0
+
+const currentStoryDetectionScenario = computed(() => {
+  return STORY_DETECTION_SCENARIOS[detectionPopup.scenarioKey] || null
+})
+
+function updateStoryDetectionPopupPosition() {
+  const canvas = viewer?.scene?.canvas
+  const width = canvas?.clientWidth || window.innerWidth || 1200
+  detectionPopup.x = width * 0.5
+  detectionPopup.y = 76
 }
 
-function resetDetection() {
+function isTruckStoryline() {
+  return props.phases?.[0]?.id?.startsWith('t-')
+}
+
+function getStoryDetectionScenario(index) {
+  if (!isTruckStoryline()) return null
+  const phase = props.phases?.[Number(index)]
+  if (phase?.id === 't-accident' || Number(index) === STORY_DETECTION_SCENARIOS.accident.phaseIndex) {
+    return STORY_DETECTION_SCENARIOS.accident
+  }
+  if (phase?.id === 't-fire' || Number(index) === STORY_DETECTION_SCENARIOS.fire.phaseIndex) {
+    return STORY_DETECTION_SCENARIOS.fire
+  }
+  return null
+}
+
+function formatDetectionConfidence(value) {
+  if (value === null || value === undefined || value === '') return '--'
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return '--'
+  return `${(numeric * 100).toFixed(1)}%`
+}
+
+function normalizeStoryDetectionBoxes(detections, scenario) {
+  if (!Array.isArray(detections) || detections.length === 0) return []
+
+  const imageWidth = scenario.imageWidth || 1456
+  const imageHeight = scenario.imageHeight || 1024
+  const labels = scenario.results || []
+
+  const visibleDetections = detections.slice(0, Math.max(1, labels.length))
+  const singleDetectionLabel = visibleDetections.length === 1 && labels.length > 1 ? labels.join(' / ') : ''
+
+  return visibleDetections.map((item, index) => {
+    const bbox = Array.isArray(item.bbox) ? item.bbox : []
+    const [x1, y1, x2, y2] = bbox.map(Number)
+    if (![x1, y1, x2, y2].every(Number.isFinite)) {
+      return scenario.boxes[index] || scenario.boxes[0]
+    }
+
+    return {
+      x: Math.max(0, Math.min(100, (x1 / imageWidth) * 100)),
+      y: Math.max(0, Math.min(100, (y1 / imageHeight) * 100)),
+      width: Math.max(2, Math.min(100, ((x2 - x1) / imageWidth) * 100)),
+      height: Math.max(2, Math.min(100, ((y2 - y1) / imageHeight) * 100)),
+      label: singleDetectionLabel || labels[index] || labels[labels.length - 1] || item.class || '检测目标',
+      kind: scenario.level === 'critical' ? 'fire' : 'warning'
+    }
+  })
+}
+
+function clearDetectionTimer() {
   if (detectionTimer) {
     clearInterval(detectionTimer)
     detectionTimer = null
   }
-  detectionPopup.state = 'idle'
+}
+
+async function runStoryDetection(scenario) {
+  if (!scenario) return
+
+  const requestId = ++storyDetectionRequestId
+  clearDetectionTimer()
+  detectionPopup.state = 'detecting'
   detectionPopup.progress = 0
+  detectionPopup.confidence = null
+  detectionPopup.modelClass = ''
+  detectionPopup.boxes = []
+  detectionPopup.error = ''
+
+  detectionTimer = setInterval(() => {
+    detectionPopup.progress = Math.min(92, detectionPopup.progress + 8)
+  }, 120)
+
+  try {
+    const imageResponse = await fetch(scenario.imageSrc, { cache: 'no-store' })
+    if (!imageResponse.ok) throw new Error(`image HTTP ${imageResponse.status}`)
+
+    const imageBlob = await imageResponse.blob()
+    const formData = new FormData()
+    formData.append('file', imageBlob, scenario.fileName)
+    formData.append('model', STORY_DETECTION_MODEL)
+    formData.append('conf', '0.25')
+    formData.append('iou', '0.45')
+
+    const response = await fetch(buildRealtimeDetectionApiUrl('api/detect/image', getRealtimeDetectionBaseUrl()), {
+      method: 'POST',
+      body: formData
+    })
+    if (!response.ok) throw new Error(`detection HTTP ${response.status}`)
+
+    const payload = await response.json()
+    if (requestId !== storyDetectionRequestId) return
+
+    const detections = Array.isArray(payload.detections) ? payload.detections : []
+    const bestDetection = detections.reduce((best, item) => {
+      const confidence = Number(item.confidence)
+      if (!Number.isFinite(confidence)) return best
+      if (!best || confidence > Number(best.confidence)) return item
+      return best
+    }, null)
+    detectionPopup.confidence = bestDetection ? Number(bestDetection.confidence) : null
+    detectionPopup.modelClass = bestDetection?.class || ''
+    detectionPopup.boxes = normalizeStoryDetectionBoxes(detections, scenario)
+    if (!detectionPopup.boxes.length) {
+      detectionPopup.error = '模型已完成推理，但未返回有效目标框。'
+    }
+  } catch (error) {
+    if (requestId !== storyDetectionRequestId) return
+    detectionPopup.confidence = null
+    detectionPopup.modelClass = ''
+    detectionPopup.boxes = []
+    detectionPopup.error = '检测后端未返回有效结果，请确认实时检测后端和 SFGA-YOLO26M 模型已启动。'
+  } finally {
+    if (requestId === storyDetectionRequestId) {
+      clearDetectionTimer()
+      detectionPopup.progress = 100
+      detectionPopup.state = 'detected'
+    }
+  }
+}
+
+function activateStoryDetectionPopup(index) {
+  const scenario = getStoryDetectionScenario(index)
+  if (!scenario) {
+    detectionPopup.show = false
+    detectionPopup.scenarioKey = ''
+    clearDetectionTimer()
+    return
+  }
+
+  detectionPopup.show = true
+  updateStoryDetectionPopupPosition()
+  if (detectionPopup.scenarioKey !== scenario.key || detectionPopup.state !== 'detected') {
+    detectionPopup.scenarioKey = scenario.key
+    runStoryDetection(scenario)
+  }
+}
+
+function rerunStoryDetection() {
+  const scenario = currentStoryDetectionScenario.value
+  if (scenario) runStoryDetection(scenario)
 }
 
 // 仿真推演悬浮窗状态
@@ -3552,49 +3694,36 @@ function updatePopupPosition() {
     }
   }
 
-  // 无人车出动阶段：让无人车浮窗跟随救援车模型位置实时移动
-  if (ugvPopup.show && Number(props.activePhaseIndex) === 6) {
-    const isTanker = props.focusedPointId === 'accident_red';
-    const carId = isTanker ? 'tanker_rescue_car_model' : 'rescue_car_model';
-    const carEntity = viewer.entities.getById(carId);
-    if (carEntity) {
-      const pos = carEntity.position.getValue(viewer.clock.currentTime);
-      if (pos) {
-        const cartographic = Cesium.Cartographic.fromCartesian(pos);
-        ugvCoords.lng = Cesium.Math.toDegrees(cartographic.longitude);
-        ugvCoords.lat = Cesium.Math.toDegrees(cartographic.latitude);
-        ugvCoords.height = cartographic.height + 10.0;
+// 无人车出动阶段：让无人车浮窗跟随救援车模型位置实时移动
+    if (ugvPopup.show && Number(props.activePhaseIndex) === 6) {
+      const isTanker = props.focusedPointId === 'accident_red';
+      const carId = isTanker ? 'tanker_rescue_car_model' : 'rescue_car_model';
+      const carEntity = viewer.entities.getById(carId);
+      if (carEntity) {
+        const pos = carEntity.position.getValue(viewer.clock.currentTime);
+        if (pos) {
+          const cartographic = Cesium.Cartographic.fromCartesian(pos);
+          ugvCoords.lng = Cesium.Math.toDegrees(cartographic.longitude);
+          ugvCoords.lat = Cesium.Math.toDegrees(cartographic.latitude);
+          ugvCoords.height = cartographic.height + 10.0;
+        }
       }
     }
-  }
 
-  if (ugvPopup.show) {
-    const cartesian = Cesium.Cartesian3.fromDegrees(ugvCoords.lng, ugvCoords.lat, ugvCoords.height);
-    const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
-    if (canvasPosition) {
-      ugvPopup.x = canvasPosition.x + (ugvPopup.xOffset !== undefined ? ugvPopup.xOffset : (ugvPopup.title === '无人车已就位' ? -200 : -27));
-      ugvPopup.y = canvasPosition.y + (ugvPopup.yOffset !== undefined ? ugvPopup.yOffset : (ugvPopup.title === '无人车已就位' ? 143 : -133));
+    if (ugvPopup.show) {
+      const cartesian = Cesium.Cartesian3.fromDegrees(ugvCoords.lng, ugvCoords.lat, ugvCoords.height);
+      const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
+      if (canvasPosition) {
+        ugvPopup.x = canvasPosition.x + (ugvPopup.xOffset !== undefined ? ugvPopup.xOffset : (ugvPopup.title === '无人车已就位' ? -200 : -27));
+        ugvPopup.y = canvasPosition.y + (ugvPopup.yOffset !== undefined ? ugvPopup.yOffset : (ugvPopup.title === '无人车已就位' ? 143 : -133));
+      }
     }
-  }
 
-  // 更新实时检测浮窗坐标 (当位于货车追尾现场的次生灾害起火阶段 index === 4 或油罐车泄露现场 index === 3 时)
-  if (detectionPopup.show && (
-    (props.activePhaseIndex === 4 && props.focusedPointId === 'accident_blue') ||
-    (props.activePhaseIndex === 3 && props.focusedPointId === 'accident_red')
-  )) {
-    const lng = props.focusedPointId === 'accident_red'
-      ? (Number(tankerPointAdjust.lng) || 114.894472)
-      : (Number(truckAdjust.lng) || 113.104833);
-    const lat = props.focusedPointId === 'accident_red'
-      ? (Number(tankerPointAdjust.lat) || 30.632203)
-      : (Number(truckAdjust.lat) || 30.385469);
-    const cartesian = Cesium.Cartesian3.fromDegrees(lng, lat, 20.0);
-    const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
-    if (canvasPosition) {
-      detectionPopup.x = canvasPosition.x;
-      detectionPopup.y = canvasPosition.y - 130;
+    // 更新故事线检测告警浮窗坐标：事故发生与起火阶段跟随货车追尾现场
+    if (detectionPopup.show && currentStoryDetectionScenario.value && isTruckStoryline()) {
+      updateStoryDetectionPopupPosition();
     }
-  }
+
 
   // 更新仿真推演悬浮窗坐标 (当位于货车追尾现场的无人感知执行阶段 index === 8 时)
   if (simulationPopup.show && props.activePhaseIndex === 8 && props.focusedPointId === 'accident_blue') {
@@ -6331,13 +6460,7 @@ function updatePhaseScene(index, animate = false) {
     const isTruckScene = (pointId === 'accident_blue');
     const isTankerScene = (pointId === 'accident_red');
 
-    if ((isTruckScene && index === 4) || (isTankerScene && index === 3)) {
-      detectionPopup.show = true;
-      detectionPopup.state = 'idle';
-      detectionPopup.progress = 0;
-    } else {
-      detectionPopup.show = false;
-    }
+    activateStoryDetectionPopup(index)
 
     if (isTruckScene && index === 8) {
       simulationPopup.show = true;
@@ -6865,6 +6988,14 @@ function resetView() {
 }
 
 defineExpose({ zoomToPoint, resetView, capturedPhotos, activePhotoIndex, currentTimeStr });
+
+watch(
+  () => [props.activePhaseIndex, props.phases?.[props.activePhaseIndex]?.id, props.phases?.[0]?.id],
+  ([phaseIndex]) => {
+    activateStoryDetectionPopup(Number(phaseIndex))
+  },
+  { immediate: true, flush: 'post' }
+)
 
 watch(() => props.activePhaseIndex, (next, prev) => {
   accidentViewLevel.value = null;
@@ -7467,6 +7598,331 @@ onBeforeUnmount(() => {
   background: rgba(255, 255, 255, 0.05);
   color: #f1f5f9;
   border-color: rgba(255, 255, 255, 0.3);
+}
+
+
+.story-detection-alert {
+  width: 760px;
+  max-height: calc(100vh - 96px);
+  transform: translateX(-50%);
+  animation: storyDetectionPanelFadeIn 0.25s ease-out;
+}
+
+@keyframes storyDetectionPanelFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+.story-detection-alert.is-warning {
+  border-color: rgba(251, 191, 36, 0.72);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.75), 0 0 20px rgba(251, 191, 36, 0.26);
+}
+
+.story-detection-alert.is-critical {
+  border-color: rgba(239, 68, 68, 0.78);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.78), 0 0 22px rgba(239, 68, 68, 0.34);
+}
+
+.story-detection-alert.is-warning .detection-popup-header {
+  background: rgba(251, 191, 36, 0.18);
+  border-bottom-color: rgba(251, 191, 36, 0.32);
+}
+
+.story-detection-alert.is-critical .detection-popup-header {
+  background: rgba(239, 68, 68, 0.18);
+  border-bottom-color: rgba(239, 68, 68, 0.36);
+}
+
+.story-detection-alert.is-warning .header-title {
+  color: #fde68a;
+}
+
+.story-detection-alert.is-critical .header-title {
+  color: #fecaca;
+}
+
+.story-detection-alert .detection-popup-header {
+  min-height: 38px;
+  padding: 8px 12px;
+}
+
+.story-detection-alert .header-title {
+  font-size: 17px;
+}
+
+.story-detection-alert .close-btn {
+  font-size: 16px;
+}
+
+.story-detection-alert.is-warning .pulse-dot {
+  background-color: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+}
+
+.story-detection-content {
+  align-items: flex-start;
+  gap: 14px;
+  padding: 10px 12px 12px;
+}
+
+.story-detection-img-container {
+  width: 410px;
+  height: 246px;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.story-detection-img-container .detection-raw-img {
+  object-fit: fill;
+}
+
+.story-result-panel {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px 0;
+}
+
+.story-result-panel .panel-section-title {
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.story-panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.story-panel-title-row .status-indicator {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+.story-model-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  font-size: 16px;
+  color: #dbeafe;
+}
+
+.story-model-row strong {
+  color: #f8fafc;
+  font-size: 16px;
+  text-align: right;
+}
+
+.story-detecting-wrap {
+  margin-top: 18px;
+}
+
+.story-results-wrap {
+  margin-top: 6px;
+}
+
+.story-result-summary {
+  gap: 10px;
+}
+
+.story-confidence-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.story-confidence-card {
+  min-height: 68px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.58);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+}
+
+.story-confidence-card.emphasis {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(8, 47, 73, 0.5);
+}
+
+.confidence-label {
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 15px;
+}
+
+.story-confidence-card strong {
+  color: #f8fafc;
+  font-size: 24px;
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+.story-detection-alert.is-warning .story-confidence-card.emphasis strong {
+  color: #fde047;
+}
+
+.story-detection-alert.is-critical .story-confidence-card.emphasis strong {
+  color: #fca5a5;
+}
+
+.status-indicator.critical {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fecaca;
+  border: 1px solid rgba(239, 68, 68, 0.48);
+}
+
+.status-indicator.warning {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fde68a;
+  border: 1px solid rgba(245, 158, 11, 0.48);
+}
+
+.story-detection-items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.story-detection-items .detect-item {
+  min-height: 28px;
+  padding: 5px 8px;
+  font-size: 15px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.story-advice-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  align-items: stretch;
+  gap: 10px;
+  margin: 0 12px 12px;
+}
+
+.story-advice-main {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 50px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  border-left: 3px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  color: #fcd34d;
+}
+
+.story-detection-alert.is-critical .story-advice-main {
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  color: #fecaca;
+}
+
+.story-advice-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(245, 158, 11, 0.48);
+  background: rgba(245, 158, 11, 0.18);
+  color: #fde68a;
+  font-size: 15px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.story-detection-alert.is-critical .story-advice-title {
+  border-color: rgba(239, 68, 68, 0.52);
+  background: rgba(239, 68, 68, 0.18);
+  color: #fecaca;
+}
+
+.story-advice-text {
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.story-advice-action {
+  width: 100%;
+  height: auto !important;
+  margin-top: 0 !important;
+  font-size: 14px !important;
+}
+
+.story-report-box {
+  font-size: 14px;
+  line-height: 1.45;
+  padding: 7px 8px;
+}
+
+.story-detection-alert .reset-btn {
+  height: 30px;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.detect-item.warning-event {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.story-report-box {
+  margin-top: 8px;
+}
+
+.story-detection-note {
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.story-detection-alert .box-rect {
+  animation: none;
+  stroke-dasharray: none;
+  stroke-dashoffset: 0;
+  stroke-linejoin: round;
+}
+
+.story-detection-alert .detection-svg-overlay {
+  overflow: visible;
+}
+
+.rect-story-warning {
+  stroke: #f59e0b;
+}
+
+.rect-story-fire {
+  stroke: #ef4444;
+}
+
+.story-box-label {
+  font-size: 4px;
+}
+
+.label-story-warning {
+  fill: #fde68a;
+}
+
+.label-story-fire {
+  fill: #fecaca;
 }
 
 /* Arrow styling for popup alignment */

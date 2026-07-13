@@ -12,6 +12,10 @@ os.environ['TORCH_LOAD_WEIGHTS_ONLY'] = '0'
 import cv2
 import numpy as np
 import torch
+from sfga_compat import register_sfga_modules
+
+register_sfga_modules()
+
 from ultralytics import YOLO
 from datetime import datetime
 import base64
@@ -103,34 +107,129 @@ os.makedirs(RESULT_FOLDER, exist_ok=True)
 # Load YOLO model
 MODELS = {}
 
-WEIGHTS_DIR = (BASE_DIR / '../LKYWDataset_weights').resolve()
+WEIGHTS_DIR = Path('../../LKYWDataset_weights')
+PRIMARY_MODEL_NAME = 'SFGA-YOLO26M'
+
+MODEL_DISPLAY_NAMES = {
+    PRIMARY_MODEL_NAME: 'SFGA-YOLO26M（改进模型）',
+    'yolo26M': 'YOLO26M',
+    'yolo11M': 'YOLO11M',
+}
+
+MODEL_PERFORMANCE = {
+    PRIMARY_MODEL_NAME: {
+        'model_name': 'SFGA-YOLO26M',
+        'map50': 0.9168,
+        'map50_95': 0.5922,
+        'recall': 0.8675,
+        'precision': 0.8944,
+        'test_set': 'LKYWDetection Test set',
+    },
+    'yolo26M': {
+        'model_name': 'YOLO26M',
+        'map50': 0.9044,
+        'map50_95': 0.5651,
+        'recall': 0.8415,
+        'precision': 0.8552,
+        'test_set': 'LKYWDetection Test set',
+    },
+    'yolo11M': {
+        'model_name': 'YOLO11M',
+        'map50': 0.9052,
+        'map50_95': 0.5813,
+        'recall': 0.8433,
+        'precision': 0.8745,
+        'test_set': 'LKYWDetection Test set',
+    },
+}
+
+ALLOWED_MODEL_NAMES = set(MODEL_DISPLAY_NAMES)
+
+MODEL_WEIGHT_FOLDERS = {
+    PRIMARY_MODEL_NAME: 'yolo26m_BestPt_1',
+    'yolo26M': PRIMARY_MODEL_NAME,
+    'yolo11M': 'yolo11m_BestPt_0',
+}
+
+
+def get_model_display_name(model_name):
+    if model_name in MODEL_DISPLAY_NAMES:
+        return MODEL_DISPLAY_NAMES[model_name]
+    return model_name.split('_')[0]
+
+
+def get_model_sort_key(model_name):
+    if model_name == PRIMARY_MODEL_NAME:
+        return (0, model_name.lower())
+    if model_name.startswith('yolo26'):
+        return (1, model_name.lower())
+    if model_name.startswith('yolo11'):
+        return (2, model_name.lower())
+    return (3, model_name.lower())
+
 
 def get_available_models():
     models_config = {}
-    if WEIGHTS_DIR.exists():
-        for model_folder in WEIGHTS_DIR.iterdir():
-            if model_folder.is_dir():
-                weight_file = model_folder / 'best.pt'
-                if weight_file.exists():
-                    # Use folder name as model name (e.g., yolo11n_BestPt_42)
-                    models_config[model_folder.name] = str(weight_file)
+    weights_dir = (BASE_DIR / WEIGHTS_DIR).resolve()
+    if weights_dir.exists():
+        model_names = sorted(ALLOWED_MODEL_NAMES, key=get_model_sort_key)
+        for model_name in model_names:
+            weight_folder_name = MODEL_WEIGHT_FOLDERS.get(model_name, model_name)
+            relative_weight_file = WEIGHTS_DIR / weight_folder_name / 'best.pt'
+            weight_file = (BASE_DIR / relative_weight_file).resolve()
+            if weight_file.exists():
+                models_config[model_name] = relative_weight_file.as_posix()
     return models_config
 
 MODEL_PATHS = get_available_models()
 # Ensure at least one default model key exists for frontend compatibility
 if not MODEL_PATHS:
-    MODEL_PATHS = {'default': str(BASE_DIR.parent.parent / 'runs/detect/lkyw_fire_detection/weights/best.pt')}
+    MODEL_PATHS = {'default': '../../runs/detect/lkyw_fire_detection/weights/best.pt'}
 
 for name in MODEL_PATHS:
     MODELS[name] = None
 
 # 类别颜色映射 (BGR格式，OpenCV使用BGR而非RGB)
 CLASS_COLORS = {
-    'car_fire': (0, 0, 255),        # 红色 - 普通车辆火灾（最危险）
-    'car_normal': (0, 255, 0),      # 绿色 - 普通车辆正常
-    'lkyw_fire': (0, 0, 139),       # 深红色 - 两客一危火灾（最高优先级）
-    'lkyw_normal': (255, 144, 30)   # 橙色 - 两客一危正常
+    'car_fire': (53, 57, 229),       # 红色 - 普通车辆火灾
+    'lkyw_fire': (91, 24, 194),      # 紫红色 - 两客一危火灾
+    'car_nofire': (53, 216, 253),    # 金黄色 - 普通车辆无火
+    'lkyw_nofire': (0, 140, 251),    # 橙色 - 两客一危无火
+    'car_normal': (53, 216, 253),
+    'lkyw_normal': (0, 140, 251),
 }
+
+
+def get_class_color(class_name):
+    """Return an OpenCV BGR color for a detection class."""
+    raw_name = str(class_name or "").strip()
+    normalized_name = raw_name.lower().replace("-", "_").replace(" ", "_")
+
+    if raw_name in CLASS_COLORS:
+        return CLASS_COLORS[raw_name]
+    if normalized_name in CLASS_COLORS:
+        return CLASS_COLORS[normalized_name]
+
+    nofire_markers = ("nofire", "no_fire", "non_fire", "normal", "无火", "未起火", "正常")
+    fire_markers = ("fire", "起火", "火灾", "着火")
+
+    if any(marker in normalized_name for marker in nofire_markers):
+        return (53, 216, 253)
+    if any(marker in normalized_name for marker in fire_markers):
+        return (53, 57, 229)
+
+    return (160, 160, 160)
+
+
+def is_fire_class(class_name):
+    normalized_name = str(class_name or "").strip().lower().replace("-", "_").replace(" ", "_")
+    nofire_markers = ("nofire", "no_fire", "non_fire", "normal", "无火", "未起火", "正常")
+    fire_markers = ("fire", "起火", "火灾", "着火")
+
+    if any(marker in normalized_name for marker in nofire_markers):
+        return False
+    return any(marker in normalized_name for marker in fire_markers)
+
 
 # RTSP检测器管理
 rtsp_detectors = {}
@@ -179,7 +278,7 @@ def on_rtsp_detection_event(detection, stats):
     detections = detection.get('detections') or []
     fire_detections = [
         item for item in detections
-        if 'fire' in str(item.get('class', '')).lower() or '火' in str(item.get('class', ''))
+        if is_fire_class(item.get('class', ''))
     ]
 
     if not fire_detections:
@@ -304,8 +403,11 @@ def get_models():
         if model_path.exists():
             available_models.append({
                 'name': name,
-                'path': str(model_path),
-                'size': model_path.stat().st_size / (1024 * 1024)  # Size in MB
+                'display_name': get_model_display_name(name),
+                'path': raw_path,
+                'size': model_path.stat().st_size / (1024 * 1024),  # Size in MB
+                'is_primary': name == PRIMARY_MODEL_NAME,
+                'performance': MODEL_PERFORMANCE.get(name),
             })
     return jsonify({'models': available_models})
 
@@ -367,7 +469,7 @@ def detect_image():
             class_name = result.names[cls]
             
             # 根据类别选择颜色
-            color = CLASS_COLORS.get(class_name, (0, 255, 0))  # 默认绿色
+            color = get_class_color(class_name)
             
             # Draw on image
             cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
@@ -473,7 +575,7 @@ def detect_batch():
                     conf = float(box.conf[0])
                     cls = int(box.cls[0])
                     class_name = result.names[cls]
-                    color = CLASS_COLORS.get(class_name, (0, 255, 0))
+                    color = get_class_color(class_name)
                     cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
                     label = f"{class_name} {conf:.2f}"
                     cv2.putText(img, label, (x1, y1 - 10),
@@ -556,6 +658,7 @@ def detect_video():
         conf_threshold = float(request.form.get('conf', 0.25))
         iou_threshold = float(request.form.get('iou', 0.45))
         frame_interval = int(request.form.get('interval', 30))
+        frame_interval = max(frame_interval, 1)
         
         # Save uploaded file
         filename = build_safe_upload_name(file.filename)
@@ -567,38 +670,19 @@ def detect_video():
         # Load model
         model = load_model(model_name)
         
-        # 先打开视频获取帧率信息
+        # 朴素抽帧检测：从第 0 帧开始，按固定帧间隔逐帧取样。
         cap = cv2.VideoCapture(filepath)
-        fps = int(cap.get(cv2.CAP_PROP_FPS))
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        cap.release()
+        if not cap.isOpened():
+            raise ValueError("Unable to open video file")
+
+        fps = float(cap.get(cv2.CAP_PROP_FPS) or 0)
+        if fps <= 0:
+            fps = 30.0
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
         
         # 用于计算平均处理时间
         import time
         total_inference_time = 0
-        
-        # 检查是否有预设的演示帧配置（通过文件名匹配）
-        demo_frames = None
-        
-        # 优先级1: 检查 video_test_folder_config.json（支持小数秒，精确配置）
-        folder_config_path = os.path.join(os.path.dirname(__file__), 'video_test_folder_config.json')
-        if os.path.exists(folder_config_path):
-            try:
-                with open(folder_config_path, 'r', encoding='utf-8') as f:
-                    folder_config = json.load(f)
-                    # 检查文件名是否匹配
-                    for config_name, config_data in folder_config.items():
-                        if config_name in filename or filename in config_name:
-                            # 从秒数转换为帧号
-                            seconds = config_data.get('seconds', [])
-                            demo_frames = [int(s * fps) for s in seconds]
-                            print(f"✓ 检测到 video_test 文件夹配置: {config_name}")
-                            break
-            except Exception as e:
-                print(f"加载 video_test_folder_config 失败: {e}")
-        
-        # Process video (重新打开视频进行处理)
-        cap = cv2.VideoCapture(filepath)
         
         frame_count = 0
         sampled_frames = []
@@ -608,11 +692,7 @@ def detect_video():
             if not ret:
                 break
             
-            should_detect = False
-            if demo_frames is not None:
-                should_detect = frame_count in demo_frames
-            else:
-                should_detect = frame_count % frame_interval == 0
+            should_detect = frame_count % frame_interval == 0
             
             if should_detect:
                 # Perform detection
@@ -637,7 +717,7 @@ def detect_video():
                     cls = int(box.cls[0])
                     class_name = result.names[cls]
                     
-                    color = CLASS_COLORS.get(class_name, (0, 255, 0))
+                    color = get_class_color(class_name)
                     
                     cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                     label = f"{class_name} {conf:.2f}"
@@ -681,7 +761,8 @@ def detect_video():
             'total_frames': total_frames,
             'sampled_frames': len(sampled_frames),
             'avg_frame_time': avg_frame_time,
-            'fps': fps,
+            'fps': round(fps, 3),
+            'model': model_name,
             'interval': frame_interval,
             'frames': sampled_frames
         })
@@ -727,7 +808,7 @@ def detect_webcam():
             cls = int(box.cls[0])
             class_name = result.names[cls]
             
-            color = CLASS_COLORS.get(class_name, (0, 255, 0))
+            color = get_class_color(class_name)
             
             cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
             label = f"{class_name} {conf:.2f}"
@@ -824,7 +905,7 @@ def system_info():
         # Check loaded models
         loaded = [name for name, model in MODELS.items() if model is not None]
         info['model_loaded'] = len(loaded) > 0
-        info['model_name'] = loaded[0] if loaded else ''
+        info['model_name'] = get_model_display_name(loaded[0]) if loaded else ''
     except Exception:
         pass
 
@@ -878,7 +959,11 @@ def start_rtsp_detector(data):
     if stream_id in rtsp_detectors:
         return {'success': True, 'message': 'Stream already running', 'stream_id': stream_id}, 200
 
-    model_path = MODEL_PATHS.get(model_name)
+    raw_model_path = MODEL_PATHS.get(model_name)
+    if raw_model_path is None:
+        return {'error': f'Model not found: {model_name}'}, 404
+
+    model_path = str(resolve_path(raw_model_path))
     detector = RTSPDetector(
         model_path=model_path,
         rtsp_url=rtsp_url,
