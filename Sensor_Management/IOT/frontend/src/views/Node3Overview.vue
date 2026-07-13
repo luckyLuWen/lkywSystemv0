@@ -205,7 +205,7 @@ onUnmounted(() => {
     
     <div class="header-bar">
       <div class="title-wrapper">
-        <h2>多源数据感知单元-001</h2>
+        <h2>多源数据感知单元-003</h2>
         <span class="status-badge" :class="nodeState.online ? 'online' : 'offline'">
           {{ nodeState.online ? '● 设备在线' : '○ 设备离线' }}
         </span>

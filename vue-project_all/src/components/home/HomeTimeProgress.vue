@@ -38,6 +38,20 @@
           </svg>
           定位
         </button>
+
+        <div class="simulation-status" @click="togglePlay" :class="{ disabled: !isScenarioReady }">
+          <div class="play-trigger">
+            <template v-if="isScenarioReady">
+              <span v-if="!isPlaying" class="status-icon">▶</span>
+              <span v-else class="status-icon">||</span>
+              {{ isPlaying ? '仿真运行中' : '仿真已暂停' }}
+            </template>
+            <template v-else>
+              <span class="loading-spinner"></span>
+              模型加载中...
+            </template>
+          </div>
+        </div>
       </div>
 
       <div class="timeline-bar-wrapper">
@@ -71,20 +85,6 @@
             </div>
             <span class="phase-dot"></span>
           </button>
-        </div>
-      </div>
-      
-      <div class="simulation-status" @click="togglePlay" :class="{ disabled: !isScenarioReady }">
-        <div class="play-trigger">
-          <template v-if="isScenarioReady">
-            <span v-if="!isPlaying" class="status-icon">▶</span>
-            <span v-else class="status-icon">||</span>
-            {{ isPlaying ? '仿真运行中' : '仿真已暂停' }}
-          </template>
-          <template v-else>
-            <span class="loading-spinner"></span>
-            模型加载中...
-          </template>
         </div>
       </div>
     </section>
@@ -440,28 +440,28 @@ onBeforeUnmount(() => {
 .simulation-status {
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-top: 5px; /* 减小间距 */
 }
 
 .play-trigger {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 6px 20px;
-  border-radius: 999px;
+  gap: 8px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 18px;
   background: rgba(0, 229, 255, 0.1);
-  border: 1px solid rgba(0, 229, 255, 0.3);
+  border: 1px solid rgba(0, 229, 255, 0.35);
   color: #00e5ff;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .play-trigger:hover:not(.disabled) {
   background: rgba(0, 229, 255, 0.2);
-  box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);
+  border-color: rgba(0, 229, 255, 0.6);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.3);
 }
 
 .simulation-status.disabled {
@@ -487,7 +487,6 @@ onBeforeUnmount(() => {
   border-top-color: #00e5ff;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin-right: 8px;
 }
 
 @keyframes spin {
@@ -498,7 +497,6 @@ onBeforeUnmount(() => {
   font-family: monospace;
   font-weight: bold;
   letter-spacing: -2px;
-  margin-right: 5px;
 }
 
 @media (max-width: 1080px) {
