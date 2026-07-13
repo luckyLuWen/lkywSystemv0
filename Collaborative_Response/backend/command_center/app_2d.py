@@ -13,7 +13,7 @@ from datetime import datetime, time
 from graph_utils import load_drive_graph_from_local_or_osm
 
 # ==================== 1. 页面配置 ====================
-st.set_page_config(layout="wide", page_title="灾害动态路径规划系统 (五大多主体)", page_icon="🚧")
+st.set_page_config(layout="wide", page_title="交通事故动态路径规划系统 (五大多主体)", page_icon="🚧")
 
 st.markdown("""
 <style>
@@ -46,6 +46,9 @@ st.markdown("""
         margin-top: 20px;
     }
     .metric-small { font-size: 0.9rem; color: #666; }
+    section[data-testid="stSidebar"] { width: 260px !important; min-width: 260px !important; }
+    body { background: #f8fafc !important; }
+    header { background: #ffffff !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -192,8 +195,16 @@ def calculate_score(distance_m, traffic_f, weather_f, attr, config):
 # ==================== 4. 主程序 ====================
 
 def main():
-    st.sidebar.title("🛠️ 联合指挥应急控制台")
-    
+    qp = st.query_params
+    _is_embed = qp.get("embed", "") == "true" or qp.get("sidebar", "") == "minimal"
+    ext_mode = qp.get("mode", "")
+    ext_severity = qp.get("severity", "")
+    ext_weather = qp.get("weather", "")
+    ext_time = qp.get("time", "")
+
+    if not _is_embed:
+        st.sidebar.title("🛠️ 联合指挥应急控制台")
+
     # 1. 任务设置 (扩展为5个模块)
     task_options = {
         "人员伤亡 (医疗急救)": {"mode": "medical", "tag": "hospital", "color": "green", "icon": "user-md"},
@@ -202,41 +213,74 @@ def main():
         "危化品泄漏 (防化部队)": {"mode": "hazmat", "tag": "fire_station", "color": "purple", "icon": "flask"},
         "道路清障 (交通路政)": {"mode": "road", "tag": "police", "color": "gray", "icon": "truck"}
     }
-    
-    task_type = st.sidebar.selectbox("调度主体优先级类型", list(task_options.keys()))
+    _mode_to_label = {v["mode"]: k for k, v in task_options.items()}
+    _default_task = _mode_to_label.get(ext_mode, list(task_options.keys())[0])
+    if not _is_embed:
+        task_type = st.sidebar.selectbox("调度主体优先级类型", list(task_options.keys()),
+                                          index=list(task_options.keys()).index(_default_task))
+    else:
+        task_type = _default_task
     current_task = task_options[task_type]
-    
     mode = current_task["mode"]
     target_tag = current_task["tag"]
     theme_color = current_task["color"]
     fa_icon = current_task["icon"]
-    
+
     levels = ["轻微", "中度", "危重"] if mode == 'medical' else ["一般", "较大", "特大"]
-    severity = st.sidebar.select_slider("灾害应急响应等级", options=levels, value=levels[1])
+    _default_sev = ext_severity if ext_severity in levels else levels[1]
+    if not _is_embed:
+        severity = st.sidebar.select_slider("交通事故应急响应等级", options=levels, value=_default_sev)
+    else:
+        severity = _default_sev
 
     # 2. 环境仿真
-    st.sidebar.caption("环境参数")
-    col_t1, col_t2 = st.sidebar.columns(2)
-    sim_time = col_t1.time_input("时间", time(8, 30))
-    weather = col_t2.selectbox("天气", ["☀️ 晴朗", "🌧️ 小雨", "⛈️ 暴雨", "🌫️ 大雾", "❄️ 积雪"])
+    _dh, _dm = 8, 30
+    if ext_time and ":" in ext_time:
+        try: _dh, _dm = int(ext_time.split(":")[0]), int(ext_time.split(":")[1])
+        except: pass
+    weather_options = ["☀️ 晴朗", "🌧️ 小雨", "⛈️ 暴雨", "🌫️ 大雾", "❄️ 积雪"]
+    _default_w = ext_weather if ext_weather in weather_options else weather_options[0]
+    if not _is_embed:
+        st.sidebar.caption("环境参数")
+        col_t1, col_t2 = st.sidebar.columns(2)
+        sim_time = col_t1.time_input("时间", time(_dh, _dm))
+        weather = col_t2.selectbox("天气", weather_options, index=weather_options.index(_default_w))
+    else:
+        sim_time = time(_dh, _dm)
+        weather = _default_w
     
     # 3. 互动模式
-    st.sidebar.divider()
-    st.sidebar.subheader("🚧 灾害模拟交互")
-    inter_mode = st.sidebar.radio("地图点击功能：", ["🔍 查看站点详情", "🚫 添加道路阻断"], index=0)
+    st.sidebar.markdown("""
+    <div style="background:#fff;border-left:4px solid #3b82f6;border-radius:6px;padding:10px 14px;margin-bottom:4px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <span style="font-size:16px;font-weight:700;color:#1e293b;">&#x1F3AE; 交互控制台</span>
+    </div>
+    """, unsafe_allow_html=True)
+    inter_mode = st.sidebar.radio("地图点击功能", ["&#x1F50D; 查看站点详情", "&#x1F6AB; 添加道路阻断"], index=0, key="interact_radio")
     st.session_state.interaction_mode = 'block' if "添加" in inter_mode else 'view'
-    
-    if st.session_state.obstacles:
-        st.sidebar.warning(f"已设置 {len(st.session_state.obstacles)} 处障碍")
-        if st.sidebar.button("清除所有障碍"):
-            st.session_state.obstacles = []
-            st.rerun()
-
-    st.sidebar.divider()
 
     # 预加载
     raw_facs = get_facilities_data(target_tag)
     facilities_basic = simulate_attributes(raw_facs, mode)
+
+    # 状态摘要
+    w_rate = get_weather_impact(weather)
+    h = sim_time.hour
+    traffic_f = 2.5 if 7<=h<=9 else (2.2 if 17<=h<=19 else 1.2)
+    tf_color = "#dc2626" if traffic_f >= 2.0 else "#d97706" if traffic_f >= 1.5 else "#059669"
+    st.sidebar.markdown(f"""
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;margin:10px 0;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="font-size:13px;font-weight:700;color:#475569;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+            <span style="display:inline-block;width:4px;height:16px;background:#3b82f6;border-radius:2px;"></span>&#x1F4CB; 调度参数
+        </div>
+        <table style="width:100%;font-size:13px;line-height:2.2;color:#334155;border-collapse:collapse;">
+        <tr><td style="color:#94a3b8;width:68px;padding:2px 0;">调度主体</td><td style="font-weight:600;">{current_task['mode']}</td></tr>
+        <tr><td style="color:#94a3b8;padding:2px 0;">响应等级</td><td style="font-weight:600;">{severity}</td></tr>
+        <tr><td style="color:#94a3b8;padding:2px 0;">天气状况</td><td>{weather}&ensp;<span style="color:#059669;font-weight:500;">通行 {w_rate*100:.0f}%</span></td></tr>
+        <tr><td style="color:#94a3b8;padding:2px 0;">模拟时间</td><td>{sim_time.strftime('%H:%M')}&ensp;<span style="color:{tf_color};font-weight:500;">系数 {traffic_f:.1f}</span></td></tr>
+        <tr><td style="color:#94a3b8;padding:2px 0;">可用站点</td><td style="font-weight:600;">{len(facilities_basic)} 个</td></tr>
+        </table>
+    </div>
+    """, unsafe_allow_html=True)
 
     # 4. 规划按钮
     if st.sidebar.button("🚀 开始动态规划联合解算", type="primary", use_container_width=True):
@@ -302,7 +346,7 @@ def main():
         st.session_state.dispatched = True
 
     # --- 主界面 ---
-    st.title(f"🚑 灾害动态路径规划系统 ({mode.upper()})")
+    st.title(f"🚑 交通事故动态路径规划系统 ({mode.upper()})")
     col_map, col_data = st.columns([3, 1.2])
 
     with col_map:
@@ -338,7 +382,14 @@ def main():
                 st.rerun()
 
     with col_data:
-        with st.expander("🌍 环境与灾情感知", expanded=True):
+        if st.session_state.obstacles:
+            c1, c2 = st.columns([3, 1])
+            c1.warning(f"已设置 {len(st.session_state.obstacles)} 处道路阻断")
+            if c2.button("清除", key="clear_obstacles"):
+                st.session_state.obstacles = []
+                st.rerun()
+
+        with st.expander("🌍 环境与事故感知", expanded=True):
             ec1, ec2 = st.columns(2)
             ec1.metric("天气", weather)
             w_rate = get_weather_impact(weather)
@@ -392,8 +443,8 @@ def main():
         else:
             st.info("👈 在 [查看模式] 下点击地图图标查看详情")
 
-    # === 🔥 底部重构：灾害救援路径效能评估系统 ===
-    st.markdown("### 📊 灾害空间协同调度效能评估")
+    # === 🔥 底部重构：交通事故救援路径效能评估系统 ===
+    st.markdown("### 📊 交通事故空间协同调度效能评估")
     with st.container():
         st.markdown('<div class="dashboard-container">', unsafe_allow_html=True)
         tab1, tab2, tab3 = st.tabs(["🛣️ 路径损耗评估", "🚧 道路阻断详情", "📡 算法执行监控"])
@@ -408,7 +459,7 @@ def main():
                 
                 delta = comp['detour']
                 delta_color = "inverse" if delta > 0 else "normal"
-                c3.metric("次生灾害导致的绕行损耗", f"+{delta:.0f} m", delta_color=delta_color)
+                c3.metric("次生事故导致的绕行损耗", f"+{delta:.0f} m", delta_color=delta_color)
                 
                 # 损耗图表
                 chart_data = pd.DataFrame({

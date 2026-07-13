@@ -109,6 +109,7 @@ def load_strategy_metrics() -> dict[str, Any]:
         "comparison": payload.get("comparison"),
         "scenario": payload.get("scenario"),
         "speeds": payload.get("speeds"),
+        "candidate_points": payload.get("candidate_points", []),
         "obstacles": payload.get("obstacles", []),
         "updated_at": file_info(PATH_RESULT_PATH)["updated_at"],
     }
@@ -525,13 +526,13 @@ def run_3d_strategy():
     ugv_block = request.args.get("ugv_block", "1")
     uav_smoke = request.args.get("uav_smoke", "1")
     strategy = request.args.get("strategy", "rcd")
-    compare = request.args.get("compare", "0")
+    compare = request.args.get("compare", "1")  # 默认开启对比，前端可传 compare=0 关闭
     extra_args = [
         "--end_point", end_point,
         "--ugv_block", ugv_block,
         "--uav_smoke", uav_smoke,
         "--strategy", strategy,
-        "--compare", "1",  # 始终启用对比模式供前端规划面板展示
+        "--compare", compare,
     ]
     result = run_script("app_3d_strategy.py", *extra_args)
     if result.returncode != 0:
@@ -547,18 +548,50 @@ def run_3d_strategy():
     )
 
 
+@app.route("/api/run_multi_agent")
+def run_multi_agent():
+    end_point = request.args.get("end_point", "leak")
+    if end_point not in ("leak", "crash"):
+        end_point = "leak"
+    ugv_block = request.args.get("ugv_block", "1")
+    uav_smoke = request.args.get("uav_smoke", "1")
+    strategy = request.args.get("strategy", "rcd")
+    compare = request.args.get("compare", "1")
+    extra_args = [
+        "--end_point", end_point,
+        "--ugv_block", ugv_block,
+        "--uav_smoke", uav_smoke,
+        "--strategy", strategy,
+        "--compare", compare,
+        "--multi_agent", "1",
+    ]
+    result = run_script("app_3d_strategy.py", *extra_args)
+    if result.returncode != 0:
+        return error_response(
+            "多智能体救援路径生成失败",
+            stderr=result.stderr.strip(),
+            stdout=result.stdout.strip(),
+        )
+    return success_response(
+        "五类救援装备路径已生成",
+        url="/2d_deduction.html",
+        end_point=end_point,
+    )
+
+
 @app.route("/api/run_3d_cesium")
 def run_3d_cesium():
     end_point = request.args.get("end_point", "crash")
     ugv_block = request.args.get("ugv_block", "1")
     uav_smoke = request.args.get("uav_smoke", "1")
     strategy = request.args.get("strategy", "rcd")
+    compare = request.args.get("compare", "1")  # 默认开启对比，前端可传 compare=0 关闭
     extra_args = [
         "--end_point", end_point,
         "--ugv_block", ugv_block,
         "--uav_smoke", uav_smoke,
         "--strategy", strategy,
-        "--compare", "1",  # 始终启用对比模式供前端规划面板展示
+        "--compare", compare,
     ]
     result = run_script("app_3d_strategy.py", *extra_args)
     if result.returncode != 0:
