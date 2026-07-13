@@ -804,7 +804,7 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
 
 # ==================== 5. 主函数 ====================
 def _load_path_from_json(endpoint, strategy, ugv_block, uav_smoke):
-    """从预计算的 JSON 文件快速加载路径数据，跳过路网下载和路径规划。"""
+    """从预计算的 JSON 文件快速加载路径数据，跳过的路网下载和路径规划。"""
     block_key = f"b{1 if ugv_block else 0}s{1 if uav_smoke else 0}"
     data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "path_data", f"path_{endpoint}_{block_key}.json")
     if not os.path.exists(data_path):
