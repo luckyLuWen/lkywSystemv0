@@ -114,8 +114,8 @@
             <div class="vehicle-filter-tabs">
               <button :class="{ active: trafficConfig.activeCategory === 'all' }" @click="setVehicleCategoryFilter('all')">全部</button>
               <button :class="{ active: trafficConfig.activeCategory === 'hazard' }" @click="setVehicleCategoryFilter('hazard')">🧪 危化品车</button>
-              <button :class="{ active: trafficConfig.activeCategory === 'passenger' }" @click="setVehicleCategoryFilter('passenger')">🚌 班线客车</button>
-              <button :class="{ active: trafficConfig.activeCategory === 'tourist' }" @click="setVehicleCategoryFilter('tourist')">🚐 旅游包车</button>
+              <button :class="{ active: trafficConfig.activeCategory === 'passenger' }" @click="setVehicleCategoryFilter('passenger')">🚌 公路客运</button>
+              <button :class="{ active: trafficConfig.activeCategory === 'tourist' }" @click="setVehicleCategoryFilter('tourist')">🚐 旅游客运</button>
             </div>
           </div>
 
@@ -1140,21 +1140,18 @@
         <div class="legend-row hazard-row">
           <span class="legend-glow-dot red"></span>
           <span class="legend-text-main">危化品运输车</span>
-          <span class="legend-text-sub">如: 鄂A·H8921</span>
         </div>
 
-        <!-- 班线客车 -->
+        <!-- 公路客运 -->
         <div class="legend-row passenger-row">
           <span class="legend-glow-dot green"></span>
-          <span class="legend-text-main">班线客车</span>
-          <span class="legend-text-sub">如: 鄂A·K3512</span>
+          <span class="legend-text-main">公路客运</span>
         </div>
 
-        <!-- 旅游包车 -->
+        <!-- 旅游客运 -->
         <div class="legend-row tourist-row">
           <span class="legend-glow-dot blue"></span>
-          <span class="legend-text-main">旅游包车</span>
-          <span class="legend-text-sub">如: 鄂F·T9918</span>
+          <span class="legend-text-main">旅游客运</span>
         </div>
       </div>
     </div>
@@ -1536,13 +1533,7 @@
           >
             卡口排行
           </button>
-          <button 
-            class="mode-btn" 
-            :class="{ active: activeHudTab === 'ai' }"
-            @click="activeHudTab = 'ai'"
-          >
-            智能推演
-          </button>
+
         </div>
 
       <!-- 0. 全省 18 省界卡口 · 双向进出省总统计大盘舱 (全景模式展示) -->
@@ -1613,14 +1604,14 @@
           </div>
         </div>
 
-        <!-- 省际/班线客车 -->
+        <!-- 公路客运 -->
         <div 
           class="lkyw-hud-card passenger" 
           :class="{ active: activeVehicleFilter === 'passenger' }" 
           @click="toggleVehicleFilter('passenger')"
         >
           <div class="lkyw-card-header">
-            <span class="lkyw-label">省际/班线客车</span>
+            <span class="lkyw-label">公路客运</span>
             <span class="lkyw-subbadge green">占比 {{ passengerRatioPercent }}%</span>
           </div>
           <div class="lkyw-card-main">
@@ -1643,18 +1634,18 @@
             </div>
           </div>
           <div class="lkyw-card-footer-tip">
-            <span class="dot-indicator green"></span> 绿色图例对应班线客车点位 (演示标牌: {{ activePassengerDemoCount }} 辆)
+            <span class="dot-indicator green"></span> 绿色图例对应公路客运点位 (演示标牌: {{ activePassengerDemoCount }} 辆)
           </div>
         </div>
 
-        <!-- 旅游包车专线 -->
+        <!-- 旅游客运 -->
         <div 
           class="lkyw-hud-card tourist" 
           :class="{ active: activeVehicleFilter === 'tourist' }" 
           @click="toggleVehicleFilter('tourist')"
         >
           <div class="lkyw-card-header">
-            <span class="lkyw-label">旅游包车专线</span>
+            <span class="lkyw-label">旅游客运</span>
             <span class="lkyw-subbadge blue">占比 {{ touristRatioPercent }}%</span>
           </div>
           <div class="lkyw-card-main">
@@ -1677,7 +1668,7 @@
             </div>
           </div>
           <div class="lkyw-card-footer-tip">
-            <span class="dot-indicator blue"></span> 蓝色图例对应旅游包车点位 (演示标牌: {{ activeTouristDemoCount }} 辆)
+            <span class="dot-indicator blue"></span> 蓝色图例对应旅游客运点位 (演示标牌: {{ activeTouristDemoCount }} 辆)
           </div>
         </div>
       </div>
@@ -1733,12 +1724,12 @@
             </div>
             <div class="legend-row passenger" @click="toggleVehicleFilter('passenger')">
               <span class="legend-dot green"></span>
-              <span class="legend-name">省际班线客车</span>
+              <span class="legend-name">公路客运</span>
               <span class="legend-val green">{{ passengerRatioPercent }}%</span>
             </div>
             <div class="legend-row tourist" @click="toggleVehicleFilter('tourist')">
               <span class="legend-dot blue"></span>
-              <span class="legend-name">旅游包车专线</span>
+              <span class="legend-name">旅游客运</span>
               <span class="legend-val blue">{{ touristRatioPercent }}%</span>
             </div>
           </div>
@@ -1842,7 +1833,7 @@
               <div class="risk-meta-row">位置: {{ item.location }}</div>
               <div class="risk-meta-row">驾驶员: {{ item.driver }}</div>
             </div>
-            <button class="risk-action-btn" @click="focusRiskVehicleOnMap(item.lng, item.lat)">
+            <button class="risk-action-btn" @click="focusRiskVehicleOnMap(item)">
               地图追踪定位
             </button>
           </div>
@@ -1881,64 +1872,7 @@
         </div>
       </div>
 
-      <!-- 7. 智能推演预测与应急预案 Tab 面板 -->
-      <div v-show="activeHudTab === 'ai'" class="hud-tab-pane ai-pane">
-        <div class="chart-title-bar">
-          <span class="chart-title">AI 流量预测与风险推演</span>
-          <span class="chart-sub">AI PREDICTION</span>
-        </div>
 
-        <div class="ai-metrics-panel">
-          <div class="ai-metric-row">
-            <span class="ai-lbl">未来 2 小时峰值预测:</span>
-            <span class="ai-val highlight">4,200 辆/h (21:00 Peak)</span>
-          </div>
-          <div class="ai-metric-row">
-            <span class="ai-lbl">危化品安全健康指数:</span>
-            <span class="ai-val green">92.4 分 (安全可控)</span>
-          </div>
-          <div class="ai-metric-row">
-            <span class="ai-lbl">恶劣天气风险预警:</span>
-            <span class="ai-val gold">黄石段大雾 视距&lt;200m</span>
-          </div>
-        </div>
-
-        <div class="chart-title-bar" style="margin-top: 10px;">
-          <span class="chart-title">应急资源调度备勤状态</span>
-          <span class="chart-sub">RESOURCES</span>
-        </div>
-
-        <div class="resource-grid">
-          <div class="resource-card">
-            <div class="res-info">
-              <span class="res-title">巡逻警车</span>
-              <span class="res-val green">18 辆在岗巡查</span>
-            </div>
-          </div>
-          <div class="resource-card">
-            <div class="res-info">
-              <span class="res-title">救援无人机</span>
-              <span class="res-val blue">6 架随时备勤</span>
-            </div>
-          </div>
-          <div class="resource-card">
-            <div class="res-info">
-              <span class="res-title">危化处置组</span>
-              <span class="res-val gold">3 组定点待命</span>
-            </div>
-          </div>
-          <div class="resource-card">
-            <div class="res-info">
-              <span class="res-title">医疗救援车</span>
-              <span class="res-val green">5 辆联动响应</span>
-            </div>
-          </div>
-        </div>
-
-        <button class="ai-dispatch-btn" @click="handleAutoDispatchTrigger">
-          启动全省自动预警联动 (AUTO-DISPATCH)
-        </button>
-      </div>
 
       </div>
 
@@ -2093,10 +2027,10 @@ function setVehicleCategoryFilter(cat) {
 const initialPhaseCameraConfigs = {
   truck: {
     1: { range: 1440, pitch: -39, heading: -5 },
-    2: { range: 630, pitch: -25, heading: 33 },
-    3: { range: 630, pitch: -25, heading: 33 },
-    4: { range: 630, pitch: -25, heading: 33 },
-    5: { range: 630, pitch: -25, heading: 33 },
+    2: { range: 480, pitch: -25, heading: 33 },
+    3: { range: 480, pitch: -25, heading: 33 },
+    4: { range: 480, pitch: -25, heading: 33 },
+    5: { range: 480, pitch: -25, heading: 33 },
     6: { range: 1600, pitch: -45, heading: 0 },
     7: { range: 100000, pitch: -90, heading: -3 },
     8: { range: 641, pitch: -26, heading: -25 },
@@ -2512,6 +2446,33 @@ function copySimulationPopupParams() {
       simulationPopupCopiedMessage.value = '';
     }, 2000);
   });
+}
+
+// 🛰️ 微调控制台面板展开状态与控制函数
+const isTankerPanelExpanded = ref(false)
+const isUavUgvPanelExpanded = ref(false)
+const isUgvPopupPanelExpanded = ref(false)
+const isUavPopupPanelExpanded = ref(false)
+const isSimulationPopupPanelExpanded = ref(false)
+
+function toggleTankerPanel() {
+  togglePanel('tanker')
+}
+
+function toggleUavUgvPanel() {
+  togglePanel('uavugv')
+}
+
+function toggleUgvPopupPanel() {
+  togglePanel('ugvPopup')
+}
+
+function toggleUavPopupPanel() {
+  togglePanel('uavPopup')
+}
+
+function toggleSimulationPopupPanel() {
+  togglePanel('simulationPopup')
 }
 
 // 🔥💨 后期感知阶段（7阶段及以后）粒子微调参数与控制
@@ -4118,7 +4079,7 @@ async function initViewer() {
 
 // 两客一危在途监控分类筛选与状态
 const activeVehicleFilter = ref('all');
-let lkywVehicles = [];
+const lkywVehicles = ref([]);
 let lkywBillboardCollection = null;
 let lkywPointCollection = null;
 let trafficVehicles = [];
@@ -4188,7 +4149,7 @@ const riskVehicles = reactive([
   },
   {
     plate: '鄂B-H9021',
-    type: '班线客车 · 49座',
+    type: '公路客运 · 49座',
     class: 'passenger',
     level: '偏离线路',
     levelClass: 'orange',
@@ -4200,7 +4161,7 @@ const riskVehicles = reactive([
   },
   {
     plate: '鄂F-T9918',
-    type: '旅游包车',
+    type: '旅游客运',
     class: 'tourist',
     level: '违规时段',
     levelClass: 'gold',
@@ -4287,19 +4248,189 @@ function generateRandomDriver() {
 // 🛠️ 大屏 HUD 高阶视图 Tabs 模式 ('overview' | 'risk' | 'checkpoint' | 'ai')
 const activeHudTab = ref('overview');
 
-const focusRiskVehicleOnMap = (lng, lat) => {
-  if (viewer) {
-    viewer.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(lng, lat, 3500),
-      orientation: {
-        heading: Cesium.Math.toRadians(0.0),
-        pitch: Cesium.Math.toRadians(-40.0),
-        roll: 0.0
-      },
-      duration: 1.5
-    });
+let activeFocusedRiskEntity = null;
+let activeFocusedRiskPoint = null;
+let trackedRiskVehicle = null;
+
+const focusRiskVehicleOnMap = (item) => {
+  if (!viewer || !item) return;
+  const { lng, lat, plate, type, levelClass, reason } = item;
+
+  // 1. 在在途移动车辆中寻找匹配或分配一辆移动点位
+  let matched = null;
+  let targetLng = lng;
+  let targetLat = lat;
+
+  if (lkywVehicles.value && lkywVehicles.value.length > 0) {
+    const focusPlate = plate.replace('-', '·');
+    matched = lkywVehicles.value.find(v => v.plate === focusPlate);
+    
+    // 如果该随机车牌目前没有对应的移动实体，随机抽调一辆同类型（或任意）移动车辆重设车牌并追踪
+    if (!matched) {
+      const candidates = lkywVehicles.value.filter(v => v.category === (item.class || 'hazard'));
+      matched = candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : lkywVehicles.value[0];
+      if (matched) {
+        matched.plate = plate.replace('-', '·');
+        // 重绘其车辆顶部的正常胶囊标牌车牌号
+        const newCanvas = createVehicleBillboardCanvas(matched.category, matched.plate, matched.speed);
+        matched.billboard.image = newCanvas;
+      }
+    }
   }
+
+  if (matched) {
+    trackedRiskVehicle = matched;
+    const cartesian = matched.billboard.position;
+    const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+    targetLng = Cesium.Math.toDegrees(cartographic.longitude);
+    targetLat = Cesium.Math.toDegrees(cartographic.latitude);
+  } else {
+    trackedRiskVehicle = null;
+  }
+
+  // 2. 清除上一次的追踪点与标牌，解除相机绑定
+  if (viewer) {
+    viewer.trackedEntity = undefined;
+  }
+  if (activeFocusedRiskEntity) {
+    viewer.entities.remove(activeFocusedRiskEntity);
+    activeFocusedRiskEntity = null;
+  }
+  if (activeFocusedRiskPoint) {
+    viewer.entities.remove(activeFocusedRiskPoint);
+    activeFocusedRiskPoint = null;
+  }
+
+  // 3. 绘制带有预警详情的精致赛博胶囊标牌与呼吸点
+  const canvas = createRiskVehicleCanvas(plate, type, reason);
+  const position = Cesium.Cartesian3.fromDegrees(targetLng, targetLat);
+
+  activeFocusedRiskEntity = viewer.entities.add({
+    position: position,
+    billboard: {
+      image: canvas,
+      scale: 0.8,
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY
+    }
+  });
+
+  let dotColor = '#FF3344';
+  if (levelClass === 'orange') {
+    dotColor = '#FF8F00';
+  } else if (levelClass === 'gold') {
+    dotColor = '#FFD700';
+  }
+
+  activeFocusedRiskPoint = viewer.entities.add({
+    position: position,
+    point: {
+      color: Cesium.Color.fromCssColorString(dotColor),
+      pixelSize: 10.0,
+      outlineColor: Cesium.Color.WHITE,
+      outlineWidth: 2.0,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY
+    }
+  });
+
+  // 设置跟随相机偏移量（西南偏南 1500m 距离，1000m 高度俯瞰视角）
+  activeFocusedRiskPoint.viewFrom = new Cesium.Cartesian3(-1500, -1500, 1000);
+
+  // 4. 照相机飞抵该移动点位并锁定追踪
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(targetLng, targetLat, 2500),
+    orientation: {
+      heading: Cesium.Math.toRadians(0.0),
+      pitch: Cesium.Math.toRadians(-45.0),
+      roll: 0.0
+    },
+    duration: 1.2,
+    complete: () => {
+      if (viewer && activeFocusedRiskPoint) {
+        viewer.trackedEntity = activeFocusedRiskPoint; // 启用相机自动平滑跟车
+      }
+    }
+  });
 };
+
+function createRiskVehicleCanvas(plate, type, reason) {
+  const scaleFactor = 2;
+  const logicalWidth = 190;
+  const logicalHeight = 44;
+  const canvas = document.createElement('canvas');
+  canvas.width = logicalWidth * scaleFactor;
+  canvas.height = logicalHeight * scaleFactor;
+  const ctx = canvas.getContext('2d');
+
+  ctx.scale(scaleFactor, scaleFactor);
+
+  const themeColor = '#FF3344';
+  const cardW = 182;
+  const cardH = 36;
+  const cardX = 4;
+  const cardY = 3;
+
+  ctx.save();
+  ctx.shadowColor = themeColor;
+  ctx.shadowBlur = 8;
+  ctx.fillStyle = 'rgba(15, 6, 12, 0.92)';
+  ctx.strokeStyle = themeColor;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(cardX, cardY, cardW, cardH, 8);
+  } else {
+    ctx.rect(cardX, cardY, cardW, cardH);
+  }
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.fillStyle = themeColor;
+  ctx.fillRect(cardX + 2, cardY + 2, 4, cardH - 4);
+
+  ctx.font = 'bold 11px -apple-system, sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(plate, cardX + 12, cardY + 6);
+
+  ctx.font = '9px sans-serif';
+  ctx.fillStyle = '#FFAAAA';
+  ctx.fillText(type, cardX + 75, cardY + 8);
+
+  ctx.font = '9px sans-serif';
+  ctx.fillStyle = '#FFD700';
+  ctx.fillText(reason.length > 25 ? reason.substring(0, 24) + '...' : reason, cardX + 12, cardY + 20);
+
+  ctx.fillStyle = themeColor;
+  ctx.beginPath();
+  ctx.moveTo(logicalWidth / 2 - 4, cardY + cardH);
+  ctx.lineTo(logicalWidth / 2 + 4, cardY + cardH);
+  ctx.lineTo(logicalWidth / 2, cardY + cardH + 5);
+  ctx.closePath();
+  ctx.fill();
+
+  return canvas;
+}
+
+// 切换页签时，自动释放地图上的预警跟随与点位
+watch(activeHudTab, (newTab) => {
+  if (newTab !== 'risk') {
+    if (viewer) {
+      viewer.trackedEntity = undefined;
+    }
+    if (activeFocusedRiskEntity) {
+      viewer.entities.remove(activeFocusedRiskEntity);
+      activeFocusedRiskEntity = null;
+    }
+    if (activeFocusedRiskPoint) {
+      viewer.entities.remove(activeFocusedRiskPoint);
+      activeFocusedRiskPoint = null;
+    }
+    trackedRiskVehicle = null;
+  }
+});
 
 const handleAutoDispatchTrigger = () => {
   alert('🤖 全省应急联动机制已成功开启！系统正在推演最佳调度路线与巡逻无人机航线。');
@@ -4308,22 +4439,22 @@ const handleAutoDispatchTrigger = () => {
 const isHudCollapsed = ref(false);
 
 const legendRightOffset = computed(() => {
-  return isHudCollapsed.value ? '20px' : '450px';
+  return isHudCollapsed.value ? '20px' : '526px';
 });
 
 const activeHazardDemoCount = computed(() => {
-  if (!lkywVehicles) return 0;
-  return lkywVehicles.filter(v => v.category === 'hazard').length;
+  if (!lkywVehicles.value) return 0;
+  return lkywVehicles.value.filter(v => v.category === 'hazard').length;
 });
 
 const activePassengerDemoCount = computed(() => {
-  if (!lkywVehicles) return 0;
-  return lkywVehicles.filter(v => v.category === 'passenger').length;
+  if (!lkywVehicles.value) return 0;
+  return lkywVehicles.value.filter(v => v.category === 'passenger').length;
 });
 
 const activeTouristDemoCount = computed(() => {
-  if (!lkywVehicles) return 0;
-  return lkywVehicles.filter(v => v.category === 'tourist').length;
+  if (!lkywVehicles.value) return 0;
+  return lkywVehicles.value.filter(v => v.category === 'tourist').length;
 });
 
 const totalActiveInTransit = computed(() => {
@@ -4386,8 +4517,8 @@ const highwayFlowData = reactive([
 // ⚡ 实时抓拍卡口日志数据流（动态推送）
 const latestCameraLogs = reactive([
   { time: '19:09:40', location: '武黄省界卡口', plate: '鄂A-H8921', category: '危化品', action: '入省' },
-  { time: '19:09:39', location: '京港澳赤壁卡口', plate: '鄂C-K5531', category: '班线客车', action: '出省' },
-  { time: '19:09:37', location: '沪蓉鄂东大桥', plate: '鄂F-T9918', category: '旅游包车', action: '入省' }
+  { time: '19:09:39', location: '京港澳赤壁卡口', plate: '鄂C-K5531', category: '公路客运', action: '出省' },
+  { time: '19:09:37', location: '沪蓉鄂东大桥', plate: '鄂F-T9918', category: '旅游客运', action: '入省' }
 ]);
 
 const cameraLocations = [
@@ -4457,7 +4588,7 @@ function startHudStatsSimulation() {
       const now = new Date();
       const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
       const randomLoc = cameraLocations[Math.floor(Math.random() * cameraLocations.length)];
-      const randomCat = cat === 'hazard' ? '危化品' : (cat === 'passenger' ? '班线客车' : '旅游包车');
+      const randomCat = cat === 'hazard' ? '危化品' : (cat === 'passenger' ? '公路客运' : '旅游客运');
       
       latestCameraLogs.unshift({
         time: timeStr,
@@ -4489,7 +4620,7 @@ function startHudStatsSimulation() {
           statKey: 'fatigueCount'
         },
         {
-          type: '班线客车 · 49座',
+          type: '公路客运 · 49座',
           class: 'passenger',
           level: '偏离线路',
           levelClass: 'orange',
@@ -4497,7 +4628,7 @@ function startHudStatsSimulation() {
           statKey: 'deviationCount'
         },
         {
-          type: '旅游包车',
+          type: '旅游客运',
           class: 'tourist',
           level: '违规时段',
           levelClass: 'gold',
@@ -4587,8 +4718,8 @@ function toggleVehicleFilter(filterType) {
   trafficConfig.activeCategory = filterType;
 
   // 1. 过滤精细重点巡航 Demo 悬浮标牌
-  if (lkywVehicles && lkywVehicles.length > 0) {
-    lkywVehicles.forEach(item => {
+  if (lkywVehicles.value && lkywVehicles.value.length > 0) {
+    lkywVehicles.value.forEach(item => {
       const isMatch = (filterType === 'all' || item.category === filterType);
       if (item.billboard) item.billboard.show = isMatch;
       if (item.point) item.point.show = isMatch;
@@ -4751,7 +4882,7 @@ function initLkywVehiclesFromGeoJson(geojson) {
     lkywPointCollection = null;
   }
 
-  lkywVehicles = [];
+  lkywVehicles.value = [];
   lkywBillboardCollection = new Cesium.BillboardCollection();
   lkywPointCollection = new Cesium.PointPrimitiveCollection();
 
@@ -4873,7 +5004,7 @@ function initLkywVehiclesFromGeoJson(geojson) {
       disableDepthTestDistance: Number.POSITIVE_INFINITY
     });
 
-    lkywVehicles.push({
+    lkywVehicles.value.push({
       billboard,
       point,
       category,
@@ -5016,6 +5147,7 @@ function initTrafficVehiclesFromGeoJson(geojson) {
   viewer.scene.primitives.add(trafficPointCollection);
 
   let lastTime = performance.now();
+  let speedUpdateAccumulator = 0;
   trafficAnimationRemoveListener = viewer.scene.preRender.addEventListener(() => {
     const now = performance.now();
     const dt = Math.min((now - lastTime) / 1000.0, 0.1);
@@ -5037,9 +5169,9 @@ function initTrafficVehiclesFromGeoJson(geojson) {
       }
     }
 
-    if (lkywVehicles && lkywVehicles.length > 0) {
-      for (let i = 0; i < lkywVehicles.length; i++) {
-        const lv = lkywVehicles[i];
+    if (lkywVehicles.value && lkywVehicles.value.length > 0) {
+      for (let i = 0; i < lkywVehicles.value.length; i++) {
+        const lv = lkywVehicles.value[i];
         lv.currentDist += lv.direction * (lv.speedVal * currentSpeedFactor) * dt;
         if (lv.currentDist > lv.route.totalDist) {
           lv.currentDist = 0;
@@ -5051,6 +5183,27 @@ function initTrafficVehiclesFromGeoJson(geojson) {
           lv.billboard.position = lpos;
           lv.point.position = lpos;
         }
+      }
+    }
+
+    // 🚚 实时同步追踪预警车辆的位置，使其小红点与标牌跟随运动
+    if (trackedRiskVehicle && activeFocusedRiskEntity && activeFocusedRiskPoint) {
+      const currentPos = trackedRiskVehicle.billboard.position;
+      activeFocusedRiskEntity.position = currentPos;
+      activeFocusedRiskPoint.position = currentPos;
+    }
+
+    // 随机浮动两客一危车辆时速显示，使孪生大屏更有动态感 (每隔 0.8 秒更新一次)
+    speedUpdateAccumulator += dt;
+    if (speedUpdateAccumulator >= 0.8) {
+      speedUpdateAccumulator = 0;
+      if (lkywVehicles.value && lkywVehicles.value.length > 0) {
+        lkywVehicles.value.forEach(lv => {
+          const diff = Math.random() > 0.5 ? 1 : -1;
+          lv.speed = Math.max(65, Math.min(115, lv.speed + diff));
+          const newCanvas = createVehicleBillboardCanvas(lv.category, lv.plate, lv.speed);
+          lv.billboard.image = newCanvas;
+        });
       }
     }
 
@@ -9082,7 +9235,7 @@ onBeforeUnmount(() => {
   top: 16px;
   bottom: 16px;
   right: 16px;
-  width: 420px;
+  width: 500px;
   height: calc(100% - 32px);
   background: rgba(10, 19, 35, 0.82);
   backdrop-filter: blur(20px) saturate(140%);
@@ -9159,14 +9312,14 @@ onBeforeUnmount(() => {
 
 .lkyw-monitor-hud .sidebar-title {
   margin: 0;
-  font-size: 19px;
+  font-size: 26px;
   font-weight: 700;
   color: #ffffff;
   letter-spacing: 0.5px;
 }
 
 .lkyw-monitor-hud .sidebar-subtitle {
-  font-size: 11px;
+  font-size: 16px;
   color: #00f2fe;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -9176,13 +9329,13 @@ onBeforeUnmount(() => {
 }
 
 .lkyw-hud-status-badge {
-  font-size: 10px;
+  font-size: 15px;
   font-family: monospace;
   font-weight: bold;
   color: #00ffaa;
   background: rgba(0, 255, 170, 0.12);
   border: 1px solid rgba(0, 255, 170, 0.35);
-  padding: 3px 8px;
+  padding: 4px 14px;
   border-radius: 4px;
   white-space: nowrap;
   letter-spacing: 0.5px;
@@ -9254,19 +9407,19 @@ onBeforeUnmount(() => {
 
 .lkyw-hud-title {
   color: #00ffd8;
-  font-size: 13px;
+  font-size: 19px;
   font-weight: bold;
   letter-spacing: 0.5px;
   text-shadow: 0 0 8px rgba(0, 255, 216, 0.4);
 }
 
 .lkyw-hud-status-badge {
-  font-size: 9.5px;
+  font-size: 15px;
   color: #00ffaa;
   background: rgba(0, 255, 170, 0.12);
   border: 1px solid rgba(0, 255, 170, 0.35);
   border-radius: 10px;
-  padding: 2px 8px;
+  padding: 3px 9px;
   font-family: monospace;
   box-shadow: 0 0 8px rgba(0, 255, 170, 0.2);
 }
@@ -9280,12 +9433,12 @@ onBeforeUnmount(() => {
 
 .mode-btn {
   flex: 1;
-  padding: 5px 0;
+  padding: 8px 0;
   background: rgba(0, 229, 255, 0.05);
   border: 1px solid rgba(0, 229, 255, 0.2);
   border-radius: 6px;
   color: #94a3b8;
-  font-size: 11px;
+  font-size: 17px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -9336,7 +9489,7 @@ onBeforeUnmount(() => {
 .risk-summary-item.blue { border-left: 3px solid rgba(0, 242, 254, 0.6); }
 
 .risk-num {
-  font-size: 18px;
+  font-size: 28px;
   font-weight: 700;
   display: block;
   color: #00f2fe;
@@ -9345,7 +9498,7 @@ onBeforeUnmount(() => {
 .risk-summary-item.red .risk-num { color: #ffffff; }
 
 .risk-lbl {
-  font-size: 10px;
+  font-size: 15px;
   color: #64748b;
   white-space: nowrap;
 }
@@ -9381,14 +9534,14 @@ onBeforeUnmount(() => {
   justify-content: space-between;
 }
 .risk-plate {
-  font-size: 13px;
+  font-size: 19px;
   font-weight: 700;
   color: #ffffff;
   letter-spacing: 0.5px;
 }
 .risk-type-tag {
-  font-size: 10px;
-  padding: 1px 6px;
+  font-size: 14.5px;
+  padding: 2px 7px;
   border-radius: 4px;
   background: rgba(0, 242, 254, 0.08);
   color: #00f2fe;
@@ -9400,9 +9553,9 @@ onBeforeUnmount(() => {
 .risk-type-tag.tourist   { color: #a5d8ff; border-color: rgba(0,200,255,0.2); }
 
 .risk-level-badge {
-  font-size: 10px;
+  font-size: 14.5px;
   font-weight: 600;
-  padding: 1px 6px;
+  padding: 2px 7px;
   border-radius: 4px;
 }
 .risk-level-badge.red    { background: rgba(255,80,100,0.15); color: #fca5a5; border: 1px solid rgba(255,80,100,0.3); }
@@ -9410,12 +9563,12 @@ onBeforeUnmount(() => {
 .risk-level-badge.gold   { background: rgba(0, 242, 254, 0.05); color: #94a3b8; border: 1px solid rgba(0,242,254,0.15); }
 
 .risk-reason {
-  font-size: 11px;
+  font-size: 17px;
   color: #cbd5e1;
   font-weight: 500;
 }
 .risk-meta-row {
-  font-size: 11px;
+  font-size: 15.5px;
   color: #64748b;
 }
 
@@ -9424,9 +9577,9 @@ onBeforeUnmount(() => {
   background: transparent;
   border: 1px solid rgba(0, 242, 254, 0.3);
   color: #00f2fe;
-  font-size: 11px;
+  font-size: 15.5px;
   font-weight: 600;
-  padding: 4px 10px;
+  padding: 6px 14px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -9463,7 +9616,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
 }
 .cp-rank {
-  font-size: 10px;
+  font-size: 16px;
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
@@ -9474,14 +9627,14 @@ onBeforeUnmount(() => {
 .cp-rank.border { background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.12); }
 
 .cp-name {
-  font-size: 13px;
+  font-size: 19px;
   font-weight: 600;
   color: #ffffff;
   flex: 1;
   margin-left: 8px;
 }
 .cp-status {
-  font-size: 10px;
+  font-size: 16px;
   font-weight: 600;
 }
 .cp-status.green  { color: #00f2fe; }
@@ -9504,18 +9657,18 @@ onBeforeUnmount(() => {
   gap: 2px;
 }
 .cp-label {
-  font-size: 10px;
+  font-size: 16px;
   color: #64748b;
 }
 .cp-val {
-  font-size: 13px;
+  font-size: 19.5px;
   font-weight: 700;
   color: #00f2fe;
 }
 .cp-val.green  { color: #00f2fe; }
 .cp-val.gold   { color: #a5d8ff; }
 .cp-val.orange { color: #cbd5e1; }
-.cp-val small { font-size: 9px; font-weight: normal; color: #64748b; }
+.cp-val small { font-size: 13.5px; font-weight: normal; color: #64748b; }
 
 /* 智能推演 */
 .ai-metrics-panel {
@@ -9616,7 +9769,7 @@ onBeforeUnmount(() => {
 }
 
 .border-title {
-  font-size: 11.5px;
+  font-size: 17.5px;
   font-weight: bold;
   color: #00ffd8;
   letter-spacing: 0.5px;
@@ -9624,8 +9777,8 @@ onBeforeUnmount(() => {
 }
 
 .net-inflow-badge {
-  font-size: 9.5px;
-  padding: 1px 6px;
+  font-size: 14.5px;
+  padding: 2px 7px;
   border-radius: 4px;
   font-family: monospace;
   font-weight: bold;
@@ -9676,14 +9829,14 @@ onBeforeUnmount(() => {
 }
 
 .flow-label {
-  font-size: 10px;
+  font-size: 16px;
   color: #94a3b8;
   font-weight: bold;
 }
 
 .flow-anim-arrow {
   font-family: monospace;
-  font-size: 10px;
+  font-size: 16px;
   font-weight: bold;
   letter-spacing: -1px;
 }
@@ -9703,7 +9856,7 @@ onBeforeUnmount(() => {
 }
 
 .border-flow-val {
-  font-size: 16px;
+  font-size: 25px;
   font-weight: bold;
   font-family: monospace;
 }
@@ -9711,7 +9864,7 @@ onBeforeUnmount(() => {
 .border-flow-val.gold { color: #ffd700; text-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }
 
 .flow-unit {
-  font-size: 9.5px;
+  font-size: 14.5px;
   color: #64748b;
   font-weight: normal;
 }
@@ -9720,18 +9873,21 @@ onBeforeUnmount(() => {
 .cyber-flow-box-group {
   display: flex;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .cyber-flow-box {
-  flex: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 3px 7px;
+  gap: 8px;
+  padding: 5px 10px;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: 14.5px;
   font-family: monospace;
   transition: all 0.3s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .cyber-flow-box.in {
@@ -9749,14 +9905,18 @@ onBeforeUnmount(() => {
 }
 
 .box-icon {
-  font-size: 9px;
+  font-size: 13.5px;
   font-weight: bold;
   color: #cbd5e1;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .box-val {
   font-weight: bold;
-  font-size: 11px;
+  font-size: 17px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .box-val.green { color: #00ffaa; }
 .box-val.gold { color: #ffd700; }
@@ -9780,14 +9940,14 @@ onBeforeUnmount(() => {
 }
 
 .chart-title {
-  font-size: 11.5px;
+  font-size: 17.5px;
   font-weight: bold;
   color: #e2f1ff;
   letter-spacing: 0.5px;
 }
 
 .chart-sub {
-  font-size: 9.5px;
+  font-size: 14.5px;
   color: #64748b;
   font-family: monospace;
 }
@@ -9801,8 +9961,8 @@ onBeforeUnmount(() => {
 
 .svg-pie-wrapper {
   position: relative;
-  width: 90px;
-  height: 90px;
+  width: 124px;
+  height: 124px;
   flex-shrink: 0;
 }
 
@@ -9829,17 +9989,18 @@ onBeforeUnmount(() => {
 }
 
 .pie-total-num {
-  font-size: 13px;
+  font-size: 21px;
   font-weight: bold;
   color: #ffffff;
   font-family: monospace;
-  line-height: 1;
+  line-height: 1.1;
 }
 
 .pie-total-unit {
-  font-size: 8.5px;
-  color: #64748b;
-  margin-top: 2px;
+  font-size: 13.5px;
+  color: #8fa2c4;
+  margin-top: 4px;
+  white-space: nowrap;
 }
 
 .pie-legend {
@@ -9852,9 +10013,9 @@ onBeforeUnmount(() => {
 .legend-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  padding: 3px 6px;
+  gap: 8px;
+  font-size: 17px;
+  padding: 5px 10px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.03);
   cursor: pointer;
@@ -9877,14 +10038,14 @@ onBeforeUnmount(() => {
 
 .legend-name {
   color: #cbd5e1;
-  font-size: 10.5px;
+  font-size: 16.5px;
   flex-grow: 1;
 }
 
 .legend-val {
   font-weight: bold;
   font-family: monospace;
-  font-size: 11px;
+  font-size: 17px;
 }
 .legend-val.red { color: #ff4d6d; }
 .legend-val.green { color: #00ffaa; }
@@ -9907,7 +10068,7 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 10.5px;
+  font-size: 16.5px;
 }
 
 .highway-name {
@@ -9921,12 +10082,12 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
+  width: 20px;
+  height: 20px;
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.1);
   color: #94a3b8;
-  font-size: 9px;
+  font-size: 14px;
   font-style: normal;
   font-family: monospace;
 }
@@ -9945,12 +10106,12 @@ onBeforeUnmount(() => {
   font-family: monospace;
   font-weight: bold;
   color: #00ffd8;
-  font-size: 11px;
+  font-size: 17px;
 }
 
 .hazard-tag {
-  font-size: 8.5px;
-  padding: 1px 4px;
+  font-size: 13.5px;
+  padding: 1px 5px;
   border-radius: 3px;
   background: rgba(0, 255, 170, 0.1);
   color: #00ffaa;
@@ -10009,8 +10170,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 10px;
-  padding: 3px 6px;
+  font-size: 15px;
+  padding: 4px 8px;
   background: rgba(15, 23, 42, 0.5);
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -10031,13 +10192,13 @@ onBeforeUnmount(() => {
 .log-time {
   font-family: monospace;
   color: #64748b;
-  font-size: 9px;
+  font-size: 13.5px;
 }
 
 .log-loc {
   color: #cbd5e1;
-  font-size: 9.5px;
-  max-width: 95px;
+  font-size: 14.5px;
+  max-width: 150px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -10047,12 +10208,12 @@ onBeforeUnmount(() => {
   font-family: monospace;
   font-weight: bold;
   color: #00ffd8;
-  font-size: 10px;
+  font-size: 15.5px;
 }
 
 .log-tag {
-  font-size: 8.5px;
-  padding: 0px 4px;
+  font-size: 13.5px;
+  padding: 1px 4px;
   border-radius: 3px;
   font-family: monospace;
 }
@@ -10116,14 +10277,14 @@ onBeforeUnmount(() => {
 }
 
 .lkyw-label {
-  font-size: 12px;
+  font-size: 18px;
   color: #cbd5e1;
   font-weight: bold;
 }
 
 .lkyw-subbadge {
-  font-size: 9px;
-  padding: 1px 6px;
+  font-size: 14px;
+  padding: 2px 7px;
   border-radius: 4px;
   margin-left: auto;
 }
@@ -10160,7 +10321,7 @@ onBeforeUnmount(() => {
 }
 
 .lkyw-value {
-  font-size: 17px;
+  font-size: 26px;
   font-weight: bold;
   font-family: monospace;
   transition: all 0.3s ease;
@@ -10181,7 +10342,7 @@ onBeforeUnmount(() => {
 }
 
 .lkyw-unit {
-  font-size: 10px;
+  font-size: 16px;
   color: #64748b;
 }
 
@@ -10191,9 +10352,9 @@ onBeforeUnmount(() => {
 }
 
 .flow-tag {
-  padding: 1px 5px;
+  padding: 2px 6px;
   border-radius: 4px;
-  font-size: 9.5px;
+  font-size: 14.5px;
   font-family: monospace;
   transition: all 0.3s ease;
 }
@@ -10219,7 +10380,7 @@ onBeforeUnmount(() => {
   margin-top: 6px;
   padding-top: 4px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
-  font-size: 9.5px;
+  font-size: 14.5px;
   color: #94a3b8;
   display: flex;
   align-items: center;
@@ -10244,7 +10405,7 @@ onBeforeUnmount(() => {
   border-top: 1px dashed rgba(255, 255, 255, 0.1);
   display: flex;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: 16px;
   color: #94a3b8;
 }
 
@@ -10322,7 +10483,8 @@ onBeforeUnmount(() => {
 .hubei-map-legend {
   position: absolute;
   top: 90px;
-  width: 290px;
+  width: fit-content;
+  min-width: 170px;
   background: rgba(10, 20, 38, 0.85);
   border: 1px solid rgba(0, 242, 254, 0.25);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), inset 0 0 15px rgba(0, 242, 254, 0.1);
@@ -10446,7 +10608,7 @@ onBeforeUnmount(() => {
   font-size: 12px;
   font-weight: bold;
   color: #ffffff;
-  flex: 1;
+  white-space: nowrap;
 }
 
 .legend-text-sub {

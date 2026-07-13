@@ -1104,14 +1104,14 @@ watch(
 
 .sidebar-title {
   margin: 0;
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 700;
   color: #ffffff;
   letter-spacing: 0.5px;
 }
 
 .sidebar-subtitle {
-  font-size: 11px;
+  font-size: 14.5px;
   color: #00f2fe;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -1630,7 +1630,7 @@ watch(
 }
 
 .sensor-section-title {
-  font-size: 15px;
+  font-size: 17.5px;
   font-weight: 700;
   color: #ffffff;
   text-transform: uppercase;
@@ -1677,13 +1677,13 @@ watch(
 }
 
 .sensor-card-item .sensor-name {
-  font-size: 12px;
+  font-size: 14.5px;
   color: #94a3b8;
   font-weight: 600;
 }
 
 .sensor-card-item .sensor-val {
-  font-size: 17px;
+  font-size: 26px;
   color: #ffffff;
   font-weight: 700;
   font-family: monospace;
@@ -1691,7 +1691,7 @@ watch(
 }
 
 .sensor-card-item .unit {
-  font-size: 11px;
+  font-size: 16px;
   color: #00f2fe;
   font-weight: bold;
 }
@@ -1769,13 +1769,13 @@ watch(
 }
 
 .meteorology-card .met-label {
-  font-size: 12px;
+  font-size: 14.5px;
   color: #94a3b8;
   font-weight: 600;
 }
 
 .meteorology-card .met-val {
-  font-size: 16px;
+  font-size: 18px;
   color: #ffffff;
   font-weight: 700;
   text-shadow: 0 0 4px rgba(0, 242, 254, 0.3);
@@ -1936,7 +1936,7 @@ watch(
 
 .right-sidebar :deep(.card-title) {
   color: #ffffff !important;
-  font-size: 16px !important;
+  font-size: 18px !important;
   font-weight: 700 !important;
   text-shadow: 0 0 6px rgba(0, 242, 254, 0.3);
 }
@@ -1944,6 +1944,7 @@ watch(
 .right-sidebar :deep(.card-subtitle),
 .right-sidebar :deep(.tip-text) {
   color: #94a3b8 !important;
+  font-size: 14.5px !important;
 }
 
 .right-sidebar :deep(.config-input),
@@ -2220,13 +2221,13 @@ watch(
 
 .ugv-card .ugv-title {
   font-weight: bold;
-  font-size: 16px;
+  font-size: 18px;
   color: #00ffff;
   letter-spacing: 1px;
 }
 
 .ugv-card .ugv-status {
-  font-size: 13px;
+  font-size: 14px;
   color: #00ff88;
   font-weight: bold;
   padding: 2px 5px;
@@ -2273,12 +2274,12 @@ watch(
 }
 
 .ugv-card .ugv-label {
-  font-size: 13px;
+  font-size: 14.5px;
   color: #8fa3b0;
 }
 
 .ugv-card .ugv-value {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: #e0f2fe;
   text-shadow: 0 0 5px rgba(224, 242, 254, 0.4);
@@ -2287,7 +2288,7 @@ watch(
 .ugv-card .ugv-footer {
   text-align: right;
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: 14.5px;
   color: #00ffff;
   background: rgba(0, 255, 255, 0.05);
   border-top: 1px solid rgba(0, 255, 255, 0.15);
@@ -2311,7 +2312,7 @@ watch(
 
 .panel-header h3 {
   margin: 0 0 12px 0;
-  font-size: 15px;
+  font-size: 17.5px;
   color: #38bdf8;
   font-weight: 600;
   text-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
@@ -2331,7 +2332,7 @@ watch(
 }
 
 .cap-title {
-  font-size: 12px;
+  font-size: 14.5px;
   color: #94a3b8;
   margin-bottom: 8px;
   border-left: 2px solid #38bdf8;
@@ -2352,11 +2353,11 @@ watch(
   width: 100%;
 }
 
-.c-lbl { font-size: 12px; color: #cbd5e1; }
-.c-val { font-size: 12px; color: #f8fafc; font-weight: 500; }
+.c-lbl { font-size: 14.5px; color: #cbd5e1; }
+.c-val { font-size: 14.5px; color: #f8fafc; font-weight: 500; }
 
 .mini-status {
-  font-size: 10px;
+  font-size: 13px;
   padding: 2px 6px;
   border-radius: 4px;
 }
@@ -2408,7 +2409,7 @@ watch(
 }
 
 .s-val {
-  font-size: 16px;
+  font-size: 26px;
   color: #38bdf8;
   font-weight: bold;
   margin: 2px 0;
