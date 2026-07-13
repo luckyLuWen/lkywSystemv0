@@ -2885,12 +2885,12 @@ const tankerRescueCarModelConfigs = [
   { id: 'tanker_rescue_car_model', uri: '/Dashboard/models/recure%20car_2.glb', label: '油罐车救援车' }
 ]
 
-// 无人机位置调整（起始点：仙桃市毛嘴镇消防站）
+// 无人机位置调整（起始点：仙桃市三伏潭镇专职消防队）
 const uavAdjust = reactive({
   scale: 58.3,
   heading: 18,
-  lng: 113.4275,
-  lat: 30.3354,
+  lng: 113.202,
+  lat: 30.3268,
   height: 98.8
 });
 
@@ -3196,6 +3196,14 @@ const loadMission = async () => {
     dataSource._lastEndpoint = endpoint;
     currentMissionDataSource = dataSource;
     viewer.dataSources.add(dataSource);
+
+    // 同步时间轴
+    if (dataSource.clock) {
+      viewer.clock.startTime = dataSource.clock.startTime;
+      viewer.clock.stopTime = dataSource.clock.stopTime;
+      viewer.clock.currentTime = dataSource.clock.currentTime;
+      viewer.clock.clockRange = dataSource.clock.clockRange;
+    }
 
     // 确保从 CZML 加载的规划路线实体在地图上显式可见
     const uavPath = dataSource.entities.getById('UAV_Path');
@@ -5807,8 +5815,8 @@ function addEventEntities() {
     console.log(`[Cesium] 正在初始化无人机实体: ${config.id}, 路径: ${config.uri}`);
 
     const uavPosition = new Cesium.CallbackProperty(() => {
-      const startLng = Number(uavAdjust.lng) || 113.418173;
-      const startLat = Number(uavAdjust.lat) || 30.321919;
+      const startLng = Number(uavAdjust.lng) || 113.202;
+      const startLat = Number(uavAdjust.lat) || 30.3268;
       const startHeight = Number(uavAdjust.height) || 18.5;
 
       // 终点位置设在货车事故点 (113.104833, 30.385469) 正上方悬停，高度保持一致
@@ -6059,9 +6067,9 @@ function addEventEntities() {
             if (pos) return pos;
           }
         }
-        return Cesium.Cartesian3.fromDegrees(113.4275, 30.3354, 0.0);
+        return Cesium.Cartesian3.fromDegrees(113.202, 30.3268, 0.0);
       } else if (props.activePhaseIndex < 6) {
-        return Cesium.Cartesian3.fromDegrees(113.4275, 30.3354, 0.0);
+        return Cesium.Cartesian3.fromDegrees(113.202, 30.3268, 0.0);
       } else if (props.activePhaseIndex === 7) {
         if (!phase7StartTime) {
           phase7StartTime = Date.now();
@@ -6630,8 +6638,8 @@ function updatePhaseScene(index, animate = false) {
       rescuePopup.status = '已出发';
       rescuePopup.xOffset = -10;
       rescuePopup.yOffset = 15;
-      rescueCoords.lng = 113.4275;
-      rescueCoords.lat = 30.3354;
+      rescueCoords.lng = 113.202;
+      rescueCoords.lat = 30.3268;
       rescueCoords.height = 120.0;
       // 无人车浮窗
       ugvPopup.title = '无人车出发';
@@ -6641,8 +6649,8 @@ function updatePhaseScene(index, animate = false) {
       ugvPopup.status = '已出发';
       ugvPopup.xOffset = -27;
       ugvPopup.yOffset = -133;
-      ugvCoords.lng = 113.4275;
-      ugvCoords.lat = 30.3354;
+      ugvCoords.lng = 113.202;
+      ugvCoords.lat = 30.3268;
       ugvCoords.height = 10.0;
       
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
@@ -6686,8 +6694,8 @@ function updatePhaseScene(index, animate = false) {
       rescuePopup.status = '已出发';
       rescuePopup.xOffset = -10;
       rescuePopup.yOffset = 15;
-      rescueCoords.lng = 113.4275;
-      rescueCoords.lat = 30.3354;
+      rescueCoords.lng = 113.202;
+      rescueCoords.lat = 30.3268;
       rescueCoords.height = 120.0;
       ugvPopup.title = '无人车出发';
       ugvPopup.model = 'SCOUT 2.0';
@@ -6696,8 +6704,8 @@ function updatePhaseScene(index, animate = false) {
       ugvPopup.status = '已出发';
       ugvPopup.xOffset = -27;
       ugvPopup.yOffset = -133;
-      ugvCoords.lng = 113.4275;
-      ugvCoords.lat = 30.3354;
+      ugvCoords.lng = 113.202;
+      ugvCoords.lat = 30.3268;
       ugvCoords.height = 10.0;
       
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
@@ -8098,7 +8106,7 @@ onBeforeUnmount(() => {
   position: absolute;
   top: 80px;
   right: 20px;
-  width: 350px;
+  width: 580px; /* 适当拉大宽度以获得更好的侦察细节图展示 */
   background: rgba(7, 11, 25, 0.9);
   border: 1px solid rgba(0, 255, 255, 0.45);
   border-radius: 8px;
@@ -8113,27 +8121,27 @@ onBeforeUnmount(() => {
 .uav-photo-header {
   background: rgba(0, 255, 255, 0.12);
   border-bottom: 1px solid rgba(0, 255, 255, 0.25);
-  padding: 8px 12px;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .uav-photo-icon {
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .uav-photo-title {
   color: #00ffff;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: bold;
   letter-spacing: 0.5px;
 }
 
 .uav-status-tag {
   margin-left: auto;
-  font-size: 10px;
-  padding: 2px 6px;
+  font-size: 11px;
+  padding: 3px 8px;
   background: rgba(255, 169, 64, 0.15);
   color: #ffa940;
   border: 1px solid rgba(255, 169, 64, 0.35);
@@ -8149,10 +8157,10 @@ onBeforeUnmount(() => {
 }
 
 .uav-photo-content {
-  padding: 10px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
 .uav-main-photo-wrapper {
@@ -8212,13 +8220,13 @@ onBeforeUnmount(() => {
   left: 0;
   right: 0;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
-  padding: 8px 12px;
+  padding: 10px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   color: #fff;
   font-family: monospace;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .uav-photo-timestamp {
@@ -8233,7 +8241,7 @@ onBeforeUnmount(() => {
 .uav-thumbnails-row {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
 }
 
@@ -8278,12 +8286,12 @@ onBeforeUnmount(() => {
 
 .thumb-badge {
   position: absolute;
-  top: 2px;
-  left: 2px;
+  top: 4px;
+  left: 4px;
   background: rgba(0, 0, 0, 0.75);
   color: #00ffff;
-  font-size: 8px;
-  padding: 1px 3px;
+  font-size: 10px;
+  padding: 2px 5px;
   border-radius: 2px;
   font-family: monospace;
   font-weight: bold;

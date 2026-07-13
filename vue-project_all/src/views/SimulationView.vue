@@ -116,6 +116,16 @@ const loadMission = async () => {
     const dataSource = await Cesium.CzmlDataSource.load(czmlUrl)
     currentCzmlDataSource = dataSource
     viewer.dataSources.add(dataSource)
+
+    // 同步时间轴
+    if (dataSource.clock) {
+      viewer.clock.startTime = dataSource.clock.startTime;
+      viewer.clock.stopTime = dataSource.clock.stopTime;
+      viewer.clock.currentTime = dataSource.clock.currentTime;
+      viewer.clock.clockRange = dataSource.clock.clockRange;
+      viewer.clock.multiplier = 20.0;
+      viewer.clock.shouldAnimate = true;
+    }
     // 保持当前的城市级俯视视角，不改变相机机位
   } catch (error) {
     console.error('加载三维轨迹 CZML 失败:', error)
