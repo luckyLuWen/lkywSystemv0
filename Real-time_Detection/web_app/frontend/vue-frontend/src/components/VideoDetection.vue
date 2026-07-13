@@ -1,6 +1,7 @@
 <template>
   <div class="card">
     <h3>🎬 视频抽帧检测</h3>
+    <ModelMetricsPanel :settings="props.settings" :availableModels="props.availableModels" />
     
     <div class="upload-area" @click="fileInput.click()">
       <div class="upload-icon">🎥</div>
@@ -19,6 +20,15 @@
     <div v-if="pendingVideoUrl" class="video-preview-section">
       <h4>📹 视频预览</h4>
       <video :src="pendingVideoUrl" controls class="preview-video"></video>
+      <div v-if="!loading && !result" class="video-options">
+        <label class="option-field">
+          <span>抽帧间隔</span>
+          <input v-model.number="frameInterval" type="number" min="1" max="600" step="1">
+        </label>
+        <div class="option-summary">
+          当前模型：{{ props.settings.model || '未选择' }}，每 {{ normalizedInterval }} 帧检测一次
+        </div>
+      </div>
       <div v-if="!loading && !result" class="button-group">
         <button class="btn btn-primary" @click="startDetection">🚀 开始检测</button>
         <button class="btn btn-danger" @click="cancelUpload">❌ 取消</button>
@@ -40,16 +50,26 @@
       <div class="detection-info">
         <div class="info-box">
           <h4>视频总帧数</h4>
-          <p>{{ result.total_frames }}</p>
+          <p class="stat-value">{{ result.total_frames }}</p>
+        </div>
+        <div class="info-box">
+          <h4>抽样帧数</h4>
+          <p class="stat-value">{{ result.sampled_frames }}</p>
         </div>
         <div class="info-box">
           <h4>平均帧处理时间</h4>
-          <p>{{ result.avg_frame_time }} s</p>
+          <p class="stat-value">{{ result.avg_frame_time }} s</p>
         </div>
         <div class="info-box">
           <h4>检测到目标</h4>
-          <p>{{ totalDetections }}</p>
+          <p class="stat-value">{{ totalDetections }}</p>
         </div>
+      </div>
+
+      <div class="video-meta">
+        <span>模型：{{ result.model || props.settings.model }}</span>
+        <span>视频 FPS：{{ result.fps }}</span>
+        <span>抽帧间隔：{{ result.interval }} 帧</span>
       </div>
 
       <h4 style="margin-top: 30px;">检测结果帧:</h4>
@@ -66,6 +86,7 @@
               v-for="(det, detIdx) in frame.detections" 
               :key="detIdx" 
               class="detection-badge"
+              :style="getClassStyle(det.class)"
             >
               {{ det.class }} ({{ (det.confidence * 100).toFixed(1) }}%)
             </span>
@@ -79,9 +100,15 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import ModelMetricsPanel from './ModelMetricsPanel.vue'
+import { getClassStyle } from '../utils/classColors'
 
 const props = defineProps({
   settings: Object,
+  availableModels: {
+    type: Array,
+    default: () => []
+  },
   safeFetch: Function
 })
 
@@ -90,6 +117,12 @@ const pendingVideoFile = ref(null)
 const pendingVideoUrl = ref('')
 const loading = ref(false)
 const result = ref(null)
+const frameInterval = ref(30)
+
+const normalizedInterval = computed(() => {
+  const value = Number(frameInterval.value) || 30
+  return Math.min(Math.max(Math.floor(value), 1), 600)
+})
 
 const totalDetections = computed(() => {
   if (!result.value) return 0
@@ -127,7 +160,7 @@ const startDetection = async () => {
   formData.append('model', props.settings.model)
   formData.append('conf', props.settings.conf)
   formData.append('iou', props.settings.iou)
-  formData.append('interval', 30) // Fixed interval as in original code
+  formData.append('interval', normalizedInterval.value)
 
   try {
     const data = await props.safeFetch('/api/detect/video', {
@@ -166,6 +199,48 @@ const startDetection = async () => {
   justify-content: center;
 }
 
+.video-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 12px 0 18px;
+  padding: 14px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.option-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.option-field input {
+  width: 96px;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.option-summary,
+.video-meta {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.video-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
 .detection-info {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -181,14 +256,16 @@ const startDetection = async () => {
 }
 
 .info-box h4 {
-  color: #667eea;
+  color: #1f3a8a;
   margin-bottom: 5px;
   font-size: 14px;
 }
 
-.info-box p {
+.detection-info .info-box .stat-value {
+  color: #000000 !important;
   font-size: 24px;
-  font-weight: bold;
+  font-weight: 800;
+  text-shadow: none;
 }
 
 .frames-container {
@@ -235,11 +312,12 @@ const startDetection = async () => {
 }
 
 .detection-badge {
-  background: #10b981;
   color: white;
   padding: 4px 12px;
+  border: 1px solid transparent;
   border-radius: 20px;
   font-size: 12px;
+  font-weight: 700;
 }
 
 .no-detection {
