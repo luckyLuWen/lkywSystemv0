@@ -25,9 +25,9 @@ export const store = reactive({
   databaseOnline: false,
   videoOnline: false,
   nodes: {
-    node1: createNodeState("监测点 A"),
-    node2: createNodeState("监测点 B"),
-    node3: createNodeState("气象站"),
+    node1: createNodeState("感知单元(UGV)-001"),
+    node2: createNodeState("感知单元(UGV)-002"),
+    node3: createNodeState("固定环境感知节点总控"),
   },
   data: {
     node1: { temp: 0, hum: 0, smoke: 0, tvoc: 0, co: 0 },

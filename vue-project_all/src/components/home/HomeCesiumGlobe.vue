@@ -160,7 +160,7 @@
             <label class="form-label">推演阶段</label>
             <select v-model.number="cameraAdjust.phaseIndex" class="phase-select" @change="onPhaseSelectChange">
               <option v-for="(phase, idx) in currentPhaseOptions" :key="idx" :value="idx + 1">
-                {{ idx + 1 }}: {{ phase.title }}
+                {{ idx + 1 }}: {{ phase.shortLabel || phase.title }}
               </option>
             </select>
           </div>
@@ -172,9 +172,9 @@
               <input 
                 type="range" 
                 v-model.number="cameraAdjust.range" 
-                min="200" 
-                max="6000" 
-                step="10" 
+                min="50" 
+                max="100000" 
+                step="50" 
                 class="cyber-range-slider"
                 @input="applyCameraAdjust"
               />
@@ -256,6 +256,20 @@
         
         <div class="light-panel-body">
           <div class="light-control-row">
+            <label class="light-control-label">选择灯光</label>
+            <div class="light-select-tabs">
+              <button 
+                v-for="(l, idx) in lights" 
+                :key="l.id" 
+                :class="['light-tab-btn', { active: activeLightIndex === idx }]"
+                @click="activeLightIndex = idx"
+              >
+                {{ l.id }}
+              </button>
+            </div>
+          </div>
+          
+          <div class="light-control-row">
             <label class="light-control-label">显示灯光模型</label>
             <input type="checkbox" v-model="lightAdjust.show" class="light-checkbox" />
           </div>
@@ -315,8 +329,9 @@
             <button @click="snapLightTo('tanker')" class="light-btn">⛽ 定位至油罐车点</button>
           </div>
 
-          <div class="light-panel-buttons">
-            <button @click="copyLightCoords" class="light-btn btn-primary">📋 复制灯光配置参数</button>
+          <div class="light-panel-buttons" style="flex-direction: column; gap: 6px;">
+            <button @click="copyLightCoords" class="light-btn btn-primary">📋 复制当前灯光配置参数</button>
+            <button @click="copyAllLightsCoords" class="light-btn">📋 复制所有灯光配置参数</button>
           </div>
           
           <div v-if="coordCopiedMessage" class="light-copied-msg">{{ coordCopiedMessage }}</div>
@@ -398,6 +413,568 @@
         </div>
       </div>
 
+      <!-- ⛽ 油罐车与泄漏烟雾模型微调工具面板 -->
+      <div v-if="isTankerPanelExpanded" class="light-control-panel tanker-control-panel">
+        <div class="light-panel-header" @click="toggleTankerPanel">
+          <span class="light-panel-title">⛽ 油罐车事故模型微调</span>
+          <span class="light-panel-toggle">✕</span>
+        </div>
+        
+        <div class="light-panel-body">
+          <div class="light-control-row">
+            <label class="light-control-label">微调目标</label>
+            <div class="light-select-tabs" style="width: 100%;">
+              <button 
+                :class="['light-tab-btn', { active: activeTankerTarget === 'model' }]"
+                @click="activeTankerTarget = 'model'"
+                style="flex: 1;"
+              >
+                油罐车3D车模
+              </button>
+              <button 
+                :class="['light-tab-btn', { active: activeTankerTarget === 'leakPoint' }]"
+                @click="activeTankerTarget = 'leakPoint'"
+                style="flex: 1;"
+              >
+                泄漏烟雾中心
+              </button>
+            </div>
+          </div>
+
+          <template v-if="activeTankerTarget === 'model'">
+            <div class="light-control-row">
+              <label class="light-control-label">经度 (Lng)</label>
+              <input type="number" v-model.number="tankerAdjust.lng" step="0.000001" class="light-input-num" />
+            </div>
+            
+            <div class="light-control-row">
+              <label class="light-control-label">纬度 (Lat)</label>
+              <input type="number" v-model.number="tankerAdjust.lat" step="0.000001" class="light-input-num" />
+            </div>
+
+            <div class="light-control-row">
+              <label class="light-control-label">高度 (Height)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="tankerAdjust.height" min="-20" max="100" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="tankerAdjust.height" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <div class="light-control-row">
+              <label class="light-control-label">缩放 (Scale)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="tankerAdjust.scale" min="0.01" max="10.0" step="0.01" class="light-slider" />
+                <input type="number" v-model.number="tankerAdjust.scale" step="0.01" class="light-slider-input" />
+              </div>
+            </div>
+
+            <div class="light-control-row">
+              <label class="light-control-label">航向 (Heading)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="tankerAdjust.heading" min="-180" max="360" step="1" class="light-slider" />
+                <input type="number" v-model.number="tankerAdjust.heading" step="1" class="light-slider-input" />
+              </div>
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="light-control-row">
+              <label class="light-control-label">经度 (Lng)</label>
+              <input type="number" v-model.number="tankerPointAdjust.lng" step="0.000001" class="light-input-num" />
+            </div>
+            
+            <div class="light-control-row">
+              <label class="light-control-label">纬度 (Lat)</label>
+              <input type="number" v-model.number="tankerPointAdjust.lat" step="0.000001" class="light-input-num" />
+            </div>
+          </template>
+
+          <div class="light-panel-buttons" style="flex-direction: column; gap: 6px;">
+            <button @click="copyTankerCoords" class="light-btn btn-primary">📋 复制当前配置参数</button>
+            <button @click="snapTankerToDefault" class="light-btn">📍 重置为默认位置</button>
+          </div>
+          
+          <div v-if="tankerCopiedMessage" class="light-copied-msg">{{ tankerCopiedMessage }}</div>
+        </div>
+      </div>
+
+      <!-- 🤖 无人机与无人车模型微调工具面板 -->
+      <div v-if="isUavUgvPanelExpanded" class="light-control-panel uavugv-control-panel">
+        <div class="light-panel-header" @click="toggleUavUgvPanel">
+          <span class="light-panel-title">🤖 无人装备微调 ({{ currentScene === 'truck' ? '货车现场' : '油罐车现场' }})</span>
+          <span class="light-panel-toggle">✕</span>
+        </div>
+        
+        <div class="light-panel-body">
+          <div class="light-control-row">
+            <label class="light-control-label">微调目标</label>
+            <div class="light-select-tabs" style="width: 100%;">
+              <button 
+                :class="['light-tab-btn', { active: activeUavUgvTarget === 'uav' }]"
+                @click="activeUavUgvTarget = 'uav'"
+                style="flex: 1;"
+              >
+                无人机 (UAV)
+              </button>
+              <button 
+                :class="['light-tab-btn', { active: activeUavUgvTarget === 'ugv' }]"
+                @click="activeUavUgvTarget = 'ugv'"
+                style="flex: 1;"
+              >
+                无人车 (UGV)
+              </button>
+            </div>
+          </div>
+
+          <template v-if="activeUavUgvTarget === 'uav'">
+            <div class="light-control-row">
+              <label class="light-control-label">经度 (Lng)</label>
+              <input type="number" v-model.number="currentUavAdjust.lng" step="0.000001" class="light-input-num" />
+            </div>
+            
+            <div class="light-control-row">
+              <label class="light-control-label">纬度 (Lat)</label>
+              <input type="number" v-model.number="currentUavAdjust.lat" step="0.000001" class="light-input-num" />
+            </div>
+
+            <div class="light-control-row">
+              <label class="light-control-label">高度 (Height)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="currentUavAdjust.height" min="-20" max="150" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="currentUavAdjust.height" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <div class="light-control-row">
+              <label class="light-control-label">缩放 (Scale)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="currentUavAdjust.scale" min="0.1" max="100.0" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="currentUavAdjust.scale" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <div class="light-control-row">
+              <label class="light-control-label">航向 (Heading)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="currentUavAdjust.heading" min="-180" max="360" step="1" class="light-slider" />
+                <input type="number" v-model.number="currentUavAdjust.heading" step="1" class="light-slider-input" />
+              </div>
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="light-control-row">
+              <label class="light-control-label">经度 (Lng)</label>
+              <input type="number" v-model.number="currentRescueCarAdjust.lng" step="0.000001" class="light-input-num" />
+            </div>
+            
+            <div class="light-control-row">
+              <label class="light-control-label">纬度 (Lat)</label>
+              <input type="number" v-model.number="currentRescueCarAdjust.lat" step="0.000001" class="light-input-num" />
+            </div>
+
+            <div class="light-control-row">
+              <label class="light-control-label">高度 (Height)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="currentRescueCarAdjust.height" min="-20" max="100" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="currentRescueCarAdjust.height" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <div class="light-control-row">
+              <label class="light-control-label">缩放 (Scale)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="currentRescueCarAdjust.scale" min="0.1" max="1000.0" step="0.5" class="light-slider" />
+                <input type="number" v-model.number="currentRescueCarAdjust.scale" step="0.5" class="light-slider-input" />
+              </div>
+            </div>
+
+            <div class="light-control-row">
+              <label class="light-control-label">航向 (Heading)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="currentRescueCarAdjust.heading" min="-180" max="360" step="1" class="light-slider" />
+                <input type="number" v-model.number="currentRescueCarAdjust.heading" step="1" class="light-slider-input" />
+              </div>
+            </div>
+          </template>
+
+          <div class="light-panel-buttons" style="flex-direction: column; gap: 6px;">
+            <button @click="copyUavUgvCoords" class="light-btn btn-primary">📋 复制当前配置参数</button>
+            <button @click="snapUavUgvToDefault" class="light-btn">📍 重置为默认位置</button>
+          </div>
+          
+          <div v-if="uavUgvCopiedMessage" class="light-copied-msg">{{ uavUgvCopiedMessage }}</div>
+        </div>
+      </div>
+
+      <!-- 🚗 无人车已就位/出发悬浮窗微调面板 -->
+      <div v-if="isUgvPopupPanelExpanded" class="light-control-panel ugvpopup-control-panel">
+        <div class="light-panel-header" @click="toggleUgvPopupPanel">
+          <span class="light-panel-title">🚗 无人车悬浮窗微调</span>
+          <span class="light-panel-toggle">✕</span>
+        </div>
+        
+        <div class="light-panel-body">
+          <div class="light-control-row">
+            <label class="light-control-label">强制显示浮窗</label>
+            <input type="checkbox" v-model="ugvPopup.show" class="light-checkbox" />
+          </div>
+          
+          <div class="light-control-row">
+            <label class="light-control-label">水平偏移 (X Offset)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="ugvPopup.xOffset" min="-200" max="200" step="1" class="light-slider" />
+              <input type="number" v-model.number="ugvPopup.xOffset" step="1" class="light-slider-input" />
+            </div>
+          </div>
+          
+          <div class="light-control-row">
+            <label class="light-control-label">垂直偏移 (Y Offset)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="ugvPopup.yOffset" min="-200" max="200" step="1" class="light-slider" />
+              <input type="number" v-model.number="ugvPopup.yOffset" step="1" class="light-slider-input" />
+            </div>
+          </div>
+
+          <div class="light-control-row">
+            <label class="light-control-label">浮窗标题</label>
+            <input type="text" v-model="ugvPopup.title" class="light-input-num" style="width: 100%; text-align: left; padding-left: 6px;" />
+          </div>
+
+          <div class="light-control-row">
+            <label class="light-control-label">出动状态</label>
+            <select v-model="ugvPopup.status" class="phase-select" style="width: 100%; background: rgba(5, 10, 40, 0.85); color: #fff; border: 1px solid rgba(70, 130, 255, 0.4); padding: 4px; border-radius: 4px;">
+              <option value="已出发">已出发</option>
+              <option value="已就位">已就位</option>
+              <option value="传感器布设中">传感器布设中</option>
+              <option value="执行中">执行中</option>
+            </select>
+          </div>
+
+          <div class="light-panel-buttons" style="flex-direction: column; gap: 6px;">
+            <button @click="resetUgvPopupCoords" class="light-btn btn-primary">🔄 重置默认偏移</button>
+            <button @click="copyUgvPopupParams" class="light-btn">📋 复制当前悬浮窗参数</button>
+          </div>
+
+          <div v-if="ugvPopupCopiedMessage" class="light-copied-msg">{{ ugvPopupCopiedMessage }}</div>
+        </div>
+      </div>
+
+      <!-- 🚁 无人机已就位/出发悬浮窗微调面板 -->
+      <div v-if="isUavPopupPanelExpanded" class="light-control-panel uavpopup-control-panel">
+        <div class="light-panel-header" @click="toggleUavPopupPanel">
+          <span class="light-panel-title">🚁 无人机悬浮窗微调</span>
+          <span class="light-panel-toggle">✕</span>
+        </div>
+        
+        <div class="light-panel-body">
+          <div class="light-control-row">
+            <label class="light-control-label">强制显示浮窗</label>
+            <input type="checkbox" v-model="rescuePopup.show" class="light-checkbox" />
+          </div>
+          
+          <div class="light-control-row">
+            <label class="light-control-label">水平偏移 (X Offset)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="rescuePopup.xOffset" min="-200" max="200" step="1" class="light-slider" />
+              <input type="number" v-model.number="rescuePopup.xOffset" step="1" class="light-slider-input" />
+            </div>
+          </div>
+          
+          <div class="light-control-row">
+            <label class="light-control-label">垂直偏移 (Y Offset)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="rescuePopup.yOffset" min="-200" max="200" step="1" class="light-slider" />
+              <input type="number" v-model.number="rescuePopup.yOffset" step="1" class="light-slider-input" />
+            </div>
+          </div>
+
+          <div class="light-control-row">
+            <label class="light-control-label">浮窗标题</label>
+            <input type="text" v-model="rescuePopup.title" class="light-input-num" style="width: 100%; text-align: left; padding-left: 6px;" />
+          </div>
+
+          <div class="light-control-row">
+            <label class="light-control-label">出动状态</label>
+            <select v-model="rescuePopup.status" class="phase-select" style="width: 100%; background: rgba(5, 10, 40, 0.85); color: #fff; border: 1px solid rgba(70, 130, 255, 0.4); padding: 4px; border-radius: 4px;">
+              <option value="已出发">已出发</option>
+              <option value="已到达">已到达</option>
+              <option value="感知部署中">感知部署中</option>
+              <option value="执行中">执行中</option>
+            </select>
+          </div>
+
+          <div class="light-panel-buttons" style="flex-direction: column; gap: 6px;">
+            <button @click="resetUavPopupCoords" class="light-btn btn-primary">🔄 重置默认偏移</button>
+            <button @click="copyUavPopupParams" class="light-btn">📋 复制当前悬浮窗参数</button>
+          </div>
+
+          <div v-if="uavPopupCopiedMessage" class="light-copied-msg">{{ uavPopupCopiedMessage }}</div>
+        </div>
+      </div>
+
+      <!-- 📊 仿真推演悬浮窗微调面板 -->
+      <div v-if="isSimulationPopupPanelExpanded" class="light-control-panel simpopup-control-panel">
+        <div class="light-panel-header" @click="toggleSimulationPopupPanel">
+          <span class="light-panel-title">📊 仿真推演悬浮窗微调</span>
+          <span class="light-panel-toggle">✕</span>
+        </div>
+        
+        <div class="light-panel-body">
+          <div class="light-control-row">
+            <label class="light-control-label">强制显示浮窗</label>
+            <input type="checkbox" v-model="simulationPopup.show" class="light-checkbox" />
+          </div>
+          
+          <div class="light-control-row">
+            <label class="light-control-label">水平偏移 (X Offset)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="simulationPopup.xOffset" min="-400" max="400" step="1" class="light-slider" />
+              <input type="number" v-model.number="simulationPopup.xOffset" step="1" class="light-slider-input" />
+            </div>
+          </div>
+          
+          <div class="light-control-row">
+            <label class="light-control-label">垂直偏移 (Y Offset)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="simulationPopup.yOffset" min="-400" max="400" step="1" class="light-slider" />
+              <input type="number" v-model.number="simulationPopup.yOffset" step="1" class="light-slider-input" />
+            </div>
+          </div>
+
+          <div class="light-panel-buttons" style="flex-direction: column; gap: 6px;">
+            <button @click="resetSimulationPopupCoords" class="light-btn btn-primary">🔄 重置默认偏移</button>
+            <button @click="copySimulationPopupParams" class="light-btn">📋 复制当前悬浮窗参数</button>
+          </div>
+
+          <div v-if="simulationPopupCopiedMessage" class="light-copied-msg">{{ simulationPopupCopiedMessage }}</div>
+        </div>
+      </div>
+
+      <!-- 🔥💨 无人感知部署/执行阶段粒子微调面板 -->
+      <div v-if="isLateFirePanelExpanded" class="light-control-panel latefire-control-panel">
+        <div class="light-panel-header" @click="toggleLateFirePanel">
+          <span class="light-panel-title">🔥💨 后期感知阶段粒子微调</span>
+          <span class="light-panel-toggle">✕</span>
+        </div>
+        
+        <div class="light-panel-body" style="padding-top: 8px;">
+          <!-- 粒子类型切换标签页 -->
+          <div class="particle-tabs" style="display: flex; border-bottom: 1px solid rgba(0, 229, 255, 0.25); margin-bottom: 12px; gap: 4px;">
+            <div 
+              class="particle-tab" 
+              @click="activeParticleTab = 'fire'"
+              :style="{
+                flex: 1,
+                textAlign: 'center',
+                padding: '6px 0',
+                cursor: 'pointer',
+                fontSize: '12px',
+                transition: 'all 0.3s',
+                borderBottom: activeParticleTab === 'fire' ? '2px solid #00e5ff' : '2px solid transparent',
+                color: activeParticleTab === 'fire' ? '#00e5ff' : '#8fa5c0',
+                textShadow: activeParticleTab === 'fire' ? '0 0 8px rgba(0,229,255,0.5)' : 'none',
+                fontWeight: activeParticleTab === 'fire' ? 'bold' : 'normal'
+              }"
+            >
+              🔥 火焰粒子
+            </div>
+            <div 
+              class="particle-tab" 
+              @click="activeParticleTab = 'smoke'"
+              :style="{
+                flex: 1,
+                textAlign: 'center',
+                padding: '6px 0',
+                cursor: 'pointer',
+                fontSize: '12px',
+                transition: 'all 0.3s',
+                borderBottom: activeParticleTab === 'smoke' ? '2px solid #00e5ff' : '2px solid transparent',
+                color: activeParticleTab === 'smoke' ? '#00e5ff' : '#8fa5c0',
+                textShadow: activeParticleTab === 'smoke' ? '0 0 8px rgba(0,229,255,0.5)' : 'none',
+                fontWeight: activeParticleTab === 'smoke' ? 'bold' : 'normal'
+              }"
+            >
+              💨 烟雾粒子
+            </div>
+          </div>
+
+          <!-- 火焰粒子微调 -->
+          <div v-if="activeParticleTab === 'fire'">
+            <!-- 粒子大小维度 (宽高) -->
+            <div class="light-control-row">
+              <label class="light-control-label">粒子宽度 (Width)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateFireAdjust.imageWidth" min="2" max="40" step="1" class="light-slider" />
+                <input type="number" v-model.number="lateFireAdjust.imageWidth" class="light-slider-input" />
+              </div>
+            </div>
+            <div class="light-control-row">
+              <label class="light-control-label">粒子高度 (Height)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateFireAdjust.imageHeight" min="2" max="80" step="1" class="light-slider" />
+                <input type="number" v-model.number="lateFireAdjust.imageHeight" class="light-slider-input" />
+              </div>
+            </div>
+            
+            <!-- 发射速率 -->
+            <div class="light-control-row">
+              <label class="light-control-label">发射速率 (emissionRate)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateFireAdjust.emissionRate" min="5" max="100" step="1" class="light-slider" />
+                <input type="number" v-model.number="lateFireAdjust.emissionRate" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 缩放系数上限 -->
+            <div class="light-control-row">
+              <label class="light-control-label">最大缩放 (endScale)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateFireAdjust.endScale" min="0.1" max="2.0" step="0.05" class="light-slider" />
+                <input type="number" v-model.number="lateFireAdjust.endScale" step="0.05" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 喷射最大速度 -->
+            <div class="light-control-row">
+              <label class="light-control-label">最大初速度 (maxSpeed)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateFireAdjust.maxSpeed" min="0.1" max="4.0" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="lateFireAdjust.maxSpeed" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 上升气流加速度 -->
+            <div class="light-control-row">
+              <label class="light-control-label">上升推力 (gravity)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateFireAdjust.gravity" min="0.0" max="3.0" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="lateFireAdjust.gravity" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 空气阻尼阻力 -->
+            <div class="light-control-row">
+              <label class="light-control-label">空气阻力 (drag)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateFireAdjust.drag" min="0.80" max="1.00" step="0.01" class="light-slider" />
+                <input type="number" v-model.number="lateFireAdjust.drag" step="0.01" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 粒子寿命范围 -->
+            <div class="light-control-row">
+              <label class="light-control-label">最小寿命 (minLife)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateFireAdjust.minLife" min="0.5" max="10.0" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="lateFireAdjust.minLife" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <div class="light-control-row">
+              <label class="light-control-label">最大寿命 (maxLife)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateFireAdjust.maxLife" min="0.5" max="10.0" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="lateFireAdjust.maxLife" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <div class="light-panel-buttons" style="flex-direction: column; gap: 6px; margin-top: 10px;">
+              <button @click="resetLateFireParams" class="light-btn btn-primary">🔄 重置火焰参数</button>
+              <button @click="copyLateFireParams" class="light-btn">📋 复制当前火焰参数</button>
+            </div>
+          </div>
+
+          <!-- 烟雾粒子微调 -->
+          <div v-if="activeParticleTab === 'smoke'">
+            <!-- 粒子大小维度 (宽高) -->
+            <div class="light-control-row">
+              <label class="light-control-label">粒子宽度 (Width)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateSmokeAdjust.imageWidth" min="2" max="40" step="1" class="light-slider" />
+                <input type="number" v-model.number="lateSmokeAdjust.imageWidth" class="light-slider-input" />
+              </div>
+            </div>
+            <div class="light-control-row">
+              <label class="light-control-label">粒子高度 (Height)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateSmokeAdjust.imageHeight" min="2" max="80" step="1" class="light-slider" />
+                <input type="number" v-model.number="lateSmokeAdjust.imageHeight" class="light-slider-input" />
+              </div>
+            </div>
+            
+            <!-- 发射速率 -->
+            <div class="light-control-row">
+              <label class="light-control-label">发射速率 (emissionRate)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateSmokeAdjust.emissionRate" min="5" max="100" step="1" class="light-slider" />
+                <input type="number" v-model.number="lateSmokeAdjust.emissionRate" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 缩放系数上限 -->
+            <div class="light-control-row">
+              <label class="light-control-label">最大缩放 (endScale)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateSmokeAdjust.endScale" min="0.1" max="4.0" step="0.05" class="light-slider" />
+                <input type="number" v-model.number="lateSmokeAdjust.endScale" step="0.05" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 喷射最大速度 -->
+            <div class="light-control-row">
+              <label class="light-control-label">最大初速度 (maxSpeed)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateSmokeAdjust.maxSpeed" min="0.1" max="4.0" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="lateSmokeAdjust.maxSpeed" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 上升气流加速度 -->
+            <div class="light-control-row">
+              <label class="light-control-label">上升推力 (gravity)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateSmokeAdjust.gravity" min="0.0" max="5.0" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="lateSmokeAdjust.gravity" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 空气阻尼阻力 -->
+            <div class="light-control-row">
+              <label class="light-control-label">空气阻力 (drag)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateSmokeAdjust.drag" min="0.80" max="1.00" step="0.01" class="light-slider" />
+                <input type="number" v-model.number="lateSmokeAdjust.drag" step="0.01" class="light-slider-input" />
+              </div>
+            </div>
+
+            <!-- 粒子寿命范围 -->
+            <div class="light-control-row">
+              <label class="light-control-label">最小寿命 (minLife)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateSmokeAdjust.minLife" min="0.5" max="10.0" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="lateSmokeAdjust.minLife" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <div class="light-control-row">
+              <label class="light-control-label">最大寿命 (maxLife)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="lateSmokeAdjust.maxLife" min="0.5" max="10.0" step="0.1" class="light-slider" />
+                <input type="number" v-model.number="lateSmokeAdjust.maxLife" step="0.1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <div class="light-panel-buttons" style="flex-direction: column; gap: 6px; margin-top: 10px;">
+              <button @click="resetLateSmokeParams" class="light-btn btn-primary">🔄 重置烟雾参数</button>
+              <button @click="copyLateSmokeParams" class="light-btn">📋 复制当前烟雾参数</button>
+            </div>
+          </div>
+
+          <div v-if="lateFireCopiedMessage" class="light-copied-msg">{{ lateFireCopiedMessage }}</div>
+        </div>
+      </div>
+
       <!-- 🏷️ 市级行政区文字标注微调面板 -->
       <div v-if="labelConfig.show" class="camera-adjust-modal label-adjust-modal">
         <div class="camera-modal-header">
@@ -465,25 +1042,29 @@
     </div>
 
     <!-- 🛠️ 右下角微调控制台：悬浮按钮组 -->
-    <div class="bottom-right-tool-dock">
+    <div class="bottom-right-tool-dock" :class="{ collapsed: isDockCollapsed }">
+      <!-- 收缩/展开控制按钮 -->
+      <div class="dock-toggle-handle" @click="isDockCollapsed = !isDockCollapsed" title="显示/隐藏微调控制台">
+        <span class="toggle-arrow">{{ isDockCollapsed ? '◀' : '▶' }}</span>
+      </div>
       <button 
         class="dock-tool-btn label-btn" 
         :class="{ active: labelConfig.show }" 
-        @click="labelConfig.show = !labelConfig.show"
+        @click="togglePanel('label')"
       >
         标注字号微调
       </button>
       <button 
         class="dock-tool-btn camera-btn" 
         :class="{ active: cameraAdjust.show }" 
-        @click="cameraAdjust.show = !cameraAdjust.show"
+        @click="togglePanel('camera')"
       >
         相机视角微调
       </button>
       <button 
         class="dock-tool-btn traffic-btn" 
         :class="{ active: trafficConfig.show }" 
-        @click="trafficConfig.show = !trafficConfig.show"
+        @click="togglePanel('traffic')"
       >
         车流动态微调
       </button>
@@ -501,9 +1082,82 @@
       >
         5G基站微调
       </button>
+      <button 
+        class="dock-tool-btn tanker-btn" 
+        :class="{ active: isTankerPanelExpanded }" 
+        @click="toggleTankerPanel"
+      >
+        油罐车微调
+      </button>
+      <button 
+        class="dock-tool-btn uavugv-btn" 
+        :class="{ active: isUavUgvPanelExpanded }" 
+        @click="toggleUavUgvPanel"
+      >
+        装备微调
+      </button>
+      <button 
+        class="dock-tool-btn ugvpopup-btn" 
+        :class="{ active: isUgvPopupPanelExpanded }" 
+        @click="toggleUgvPopupPanel"
+      >
+        车浮窗微调
+      </button>
+      <button 
+        class="dock-tool-btn uavpopup-btn" 
+        :class="{ active: isUavPopupPanelExpanded }" 
+        @click="toggleUavPopupPanel"
+      >
+        机浮窗微调
+      </button>
+      <button 
+        class="dock-tool-btn simpopup-btn" 
+        :class="{ active: isSimulationPopupPanelExpanded }" 
+        @click="toggleSimulationPopupPanel"
+      >
+        推演浮窗微调
+      </button>
+      <button 
+        class="dock-tool-btn fire-btn" 
+        :class="{ active: isLateFirePanelExpanded }" 
+        @click="toggleLateFirePanel"
+      >
+        后期粒子微调
+      </button>
     </div>
 
+    <!-- 🗺️ 湖北省地图车辆运行图例 (位于右上角空白区域，与右侧栏联动) -->
+    <div 
+      class="hubei-map-legend" 
+      :style="{ right: legendRightOffset }"
+      v-if="activeHudTab === 'overview'"
+    >
+      <div class="legend-header">
+        <span class="legend-title">两客一危 运行图例</span>
+      </div>
+      <div class="legend-body">
+        <!-- 危化品车 -->
+        <div class="legend-row hazard-row">
+          <span class="legend-glow-dot red"></span>
+          <span class="legend-text-main">危化品运输车</span>
+          <span class="legend-text-sub">如: 鄂A·H8921</span>
+        </div>
 
+        <!-- 班线客车 -->
+        <div class="legend-row passenger-row">
+          <span class="legend-glow-dot green"></span>
+          <span class="legend-text-main">班线客车</span>
+          <span class="legend-text-sub">如: 鄂A·K3512</span>
+        </div>
+
+        <!-- 旅游包车 -->
+        <div class="legend-row tourist-row">
+          <span class="legend-glow-dot blue"></span>
+          <span class="legend-text-main">旅游包车</span>
+          <span class="legend-text-sub">如: 鄂F·T9918</span>
+        </div>
+      </div>
+    </div>
     <div v-if="loading" class="globe-mask">三维地球加载中...</div>
     <div v-else-if="errorMessage" class="globe-mask is-error">{{ errorMessage }}</div>
 
@@ -664,33 +1318,110 @@
       <div class="simulation-popup-arrow"></div>
     </div>
 
-    <!-- 救援装备出动悬浮窗 -->
+    <!-- ✈️ 无人机出发悬浮窗 -->
     <div 
       v-if="rescuePopup.show" 
-      class="shelter-popup-panel"
+      class="shelter-popup-panel uav-dispatch-popup"
       :style="{ left: rescuePopup.x + 'px', top: rescuePopup.y + 'px' }"
     >
-      <div class="shelter-popup-header">
-        <span>{{ rescuePopup.title }}</span>
+      <div class="shelter-popup-header uav-dispatch-header">
+        <div class="dispatch-title-row">
+          <span class="dispatch-icon">✈️</span>
+          <span>{{ rescuePopup.title }}</span>
+        </div>
         <button class="close-btn" @click="rescuePopup.show = false">×</button>
       </div>
       <table class="shelter-popup-table">
         <tbody>
           <tr>
-            <td class="label">无人机</td>
-            <td class="value">{{ rescuePopup.uavCount }}</td>
+            <td class="label">机型</td>
+            <td class="value highlight-cyan">{{ rescuePopup.model }}</td>
           </tr>
           <tr>
-            <td class="label">无人车</td>
-            <td class="value">{{ rescuePopup.carCount }}</td>
+            <td class="label">飞行高度</td>
+            <td class="value">{{ rescuePopup.altitude }}</td>
+          </tr>
+          <tr>
+            <td class="label">飞行速度</td>
+            <td class="value">{{ rescuePopup.speed }}</td>
           </tr>
           <tr>
             <td class="label">出动状态</td>
-            <td class="value">{{ rescuePopup.status }}</td>
+            <td class="value status-launched">{{ rescuePopup.status }}</td>
           </tr>
         </tbody>
       </table>
       <div class="shelter-popup-arrow"></div>
+    </div>
+
+    <!-- 🚗 无人车出发悬浮窗 (含传感器实时数据) -->
+    <div 
+      v-if="ugvPopup.show" 
+      class="shelter-popup-panel ugv-dispatch-popup"
+      :style="{ left: ugvPopup.x + 'px', top: ugvPopup.y + 'px' }"
+    >
+      <div class="shelter-popup-header ugv-dispatch-header">
+        <div class="dispatch-title-row">
+          <span class="dispatch-icon">🚗</span>
+          <span>{{ ugvPopup.title }}</span>
+        </div>
+        <button class="close-btn" @click="ugvPopup.show = false">×</button>
+      </div>
+      <table class="shelter-popup-table">
+        <tbody>
+          <tr>
+            <td class="label">车型</td>
+            <td class="value highlight-blue">{{ ugvPopup.model }}</td>
+          </tr>
+          <tr>
+            <td class="label">出动数量</td>
+            <td class="value">{{ ugvPopup.count }}</td>
+          </tr>
+          <tr>
+            <td class="label">行进速度</td>
+            <td class="value">{{ ugvPopup.speed }}</td>
+          </tr>
+          <tr>
+            <td class="label">出动状态</td>
+            <td class="value status-launched">{{ ugvPopup.status }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 无人车 A / B 实时传感数据面板 (从出发阶段起显示) -->
+      <div v-if="props.activePhaseIndex >= 6 && props.sensorData" class="ugv-sensor-section">
+        <div class="ugv-sensor-tabs">
+          <button 
+            :class="['ugv-sensor-tab', { active: activeUgvSensorTab === 'A' }]" 
+            @click="activeUgvSensorTab = 'A'"
+          >无人车 A <span class="ugv-tab-status" :class="{ offline: !props.isWsConnected }">{{ props.isWsConnected ? '在线' : '离线' }}</span></button>
+          <button 
+            :class="['ugv-sensor-tab', { active: activeUgvSensorTab === 'B' }]" 
+            @click="activeUgvSensorTab = 'B'"
+          >无人车 B <span class="ugv-tab-status" :class="{ offline: !props.isWsConnected }">{{ props.isWsConnected ? '在线' : '离线' }}</span></button>
+        </div>
+        <div class="ugv-sensor-body">
+          <!-- 无人车 A 数据 -->
+          <div v-if="activeUgvSensorTab === 'A'" class="ugv-sensor-grid">
+            <div class="ugv-sensor-item"><span class="ugv-sensor-label">温度</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvA.temp : '--' }}</span></div>
+            <div class="ugv-sensor-item"><span class="ugv-sensor-label">湿度</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvA.hum + '%' : '--' }}</span></div>
+            <div class="ugv-sensor-item"><span class="ugv-sensor-label">TVOC</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvA.tvoc : '--' }}</span></div>
+            <div class="ugv-sensor-item"><span class="ugv-sensor-label">CO</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvA.co : '--' }}</span></div>
+            <div class="ugv-sensor-item wide"><span class="ugv-sensor-label">烟雾</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvA.smoke + ' ug' : '--' }}</span></div>
+          </div>
+          <!-- 无人车 B 数据 -->
+          <div v-if="activeUgvSensorTab === 'B'" class="ugv-sensor-grid">
+            <div class="ugv-sensor-item"><span class="ugv-sensor-label">温度</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvB.temp : '--' }}</span></div>
+            <div class="ugv-sensor-item"><span class="ugv-sensor-label">湿度</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvB.hum + '%' : '--' }}</span></div>
+            <div class="ugv-sensor-item"><span class="ugv-sensor-label">TVOC</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvB.tvoc : '--' }}</span></div>
+            <div class="ugv-sensor-item"><span class="ugv-sensor-label">CO</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvB.co : '--' }}</span></div>
+            <div class="ugv-sensor-item wide"><span class="ugv-sensor-label">烟雾</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvB.smoke + ' ug' : '--' }}</span></div>
+          </div>
+          <div class="ugv-sensor-detail-link" @click="goToSensorManage(activeUgvSensorTab === 'A' ? 'node1' : 'node2')">点击查看详情 →</div>
+        </div>
+      </div>
+
+      <div class="shelter-popup-arrow ugv-arrow"></div>
     </div>
 
     <!-- 无人机现场侦察照片悬浮窗 -->
@@ -722,7 +1453,7 @@
           
           <div class="uav-photo-overlay" v-if="activePhotoIndex !== null">
             <div class="uav-photo-timestamp">REC ● {{ currentTimeStr }}</div>
-            <div class="uav-photo-coords">{{ getAngleName(activePhotoIndex) }} ({{ props.phases[0]?.id.startsWith('t-') ? '113.1048°E, 30.3855°N' : '114.8945°E, 30.6322°N' }})</div>
+            <div class="uav-photo-coords">{{ getAngleName(activePhotoIndex) }} ({{ props.phases[0]?.id.startsWith('t-') ? '113.1048°E, 30.3855°N' : '114.8933°E, 30.6317°N' }})</div>
           </div>
         </div>
         
@@ -753,57 +1484,7 @@
       </div>
     </div>
 
-    <!-- 无人车 A 实时数据悬浮窗 (仅在有传感器数据时显示) -->
-    <div 
-      v-if="props.activePhaseIndex >= 7 && ugvA.x !== -1000 && props.sensorData" 
-      class="ugv-panel"
-      :style="{ left: ugvA.x + 'px', top: ugvA.y + 'px' }"
-    >
-      <div class="ugv-header">
-        <span class="ugv-title">无人车 A</span>
-        <span class="ugv-status" :class="{ offline: !props.isWsConnected }">{{ props.isWsConnected ? '在线' : '离线' }}</span>
-      </div>
-      <div class="ugv-data">
-        <div class="ugv-row">
-          <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ props.isWsConnected ? ugvA.temp : '--' }}</span></div>
-          <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ props.isWsConnected ? ugvA.hum + '%' : '--' }}</span></div>
-        </div>
-        <div class="ugv-row">
-          <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ props.isWsConnected ? ugvA.smoke + ' ug' : '--' }}</span></div>
-        </div>
-        <div class="ugv-row">
-          <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ props.isWsConnected ? ugvA.tvoc : '--' }}</span></div>
-          <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ props.isWsConnected ? ugvA.co : '--' }}</span></div>
-        </div>
-      </div>
-      <div class="ugv-footer" @click="goToSensorManage('node1')">点击查看详情 →</div>
-    </div>
-
-    <!-- 无人车 B 实时数据悬浮窗 (仅在有传感器数据时显示) -->
-    <div 
-      v-if="props.activePhaseIndex >= 7 && ugvB.x !== -1000 && props.sensorData" 
-      class="ugv-panel"
-      :style="{ left: ugvB.x + 'px', top: ugvB.y + 'px' }"
-    >
-      <div class="ugv-header">
-        <span class="ugv-title">无人车 B</span>
-        <span class="ugv-status" :class="{ offline: !props.isWsConnected }">{{ props.isWsConnected ? '在线' : '离线' }}</span>
-      </div>
-      <div class="ugv-data">
-        <div class="ugv-row">
-          <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ props.isWsConnected ? ugvB.temp : '--' }}</span></div>
-          <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ props.isWsConnected ? ugvB.hum + '%' : '--' }}</span></div>
-        </div>
-        <div class="ugv-row">
-          <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ props.isWsConnected ? ugvB.smoke + ' ug' : '--' }}</span></div>
-        </div>
-        <div class="ugv-row">
-          <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ props.isWsConnected ? ugvB.tvoc : '--' }}</span></div>
-          <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ props.isWsConnected ? ugvB.co : '--' }}</span></div>
-        </div>
-      </div>
-      <div class="ugv-footer" @click="goToSensorManage('node2')">点击查看详情 →</div>
-    </div>
+    <!-- 无人车 A/B 实时数据已合并至上方无人车出发悬浮窗中 -->
 
 
 
@@ -823,8 +1504,8 @@
       <div class="sidebar-header">
         <div class="header-main-title">
           <div class="header-title-block">
-            <h2 class="sidebar-title">湖北省两客一危 · 智控终端</h2>
-            <span class="sidebar-subtitle">TRAFFIC MONITORING CONTROL TERMINAL</span>
+            <h2 class="sidebar-title">两客一危救援指挥室 实时信息</h2>
+            <span class="sidebar-subtitle">RESCUE COMMAND ROOM REAL-TIME INFO</span>
           </div>
           <span class="lkyw-hud-status-badge">● LIVE</span>
         </div>
@@ -1064,6 +1745,29 @@
         </div>
       </div>
 
+      <!-- 4. 省界卡口实时抓拍与抓拍播报 (全景总览模式保留) -->
+      <div v-show="activeHudTab === 'overview'" class="hud-chart-section log-section">
+        <div class="chart-title-bar">
+          <span class="chart-title">省界卡口实时抓拍流</span>
+          <span class="chart-sub">LIVE 抓拍</span>
+        </div>
+        <div class="camera-log-list">
+          <div 
+            v-for="(log, idx) in latestCameraLogs" 
+            :key="idx" 
+            class="camera-log-item"
+            :class="{ newest: idx === 0 }"
+          >
+            <span class="log-time">{{ log.time }}</span>
+            <span class="log-loc">{{ log.location }}</span>
+            <span class="log-plate">{{ log.plate }}</span>
+            <span class="log-tag" :class="log.action === '入省' ? 'in' : 'out'">
+              {{ log.action }}
+            </span>
+          </div>
+        </div>
+      </div>
+
       <!-- 3. 3D 重点干线流量柱状图 (全景总览模式保留) -->
       <div v-show="activeHudTab === 'overview'" class="hud-chart-section bar-section">
         <div class="chart-title-bar">
@@ -1100,46 +1804,23 @@
         </div>
       </div>
 
-      <!-- 4. 省界卡口实时抓拍与抓拍播报 (全景总览模式保留) -->
-      <div v-show="activeHudTab === 'overview'" class="hud-chart-section log-section">
-        <div class="chart-title-bar">
-          <span class="chart-title">省界卡口实时抓拍流</span>
-          <span class="chart-sub">LIVE 抓拍</span>
-        </div>
-        <div class="camera-log-list">
-          <div 
-            v-for="(log, idx) in latestCameraLogs" 
-            :key="idx" 
-            class="camera-log-item"
-            :class="{ newest: idx === 0 }"
-          >
-            <span class="log-time">{{ log.time }}</span>
-            <span class="log-loc">{{ log.location }}</span>
-            <span class="log-plate">{{ log.plate }}</span>
-            <span class="log-tag" :class="log.action === '入省' ? 'in' : 'out'">
-              {{ log.action }}
-            </span>
-          </div>
-        </div>
-      </div>
-
       <!-- 5. ⚠️ 实时风险预警矩阵 Tab 面板 -->
       <div v-show="activeHudTab === 'risk'" class="hud-tab-pane risk-pane">
         <div class="risk-summary-grid">
           <div class="risk-summary-item red">
-            <span class="risk-num">14</span>
+            <span class="risk-num">{{ riskStats.highRiskCount }}</span>
             <span class="risk-lbl">高危车辆</span>
           </div>
           <div class="risk-summary-item gold">
-            <span class="risk-num">8</span>
+            <span class="risk-num">{{ riskStats.speedingCount }}</span>
             <span class="risk-lbl">超速预警</span>
           </div>
           <div class="risk-summary-item orange">
-            <span class="risk-num">6</span>
+            <span class="risk-num">{{ riskStats.fatigueCount }}</span>
             <span class="risk-lbl">疲劳驾驶</span>
           </div>
           <div class="risk-summary-item blue">
-            <span class="risk-num">2</span>
+            <span class="risk-num">{{ riskStats.deviationCount }}</span>
             <span class="risk-lbl">路线偏离</span>
           </div>
         </div>
@@ -1150,66 +1831,18 @@
         </div>
 
         <div class="risk-vehicle-list">
-          <div class="risk-card-item high-risk">
+          <div v-for="(item, idx) in riskVehicles" :key="item.plate + idx" class="risk-card-item" :class="item.levelClass === 'red' ? 'high-risk' : (item.levelClass === 'orange' ? 'mid-risk' : 'low-risk')">
             <div class="risk-card-top">
-              <span class="risk-plate">鄂A-H8921</span>
-              <span class="risk-type-tag hazard">危化品 · 液化气</span>
-              <span class="risk-level-badge red">高危告警</span>
+              <span class="risk-plate">{{ item.plate }}</span>
+              <span class="risk-type-tag" :class="item.class">{{ item.type }}</span>
+              <span class="risk-level-badge" :class="item.levelClass">{{ item.level }}</span>
             </div>
             <div class="risk-card-body">
-              <div class="risk-reason">严重超速 (98km/h) · 罐体压力异常偏高</div>
-              <div class="risk-meta-row">位置: 沪渝高速 G50 KM412 (仙桃段)</div>
-              <div class="risk-meta-row">驾驶员: 李*强 (138****5921)</div>
+              <div class="risk-reason">{{ item.reason }}</div>
+              <div class="risk-meta-row">位置: {{ item.location }}</div>
+              <div class="risk-meta-row">驾驶员: {{ item.driver }}</div>
             </div>
-            <button class="risk-action-btn" @click="focusRiskVehicleOnMap(113.45, 30.36)">
-              地图追踪定位
-            </button>
-          </div>
-
-          <div class="risk-card-item high-risk">
-            <div class="risk-card-top">
-              <span class="risk-plate">鄂C-K5531</span>
-              <span class="risk-type-tag hazard">危化品 · 汽油</span>
-              <span class="risk-level-badge red">高危告警</span>
-            </div>
-            <div class="risk-card-body">
-              <div class="risk-reason">连续驾驶超 4 小时 (疲劳驾驶警报)</div>
-              <div class="risk-meta-row">位置: 福银高速 G70 KM285 (襄阳段)</div>
-              <div class="risk-meta-row">驾驶员: 王*伟 (139****1842)</div>
-            </div>
-            <button class="risk-action-btn" @click="focusRiskVehicleOnMap(112.14, 32.04)">
-              地图追踪定位
-            </button>
-          </div>
-
-          <div class="risk-card-item mid-risk">
-            <div class="risk-card-top">
-              <span class="risk-plate">鄂B-H9021</span>
-              <span class="risk-type-tag passenger">班线客车 · 49座</span>
-              <span class="risk-level-badge orange">偏离线路</span>
-            </div>
-            <div class="risk-card-body">
-              <div class="risk-reason">偏离核定运行线路 (超出 12 公里)</div>
-              <div class="risk-meta-row">位置: 沪蓉高速 G42 KM198 (宜昌段)</div>
-              <div class="risk-meta-row">驾驶员: 张*国 (137****3310)</div>
-            </div>
-            <button class="risk-action-btn" @click="focusRiskVehicleOnMap(111.28, 30.69)">
-              地图追踪定位
-            </button>
-          </div>
-
-          <div class="risk-card-item low-risk">
-            <div class="risk-card-top">
-              <span class="risk-plate">鄂F-T9918</span>
-              <span class="risk-type-tag tourist">旅游包车</span>
-              <span class="risk-level-badge gold">违规时段</span>
-            </div>
-            <div class="risk-card-body">
-              <div class="risk-reason">违规夜间 2:00-5:00 仍处于行驶状态</div>
-              <div class="risk-meta-row">位置: 汉十高速 S82 KM120 (十堰段)</div>
-              <div class="risk-meta-row">驾驶员: 陈*龙 (136****9088)</div>
-            </div>
-            <button class="risk-action-btn" @click="focusRiskVehicleOnMap(110.79, 32.65)">
+            <button class="risk-action-btn" @click="focusRiskVehicleOnMap(item.lng, item.lat)">
               地图追踪定位
             </button>
           </div>
@@ -1224,112 +1857,24 @@
         </div>
 
         <div class="checkpoint-list">
-          <div class="checkpoint-card">
+          <div v-for="cp in checkpoints" :key="cp.name" class="checkpoint-card">
             <div class="cp-rank-header">
-              <span class="cp-rank gold">TOP 1</span>
-              <span class="cp-name">临湘湖北省界卡口 (G4京港澳)</span>
-              <span class="cp-status green">畅通</span>
+              <span class="cp-rank" :class="cp.rankClass">{{ cp.rank }}</span>
+              <span class="cp-name">{{ cp.name }}</span>
+              <span class="cp-status" :class="cp.statusClass">{{ cp.status }}</span>
             </div>
             <div class="cp-stats-row">
               <div class="cp-stat">
                 <span class="cp-label">流量</span>
-                <span class="cp-val green">1,842 <small>辆/h</small></span>
+                <span class="cp-val" :class="cp.statusClass">{{ cp.flow.toLocaleString() }} <small>辆/h</small></span>
               </div>
               <div class="cp-stat">
                 <span class="cp-label">累计入省</span>
-                <span class="cp-val green">1,020 <small>辆</small></span>
+                <span class="cp-val green">{{ cp.inflow.toLocaleString() }} <small>辆</small></span>
               </div>
               <div class="cp-stat">
                 <span class="cp-label">累计出省</span>
-                <span class="cp-val gold">822 <small>辆</small></span>
-              </div>
-            </div>
-          </div>
-
-          <div class="checkpoint-card">
-            <div class="cp-rank-header">
-              <span class="cp-rank gold">TOP 2</span>
-              <span class="cp-name">黄梅九江大桥卡口 (G70福银)</span>
-              <span class="cp-status gold">繁忙</span>
-            </div>
-            <div class="cp-stats-row">
-              <div class="cp-stat">
-                <span class="cp-label">流量</span>
-                <span class="cp-val gold">1,560 <small>辆/h</small></span>
-              </div>
-              <div class="cp-stat">
-                <span class="cp-label">累计入省</span>
-                <span class="cp-val green">840 <small>辆</small></span>
-              </div>
-              <div class="cp-stat">
-                <span class="cp-label">累计出省</span>
-                <span class="cp-val gold">720 <small>辆</small></span>
-              </div>
-            </div>
-          </div>
-
-          <div class="checkpoint-card">
-            <div class="cp-rank-header">
-              <span class="cp-rank silver">TOP 3</span>
-              <span class="cp-name">荆州长江大桥卡口 (G55二广)</span>
-              <span class="cp-status green">畅通</span>
-            </div>
-            <div class="cp-stats-row">
-              <div class="cp-stat">
-                <span class="cp-label">流量</span>
-                <span class="cp-val green">1,320 <small>辆/h</small></span>
-              </div>
-              <div class="cp-stat">
-                <span class="cp-label">累计入省</span>
-                <span class="cp-val green">710 <small>辆</small></span>
-              </div>
-              <div class="cp-stat">
-                <span class="cp-label">累计出省</span>
-                <span class="cp-val gold">610 <small>辆</small></span>
-              </div>
-            </div>
-          </div>
-
-          <div class="checkpoint-card">
-            <div class="cp-rank-header">
-              <span class="cp-rank border">TOP 4</span>
-              <span class="cp-name">京港澳赤壁卡口 (G4)</span>
-              <span class="cp-status orange">缓行</span>
-            </div>
-            <div class="cp-stats-row">
-              <div class="cp-stat">
-                <span class="cp-label">流量</span>
-                <span class="cp-val orange">1,180 <small>辆/h</small></span>
-              </div>
-              <div class="cp-stat">
-                <span class="cp-label">累计入省</span>
-                <span class="cp-val green">650 <small>辆</small></span>
-              </div>
-              <div class="cp-stat">
-                <span class="cp-label">累计出省</span>
-                <span class="cp-val gold">530 <small>辆</small></span>
-              </div>
-            </div>
-          </div>
-
-          <div class="checkpoint-card">
-            <div class="cp-rank-header">
-              <span class="cp-rank border">TOP 5</span>
-              <span class="cp-name">鄂陕界关防卡口 (G7011)</span>
-              <span class="cp-status green">畅通</span>
-            </div>
-            <div class="cp-stats-row">
-              <div class="cp-stat">
-                <span class="cp-label">流量</span>
-                <span class="cp-val green">950 <small>辆/h</small></span>
-              </div>
-              <div class="cp-stat">
-                <span class="cp-label">累计入省</span>
-                <span class="cp-val green">510 <small>辆</small></span>
-              </div>
-              <div class="cp-stat">
-                <span class="cp-label">累计出省</span>
-                <span class="cp-val gold">440 <small>辆</small></span>
+                <span class="cp-val gold">{{ cp.outflow.toLocaleString() }} <small>辆</small></span>
               </div>
             </div>
           </div>
@@ -1496,7 +2041,7 @@ const cameraAdjust = reactive({
 // 🚗 全省车流与巡航动态控制面板 状态
 const trafficConfig = reactive({
   show: false,
-  speedFactor: 1.0,     // 速度倍率 (0.1x ~ 10.0x)
+  speedFactor: 0.1,     // 速度倍率 (0.1x ~ 10.0x)
   minDistance: 43000,   // 最短行驶路线段长度 (默认 43.0 km)
   vehicleCount: 23,     // 巡航车辆显示数量 (默认 23 辆)
   activeCategory: 'all' // 车辆类型筛选: 'all' | 'hazard' | 'passenger' | 'tourist'
@@ -1532,7 +2077,7 @@ function reApplyTrafficRoutes() {
 }
 
 function resetTrafficConfig() {
-  trafficConfig.speedFactor = 1.0;
+  trafficConfig.speedFactor = 0.1;
   trafficConfig.minDistance = 43000;
   trafficConfig.vehicleCount = 23;
   trafficConfig.activeCategory = 'all';
@@ -1545,17 +2090,17 @@ function setVehicleCategoryFilter(cat) {
 }
 
 
-const defaultPhaseCameraConfigs = {
+const initialPhaseCameraConfigs = {
   truck: {
-    1: { range: 2500, pitch: -45, heading: 0 },
-    2: { range: 1800, pitch: -35, heading: -15 },
-    3: { range: 1440, pitch: -39, heading: -5 },
-    4: { range: 1200, pitch: -30, heading: 10 },
-    5: { range: 1500, pitch: -40, heading: -20 },
+    1: { range: 1440, pitch: -39, heading: -5 },
+    2: { range: 630, pitch: -25, heading: 33 },
+    3: { range: 630, pitch: -25, heading: 33 },
+    4: { range: 630, pitch: -25, heading: 33 },
+    5: { range: 630, pitch: -25, heading: 33 },
     6: { range: 1600, pitch: -45, heading: 0 },
-    7: { range: 1400, pitch: -35, heading: 15 },
-    8: { range: 1200, pitch: -30, heading: -10 },
-    9: { range: 1800, pitch: -45, heading: 0 },
+    7: { range: 100000, pitch: -90, heading: -3 },
+    8: { range: 641, pitch: -26, heading: -25 },
+    9: { range: 500, pitch: -21, heading: 28 },
     10: { range: 2200, pitch: -50, heading: 0 }
   },
   tanker: {
@@ -1565,37 +2110,54 @@ const defaultPhaseCameraConfigs = {
     4: { range: 1200, pitch: -30, heading: 10 },
     5: { range: 1500, pitch: -40, heading: -20 },
     6: { range: 1600, pitch: -45, heading: 0 },
-    7: { range: 1400, pitch: -35, heading: 15 },
+    7: { range: 33000, pitch: -45, heading: 352 },
     8: { range: 1200, pitch: -30, heading: -10 },
     9: { range: 1800, pitch: -45, heading: 0 },
     10: { range: 2200, pitch: -50, heading: 0 }
   }
 }
 
+const defaultPhaseCameraConfigs = reactive(JSON.parse(JSON.stringify(initialPhaseCameraConfigs)))
+
+const truckPhases = [
+  { shortLabel: '仿真开始', title: '仿真推演开始' },
+  { shortLabel: '正常行驶', title: '车辆正常行驶阶段' },
+  { shortLabel: '事故发生', title: '货车追尾事故瞬间' },
+  { shortLabel: '次生灾害（烟雾）', title: '事故现场产生大量烟雾' },
+  { shortLabel: '次生灾害（起火）', title: '事故车辆开始起火' },
+  { shortLabel: '次生灾害（大火）', title: '火势进一步扩大蔓延' },
+  { shortLabel: '无人装备出动', title: '无人装备协同出动' },
+  { shortLabel: '无人感知部署', title: '无人感知节点部署' },
+  { shortLabel: '无人感知执行', title: '无人感知任务执行' },
+  { shortLabel: '救援装备出动', title: '专业救援装备协同出动' }
+]
+
+const tankerPhases = [
+  { shortLabel: '仿真开始', title: '油罐车仿真推演开始' },
+  { shortLabel: '正常行驶', title: '油罐车正常行驶阶段' },
+  { shortLabel: '事故发生（侧翻）', title: '油罐车发生侧翻事故' },
+  { shortLabel: '次生灾害（泄露）', title: '罐体受损开始发生化学品泄露' },
+  { shortLabel: '次生灾害（弥漫）', title: '泄露液体开始向四周大面积弥漫' },
+  { shortLabel: '次生灾害（扩散）', title: '挥发气体随风向周边区域扩散' },
+  { shortLabel: '无人装备出动', title: '无人装备协同出动' },
+  { shortLabel: '无人感知部署', title: '无人感知节点部署' },
+  { shortLabel: '无人感知执行', title: '无人感知任务执行' },
+  { shortLabel: '救援装备出动', title: '专业救援装备协同出动' }
+]
+
 const currentPhaseOptions = computed(() => {
-  if (props.phases && props.phases.length > 0) {
-    return props.phases
+  if (cameraAdjust.scene === 'tanker') {
+    return tankerPhases
   }
-  return [
-    { title: '车辆正常行驶' },
-    { title: '突发事故事件' },
-    { title: '烟火/泄漏蔓延' },
-    { title: '次生灾害感知' },
-    { title: '协同响应启动' },
-    { title: '无人装备出动' },
-    { title: '无人感知部署' },
-    { title: '无人感知执行' },
-    { title: '救援装备抵达' },
-    { title: '现场处置完成' }
-  ]
+  return truckPhases
 })
 
 function applyCameraAdjust() {
   if (!viewer) return
   let lng = 113.104833, lat = 30.385469
   if (cameraAdjust.scene === 'tanker' || props.focusedPointId === 'accident_red') {
-    lng = 114.8945
-    lat = 30.632161
+    lng = 114.894472
+    lat = 30.632203
   }
   const center = Cesium.Cartesian3.fromDegrees(lng, lat, 0)
   const h = Cesium.Math.toRadians(Number(cameraAdjust.heading))
@@ -1607,6 +2169,15 @@ function applyCameraAdjust() {
   } catch (e) {
     console.warn('Camera lookAt error:', e)
   }
+
+  // 同步更新对应的默认配置
+  const scene = cameraAdjust.scene
+  const pIdx = cameraAdjust.phaseIndex
+  if (defaultPhaseCameraConfigs[scene] && defaultPhaseCameraConfigs[scene][pIdx]) {
+    defaultPhaseCameraConfigs[scene][pIdx].range = Number(cameraAdjust.range)
+    defaultPhaseCameraConfigs[scene][pIdx].pitch = Number(cameraAdjust.pitch)
+    defaultPhaseCameraConfigs[scene][pIdx].heading = Number(cameraAdjust.heading)
+  }
 }
 
 function switchCameraScene(sceneType) {
@@ -1614,6 +2185,8 @@ function switchCameraScene(sceneType) {
   if (typeof currentScene !== 'undefined' && currentScene.value !== undefined) {
     currentScene.value = sceneType
   }
+  const targetPointId = sceneType === 'tanker' ? 'accident_red' : 'accident_blue'
+  emit('accident-picked', targetPointId)
   onPhaseSelectChange()
 }
 
@@ -1625,9 +2198,18 @@ function onPhaseSelectChange() {
   cameraAdjust.pitch = cfg.pitch
   cameraAdjust.heading = cfg.heading
   applyCameraAdjust()
+  emit('update:activePhaseIndex', pIdx - 1)
 }
 
 function resetCurrentPhaseDefaultView() {
+  const pIdx = cameraAdjust.phaseIndex
+  const scene = cameraAdjust.scene
+  const initCfg = (initialPhaseCameraConfigs[scene] && initialPhaseCameraConfigs[scene][pIdx]) || { range: 1440, pitch: -39, heading: -5 }
+  if (defaultPhaseCameraConfigs[scene] && defaultPhaseCameraConfigs[scene][pIdx]) {
+    defaultPhaseCameraConfigs[scene][pIdx].range = initCfg.range
+    defaultPhaseCameraConfigs[scene][pIdx].pitch = initCfg.pitch
+    defaultPhaseCameraConfigs[scene][pIdx].heading = initCfg.heading
+  }
   onPhaseSelectChange()
 }
 
@@ -1652,16 +2234,80 @@ const isLightPanelExpanded = ref(false)
 
 const coordCopiedMessage = ref('')
 
+const activeLightIndex = ref(0)
+const lights = reactive([
+  { id: 'light1', name: '灯光 1', show: true, lng: 113.105001, lat: 30.385353, height: 8.5, scale: 0.003, heading: 16, pitch: 0, roll: 0 },
+  { id: 'light2', name: '灯光 2', show: true, lng: 113.105781, lat: 30.385317, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
+  { id: 'light3', name: '灯光 3', show: true, lng: 113.104482, lat: 30.385632, height: 8.5, scale: 0.003, heading: 198, pitch: 0, roll: 0 },
+  { id: 'light4', name: '灯光 4', show: true, lng: 114.891139, lat: 30.630711, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light5', name: '灯光 5', show: true, lng: 114.892429, lat: 30.631096, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light6', name: '灯光 6 (原3D自带)', show: true, lng: 114.894472, lat: 30.632203, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+])
+
 const lightAdjust = reactive({
   show: true,
-  lng: 113.105128,
-  lat: 30.38553,
+  lng: 113.105001,
+  lat: 30.385353,
   height: 8.5,
   scale: 0.003,
-  heading: 0,
+  heading: 16,
   pitch: 0,
   roll: 0
 })
+
+// 当切换当前编辑的灯光时，将对应的参数回填到 lightAdjust
+watch(activeLightIndex, (newIdx) => {
+  if (newIdx === 5) {
+    // light6 (索引 5) 转变成对原 3D 事故模型 (tankerAdjust) 的位置与姿态控制
+    lightAdjust.show = true
+    lightAdjust.lng = tankerAdjust.lng
+    lightAdjust.lat = tankerAdjust.lat
+    lightAdjust.height = tankerAdjust.height
+    lightAdjust.scale = tankerAdjust.scale
+    lightAdjust.heading = tankerAdjust.heading
+    lightAdjust.pitch = 0
+    lightAdjust.roll = 0
+  } else {
+    const currentLight = lights[newIdx]
+    lightAdjust.show = currentLight.show
+    lightAdjust.lng = currentLight.lng
+    lightAdjust.lat = currentLight.lat
+    lightAdjust.height = currentLight.height
+    lightAdjust.scale = currentLight.scale
+    lightAdjust.heading = currentLight.heading
+    lightAdjust.pitch = currentLight.pitch
+    lightAdjust.roll = currentLight.roll
+  }
+}, { immediate: true })
+
+// 当微调面板修改了 lightAdjust 时，同步回对应目标
+watch(lightAdjust, (newVals) => {
+  if (activeLightIndex.value === 5) {
+    // 同步修改到原 3D 事故模型 tankerAdjust，从而直接控制该模型在地图上的经纬度、高度、朝向与比例
+    tankerAdjust.lng = newVals.lng
+    tankerAdjust.lat = newVals.lat
+    tankerAdjust.height = newVals.height
+    tankerAdjust.scale = newVals.scale
+    tankerAdjust.heading = newVals.heading
+    // 同时同步记录回 lights[5]
+    const currentLight = lights[5]
+    currentLight.lng = newVals.lng
+    currentLight.lat = newVals.lat
+    currentLight.height = newVals.height
+    currentLight.scale = newVals.scale
+    currentLight.heading = newVals.heading
+  } else {
+    const currentLight = lights[activeLightIndex.value]
+    currentLight.show = newVals.show
+    currentLight.lng = newVals.lng
+    currentLight.lat = newVals.lat
+    currentLight.height = newVals.height
+    currentLight.scale = newVals.scale
+    currentLight.heading = newVals.heading
+    currentLight.pitch = newVals.pitch
+    currentLight.roll = newVals.roll
+  }
+}, { deep: true })
 
 // 📡 5G 通信基站 (jizhan.glb) 模型参数 (接入货车追尾现场)
 const isJizhanPanelExpanded = ref(false)
@@ -1678,8 +2324,70 @@ const jizhanAdjust = reactive({
   roll: 0
 })
 
+function togglePanel(panelName) {
+  if (panelName === 'label') {
+    const nextVal = !labelConfig.show;
+    closeAllPanelsExcept(panelName);
+    labelConfig.show = nextVal;
+  } else if (panelName === 'camera') {
+    const nextVal = !cameraAdjust.show;
+    closeAllPanelsExcept(panelName);
+    cameraAdjust.show = nextVal;
+  } else if (panelName === 'traffic') {
+    const nextVal = !trafficConfig.show;
+    closeAllPanelsExcept(panelName);
+    trafficConfig.show = nextVal;
+  } else if (panelName === 'light') {
+    const nextVal = !isLightPanelExpanded.value;
+    closeAllPanelsExcept(panelName);
+    isLightPanelExpanded.value = nextVal;
+  } else if (panelName === 'jizhan') {
+    const nextVal = !isJizhanPanelExpanded.value;
+    closeAllPanelsExcept(panelName);
+    isJizhanPanelExpanded.value = nextVal;
+  } else if (panelName === 'tanker') {
+    const nextVal = !isTankerPanelExpanded.value;
+    closeAllPanelsExcept(panelName);
+    isTankerPanelExpanded.value = nextVal;
+  } else if (panelName === 'uavugv') {
+    const nextVal = !isUavUgvPanelExpanded.value;
+    closeAllPanelsExcept(panelName);
+    isUavUgvPanelExpanded.value = nextVal;
+  } else if (panelName === 'ugvPopup') {
+    const nextVal = !isUgvPopupPanelExpanded.value;
+    closeAllPanelsExcept(panelName);
+    isUgvPopupPanelExpanded.value = nextVal;
+  } else if (panelName === 'uavPopup') {
+    const nextVal = !isUavPopupPanelExpanded.value;
+    closeAllPanelsExcept(panelName);
+    isUavPopupPanelExpanded.value = nextVal;
+  } else if (panelName === 'simulationPopup') {
+    const nextVal = !isSimulationPopupPanelExpanded.value;
+    closeAllPanelsExcept(panelName);
+    isSimulationPopupPanelExpanded.value = nextVal;
+  } else if (panelName === 'lateFire') {
+    const nextVal = !isLateFirePanelExpanded.value;
+    closeAllPanelsExcept(panelName);
+    isLateFirePanelExpanded.value = nextVal;
+  }
+}
+
+function closeAllPanelsExcept(exceptPanel) {
+  if (exceptPanel !== 'label') labelConfig.show = false;
+  if (exceptPanel !== 'camera') cameraAdjust.show = false;
+  if (exceptPanel !== 'traffic') trafficConfig.show = false;
+  if (exceptPanel !== 'light') isLightPanelExpanded.value = false;
+  if (exceptPanel !== 'jizhan') isJizhanPanelExpanded.value = false;
+  if (exceptPanel !== 'tanker') isTankerPanelExpanded.value = false;
+  if (exceptPanel !== 'uavugv') isUavUgvPanelExpanded.value = false;
+  if (exceptPanel !== 'ugvPopup') isUgvPopupPanelExpanded.value = false;
+  if (exceptPanel !== 'uavPopup') isUavPopupPanelExpanded.value = false;
+  if (exceptPanel !== 'simulationPopup') isSimulationPopupPanelExpanded.value = false;
+  if (exceptPanel !== 'lateFire') isLateFirePanelExpanded.value = false;
+}
+
 function toggleJizhanPanel() {
-  isJizhanPanelExpanded.value = !isJizhanPanelExpanded.value
+  togglePanel('jizhan');
 }
 
 function snapJizhanToTruck() {
@@ -1709,17 +2417,18 @@ function copyJizhanCoords() {
 }
 
 function toggleLightPanel() {
-  isLightPanelExpanded.value = !isLightPanelExpanded.value
+  togglePanel('light');
 }
 
 function snapLightTo(sceneType) {
   if (sceneType === 'truck') {
-    lightAdjust.lng = 113.104833 + 0.0003;
-    lightAdjust.lat = 30.385469 - 0.0003;
+    lightAdjust.lng = 113.105001;
+    lightAdjust.lat = 30.385353;
     lightAdjust.height = 8.5;
+    lightAdjust.heading = 16;
   } else if (sceneType === 'tanker') {
-    lightAdjust.lng = 114.8945 + 0.0003;
-    lightAdjust.lat = 30.632161 - 0.0003;
+    lightAdjust.lng = 114.894472;
+    lightAdjust.lat = 30.632203;
     lightAdjust.height = 8.5;
   }
 }
@@ -1727,7 +2436,7 @@ function snapLightTo(sceneType) {
 function copyLightCoords() {
   const text = `lng: ${lightAdjust.lng.toFixed(6)}, lat: ${lightAdjust.lat.toFixed(6)}, height: ${lightAdjust.height}, scale: ${lightAdjust.scale}, heading: ${lightAdjust.heading}, pitch: ${lightAdjust.pitch}, roll: ${lightAdjust.roll}`;
   navigator.clipboard.writeText(text).then(() => {
-    coordCopiedMessage.value = '配置参数已成功复制到剪贴板！';
+    coordCopiedMessage.value = `${lights[activeLightIndex.value].id} 配置已成功复制到剪贴板！`;
     setTimeout(() => {
       coordCopiedMessage.value = '';
     }, 2000);
@@ -1739,6 +2448,224 @@ function copyLightCoords() {
     }, 2000);
   });
 }
+
+function copyAllLightsCoords() {
+  const listText = lights.map(l => 
+    `{ id: '${l.id}', lng: ${l.lng.toFixed(6)}, lat: ${l.lat.toFixed(6)}, height: ${l.height}, scale: ${l.scale}, heading: ${l.heading}, pitch: ${l.pitch}, roll: ${l.roll} }`
+  ).join(',\n');
+  navigator.clipboard.writeText(listText).then(() => {
+    coordCopiedMessage.value = '所有 6 个灯光配置已成功复制到剪贴板！';
+    setTimeout(() => {
+      coordCopiedMessage.value = '';
+    }, 2500);
+  }).catch(err => {
+    console.error('复制失败:', err);
+coordCopiedMessage.value = '复制失败，请手动记录';
+  });
+}
+
+const uavPopupCopiedMessage = ref('');
+const simulationPopupCopiedMessage = ref('');
+
+function resetUavPopupCoords() {
+  if (rescuePopup.title === '无人机已到达') {
+    rescuePopup.xOffset = 161;
+    rescuePopup.yOffset = -62;
+  } else {
+    rescuePopup.xOffset = -10;
+    rescuePopup.yOffset = 15;
+  }
+}
+
+function copyUavPopupParams() {
+  const params = `rescuePopup.xOffset = ${rescuePopup.xOffset};\nrescuePopup.yOffset = ${rescuePopup.yOffset};`;
+  navigator.clipboard.writeText(params).then(() => {
+    uavPopupCopiedMessage.value = '已成功复制偏移参数到剪贴板！';
+    setTimeout(() => {
+      uavPopupCopiedMessage.value = '';
+    }, 2000);
+  }).catch(err => {
+    console.error('复制失败:', err);
+    uavPopupCopiedMessage.value = '复制失败，请手动记录';
+    setTimeout(() => {
+      uavPopupCopiedMessage.value = '';
+    }, 2000);
+  });
+}
+
+function resetSimulationPopupCoords() {
+  simulationPopup.xOffset = -342;
+  simulationPopup.yOffset = -90;
+}
+
+function copySimulationPopupParams() {
+  const params = `simulationPopup.xOffset = ${simulationPopup.xOffset};\nsimulationPopup.yOffset = ${simulationPopup.yOffset};`;
+  navigator.clipboard.writeText(params).then(() => {
+    simulationPopupCopiedMessage.value = '已成功复制偏移参数到剪贴板！';
+    setTimeout(() => {
+      simulationPopupCopiedMessage.value = '';
+    }, 2000);
+  }).catch(err => {
+    console.error('复制失败:', err);
+    simulationPopupCopiedMessage.value = '复制失败，请手动记录';
+    setTimeout(() => {
+      simulationPopupCopiedMessage.value = '';
+    }, 2000);
+  });
+}
+
+// 🔥💨 后期感知阶段（7阶段及以后）粒子微调参数与控制
+const isLateFirePanelExpanded = ref(false);
+const lateFireCopiedMessage = ref('');
+const activeParticleTab = ref('fire');
+
+function toggleLateFirePanel() {
+  togglePanel('lateFire');
+}
+
+const lateFireAdjust = reactive({
+  imageWidth: 10,
+  imageHeight: 10,
+  emissionRate: 20.0,
+  endScale: 0.6,
+  maxSpeed: 0.4,
+  gravity: 0.2,
+  drag: 0.92,
+  minSpeed: 0.1,
+  startScale: 0.2,
+  minLife: 2.0,
+  maxLife: 4.0
+});
+
+function resetLateFireParams() {
+  lateFireAdjust.imageWidth = 10;
+  lateFireAdjust.imageHeight = 10;
+  lateFireAdjust.emissionRate = 20.0;
+  lateFireAdjust.endScale = 0.6;
+  lateFireAdjust.maxSpeed = 0.4;
+  lateFireAdjust.gravity = 0.2;
+  lateFireAdjust.drag = 0.92;
+  lateFireAdjust.minSpeed = 0.1;
+  lateFireAdjust.startScale = 0.2;
+  lateFireAdjust.minLife = 2.0;
+  lateFireAdjust.maxLife = 4.0;
+}
+
+function copyLateFireParams() {
+  const params = `lateFireAdjust.imageWidth = ${lateFireAdjust.imageWidth};\nlateFireAdjust.imageHeight = ${lateFireAdjust.imageHeight};\nlateFireAdjust.emissionRate = ${lateFireAdjust.emissionRate};\nlateFireAdjust.endScale = ${lateFireAdjust.endScale};\nlateFireAdjust.maxSpeed = ${lateFireAdjust.maxSpeed};\nlateFireAdjust.gravity = ${lateFireAdjust.gravity};\nlateFireAdjust.drag = ${lateFireAdjust.drag};\nlateFireAdjust.minSpeed = ${lateFireAdjust.minSpeed};\nlateFireAdjust.startScale = ${lateFireAdjust.startScale};\nlateFireAdjust.minLife = ${lateFireAdjust.minLife};\nlateFireAdjust.maxLife = ${lateFireAdjust.maxLife};`;
+  navigator.clipboard.writeText(params).then(() => {
+    lateFireCopiedMessage.value = '已成功复制火焰参数到剪贴板！';
+    setTimeout(() => {
+      lateFireCopiedMessage.value = '';
+    }, 2000);
+  }).catch(err => {
+    console.error('复制失败:', err);
+    lateFireCopiedMessage.value = '复制失败，请手动记录';
+    setTimeout(() => {
+      lateFireCopiedMessage.value = '';
+    }, 2000);
+  });
+}
+
+// 实时监听微调面板数值变化，热更新火焰粒子系统参数
+watch(lateFireAdjust, (newVals) => {
+  if (fireParticle && props.activePhaseIndex >= 7) {
+    const isBigFire = (props.activePhaseIndex === 5);
+    const fireScaleBase = isBigFire ? 2.0 : 1.0;
+
+    fireParticle.startScale = newVals.startScale * fireScaleBase;
+    fireParticle.endScale = newVals.endScale * fireScaleBase;
+    fireParticle.emissionRate = newVals.emissionRate;
+    fireParticle.imageSize = new Cesium.Cartesian2(newVals.imageWidth, newVals.imageHeight);
+    fireParticle.minimumSpeed = newVals.minSpeed;
+    fireParticle.maximumSpeed = newVals.maxSpeed;
+    fireParticle.minimumParticleLife = newVals.minLife;
+    fireParticle.maximumParticleLife = newVals.maxLife;
+    fireParticle.updateCallback = (particle, dt) => {
+      const gravityScratch = new Cesium.Cartesian3();
+      Cesium.Cartesian3.normalize(particle.position, gravityScratch);
+      Cesium.Cartesian3.multiplyByScalar(gravityScratch, newVals.gravity * dt, gravityScratch);
+      Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
+
+      const dragFactor = Math.pow(newVals.drag, dt * 60);
+      particle.velocity.x *= dragFactor;
+      particle.velocity.y *= dragFactor;
+      particle.velocity.z *= dragFactor;
+    };
+  }
+}, { deep: true });
+
+// 💨 烟雾粒子微调参数与控制
+const lateSmokeAdjust = reactive({
+  imageWidth: 15,
+  imageHeight: 15,
+  emissionRate: 20.0,
+  endScale: 2.0,
+  maxSpeed: 1.5,
+  gravity: 1.0,
+  drag: 0.95,
+  minSpeed: 0.5,
+  startScale: 0.5,
+  minLife: 3.0,
+  maxLife: 6.0
+});
+
+function resetLateSmokeParams() {
+  lateSmokeAdjust.imageWidth = 15;
+  lateSmokeAdjust.imageHeight = 15;
+  lateSmokeAdjust.emissionRate = 20.0;
+  lateSmokeAdjust.endScale = 2.0;
+  lateSmokeAdjust.maxSpeed = 1.5;
+  lateSmokeAdjust.gravity = 1.0;
+  lateSmokeAdjust.drag = 0.95;
+  lateSmokeAdjust.minSpeed = 0.5;
+  lateSmokeAdjust.startScale = 0.5;
+  lateSmokeAdjust.minLife = 3.0;
+  lateSmokeAdjust.maxLife = 6.0;
+}
+
+function copyLateSmokeParams() {
+  const params = `lateSmokeAdjust.imageWidth = ${lateSmokeAdjust.imageWidth};\nlateSmokeAdjust.imageHeight = ${lateSmokeAdjust.imageHeight};\nlateSmokeAdjust.emissionRate = ${lateSmokeAdjust.emissionRate};\nlateSmokeAdjust.endScale = ${lateSmokeAdjust.endScale};\nlateSmokeAdjust.maxSpeed = ${lateSmokeAdjust.maxSpeed};\nlateSmokeAdjust.gravity = ${lateSmokeAdjust.gravity};\nlateSmokeAdjust.drag = ${lateSmokeAdjust.drag};\nlateSmokeAdjust.minSpeed = ${lateSmokeAdjust.minSpeed};\nlateSmokeAdjust.startScale = ${lateSmokeAdjust.startScale};\nlateSmokeAdjust.minLife = ${lateSmokeAdjust.minLife};\nlateSmokeAdjust.maxLife = ${lateSmokeAdjust.maxLife};`;
+  navigator.clipboard.writeText(params).then(() => {
+    lateFireCopiedMessage.value = '已成功复制烟雾参数到剪贴板！';
+    setTimeout(() => {
+      lateFireCopiedMessage.value = '';
+    }, 2000);
+  }).catch(err => {
+    console.error('复制失败:', err);
+    lateFireCopiedMessage.value = '复制失败，请手动记录';
+    setTimeout(() => {
+      lateFireCopiedMessage.value = '';
+    }, 2000);
+  });
+}
+
+// 实时监听微调面板数值变化，热更新烟雾粒子系统参数
+watch(lateSmokeAdjust, (newVals) => {
+  if (smokeParticle && props.activePhaseIndex >= 7) {
+    const smokeScaleBase = 0.35;
+
+    smokeParticle.startScale = newVals.startScale * smokeScaleBase;
+    smokeParticle.endScale = newVals.endScale * smokeScaleBase;
+    smokeParticle.emissionRate = newVals.emissionRate;
+    smokeParticle.imageSize = new Cesium.Cartesian2(newVals.imageWidth, newVals.imageHeight);
+    smokeParticle.minimumSpeed = newVals.minSpeed;
+    smokeParticle.maximumSpeed = newVals.maxSpeed;
+    smokeParticle.minimumParticleLife = newVals.minLife;
+    smokeParticle.maximumParticleLife = newVals.maxLife;
+    smokeParticle.updateCallback = (particle, dt) => {
+      const gravityScratch = new Cesium.Cartesian3();
+      Cesium.Cartesian3.normalize(particle.position, gravityScratch);
+      Cesium.Cartesian3.multiplyByScalar(gravityScratch, newVals.gravity * dt, gravityScratch);
+      Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
+
+      const dragFactor = Math.pow(newVals.drag, dt * 60);
+      particle.velocity.x *= dragFactor;
+      particle.velocity.y *= dragFactor;
+      particle.velocity.z *= dragFactor;
+    };
+  }
+}, { deep: true });
 
 // 自动检测场景切换并联动灯光坐标
 watch(() => props.focusedPointId, (newId) => {
@@ -1837,18 +2764,40 @@ function triggerPhotoAnimation(index, cartesianPos) {
 
 
 
-// 救援装备出动状态与坐标 (放在无人机/车出动起点附近)
+// 无人机出动状态与坐标
 const rescueCoords = reactive({ lng: 113.10725, lat: 30.38491, height: 24.0 });
 
 const rescuePopup = reactive({
-  show: false,
-  title: '救援装备出动',
-  uavCount: '1 架',
-  carCount: '2 辆',
+  show: true,
+  title: '无人机出发',
+  model: 'DJI M300 RTK',
+  altitude: '100 m',
+  speed: '15 m/s',
   status: '已出发',
   x: 0,
-  y: 0
+  y: 0,
+  xOffset: -10,
+  yOffset: 15
 });
+
+// 无人车出动状态与坐标
+const ugvCoords = reactive({ lng: 113.10725, lat: 30.38491, height: 5.0 });
+
+const ugvPopup = reactive({
+  show: true,
+  title: '无人车出发',
+  model: 'SCOUT 2.0',
+  count: '2 辆',
+  speed: '5 km/h',
+  status: '已出发',
+  x: 0,
+  y: 0,
+  xOffset: -27,
+  yOffset: -133
+});
+
+// 无人车传感器面板的 A/B 切换标签
+const activeUgvSensorTab = ref('A');
 
 // 城市高亮上浮高度 (仙桃与黄冈)
 const xiantaoHeight = ref(0);
@@ -1949,8 +2898,8 @@ const truckPointAdjust = reactive({
 const tankerAdjust = reactive({
   scale: 0.26,
   heading: -29,
-  lng: 114.8945,
-  lat: 30.632161,
+  lng: 114.894463,
+  lat: 30.632121,
   height: -1.2 // 手动微调高度以贴合地面
 })
 
@@ -1977,19 +2926,19 @@ const tankerRescueCarModelConfigs = [
 
 // 无人机位置调整（起始点：仙桃市毛嘴镇消防站）
 const uavAdjust = reactive({
-  scale: 6,
+  scale: 58.3,
   heading: 18,
-  lng: 113.418173,
-  lat: 30.321919,
-  height: 18.5
+  lng: 113.4275,
+  lat: 30.3354,
+  height: 98.8
 });
 
 const rescueCarAdjust = reactive({
-  scale: 250.7,
+  scale: 260.7,
   heading: 195,
   lng: 113.1073,
   lat: 30.3849,
-  height: -1.5
+  height: -1.8
 });
 
 let uavEntities = []
@@ -2016,7 +2965,7 @@ const tankerRescueCarAdjust = reactive({
   height: 6.5
 });
 
-const TANKER_STOP_FACTOR = 0.4;
+const TANKER_STOP_FACTOR = 1.0;
 
 // 油罐车场景的无人机和救援车实体数组
 let tankerUavEntities = []
@@ -2226,7 +3175,9 @@ function rerunStoryDetection() {
 const simulationPopup = reactive({
   show: false,
   x: 0,
-  y: 0
+  y: 0,
+  xOffset: -342,
+  yOffset: -90
 })
 
 function enterSimulation() {
@@ -2242,17 +3193,14 @@ const modelsReadyStatus = reactive({});
 let lastEmitTime = 0;
 const primitiveCache = new Map(); // 缓存找到的 primitive，避免重复递归搜索
 let readyCheckFrameCounter = 0; // 帧计数器，用于节流
-
 let currentMissionDataSource = null;
+let currentLoadMissionId = 0;
 
 const loadMission = async () => {
   if (!viewer) return;
+  const loadId = ++currentLoadMissionId;
   try {
     const baseUrl = getCollaborativeCommandCenterBaseUrl();
-    if (currentMissionDataSource) {
-      viewer.dataSources.remove(currentMissionDataSource);
-      currentMissionDataSource = null;
-    }
     
     const endpoint = currentScene.value === 'truck' ? 'crash' : 'leak';
     // 触发并等待生成，确保 CZML 已经写入完毕
@@ -2261,6 +3209,8 @@ const loadMission = async () => {
     } catch (e) {
       console.warn('[Cesium] 触发策略生成失败，将尝试加载已有 CZML:', e);
     }
+    
+    if (loadId !== currentLoadMissionId) return;
     
     // 如果在请求 API 期间，用户已经切回到前面（例如回到首页），则终止后续加载
     if (props.activePhaseIndex < 6) {
@@ -2271,13 +3221,32 @@ const loadMission = async () => {
     const czmlUrl = `${baseUrl}/mission.czml?t=${Date.now()}`;
     const dataSource = await Cesium.CzmlDataSource.load(czmlUrl);
     
+    if (loadId !== currentLoadMissionId) return;
+    
     // 再次双重校验，防止加载文件期间用户切换了阶段
     if (props.activePhaseIndex < 6) {
       return;
     }
 
+    if (currentMissionDataSource) {
+      viewer.dataSources.remove(currentMissionDataSource);
+    }
+    
+    dataSource._lastEndpoint = endpoint;
     currentMissionDataSource = dataSource;
     viewer.dataSources.add(dataSource);
+
+    // 确保从 CZML 加载的规划路线实体在地图上显式可见
+    const uavPath = dataSource.entities.getById('UAV_Path');
+    if (uavPath) {
+      uavPath.show = true;
+      if (uavPath.polyline) uavPath.polyline.show = true;
+    }
+    const carPath = dataSource.entities.getById('Car_Path');
+    if (carPath) {
+      carPath.show = true;
+      if (carPath.polyline) carPath.polyline.show = true;
+    }
 
     // 根据用户要求，加快无人机无人车行走的时间
     viewer.clock.multiplier = 20.0;
@@ -2387,14 +3356,14 @@ const scenarioPoints = {
   detection: { id: 'detection', label: '检测现场', longitude: 114.389, latitude: 30.5282, color: '#ffb84d' },
   response: { id: 'response', label: '协同处置区域', longitude: 114.3348, latitude: 30.5638, color: '#8cf7c5' },
   accident_blue: { id: 'accident_blue', label: '货车追尾现场', longitude: 113.104833, latitude: 30.385469, color: '#ffea00' }, // 改为黄色
-  accident_red: { id: 'accident_red', label: '油罐车泄露现场', longitude: 114.8945, latitude: 30.632161, color: '#00e5ff' },  // 改为蓝色
+  accident_red: { id: 'accident_red', label: '油罐车泄露现场', longitude: 114.894472, latitude: 30.632203, color: '#00e5ff' },  // 改为蓝色
 }
 
 function toCesiumColor(color, alpha = 1) {
   return Cesium.Color.fromCssColorString(color).withAlpha(alpha)
 }
 
-function applyOrbitView() {
+function applyOrbitView(animate = false) {
   if (!viewer || isFlying) return
   const pointId = props.focusedPointId
   const isFocused = !!pointId && scenarioPoints[pointId]
@@ -2418,81 +3387,59 @@ function applyOrbitView() {
     const target = Cesium.Cartesian3.fromDegrees(lng, lat, 0)
     
     // 默认视角参数 - 使用正上方向下看 (-90度) 展示完整的湖北省，并拉大高度以避免被UI遮挡
-    let range = isFocused ? (props.focusedPointId === 'accident_red' ? 480 : 480) : 1200000
-    let pitch = isFocused ? (props.focusedPointId === 'accident_red' ? Cesium.Math.toRadians(-32) : Cesium.Math.toRadians(-38)) : Cesium.Math.toRadians(-90)
+    let range = 1200000
+    let pitch = Cesium.Math.toRadians(-90)
+    let finalHeading = 0
 
     if (isFocused) {
       if (accidentViewLevel.value === 'far') {
         range = 120000
         pitch = Cesium.Math.toRadians(-60)
+        finalHeading = (props.focusedPointId === 'accident_red' ? tankerOrbitHeading : truckOrbitHeading)
       } else if (accidentViewLevel.value === 'medium') {
         range = 2500
         pitch = Cesium.Math.toRadians(-45)
+        finalHeading = (props.focusedPointId === 'accident_red' ? tankerOrbitHeading : truckOrbitHeading)
       } else if (accidentViewLevel.value === 'close') {
         range = props.focusedPointId === 'accident_red' ? 100 : 75
         pitch = Cesium.Math.toRadians(-20)
+        finalHeading = Cesium.Math.toRadians(8)
       } else {
-        if (props.activePhaseIndex === 0) {
-          // 仿真开始阶段：高俯视全景视角
-          range = 1800
-          pitch = Cesium.Math.toRadians(-75);
-        } else if (props.activePhaseIndex === 1) {
-          // 正常行驶阶段
-          if (props.focusedPointId === 'accident_red') {
-            range = 1800
-            pitch = Cesium.Math.toRadians(-75);
-          } else {
-            // 货车追尾现场的正常行驶特定视角
-            range = 400
-            pitch = Cesium.Math.toRadians(-45);
-          }
-        } else if (props.activePhaseIndex === 2) {
-        // 事故发生瞬间：货车保持特写，油罐车保持全景
-        if (props.focusedPointId === 'accident_red') {
-          range = 1200
-          pitch = Cesium.Math.toRadians(-45);
-        } else {
-          range = 80
-          pitch = Cesium.Math.toRadians(-22)
-        }
-      } else if (props.activePhaseIndex === 3 || props.activePhaseIndex === 4) {
-        if (props.focusedPointId === 'accident_red') {
-          range = 100; // 统一为以次生灾害弥漫为主的 100 米范围视角
-          pitch = Cesium.Math.toRadians(-25); // 统一为以次生灾害弥漫为主的 -25 度俯仰角
-        } else {
-          range = 220;
-          pitch = Cesium.Math.toRadians(-65);
-        }
-      } else if (props.activePhaseIndex === 5) {
-        // 大火与弥漫扩散阶段：油罐车中近距离视角，确保能看清大面积扩散细节
-        if (props.focusedPointId === 'accident_red') {
-          range = 300
-          pitch = Cesium.Math.toRadians(-30)
-        } else {
-          range = 220
-          pitch = Cesium.Math.toRadians(-65)
-        }
-      } else if (props.activePhaseIndex >= 6) {
-        if (props.focusedPointId === 'accident_red') {
-          range = 450
-          pitch = Cesium.Math.toRadians(-25)
-        }
+        // Read from defaultPhaseCameraConfigs
+        const pIdx = props.activePhaseIndex + 1
+        const scene = props.focusedPointId === 'accident_red' ? 'tanker' : 'truck'
+        const cfg = (defaultPhaseCameraConfigs[scene] && defaultPhaseCameraConfigs[scene][pIdx]) || { range: 1440, pitch: -39, heading: -5 }
+        
+        range = cfg.range
+        pitch = Cesium.Math.toRadians(cfg.pitch)
+        finalHeading = Cesium.Math.toRadians(cfg.heading)
       }
     }
-  }
 
-    // 航向角处理：针对事故阶段切换到另一侧视角
-    let finalHeading = (props.focusedPointId === 'accident_red') ? tankerOrbitHeading : truckOrbitHeading
-    
-    // 航向角处理：只有货车在事故后旋转视角
-    // 油罐车始终保持初始航向角，不进行自动旋转
-    const shouldRotate = (props.focusedPointId === 'accident_red') ? false : (props.activePhaseIndex >= 2)
-    
-    if (isFocused && shouldRotate && accidentViewLevel.value !== 'far') {
-      finalHeading += Cesium.Math.toRadians(165)
+    if (animate && isFocused) {
+      try {
+        viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY)
+      } catch (e) {}
+
+      isFlying = true;
+      viewer.camera.flyToBoundingSphere(new Cesium.BoundingSphere(target, 0), {
+        offset: new Cesium.HeadingPitchRange(finalHeading, pitch, range),
+        duration: 1.8,
+        complete: () => {
+          isFlying = false;
+          try {
+            if (viewer && !spinCallback) {
+              viewer.camera.lookAt(target, new Cesium.HeadingPitchRange(finalHeading, pitch, range));
+            }
+          } catch (e) {}
+        },
+        cancel: () => {
+          isFlying = false;
+        }
+      });
+    } else {
+      viewer.camera.lookAt(target, new Cesium.HeadingPitchRange(finalHeading, pitch, range))
     }
-
-    viewer.camera.lookAt(target, new Cesium.HeadingPitchRange(finalHeading, pitch, range))
   } catch (error) {
     console.warn('应用轨道视角时出现警告:', error.message)
   }
@@ -2722,7 +3669,7 @@ function createDiffusionSystem(lng, lat) {
 function updatePopupPosition() {
   if (!viewer) return;
 
-  // 救援装备出动阶段 (index === 6) 让浮窗和图标跟随无人机的位置运动
+  // 无人机出动阶段：让无人机浮窗跟随 UAV 模型位置实时移动
   if (rescuePopup.show && Number(props.activePhaseIndex) === 6) {
     const isTanker = props.focusedPointId === 'accident_red';
     const uavId = isTanker ? 'uav_model_tanker' : 'uav_model';
@@ -2733,8 +3680,7 @@ function updatePopupPosition() {
         const cartographic = Cesium.Cartographic.fromCartesian(pos);
         rescueCoords.lng = Cesium.Math.toDegrees(cartographic.longitude);
         rescueCoords.lat = Cesium.Math.toDegrees(cartographic.latitude);
-        // 让浮窗/标记在无人机上方以避免重叠
-        rescueCoords.height = cartographic.height + 8.0;
+        rescueCoords.height = cartographic.height + 10.0;
       }
     }
   }
@@ -2743,15 +3689,41 @@ function updatePopupPosition() {
     const cartesian = Cesium.Cartesian3.fromDegrees(rescueCoords.lng, rescueCoords.lat, rescueCoords.height);
     const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
     if (canvasPosition) {
-      rescuePopup.x = canvasPosition.x;
-      rescuePopup.y = canvasPosition.y - 45;
+      rescuePopup.x = canvasPosition.x + (rescuePopup.xOffset !== undefined ? rescuePopup.xOffset : (rescuePopup.title === '无人机已到达' ? 161 : -10));
+      rescuePopup.y = canvasPosition.y + (rescuePopup.yOffset !== undefined ? rescuePopup.yOffset : (rescuePopup.title === '无人机已到达' ? -62 : 15));
     }
   }
 
-  // 更新故事线检测告警浮窗坐标：事故发生与起火阶段跟随货车追尾现场
-  if (detectionPopup.show && currentStoryDetectionScenario.value && isTruckStoryline()) {
-    updateStoryDetectionPopupPosition();
-  }
+// 无人车出动阶段：让无人车浮窗跟随救援车模型位置实时移动
+    if (ugvPopup.show && Number(props.activePhaseIndex) === 6) {
+      const isTanker = props.focusedPointId === 'accident_red';
+      const carId = isTanker ? 'tanker_rescue_car_model' : 'rescue_car_model';
+      const carEntity = viewer.entities.getById(carId);
+      if (carEntity) {
+        const pos = carEntity.position.getValue(viewer.clock.currentTime);
+        if (pos) {
+          const cartographic = Cesium.Cartographic.fromCartesian(pos);
+          ugvCoords.lng = Cesium.Math.toDegrees(cartographic.longitude);
+          ugvCoords.lat = Cesium.Math.toDegrees(cartographic.latitude);
+          ugvCoords.height = cartographic.height + 10.0;
+        }
+      }
+    }
+
+    if (ugvPopup.show) {
+      const cartesian = Cesium.Cartesian3.fromDegrees(ugvCoords.lng, ugvCoords.lat, ugvCoords.height);
+      const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
+      if (canvasPosition) {
+        ugvPopup.x = canvasPosition.x + (ugvPopup.xOffset !== undefined ? ugvPopup.xOffset : (ugvPopup.title === '无人车已就位' ? -200 : -27));
+        ugvPopup.y = canvasPosition.y + (ugvPopup.yOffset !== undefined ? ugvPopup.yOffset : (ugvPopup.title === '无人车已就位' ? 143 : -133));
+      }
+    }
+
+    // 更新故事线检测告警浮窗坐标：事故发生与起火阶段跟随货车追尾现场
+    if (detectionPopup.show && currentStoryDetectionScenario.value && isTruckStoryline()) {
+      updateStoryDetectionPopupPosition();
+    }
+
 
   // 更新仿真推演悬浮窗坐标 (当位于货车追尾现场的无人感知执行阶段 index === 8 时)
   if (simulationPopup.show && props.activePhaseIndex === 8 && props.focusedPointId === 'accident_blue') {
@@ -2760,8 +3732,8 @@ function updatePopupPosition() {
     const cartesian = Cesium.Cartesian3.fromDegrees(lng, lat, 20.0);
     const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
     if (canvasPosition) {
-      simulationPopup.x = canvasPosition.x;
-      simulationPopup.y = canvasPosition.y - 120;
+      simulationPopup.x = canvasPosition.x + (simulationPopup.xOffset || 0);
+      simulationPopup.y = canvasPosition.y + (simulationPopup.yOffset || 0);
     }
   }
 
@@ -2784,11 +3756,25 @@ function updatePopupPosition() {
     }
   }
 
-  // 更新无人车浮窗坐标与数据 (仅在到达现场后显示，也就是 activePhaseIndex >= 7)
-  if (props.activePhaseIndex >= 7) {
+  // 更新无人车浮窗坐标与数据 (从出发阶段起更新，也就是 activePhaseIndex >= 6)
+  if (props.activePhaseIndex >= 6) {
     const isTanker = props.focusedPointId === 'accident_red';
     const carPosCallback = isTanker ? sharedTankerRescueCarPosition : sharedTruckRescueCarPosition;
     
+    // 关联真实的全局传感数据
+    ugvA.temp = props.sensorData?.temp || 0;
+    ugvA.hum = props.sensorData?.humidity || 0;
+    ugvA.smoke = props.sensorData?.smoke || 0;
+    ugvA.tvoc = props.sensorData?.tvoc || 0;
+    ugvA.co = props.sensorData?.co || 0;
+
+    // 无人车 B 作为辅助节点，制造合理的微小偏差以体现多设备空间差异
+    ugvB.temp = +(ugvA.temp - 0.45).toFixed(2);
+    ugvB.hum = +(ugvA.hum - 2.12).toFixed(2);
+    ugvB.smoke = Math.max(0, Math.floor(ugvA.smoke * 0.95));
+    ugvB.tvoc = Math.max(0, +(ugvA.tvoc * 0.88).toFixed(3));
+    ugvB.co = Math.max(0, +(ugvA.co * 0.92).toFixed(1));
+
     if (carPosCallback) {
       const pos = carPosCallback.getValue(viewer.clock.currentTime);
       if (pos) {
@@ -2799,20 +3785,6 @@ function updatePopupPosition() {
           ugvA.y = canvasPos.y - 120;
           ugvB.x = canvasPos.x + 20;
           ugvB.y = canvasPos.y - 120;
-
-          // 关联真实的全局传感数据
-          ugvA.temp = props.sensorData?.temp || 0;
-          ugvA.hum = props.sensorData?.humidity || 0;
-          ugvA.smoke = props.sensorData?.smoke || 0;
-          ugvA.tvoc = props.sensorData?.tvoc || 0;
-          ugvA.co = props.sensorData?.co || 0;
-
-          // 无人车 B 作为辅助节点，制造合理的微小偏差以体现多设备空间差异
-          ugvB.temp = +(ugvA.temp - 0.45).toFixed(2);
-          ugvB.hum = +(ugvA.hum - 2.12).toFixed(2);
-          ugvB.smoke = Math.max(0, Math.floor(ugvA.smoke * 0.95));
-          ugvB.tvoc = Math.max(0, +(ugvA.tvoc * 0.88).toFixed(3));
-          ugvB.co = Math.max(0, +(ugvA.co * 0.92).toFixed(1));
         } else {
           ugvA.x = -1000; ugvA.y = -1000;
           ugvB.x = -1000; ugvB.y = -1000;
@@ -3048,10 +4020,14 @@ async function initViewer() {
       if (Cesium.defined(pickedObject) && pickedObject.id) {
         const pickedId = String(pickedObject.id.id);
         if (pickedId.startsWith('city-boundary-xiantao') || pickedId.startsWith('city-boundary-429004')) {
-          router.push('/simulation?city=xiantao');
+          // 点击仙桃市行政区域 → 与点击黄色事故点效果相同，跳转到第二视角
+          emit('accident-picked', 'accident_blue');
+          zoomToPoint('accident_blue');
           return;
         } else if (pickedId.startsWith('city-boundary-huanggang') || pickedId.startsWith('city-boundary-421100')) {
-          router.push('/simulation?city=huanggang');
+          // 点击黄冈市行政区域 → 与点击红色事故点效果相同，跳转到第二视角
+          emit('accident-picked', 'accident_red');
+          zoomToPoint('accident_red');
           return;
         }
       }
@@ -3177,6 +4153,137 @@ const trafficStats = reactive({
   }
 });
 
+// ⚠️ 实时风险预警与省界卡口排名数据
+const riskStats = reactive({
+  highRiskCount: 14,
+  speedingCount: 8,
+  fatigueCount: 6,
+  deviationCount: 2
+});
+
+const riskVehicles = reactive([
+  {
+    plate: '鄂A-H8921',
+    type: '危化品 · 液化气',
+    class: 'hazard',
+    level: '高危告警',
+    levelClass: 'red',
+    reason: '严重超速 (98km/h) · 罐体压力异常偏高',
+    location: '沪渝高速 G50 KM412 (仙桃段)',
+    driver: '李*强 (138****5921)',
+    lng: 113.45,
+    lat: 30.36
+  },
+  {
+    plate: '鄂C-K5531',
+    type: '危化品 · 汽油',
+    class: 'hazard',
+    level: '高危告警',
+    levelClass: 'red',
+    reason: '连续驾驶超 4 小时 (疲劳驾驶警报)',
+    location: '福银高速 G70 KM285 (襄阳段)',
+    driver: '王*伟 (139****1842)',
+    lng: 112.14,
+    lat: 32.04
+  },
+  {
+    plate: '鄂B-H9021',
+    type: '班线客车 · 49座',
+    class: 'passenger',
+    level: '偏离线路',
+    levelClass: 'orange',
+    reason: '偏离核定运行线路 (超出 12 公里)',
+    location: '沪蓉高速 G42 KM198 (宜昌段)',
+    driver: '张*国 (137****3310)',
+    lng: 111.28,
+    lat: 30.69
+  },
+  {
+    plate: '鄂F-T9918',
+    type: '旅游包车',
+    class: 'tourist',
+    level: '违规时段',
+    levelClass: 'gold',
+    reason: '违规夜间 2:00-5:00 仍处于行驶状态',
+    location: '汉十高速 S82 KM120 (十堰段)',
+    driver: '陈*龙 (136****9088)',
+    lng: 110.79,
+    lat: 32.65
+  }
+]);
+
+const checkpoints = reactive([
+  {
+    rank: 'TOP 1',
+    rankClass: 'gold',
+    name: '临湘湖北省界卡口 (G4京港澳)',
+    status: '畅通',
+    statusClass: 'green',
+    flow: 1842,
+    inflow: 1020,
+    outflow: 822
+  },
+  {
+    rank: 'TOP 2',
+    rankClass: 'gold',
+    name: '黄梅九江大桥卡口 (G70福银)',
+    status: '繁忙',
+    statusClass: 'gold',
+    flow: 1560,
+    inflow: 840,
+    outflow: 720
+  },
+  {
+    rank: 'TOP 3',
+    rankClass: 'silver',
+    name: '荆州长江大桥卡口 (G55二广)',
+    status: '畅通',
+    statusClass: 'green',
+    flow: 1320,
+    inflow: 710,
+    outflow: 610
+  },
+  {
+    rank: 'TOP 4',
+    rankClass: 'border',
+    name: '京港澳赤壁卡口 (G4)',
+    status: '缓行',
+    statusClass: 'orange',
+    flow: 1180,
+    inflow: 650,
+    outflow: 530
+  },
+  {
+    rank: 'TOP 5',
+    rankClass: 'border',
+    name: '鄂陕界关防卡口 (G7011)',
+    status: '畅通',
+    statusClass: 'green',
+    flow: 950,
+    inflow: 510,
+    outflow: 440
+  }
+]);
+
+const firstNames = ['张', '李', '王', '刘', '陈', '杨', '赵', '黄', '周', '吴'];
+const lastNames = ['伟', '强', '芳', '军', '杰', '敏', '超', '勇', '平', '国'];
+const riskLocationsList = [
+  '沪渝高速 G50 KM412 (仙桃段)',
+  '福银高速 G70 KM285 (襄阳段)',
+  '沪蓉高速 G42 KM198 (宜昌段)',
+  '汉十高速 S82 KM120 (十堰段)',
+  '京港澳高速 G4 KM105 (咸宁段)',
+  '大广高速 G45 KM320 (黄冈段)'
+];
+
+function generateRandomDriver() {
+  const f = firstNames[Math.floor(Math.random() * firstNames.length)];
+  const l = lastNames[Math.floor(Math.random() * lastNames.length)];
+  const num = Math.floor(1000 + Math.random() * 9000);
+  const prefix = ['138', '139', '135', '136', '137', '186', '189'][Math.floor(Math.random() * 7)];
+  return `${f}*${l} (${prefix}****${num})`;
+}
+
 // 🛠️ 大屏 HUD 高阶视图 Tabs 模式 ('overview' | 'risk' | 'checkpoint' | 'ai')
 const activeHudTab = ref('overview');
 
@@ -3199,6 +4306,10 @@ const handleAutoDispatchTrigger = () => {
 };
 // 🛠️ 右侧智控终端面板 展开/收起 状态
 const isHudCollapsed = ref(false);
+
+const legendRightOffset = computed(() => {
+  return isHudCollapsed.value ? '20px' : '450px';
+});
 
 const activeHazardDemoCount = computed(() => {
   if (!lkywVehicles) return 0;
@@ -3357,6 +4468,113 @@ function startHudStatsSimulation() {
       });
       if (latestCameraLogs.length > 4) latestCameraLogs.pop();
     }
+
+    // 4. 实时风险预警动态更新与流转
+    if (Math.random() > 0.82) {
+      const alarmTypes = [
+        {
+          type: '危化品 · 液化气',
+          class: 'hazard',
+          level: '高危告警',
+          levelClass: 'red',
+          reasonTemplate: '严重超速 (SPEEDkm/h) · 罐体压力异常偏高',
+          statKey: 'speedingCount'
+        },
+        {
+          type: '危化品 · 汽油',
+          class: 'hazard',
+          level: '高危告警',
+          levelClass: 'red',
+          reasonTemplate: '连续驾驶超 HOURS 小时 (疲劳驾驶警报)',
+          statKey: 'fatigueCount'
+        },
+        {
+          type: '班线客车 · 49座',
+          class: 'passenger',
+          level: '偏离线路',
+          levelClass: 'orange',
+          reasonTemplate: '偏离核定运行线路 (超出 DIST 公里)',
+          statKey: 'deviationCount'
+        },
+        {
+          type: '旅游包车',
+          class: 'tourist',
+          level: '违规时段',
+          levelClass: 'gold',
+          reasonTemplate: '违规夜间 2:00-5:00 仍处于行驶状态',
+          statKey: 'fatigueCount'
+        }
+      ];
+
+      const chosen = alarmTypes[Math.floor(Math.random() * alarmTypes.length)];
+      let reason = chosen.reasonTemplate;
+      if (reason.includes('SPEED')) {
+        reason = reason.replace('SPEED', Math.floor(95 + Math.random() * 25));
+      }
+      if (reason.includes('HOURS')) {
+        reason = reason.replace('HOURS', (4.1 + Math.random() * 2).toFixed(1));
+      }
+      if (reason.includes('DIST')) {
+        reason = reason.replace('DIST', Math.floor(10 + Math.random() * 15));
+      }
+
+      const newAlert = {
+        plate: generateRandomPlate(),
+        type: chosen.type,
+        class: chosen.class,
+        level: chosen.level,
+        levelClass: chosen.levelClass,
+        reason: reason,
+        location: riskLocationsList[Math.floor(Math.random() * riskLocationsList.length)],
+        driver: generateRandomDriver(),
+        lng: 110 + Math.random() * 5,
+        lat: 30 + Math.random() * 2
+      };
+
+      riskVehicles.unshift(newAlert);
+      if (riskVehicles.length > 4) {
+        riskVehicles.pop();
+      }
+
+      riskStats[chosen.statKey]++;
+      riskStats.highRiskCount = riskStats.speedingCount + riskStats.fatigueCount + riskStats.deviationCount;
+    }
+
+    if (Math.random() > 0.7) {
+      const keys = ['speedingCount', 'fatigueCount', 'deviationCount'];
+      const key = keys[Math.floor(Math.random() * keys.length)];
+      const delta = Math.random() > 0.5 ? 1 : -1;
+      riskStats[key] = Math.max(1, riskStats[key] + delta);
+      riskStats.highRiskCount = riskStats.speedingCount + riskStats.fatigueCount + riskStats.deviationCount;
+    }
+
+    // 5. 卡口流量实时变化排行 Top 5
+    checkpoints.forEach(cp => {
+      const flowDelta = (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 8) + 1);
+      cp.flow = Math.max(500, cp.flow + flowDelta);
+      
+      const inDelta = Math.random() > 0.4 ? (Math.floor(Math.random() * 2) + 1) : 0;
+      const outDelta = Math.random() > 0.4 ? (Math.floor(Math.random() * 2) + 1) : 0;
+      cp.inflow += inDelta;
+      cp.outflow += outDelta;
+
+      if (cp.flow > 1600) {
+        cp.status = '繁忙';
+        cp.statusClass = 'gold';
+      } else if (cp.flow > 1200 && cp.flow <= 1600) {
+        cp.status = '缓行';
+        cp.statusClass = 'orange';
+      } else {
+        cp.status = '畅通';
+        cp.statusClass = 'green';
+      }
+    });
+
+    checkpoints.sort((a, b) => b.flow - a.flow);
+    checkpoints.forEach((cp, index) => {
+      cp.rank = `TOP ${index + 1}`;
+      cp.rankClass = index === 0 || index === 1 ? 'gold' : (index === 2 ? 'silver' : 'border');
+    });
 
   }, 850);
 }
@@ -3914,22 +5132,105 @@ function updateTruckSequence(phaseIndex, pointId = '') {
   const isTruckFocus = pointId === 'accident_blue' || props.focusedPointId === 'accident_blue';
 
   const isBigFire = (phaseIndex === 5);
-  const smokeScaleBase = isBigFire ? 2.8 : 1.0;
+  let smokeScaleBase = 1.0;
+  let smokeEmissionRate = 60.0;
+
+  if (isBigFire) {
+    smokeScaleBase = 2.8;
+    smokeEmissionRate = 60.0;
+  } else if (phaseIndex === 7 || phaseIndex === 8) {
+    smokeScaleBase = 0.35;
+    smokeEmissionRate = 20.0;
+  }
+
   const fireScaleBase = isBigFire ? 2.0 : 1.0;
 
   if (smokeParticle) {
     // 只有在聚焦该点且阶段 >= 3 时才显示，防止回退时粒子残留
     smokeParticle.show = isTruckFocus && (phaseIndex >= 3);
-    smokeParticle.startScale = 0.5 * smokeScaleBase;
-    smokeParticle.endScale = 2.0 * smokeScaleBase;
-    smokeParticle.emissionRate = (phaseIndex >= 3) ? 60.0 : 0.0;
+    
+    if (phaseIndex >= 7) {
+      // 7 阶段及以后：事故中后期烟雾自动减弱，使用微调参数
+      smokeParticle.startScale = lateSmokeAdjust.startScale * smokeScaleBase;
+      smokeParticle.endScale = lateSmokeAdjust.endScale * smokeScaleBase;
+      smokeParticle.emissionRate = lateSmokeAdjust.emissionRate;
+      smokeParticle.imageSize = new Cesium.Cartesian2(lateSmokeAdjust.imageWidth, lateSmokeAdjust.imageHeight);
+      smokeParticle.minimumSpeed = lateSmokeAdjust.minSpeed;
+      smokeParticle.maximumSpeed = lateSmokeAdjust.maxSpeed;
+      smokeParticle.minimumParticleLife = lateSmokeAdjust.minLife;
+      smokeParticle.maximumParticleLife = lateSmokeAdjust.maxLife;
+      smokeParticle.updateCallback = (particle, dt) => {
+        const gravityScratch = new Cesium.Cartesian3();
+        Cesium.Cartesian3.normalize(particle.position, gravityScratch);
+        Cesium.Cartesian3.multiplyByScalar(gravityScratch, lateSmokeAdjust.gravity * dt, gravityScratch);
+        Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
+        
+        const dragFactor = Math.pow(lateSmokeAdjust.drag, dt * 60);
+        particle.velocity.x *= dragFactor;
+        particle.velocity.y *= dragFactor;
+        particle.velocity.z *= dragFactor;
+      };
+    } else {
+      // 3, 4, 5, 6 阶段 (正常行驶/事故爆发烟雾)
+      smokeParticle.startScale = 0.5 * smokeScaleBase;
+      smokeParticle.endScale = 2.0 * smokeScaleBase;
+      smokeParticle.emissionRate = (phaseIndex >= 3) ? smokeEmissionRate : 0.0;
+      smokeParticle.imageSize = new Cesium.Cartesian2(25, 25);
+      smokeParticle.minimumSpeed = 2.0;
+      smokeParticle.maximumSpeed = 5.0;
+      smokeParticle.minimumParticleLife = 2.0;
+      smokeParticle.maximumParticleLife = 4.5;
+      smokeParticle.updateCallback = (particle, dt) => {
+        const gravityScratch = new Cesium.Cartesian3();
+        Cesium.Cartesian3.normalize(particle.position, gravityScratch);
+        Cesium.Cartesian3.multiplyByScalar(gravityScratch, 2.5 * dt, gravityScratch);
+        Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
+      };
+    }
   }
   if (fireParticle) {
     // 只有在聚焦该点且阶段 >= 4 时才显示
     fireParticle.show = isTruckFocus && (phaseIndex >= 4);
-    fireParticle.startScale = 0.3 * fireScaleBase;
-    fireParticle.endScale = 1.2 * fireScaleBase;
-    fireParticle.emissionRate = (phaseIndex >= 4) ? 80.0 : 0.0;
+    
+    if (phaseIndex >= 7) {
+      // 7 阶段及以后 (无人感知部署、感知执行等)：事故中后期火势自然减弱，使用微调参数
+      fireParticle.startScale = lateFireAdjust.startScale * fireScaleBase;
+      fireParticle.endScale = lateFireAdjust.endScale * fireScaleBase;
+      fireParticle.emissionRate = lateFireAdjust.emissionRate; 
+      fireParticle.imageSize = new Cesium.Cartesian2(lateFireAdjust.imageWidth, lateFireAdjust.imageHeight); 
+      fireParticle.minimumSpeed = lateFireAdjust.minSpeed; 
+      fireParticle.maximumSpeed = lateFireAdjust.maxSpeed;
+      fireParticle.minimumParticleLife = lateFireAdjust.minLife;
+      fireParticle.maximumParticleLife = lateFireAdjust.maxLife;
+      fireParticle.updateCallback = (particle, dt) => {
+        const gravityScratch = new Cesium.Cartesian3();
+        Cesium.Cartesian3.normalize(particle.position, gravityScratch);
+        Cesium.Cartesian3.multiplyByScalar(gravityScratch, lateFireAdjust.gravity * dt, gravityScratch); 
+        Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
+        
+        const dragFactor = Math.pow(lateFireAdjust.drag, dt * 60);
+        particle.velocity.x *= dragFactor;
+        particle.velocity.y *= dragFactor;
+        particle.velocity.z *= dragFactor;
+      };
+    } else {
+      // 4, 5, 6 阶段 (起火、大火等爆发期)：猛烈燃烧，喷射速度快，范围大
+      fireParticle.startScale = 0.5 * fireScaleBase;
+      fireParticle.endScale = 1.8 * fireScaleBase;
+      fireParticle.emissionRate = 80.0; // 极高发射密度
+      fireParticle.imageSize = new Cesium.Cartesian2(25, 25);
+      fireParticle.minimumSpeed = 3.0;
+      fireParticle.maximumSpeed = 7.0;
+      fireParticle.minimumParticleLife = 1.0;
+      fireParticle.maximumParticleLife = 2.5;
+      fireParticle.updateCallback = (particle, dt) => {
+        // 快速喷射和上升
+        const gravityScratch = new Cesium.Cartesian3();
+        Cesium.Cartesian3.normalize(particle.position, gravityScratch);
+        Cesium.Cartesian3.multiplyByScalar(gravityScratch, 5.0 * dt, gravityScratch); 
+        Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
+      };
+    }
   }
 }
 
@@ -4065,29 +5366,31 @@ function replayCurrentPhase() {
 }
 
 function addEventEntities() {
-  // 接入 light.glb 3D灯光模型
-  viewer.entities.add({
-    id: 'light-glb-entity',
-    name: '事故现场灯光模型',
-    show: new Cesium.CallbackProperty(() => lightAdjust.show, false),
-    position: new Cesium.CallbackProperty(() => {
-      return Cesium.Cartesian3.fromDegrees(Number(lightAdjust.lng), Number(lightAdjust.lat), Number(lightAdjust.height));
-    }, false),
-    orientation: new Cesium.CallbackProperty(() => {
-      const position = Cesium.Cartesian3.fromDegrees(Number(lightAdjust.lng), Number(lightAdjust.lat), Number(lightAdjust.height));
-      const hpr = new Cesium.HeadingPitchRoll(
-        Cesium.Math.toRadians(Number(lightAdjust.heading)),
-        Cesium.Math.toRadians(Number(lightAdjust.pitch)),
-        Cesium.Math.toRadians(Number(lightAdjust.roll))
-      );
-      return Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
-    }, false),
-    model: {
-      uri: '/Dashboard/models/light.glb',
-      scale: new Cesium.CallbackProperty(() => lightAdjust.scale, false),
-      minimumPixelSize: 32,
-      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
-    }
+  // 接入 6 个 light.glb 3D灯光模型
+  lights.forEach((l) => {
+    if (l.id === 'light6') return; // light6 使用原3D场景自带路灯模型，清除动态生成
+    viewer.entities.add({
+      id: `${l.id}-glb-entity`,
+      name: `事故现场灯光模型-${l.id}`,
+      show: new Cesium.CallbackProperty(() => l.show, false),
+      position: new Cesium.CallbackProperty(() => {
+        return Cesium.Cartesian3.fromDegrees(Number(l.lng), Number(l.lat), Number(l.height));
+      }, false),
+      orientation: new Cesium.CallbackProperty(() => {
+        const position = Cesium.Cartesian3.fromDegrees(Number(l.lng), Number(l.lat), Number(l.height));
+        const hpr = new Cesium.HeadingPitchRoll(
+          Cesium.Math.toRadians(Number(l.heading)),
+          Cesium.Math.toRadians(Number(l.pitch)),
+          Cesium.Math.toRadians(Number(l.roll))
+        );
+        return Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
+      }, false),
+      model: {
+        uri: '/Dashboard/models/light.glb',
+        scale: new Cesium.CallbackProperty(() => l.scale, false),
+        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+      }
+    });
   });
 
   // 📡 接入 jizhan.glb 3D 5G通信基站模型 (货车追尾事故现场)
@@ -4112,8 +5415,61 @@ function addEventEntities() {
     model: {
       uri: '/Dashboard/models/jizhan.glb',
       scale: new Cesium.CallbackProperty(() => jizhanAdjust.scale, false),
-      minimumPixelSize: 32,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+    }
+  });
+
+  // 🗺️ 无人机绕飞盘旋轨迹 (货车追尾场景)
+  viewer.entities.add({
+    id: 'uav-orbit-path-truck',
+    name: '货车场景无人机盘旋轨迹',
+    show: false,
+    polyline: {
+      positions: new Cesium.CallbackProperty(() => {
+        const targetLng = Number(truckAdjust.lng) || 113.104833;
+        const targetLat = Number(truckAdjust.lat) || 30.385469;
+        const targetHeight = Number(uavAdjust.height) || 18.5;
+        const pts = [];
+        for (let i = 0; i <= 72; i++) {
+          const angle = (i / 72) * 2.0 * Math.PI;
+          const lng = targetLng + 0.00055 * Math.cos(angle);
+          const lat = targetLat + 0.00045 * Math.sin(angle);
+          pts.push(Cesium.Cartesian3.fromDegrees(lng, lat, targetHeight));
+        }
+        return pts;
+      }, false),
+      width: 3.0,
+      material: new Cesium.PolylineDashMaterialProperty({
+        color: Cesium.Color.fromCssColorString('#00f2fe'),
+        dashLength: 16.0
+      })
+    }
+  });
+
+  // 🗺️ 无人机绕飞盘旋轨迹 (油罐车泄漏场景)
+  viewer.entities.add({
+    id: 'uav-orbit-path-tanker',
+    name: '油罐车场景无人机盘旋轨迹',
+    show: false,
+    polyline: {
+      positions: new Cesium.CallbackProperty(() => {
+        const targetLng = Number(tankerPointAdjust.lng) || 114.8945;
+        const targetLat = Number(tankerPointAdjust.lat) || 30.632161;
+        const targetHeight = Number(tankerUavAdjust.height) || 11.5;
+        const pts = [];
+        for (let i = 0; i <= 72; i++) {
+          const angle = (i / 72) * 2.0 * Math.PI;
+          const lng = targetLng + 0.00055 * Math.cos(angle);
+          const lat = targetLat + 0.00045 * Math.sin(angle);
+          pts.push(Cesium.Cartesian3.fromDegrees(lng, lat, targetHeight));
+        }
+        return pts;
+      }, false),
+      width: 3.0,
+      material: new Cesium.PolylineDashMaterialProperty({
+        color: Cesium.Color.fromCssColorString('#00f2fe'),
+        dashLength: 16.0
+      })
     }
   });
 
@@ -4182,6 +5538,8 @@ function addEventEntities() {
       show: false
     }
   })
+
+
 
   Object.values(scenarioPoints).filter(p => p.id.startsWith('accident_')).forEach(point => {
     let positionCallback;
@@ -4252,7 +5610,9 @@ function addEventEntities() {
         minimumPixelSize: 1, // 关键：强制 Cesium 始终渲染该模型，从而触发加载
         heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, // 使用 Cesium 原生贴地
         // 关闭原生动画循环，交由 updateTruckSequence 和 playEntityAnimation 手动控制只播一次并定格
-        runAnimations: false
+        runAnimations: false,
+        silhouetteColor: Cesium.Color.fromCssColorString('#00f2fe'),
+        silhouetteSize: 2.0
       }
     })
     entity.show = true // 强制开启显示以触发加载
@@ -4280,7 +5640,9 @@ function addEventEntities() {
         minimumPixelSize: 1, // 关键：强制加载
         heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, // 使用 Cesium 原生贴地
         // 关闭原生动画循环，手动控制
-        runAnimations: false
+        runAnimations: false,
+        silhouetteColor: Cesium.Color.fromCssColorString('#ff3344'),
+        silhouetteSize: 2.0
       }
     })
     entity.show = true
@@ -4321,6 +5683,42 @@ function addEventEntities() {
         const t = Math.min(elapsed / duration, 1.0);
         // 使用 EaseInOutQuad 缓动函数
         const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+        if (currentMissionDataSource) {
+          const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+          if (pathEntity && pathEntity.polyline && pathEntity.polyline.positions) {
+            const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime);
+            if (positions && positions.length > 1) {
+              const pEnd = positions[positions.length - 1];
+              let startIndex = 0;
+              const targetDistance = 180.0;
+              for (let i = positions.length - 2; i >= 0; i--) {
+                const dist = Cesium.Cartesian3.distance(positions[i], pEnd);
+                if (dist >= targetDistance) {
+                  startIndex = i;
+                  break;
+                }
+              }
+              const subPositions = positions.slice(startIndex);
+              if (subPositions.length > 1) {
+                const segmentCount = subPositions.length - 1;
+                const scaledT = easeT * segmentCount;
+                const idx = Math.min(Math.floor(scaledT), segmentCount - 1);
+                const localT = scaledT - idx;
+                const p0 = subPositions[idx];
+                const p1 = subPositions[idx + 1];
+                const interpolated = Cesium.Cartesian3.lerp(p0, p1, localT, new Cesium.Cartesian3());
+                const carto = Cesium.Cartographic.fromCartesian(interpolated);
+                const finalHeight = carto.height < 10.0 ? 120.0 : carto.height;
+                return Cesium.Cartesian3.fromDegrees(
+                  Cesium.Math.toDegrees(carto.longitude),
+                  Cesium.Math.toDegrees(carto.latitude),
+                  finalHeight
+                );
+              }
+            }
+          }
+        }
 
         const lng = startLng + (targetLng - startLng) * easeT;
         const lat = startLat + (targetLat - startLat) * easeT;
@@ -4399,6 +5797,49 @@ function addEventEntities() {
           const headingDeg = Number(uavAdjust.heading) || 18;
           headingRad = Cesium.Math.toRadians(headingDeg);
         }
+      } else if (props.activePhaseIndex === 7) {
+        if (currentMissionDataSource) {
+          const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+          if (pathEntity && pathEntity.polyline && pathEntity.polyline.positions) {
+            const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime);
+            if (positions && positions.length > 1) {
+              const pEnd = positions[positions.length - 1];
+              let startIndex = 0;
+              const targetDistance = 180.0;
+              for (let i = positions.length - 2; i >= 0; i--) {
+                const dist = Cesium.Cartesian3.distance(positions[i], pEnd);
+                if (dist >= targetDistance) {
+                  startIndex = i;
+                  break;
+                }
+              }
+              const subPositions = positions.slice(startIndex);
+              if (subPositions.length > 1) {
+                const segmentCount = subPositions.length - 1;
+                const elapsed = Date.now() - phase7StartTime;
+                const duration = 6000;
+                const t = Math.min((elapsed + 100) / duration, 1.0);
+                const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                
+                const scaledT = easeT * segmentCount;
+                const idx = Math.min(Math.floor(scaledT), segmentCount - 1);
+                const localT = scaledT - idx;
+                const nextPos = Cesium.Cartesian3.lerp(subPositions[idx], subPositions[idx + 1], localT, new Cesium.Cartesian3());
+                
+                const cartoCur = Cesium.Cartographic.fromCartesian(pos);
+                const cartoNext = Cesium.Cartographic.fromCartesian(nextPos);
+                headingRad = Math.PI / 2 - Math.atan2(
+                  Cesium.Math.toDegrees(cartoNext.latitude) - Cesium.Math.toDegrees(cartoCur.latitude),
+                  Cesium.Math.toDegrees(cartoNext.longitude) - Cesium.Math.toDegrees(cartoCur.longitude)
+                );
+              }
+            }
+          }
+        }
+        if (headingRad === undefined) {
+          const headingDeg = Number(uavAdjust.heading) || 18;
+          headingRad = Cesium.Math.toRadians(headingDeg);
+        }
       } else if (props.activePhaseIndex >= 8) {
         // 计算无人机当前位置指向事故中心的朝向角度，使其镜头始终对准事故车拍照
         const targetLng = Number(truckAdjust.lng) || 113.104833;
@@ -4429,10 +5870,12 @@ function addEventEntities() {
       model: {
         uri: config.uri,
         scale: new Cesium.CallbackProperty(() => uavAdjust.scale > 0 ? uavAdjust.scale : 0.1, false),
-        minimumPixelSize: 64, 
+        minimumPixelSize: 1, // 改为 1 像素，使无人机完全遵循真实的 3D 空间透视，随视角远近自然缩放
         heightReference: Cesium.HeightReference.NONE,
         // 关闭 Entity 自带的动画调度，避免与手动 addAll 产生冲突
-        runAnimations: false
+        runAnimations: false,
+        silhouetteColor: Cesium.Color.fromCssColorString('#00f2fe'),
+        silhouetteSize: 2.0
       }
     });
     uavEntities.push(entity);
@@ -4463,9 +5906,9 @@ function addEventEntities() {
             if (pos) return pos;
           }
         }
-        return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
+        return Cesium.Cartesian3.fromDegrees(113.4275, 30.3354, 0.0);
       } else if (props.activePhaseIndex < 6) {
-        return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
+        return Cesium.Cartesian3.fromDegrees(113.4275, 30.3354, 0.0);
       } else if (props.activePhaseIndex === 7) {
         if (!phase7StartTime) {
           phase7StartTime = Date.now();
@@ -4535,7 +5978,9 @@ function addEventEntities() {
         scale: new Cesium.CallbackProperty(() => Number(rescueCarAdjust.scale) || 1.0, false),
         minimumPixelSize: 16, // 保底 16 像素，防止模型物理尺寸过小导致完全不可见，但不至于像 64 那样完全覆盖微调效果
         heightReference: Cesium.HeightReference.NONE, // 移除自动贴地，完全由用户通过 Z 轴微调高度，防止模型原点错误导致深埋地下
-        runAnimations: true
+        runAnimations: true,
+        silhouetteColor: Cesium.Color.fromCssColorString('#00ffaa'),
+        silhouetteSize: 2.0
       }
     });
     rescueCarEntities.push(entity);
@@ -4550,7 +5995,63 @@ function addEventEntities() {
       const targetLng = Number(tankerPointAdjust.lng) || 114.8945;
       const targetLat = Number(tankerPointAdjust.lat) || 30.632161;
 
-      if (props.activePhaseIndex <= 7) {
+      if (props.activePhaseIndex === 6) {
+        if (currentMissionDataSource) {
+          const entity = currentMissionDataSource.entities.getById('UAV');
+          if (entity) {
+            const pos = entity.position.getValue(viewer.clock.currentTime);
+            if (pos) return pos;
+          }
+        }
+        return Cesium.Cartesian3.fromDegrees(114.9238, 30.5158, startHeight); // 黄冈市黄州区路口镇专职消防队
+      } else if (props.activePhaseIndex < 6) {
+        return Cesium.Cartesian3.fromDegrees(114.9238, 30.5158, startHeight);
+      } else if (props.activePhaseIndex === 7) {
+        if (!phase7StartTime) {
+          phase7StartTime = Date.now();
+        }
+        const elapsed = Date.now() - phase7StartTime;
+        const duration = 6000; // 6秒内平滑飞过
+        const t = Math.min(elapsed / duration, 1.0);
+        // 使用 EaseInOutQuad 缓动函数
+        const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+        if (currentMissionDataSource) {
+          const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+          if (pathEntity && pathEntity.polyline && pathEntity.polyline.positions) {
+            const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime);
+            if (positions && positions.length > 1) {
+              const pEnd = positions[positions.length - 1];
+              let startIndex = 0;
+              const targetDistance = 180.0;
+              for (let i = positions.length - 2; i >= 0; i--) {
+                const dist = Cesium.Cartesian3.distance(positions[i], pEnd);
+                if (dist >= targetDistance) {
+                  startIndex = i;
+                  break;
+                }
+              }
+              const subPositions = positions.slice(startIndex);
+              if (subPositions.length > 1) {
+                const segmentCount = subPositions.length - 1;
+                const scaledT = easeT * segmentCount;
+                const idx = Math.min(Math.floor(scaledT), segmentCount - 1);
+                const localT = scaledT - idx;
+                const p0 = subPositions[idx];
+                const p1 = subPositions[idx + 1];
+                const interpolated = Cesium.Cartesian3.lerp(p0, p1, localT, new Cesium.Cartesian3());
+                const carto = Cesium.Cartographic.fromCartesian(interpolated);
+                const finalHeight = carto.height < 10.0 ? 120.0 : carto.height;
+                return Cesium.Cartesian3.fromDegrees(
+                  Cesium.Math.toDegrees(carto.longitude),
+                  Cesium.Math.toDegrees(carto.latitude),
+                  finalHeight
+                );
+              }
+            }
+          }
+        }
+
         if (sharedTankerRescueCarPosition) {
           const carPos = sharedTankerRescueCarPosition.getValue(viewer.clock.currentTime);
           if (carPos) {
@@ -4659,7 +6160,50 @@ function addEventEntities() {
       if (!pos) return undefined;
 
       let headingRad;
-      if (props.activePhaseIndex >= 8) {
+      if (props.activePhaseIndex === 7) {
+        if (currentMissionDataSource) {
+          const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+          if (pathEntity && pathEntity.polyline && pathEntity.polyline.positions) {
+            const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime);
+            if (positions && positions.length > 1) {
+              const pEnd = positions[positions.length - 1];
+              let startIndex = 0;
+              const targetDistance = 180.0;
+              for (let i = positions.length - 2; i >= 0; i--) {
+                const dist = Cesium.Cartesian3.distance(positions[i], pEnd);
+                if (dist >= targetDistance) {
+                  startIndex = i;
+                  break;
+                }
+              }
+              const subPositions = positions.slice(startIndex);
+              if (subPositions.length > 1) {
+                const segmentCount = subPositions.length - 1;
+                const elapsed = Date.now() - phase7StartTime;
+                const duration = 6000;
+                const t = Math.min((elapsed + 100) / duration, 1.0);
+                const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                
+                const scaledT = easeT * segmentCount;
+                const idx = Math.min(Math.floor(scaledT), segmentCount - 1);
+                const localT = scaledT - idx;
+                const nextPos = Cesium.Cartesian3.lerp(subPositions[idx], subPositions[idx + 1], localT, new Cesium.Cartesian3());
+                
+                const cartoCur = Cesium.Cartographic.fromCartesian(pos);
+                const cartoNext = Cesium.Cartographic.fromCartesian(nextPos);
+                headingRad = Math.PI / 2 - Math.atan2(
+                  Cesium.Math.toDegrees(cartoNext.latitude) - Cesium.Math.toDegrees(cartoCur.latitude),
+                  Cesium.Math.toDegrees(cartoNext.longitude) - Cesium.Math.toDegrees(cartoCur.longitude)
+                );
+              }
+            }
+          }
+        }
+        if (headingRad === undefined) {
+          const headingDeg = Number(tankerUavAdjust.heading) || 18;
+          headingRad = Cesium.Math.toRadians(headingDeg);
+        }
+      } else if (props.activePhaseIndex >= 8) {
         // 计算无人机当前位置指向事故中心的朝向角度，使其镜头始终对准事故车拍照
         const targetLng = Number(tankerPointAdjust.lng) || 114.8945;
         const targetLat = Number(tankerPointAdjust.lat) || 30.632161;
@@ -4687,9 +6231,11 @@ function addEventEntities() {
       model: {
         uri: config.uri,
         scale: new Cesium.CallbackProperty(() => tankerUavAdjust.scale > 0 ? tankerUavAdjust.scale : 0.1, false),
-        minimumPixelSize: 64,
+        minimumPixelSize: 1, // 改为 1 像素，使无人机完全遵循真实的 3D 空间透视，随视角远近自然缩放
         heightReference: Cesium.HeightReference.NONE,
-        runAnimations: false
+        runAnimations: false,
+        silhouetteColor: Cesium.Color.fromCssColorString('#00f2fe'),
+        silhouetteSize: 2.0
       }
     });
     tankerUavEntities.push(entity);
@@ -4708,8 +6254,17 @@ function addEventEntities() {
       const targetLat = Number(tankerPointAdjust.lat) || 30.632161;
       const targetHeight = startHeight;
 
-      if (props.activePhaseIndex < 7) {
-        return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
+      if (props.activePhaseIndex === 6) {
+        if (currentMissionDataSource) {
+          const entity = currentMissionDataSource.entities.getById('Car');
+          if (entity) {
+            const pos = entity.position.getValue(viewer.clock.currentTime);
+            if (pos) return pos;
+          }
+        }
+        return Cesium.Cartesian3.fromDegrees(114.9238, 30.5158, 0.0); // 黄冈市黄州区路口镇专职消防队
+      } else if (props.activePhaseIndex < 6) {
+        return Cesium.Cartesian3.fromDegrees(114.9238, 30.5158, 0.0);
       } else if (props.activePhaseIndex === 7) {
         if (!tankerPhase7StartTime) {
           tankerPhase7StartTime = Date.now();
@@ -4736,8 +6291,35 @@ function addEventEntities() {
     const tankerRescueCarOrientation = new Cesium.CallbackProperty(() => {
       const pos = tankerRescueCarPosition.getValue(viewer.clock.currentTime);
       if (!pos) return undefined;
-      const headingDeg = Number(tankerRescueCarAdjust.heading) || 215;
-      const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(headingDeg), 0, 0);
+
+      let headingRad;
+      if (props.activePhaseIndex === 6) {
+        if (currentMissionDataSource) {
+          const entity = currentMissionDataSource.entities.getById('Car');
+          if (entity) {
+            const nextTime = Cesium.JulianDate.addSeconds(viewer.clock.currentTime, 0.5, new Cesium.JulianDate());
+            const nextPos = entity.position.getValue(nextTime);
+            if (nextPos) {
+              const cartoCur = Cesium.Cartographic.fromCartesian(pos);
+              const cartoNext = Cesium.Cartographic.fromCartesian(nextPos);
+              headingRad = Math.PI / 2 - Math.atan2(
+                Cesium.Math.toDegrees(cartoNext.latitude) - Cesium.Math.toDegrees(cartoCur.latitude),
+                Cesium.Math.toDegrees(cartoNext.longitude) - Cesium.Math.toDegrees(cartoCur.longitude)
+              );
+            } else {
+              headingRad = Cesium.Math.toRadians(Number(tankerRescueCarAdjust.heading) || 215);
+            }
+          } else {
+            headingRad = Cesium.Math.toRadians(Number(tankerRescueCarAdjust.heading) || 215);
+          }
+        } else {
+          headingRad = Cesium.Math.toRadians(Number(tankerRescueCarAdjust.heading) || 215);
+        }
+      } else {
+        headingRad = Cesium.Math.toRadians(Number(tankerRescueCarAdjust.heading) || 215);
+      }
+
+      const hpr = new Cesium.HeadingPitchRoll(headingRad, 0, 0);
       return Cesium.Transforms.headingPitchRollQuaternion(pos, hpr);
     }, false);
 
@@ -4754,7 +6336,9 @@ function addEventEntities() {
         scale: new Cesium.CallbackProperty(() => Number(tankerRescueCarAdjust.scale) || 1.0, false),
         minimumPixelSize: 16,
         heightReference: Cesium.HeightReference.NONE,
-        runAnimations: true
+        runAnimations: true,
+        silhouetteColor: Cesium.Color.fromCssColorString('#00ffaa'),
+        silhouetteSize: 2.0
       }
     });
     tankerRescueCarEntities.push(entity);
@@ -4806,8 +6390,15 @@ function addEventEntities() {
   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 }
 
-function updatePhaseScene(index) {
+function updatePhaseScene(index, animate = false) {
   if (!viewer || !props.phases.length || !focusAreaEntity) return
+
+  if (animate && isFlying) {
+    try {
+      viewer.camera.cancelFlight();
+    } catch (e) {}
+    isFlying = false;
+  }
 
   try {
     if (index !== 7) {
@@ -4821,6 +6412,16 @@ function updatePhaseScene(index) {
     }
     const phase = props.phases[index] || props.phases[0]
     const pointId = props.focusedPointId || phase.focusPoint || 'gateway'
+
+    // 🗺️ 控制无人机盘旋轨迹的显示/隐藏 (仅在第8阶段“无人感知执行”时显示)
+    const orbitPathTruck = viewer.entities.getById('uav-orbit-path-truck');
+    if (orbitPathTruck) {
+      orbitPathTruck.show = (pointId === 'accident_blue' && index === 8);
+    }
+    const orbitPathTanker = viewer.entities.getById('uav-orbit-path-tanker');
+    if (orbitPathTanker) {
+      orbitPathTanker.show = (pointId === 'accident_red' && index === 8);
+    }
     const point = scenarioPoints[pointId] || scenarioPoints.gateway
 
     let lng = point.longitude, lat = point.latitude;
@@ -4833,10 +6434,16 @@ function updatePhaseScene(index) {
     // 无论在哪个场景，都让所有模型保持 show: true 状态以触发预加载
     // 但通过 scale 来控制真正可见的模型
     if (pointId === 'accident_blue') {
+      if (typeof currentScene !== 'undefined' && currentScene.value !== undefined) {
+        currentScene.value = 'truck';
+      }
       updateTruckSequence(index, pointId)
       if (leakParticle) leakParticle.show = false
       if (diffusionParticle) diffusionParticle.show = false
     } else if (pointId === 'accident_red') {
+      if (typeof currentScene !== 'undefined' && currentScene.value !== undefined) {
+        currentScene.value = 'tanker';
+      }
       updateTankerSequence(index, pointId)
       if (smokeParticle) smokeParticle.show = false
       if (fireParticle) fireParticle.show = false
@@ -4862,120 +6469,221 @@ function updatePhaseScene(index) {
     }
 
     if (isTruckScene && index === 6) {
-      rescuePopup.title = '无人装备出动';
+      // 无人机浮窗
+      rescuePopup.title = '无人机出发';
+      rescuePopup.model = 'DJI M300 RTK';
+      rescuePopup.altitude = '100 m';
+      rescuePopup.speed = '15 m/s';
       rescuePopup.status = '已出发';
-      rescueCoords.lng = 113.418173;
-      rescueCoords.lat = 30.321919;
-      rescueCoords.height = 24.0;
+      rescuePopup.xOffset = -10;
+      rescuePopup.yOffset = 15;
+      rescueCoords.lng = 113.4275;
+      rescueCoords.lat = 30.3354;
+      rescueCoords.height = 120.0;
+      // 无人车浮窗
+      ugvPopup.title = '无人车出发';
+      ugvPopup.model = 'SCOUT 2.0';
+      ugvPopup.count = '2 辆';
+      ugvPopup.speed = '5 km/h';
+      ugvPopup.status = '已出发';
+      ugvPopup.xOffset = -27;
+      ugvPopup.yOffset = -133;
+      ugvCoords.lng = 113.4275;
+      ugvCoords.lat = 30.3354;
+      ugvCoords.height = 10.0;
       
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
       rescuePopup.show = true;
+      ugvPopup.show = true;
     } else if (isTruckScene && index === 7) {
-      rescuePopup.title = '无人感知部署';
-      rescuePopup.status = '已到达';
+      rescuePopup.title = '无人机已到达';
+      rescuePopup.model = 'DJI M300 RTK';
+      rescuePopup.altitude = '100 m';
+      rescuePopup.speed = '0 m/s';
+      rescuePopup.status = '感知部署中';
+      rescuePopup.xOffset = 161;
+      rescuePopup.yOffset = -62;
       rescueCoords.lng = 113.104833;
       rescueCoords.lat = 30.385469;
-      rescueCoords.height = 24.0;
+      rescueCoords.height = 120.0;
+      ugvPopup.title = '无人车已就位';
+      ugvPopup.status = '传感器布设中';
+      ugvPopup.xOffset = -200;
+      ugvPopup.yOffset = 143;
+      ugvCoords.lng = 113.104833;
+      ugvCoords.lat = 30.385469;
+      ugvCoords.height = 10.0;
       
-      // 飞行/行驶动画耗时约6秒，在第5秒（即将到达的最后一秒）再显示标记和悬浮窗，避免突兀
       if (rescueMarkerEntity) rescueMarkerEntity.show = false;
       rescuePopup.show = false;
+      ugvPopup.show = false;
       
       setTimeout(() => {
         if (props.focusedPointId === 'accident_blue' && Number(props.activePhaseIndex) === 7) {
           if (rescueMarkerEntity) rescueMarkerEntity.show = true;
           rescuePopup.show = true;
+          ugvPopup.show = true;
         }
       }, 5000);
     } else if (isTruckScene && index === 9) {
-      rescuePopup.title = '救援装备出动';
+      rescuePopup.title = '无人机出发';
+      rescuePopup.model = 'DJI M300 RTK';
+      rescuePopup.altitude = '100 m';
+      rescuePopup.speed = '15 m/s';
       rescuePopup.status = '已出发';
-      rescueCoords.lng = 113.418173;
-      rescueCoords.lat = 30.321919;
-      rescueCoords.height = 24.0;
+      rescuePopup.xOffset = -10;
+      rescuePopup.yOffset = 15;
+      rescueCoords.lng = 113.4275;
+      rescueCoords.lat = 30.3354;
+      rescueCoords.height = 120.0;
+      ugvPopup.title = '无人车出发';
+      ugvPopup.model = 'SCOUT 2.0';
+      ugvPopup.count = '2 辆';
+      ugvPopup.speed = '5 km/h';
+      ugvPopup.status = '已出发';
+      ugvPopup.xOffset = -27;
+      ugvPopup.yOffset = -133;
+      ugvCoords.lng = 113.4275;
+      ugvCoords.lat = 30.3354;
+      ugvCoords.height = 10.0;
       
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
       rescuePopup.show = true;
+      ugvPopup.show = true;
     } else if (isTruckScene && index === 10) {
-      rescuePopup.title = '救援任务执行';
+      rescuePopup.title = '无人机执行中';
       rescuePopup.status = '执行中';
       rescueCoords.lng = 113.104833;
       rescueCoords.lat = 30.385469;
-      rescueCoords.height = 24.0;
+      rescueCoords.height = 120.0;
+      ugvPopup.title = '无人车执行中';
+      ugvPopup.status = '执行中';
+      ugvCoords.lng = 113.104833;
+      ugvCoords.lat = 30.385469;
+      ugvCoords.height = 10.0;
       
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
       rescuePopup.show = true;
+      ugvPopup.show = true;
     } else if (isTankerScene && index === 6) {
-      rescuePopup.title = '无人装备出动';
+      // 油罐车场景无人机
+      rescuePopup.title = '无人机出发';
+      rescuePopup.model = 'DJI M300 RTK';
+      rescuePopup.altitude = String(Math.round(tankerUavAdjust.height)) + ' m';
+      rescuePopup.speed = '12 m/s';
       rescuePopup.status = '已出发';
-      // 跟随无人机位置，悬浮窗显示在无人机头顶上方
-      rescueCoords.lng = tankerUavAdjust.lng;
-      rescueCoords.lat = tankerUavAdjust.lat;
-      rescueCoords.height = tankerUavAdjust.height + 8.0; // 显示在无人机头顶上方
+      rescuePopup.xOffset = -10;
+      rescuePopup.yOffset = 15;
+      rescueCoords.lng = 114.9238;
+      rescueCoords.lat = 30.5158;
+      rescueCoords.height = tankerUavAdjust.height + 10.0;
+      // 油罐车场景无人车
+      ugvPopup.title = '无人车出发';
+      ugvPopup.model = 'SCOUT 2.0';
+      ugvPopup.count = '2 辆';
+      ugvPopup.speed = '5 km/h';
+      ugvPopup.status = '已出发';
+      ugvPopup.xOffset = -27;
+      ugvPopup.yOffset = -133;
+      ugvCoords.lng = 114.9238;
+      ugvCoords.lat = 30.5158;
+      ugvCoords.height = 15.0;
       
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
       rescuePopup.show = true;
+      ugvPopup.show = true;
     } else if (isTankerScene && index === 7) {
-      rescuePopup.title = '无人机感知部署';
-      rescuePopup.status = '已到达';
-      // 油罐车事故点 (使用动态的 tankerPointAdjust)
+      rescuePopup.title = '无人机已到达';
+      rescuePopup.model = 'DJI M300 RTK';
+      rescuePopup.altitude = String(Math.round(tankerUavAdjust.height)) + ' m';
+      rescuePopup.speed = '0 m/s';
+      rescuePopup.status = '感知部署中';
+      rescuePopup.xOffset = 161;
+      rescuePopup.yOffset = -62;
       rescueCoords.lng = tankerPointAdjust.lng;
       rescueCoords.lat = tankerPointAdjust.lat;
       rescueCoords.height = 17.0;
+      ugvPopup.title = '无人车已就位';
+      ugvPopup.status = '传感器布设中';
+      ugvPopup.xOffset = -200;
+      ugvPopup.yOffset = 143;
+      ugvCoords.lng = tankerPointAdjust.lng;
+      ugvCoords.lat = tankerPointAdjust.lat;
+      ugvCoords.height = 10.0;
       
       if (rescueMarkerEntity) rescueMarkerEntity.show = false;
       rescuePopup.show = false;
+      ugvPopup.show = false;
       
       setTimeout(() => {
         if (props.focusedPointId === 'accident_red' && Number(props.activePhaseIndex) === 7) {
           if (rescueMarkerEntity) rescueMarkerEntity.show = true;
           rescuePopup.show = true;
+          ugvPopup.show = true;
         }
       }, 5000);
     } else if (isTankerScene && index === 9) {
-      rescuePopup.title = '救援装备出动';
+      rescuePopup.title = '无人机出发';
+      rescuePopup.model = 'DJI M300 RTK';
+      rescuePopup.altitude = '80 m';
+      rescuePopup.speed = '12 m/s';
       rescuePopup.status = '已出发';
+      rescuePopup.xOffset = -10;
+      rescuePopup.yOffset = 15;
       rescueCoords.lng = tankerPointAdjust.lng;
       rescueCoords.lat = tankerPointAdjust.lat;
       rescueCoords.height = 17.0;
+      ugvPopup.title = '无人车出发';
+      ugvPopup.model = 'SCOUT 2.0';
+      ugvPopup.count = '2 辆';
+      ugvPopup.speed = '5 km/h';
+      ugvPopup.status = '已出发';
+      ugvPopup.xOffset = -27;
+      ugvPopup.yOffset = -133;
+      ugvCoords.lng = tankerPointAdjust.lng;
+      ugvCoords.lat = tankerPointAdjust.lat;
+      ugvCoords.height = 10.0;
       
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
       rescuePopup.show = true;
+      ugvPopup.show = true;
     } else if (isTankerScene && index === 10) {
-      rescuePopup.title = '救援任务执行';
+      rescuePopup.title = '无人机执行中';
       rescuePopup.status = '执行中';
       rescueCoords.lng = tankerPointAdjust.lng;
       rescueCoords.lat = tankerPointAdjust.lat;
       rescueCoords.height = 17.0;
+      ugvPopup.title = '无人车执行中';
+      ugvPopup.status = '执行中';
+      ugvCoords.lng = tankerPointAdjust.lng;
+      ugvCoords.lat = tankerPointAdjust.lat;
+      ugvCoords.height = 10.0;
       
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
       rescuePopup.show = true;
+      ugvPopup.show = true;
     } else {
       if (rescueMarkerEntity) rescueMarkerEntity.show = false;
       rescuePopup.show = false;
+      ugvPopup.show = false;
     }
 
     if (index >= 6) {
-      if (!currentMissionDataSource) {
+      const expectedEndpoint = currentScene.value === 'truck' ? 'crash' : 'leak';
+      if (!currentMissionDataSource || currentMissionDataSource._lastEndpoint !== expectedEndpoint) {
         loadMission();
-      }
-
-      // 根据用户要求，当在货车现场进入"无人装备出动"(阶段6)时，视角飞向大范围侧倾透视视角
-      if (pointId === 'accident_blue' && index === 6) {
-        stopAutoRotate();
-        isFlying = true;
-        viewer.camera.flyTo({
-          destination: Cesium.Cartesian3.fromDegrees(113.26, 29.96, 39000), // 侧倾透视视角，将相机向南平移并微调高度以完整居中路线
-          orientation: {
-            heading: Cesium.Math.toRadians(350.0),
-            pitch: Cesium.Math.toRadians(-35.0),
-            roll: 0.0
-          },
-          duration: 1.5,
-          complete: () => {
-            isFlying = false;
-          }
-        });
+      } else {
+        // 如果数据源已加载，显式确保规划路线可见
+        const uavPath = currentMissionDataSource.entities.getById('UAV_Path');
+        if (uavPath) {
+          uavPath.show = true;
+          if (uavPath.polyline) uavPath.polyline.show = true;
+        }
+        const carPath = currentMissionDataSource.entities.getById('Car_Path');
+        if (carPath) {
+          carPath.show = true;
+          if (carPath.polyline) carPath.polyline.show = true;
+        }
       }
     } else {
       if (currentMissionDataSource) {
@@ -5027,11 +6735,13 @@ function updatePhaseScene(index) {
           tankerUavEntities.forEach(entity => { entity.show = false })
           tankerRescueCarEntities.forEach(entity => { entity.show = false })
           
-          // 隐藏所有粒子效果，只保留模型
-          if (smokeParticle) smokeParticle.show = false
-          if (fireParticle) fireParticle.show = false
+          // 隐藏所有泄露和扩散粒子，但保留货车场景所需的烟雾与火焰粒子（由 updateTruckSequence 控制其具体大小）
           if (leakParticle) leakParticle.show = false
           if (diffusionParticle) diffusionParticle.show = false
+          if (index >= 9) {
+            if (smokeParticle) smokeParticle.show = false
+            if (fireParticle) fireParticle.show = false
+          }
         } else if (pointId === 'accident_red') {
           // 在油罐车泄露现场的无人机阶段显示无人机模型和救援车并隐藏所有粒子效果
           tankerUavEntities.forEach(entity => {
@@ -5080,7 +6790,7 @@ function updatePhaseScene(index) {
     lastUavPhaseIndex = index;
     lastTankerUavPhaseIndex = index;
 
-    if (!spinCallback && props.focusedPointId && !isFlying) applyOrbitView()
+    if (!spinCallback && props.focusedPointId && !isFlying) applyOrbitView(animate)
   } catch (error) {
     console.warn('更新阶段场景时出现警告:', error.message)
   }
@@ -5289,6 +6999,7 @@ watch(
 
 watch(() => props.activePhaseIndex, (next, prev) => {
   accidentViewLevel.value = null;
+  stopAutoRotate();
   if (next === 7 && prev !== 7) {
     phase7StartTime = Date.now();
     tankerPhase7StartTime = Date.now();
@@ -5302,7 +7013,17 @@ watch(() => props.activePhaseIndex, (next, prev) => {
   } else if (next < 4) {
     diffusionStartTime = 0;
   }
-  updatePhaseScene(next);
+
+  // 自动对齐场景并加载该阶段配置
+  const scene = props.focusedPointId === 'accident_red' ? 'tanker' : 'truck'
+  cameraAdjust.scene = scene
+  cameraAdjust.phaseIndex = next + 1
+  const cfg = (defaultPhaseCameraConfigs[scene] && defaultPhaseCameraConfigs[scene][next + 1]) || { range: 1440, pitch: -39, heading: -5 }
+  cameraAdjust.range = cfg.range
+  cameraAdjust.pitch = cfg.pitch
+  cameraAdjust.heading = cfg.heading
+
+  updatePhaseScene(next, true);
 });
 
 watch(accidentViewLevel, () => {
@@ -5314,6 +7035,17 @@ watch(() => props.focusedPointId, (newVal) => {
     accidentViewLevel.value = 'far'
   } else {
     accidentDetailPopup.show = false
+  }
+  if (newVal === 'accident_blue') {
+    cameraAdjust.scene = 'truck'
+    if (typeof currentScene !== 'undefined') {
+      currentScene.value = 'truck'
+    }
+  } else if (newVal === 'accident_red') {
+    cameraAdjust.scene = 'tanker'
+    if (typeof currentScene !== 'undefined') {
+      currentScene.value = 'tanker'
+    }
   }
   updateMarkerVisibility()
   updatePhaseScene(props.activePhaseIndex);
@@ -5611,6 +7343,13 @@ onBeforeUnmount(() => {
   fill: #fca5a5;
 }
 
+.rect-leak {
+  stroke: #10b981;
+}
+.label-leak {
+  fill: #a7f3d0;
+}
+
 .rect-truck {
   stroke: #3b82f6;
 }
@@ -5812,7 +7551,7 @@ onBeforeUnmount(() => {
   padding: 6px 10px;
   display: flex;
   align-items: center;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .detect-item .item-icon {
@@ -5832,6 +7571,7 @@ onBeforeUnmount(() => {
 .detect-item.fire .item-conf { color: #fca5a5; }
 .detect-item.truck .item-conf { color: #93c5fd; }
 .detect-item.smoke .item-conf { color: #fde047; }
+.detect-item.leak .item-conf { color: #34d399; }
 
 .report-box {
   background: rgba(245, 158, 11, 0.07);
@@ -6606,6 +8346,228 @@ onBeforeUnmount(() => {
   border-top: 6px solid white;
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.15));
 }
+/* ✈️ 无人机出发浮窗 — 青色科技主题 */
+.uav-dispatch-popup {
+  width: 190px;
+  background: rgba(5, 18, 38, 0.95);
+  border: 1px solid rgba(0, 229, 255, 0.5);
+  border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6), 0 0 14px rgba(0, 229, 255, 0.2);
+  backdrop-filter: blur(12px);
+  transform: translate(-50%, 0) !important; /* 朝下显示：移除向上的-100%偏移 */
+}
+
+.uav-dispatch-popup .shelter-popup-arrow {
+  top: -6px;
+  bottom: auto;
+  border-top: 0;
+  border-bottom: 6px solid rgba(5, 18, 38, 0.95);
+  filter: drop-shadow(0 -2px 2px rgba(0, 0, 0, 0.15));
+}
+
+.uav-dispatch-header {
+  background: linear-gradient(90deg, rgba(0, 180, 220, 0.85), rgba(0, 120, 160, 0.7)) !important;
+  border-bottom: 1px solid rgba(0, 229, 255, 0.4);
+  padding: 6px 10px !important;
+}
+
+/* 🚗 无人车出发浮窗 — 蓝色科技主题 (含传感器数据) */
+.ugv-dispatch-popup {
+  width: 220px;
+  background: rgba(5, 10, 40, 0.95);
+  border: 1px solid rgba(70, 130, 255, 0.5);
+  border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6), 0 0 14px rgba(70, 130, 255, 0.2);
+  backdrop-filter: blur(12px);
+}
+
+.ugv-dispatch-header {
+  background: linear-gradient(90deg, rgba(40, 80, 200, 0.85), rgba(20, 50, 160, 0.7)) !important;
+  border-bottom: 1px solid rgba(70, 130, 255, 0.4);
+  padding: 6px 10px !important;
+}
+
+.dispatch-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.dispatch-icon {
+  font-size: 13px;
+}
+
+/* 深色面板的表格通用样式覆盖 */
+.uav-dispatch-popup .shelter-popup-table,
+.ugv-dispatch-popup .shelter-popup-table {
+  font-size: 11px;
+  color: #c8e6f0;
+}
+
+.uav-dispatch-popup .shelter-popup-table td,
+.ugv-dispatch-popup .shelter-popup-table td {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 5px 8px;
+}
+
+.uav-dispatch-popup .shelter-popup-table td.label {
+  background: rgba(0, 150, 190, 0.2);
+  color: #7dd8f0;
+  font-weight: bold;
+}
+
+.uav-dispatch-popup .shelter-popup-table td.value {
+  background: rgba(0, 20, 45, 0.6);
+  color: #e0f4ff;
+}
+
+.ugv-dispatch-popup .shelter-popup-table td.label {
+  background: rgba(40, 80, 180, 0.25);
+  color: #93b8ff;
+  font-weight: bold;
+}
+
+.ugv-dispatch-popup .shelter-popup-table td.value {
+  background: rgba(5, 10, 40, 0.6);
+  color: #d0dfff;
+}
+
+/* 无人车浮窗的箭头颜色 */
+.shelter-popup-arrow.ugv-arrow {
+  border-top-color: rgba(5, 10, 40, 0.95);
+}
+
+/* 高亮值样式 */
+.highlight-cyan {
+  color: #00e5ff !important;
+  font-weight: bold !important;
+  text-shadow: 0 0 6px rgba(0, 229, 255, 0.5);
+}
+
+.highlight-blue {
+  color: #6aabff !important;
+  font-weight: bold !important;
+  text-shadow: 0 0 6px rgba(106, 171, 255, 0.5);
+}
+
+.status-launched {
+  color: #00ff88 !important;
+  font-weight: bold !important;
+  text-shadow: 0 0 5px rgba(0, 255, 136, 0.4);
+}
+
+/* 无人车传感器数据合并面板样式 */
+.ugv-sensor-section {
+  border-top: 1px solid rgba(70, 130, 255, 0.25);
+}
+
+.ugv-sensor-tabs {
+  display: flex;
+  gap: 0;
+  background: rgba(20, 40, 90, 0.3);
+}
+
+.ugv-sensor-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: bold;
+  color: #8aafcc;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.ugv-sensor-tab:hover {
+  color: #b0d8ff;
+  background: rgba(70, 130, 255, 0.1);
+}
+
+.ugv-sensor-tab.active {
+  color: #6aabff;
+  border-bottom-color: #6aabff;
+  background: rgba(70, 130, 255, 0.15);
+}
+
+.ugv-tab-status {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.25);
+  color: #00ff88;
+  font-weight: bold;
+}
+
+.ugv-tab-status.offline {
+  color: #ffb4b4;
+  background: rgba(168, 54, 54, 0.18);
+  border-color: rgba(255, 180, 180, 0.28);
+}
+
+.ugv-sensor-body {
+  padding: 6px;
+}
+
+.ugv-sensor-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.ugv-sensor-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ugv-sensor-item.wide {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ugv-sensor-label {
+  font-size: 10px;
+  color: #8fa3b0;
+}
+
+.ugv-sensor-val {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e0f2fe;
+  text-shadow: 0 0 4px rgba(224, 242, 254, 0.3);
+  font-family: "JetBrains Mono", monospace;
+}
+
+.ugv-sensor-detail-link {
+  text-align: right;
+  padding: 5px 6px 3px;
+  font-size: 9px;
+  color: #6aabff;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.ugv-sensor-detail-link:hover {
+  color: #a0cfff;
+}
+
 .globe-mask {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   background: rgba(2, 10, 22, 0.88); color: rgba(255, 255, 255, 0.78);
@@ -8305,17 +10267,195 @@ onBeforeUnmount(() => {
 /* 🛠️ 右下角微调控制台 悬浮按钮 Dock */
 .bottom-right-tool-dock {
   position: absolute;
-  bottom: 20px;
+  top: 50%;
   right: 20px;
+  transform: translate(0, -50%);
   z-index: 1025;
   display: flex;
+  flex-direction: column;
   gap: 10px;
   background: rgba(5, 14, 26, 0.88);
-  padding: 8px 14px;
+  padding: 14px 10px;
   border-radius: 10px;
   border: 1px solid rgba(0, 229, 255, 0.35);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7), 0 0 15px rgba(0, 229, 255, 0.15);
   backdrop-filter: blur(12px);
+  width: 130px;
+  box-sizing: border-box;
+  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.bottom-right-tool-dock.collapsed {
+  transform: translate(calc(100% + 20px), -50%);
+}
+
+.dock-toggle-handle {
+  position: absolute;
+  left: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 60px;
+  background: rgba(5, 14, 26, 0.95);
+  border-left: 1px solid rgba(0, 229, 255, 0.4);
+  border-top: 1px solid rgba(0, 229, 255, 0.4);
+  border-bottom: 1px solid rgba(0, 229, 255, 0.4);
+  border-radius: 8px 0 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: -4px 0 10px rgba(0, 0, 0, 0.5);
+  color: #00e5ff;
+  font-size: 10px;
+  z-index: 1026;
+  transition: all 0.25s ease;
+}
+
+.dock-toggle-handle:hover {
+  background: rgba(0, 229, 255, 0.2);
+  color: #ffffff;
+  box-shadow: -4px 0 15px rgba(0, 229, 255, 0.4);
+}
+
+/* 🗺️ 湖北省地图车辆运行图例 Style */
+.hubei-map-legend {
+  position: absolute;
+  top: 90px;
+  width: 290px;
+  background: rgba(10, 20, 38, 0.85);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), inset 0 0 15px rgba(0, 242, 254, 0.1);
+  border-radius: 12px;
+  padding: 14px 16px;
+  z-index: 99;
+  backdrop-filter: blur(20px);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto;
+}
+
+.legend-header {
+  border-bottom: 1px solid rgba(0, 242, 254, 0.15);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.legend-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #00f2fe;
+  letter-spacing: 1px;
+  text-shadow: 0 0 8px rgba(0, 242, 254, 0.35);
+}
+
+.legend-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 单行胶囊设计 */
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(6, 12, 24, 0.85);
+  border-radius: 8px;
+  padding: 8px 12px;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.legend-row:hover {
+  background: rgba(12, 24, 48, 0.95);
+}
+
+.hazard-row {
+  border-color: rgba(255, 51, 68, 0.25);
+  box-shadow: 0 0 10px rgba(255, 51, 68, 0.08), inset 0 0 8px rgba(255, 51, 68, 0.05);
+}
+.hazard-row:hover {
+  border-color: rgba(255, 51, 68, 0.5);
+  box-shadow: 0 0 12px rgba(255, 51, 68, 0.2);
+}
+
+.passenger-row {
+  border-color: rgba(0, 255, 170, 0.25);
+  box-shadow: 0 0 10px rgba(0, 255, 170, 0.08), inset 0 0 8px rgba(0, 255, 170, 0.05);
+}
+.passenger-row:hover {
+  border-color: rgba(0, 255, 170, 0.5);
+  box-shadow: 0 0 12px rgba(0, 255, 170, 0.2);
+}
+
+.tourist-row {
+  border-color: rgba(0, 229, 255, 0.25);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.08), inset 0 0 8px rgba(0, 229, 255, 0.05);
+}
+.tourist-row:hover {
+  border-color: rgba(0, 229, 255, 0.5);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
+}
+
+/* 呼吸发光点 */
+.legend-glow-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: relative;
+}
+
+.legend-glow-dot::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.4;
+  animation: dot-pulse 1.8s infinite ease-in-out;
+}
+
+@keyframes dot-pulse {
+  0% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 0.4; }
+}
+
+.legend-glow-dot.red {
+  background-color: #ff3344;
+  box-shadow: 0 0 8px #ff3344;
+}
+
+.legend-glow-dot.green {
+  background-color: #00ffaa;
+  box-shadow: 0 0 8px #00ffaa;
+}
+
+.legend-glow-dot.blue {
+  background-color: #00e5ff;
+  box-shadow: 0 0 8px #00e5ff;
+}
+
+/* 文字排版 */
+.legend-text-main {
+  font-size: 12px;
+  font-weight: bold;
+  color: #ffffff;
+  flex: 1;
+}
+
+.legend-text-sub {
+  font-size: 10px;
+  color: #8fa0dd;
+  font-family: monospace;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 .dock-tool-btn {
@@ -8329,8 +10469,13 @@ onBeforeUnmount(() => {
   transition: all 0.25s ease;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   user-select: none;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .dock-tool-btn.camera-btn {
@@ -8372,14 +10517,14 @@ onBeforeUnmount(() => {
 /* 🛠️ 右下角微调弹窗面板堆叠容器 */
 .bottom-right-panels-stack {
   position: absolute;
-  bottom: 75px;
-  right: 20px;
+  bottom: 120px;
+  right: 160px;
   z-index: 1020;
   display: flex;
   flex-direction: column-reverse;
   align-items: flex-end;
   gap: 12px;
-  max-height: calc(100vh - 150px);
+  max-height: calc(100vh - 200px);
   overflow-y: auto;
   pointer-events: none;
   padding-right: 2px;
@@ -8634,6 +10779,15 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 8px rgba(0, 255, 216, 0.4);
 }
 
+.cyber-num-input::-webkit-outer-spin-button,
+.cyber-num-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.cyber-num-input[type=number] {
+  -moz-appearance: textfield;
+}
+
 /* 按钮组 */
 .btn-group {
   display: flex;
@@ -8750,6 +10904,159 @@ onBeforeUnmount(() => {
   background: rgba(0, 242, 254, 0.25);
   border-color: #00f2fe;
   box-shadow: 0 0 12px rgba(0, 242, 254, 0.4);
+}
+
+/* 6灯光选项卡选择样式 */
+.light-select-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 200px;
+}
+
+.light-tab-btn {
+  flex-grow: 1;
+  min-width: 58px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 4px 0;
+  color: #a0aec0;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.light-tab-btn:hover {
+  background: rgba(0, 229, 255, 0.1);
+  border-color: rgba(0, 229, 255, 0.4);
+  color: #00ffd8;
+}
+
+.light-tab-btn.active {
+  background: rgba(0, 229, 255, 0.25);
+  border-color: #00ffd8;
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(0, 255, 216, 0.2);
+}
+
+/* ⛽ 油罐车模型与泄漏点微调面板专属橙色高端拟态样式 */
+.dock-tool-btn.tanker-btn {
+  border: 1px dashed #ff9f43;
+  color: #ff9f43;
+}
+.dock-tool-btn.tanker-btn:hover,
+.dock-tool-btn.tanker-btn.active {
+  background: rgba(255, 159, 67, 0.25);
+  border-style: solid;
+  border-color: #ff9f43;
+  box-shadow: 0 0 15px rgba(255, 159, 67, 0.5);
+}
+
+.tanker-control-panel {
+  border-color: rgba(255, 159, 67, 0.4) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 15px rgba(255, 159, 67, 0.15) !important;
+}
+
+.tanker-control-panel .light-panel-header {
+  background: linear-gradient(90deg, rgba(255, 159, 67, 0.2), rgba(255, 159, 67, 0.05)) !important;
+  border-bottom: 1px solid rgba(255, 159, 67, 0.3) !important;
+}
+
+.tanker-control-panel .light-tab-btn:hover {
+  background: rgba(255, 159, 67, 0.1) !important;
+  border-color: rgba(255, 159, 67, 0.4) !important;
+  color: #ff9f43 !important;
+}
+
+.tanker-control-panel .light-tab-btn.active {
+  background: rgba(255, 159, 67, 0.25) !important;
+  border-color: #ff9f43 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 8px rgba(255, 159, 67, 0.2) !important;
+}
+
+/* 🤖 无人装备微调面板专属炫绿高端拟态样式 */
+.dock-tool-btn.uavugv-btn {
+  border: 1px dashed #10b981;
+  color: #10b981;
+}
+.dock-tool-btn.uavugv-btn:hover,
+.dock-tool-btn.uavugv-btn.active {
+  background: rgba(16, 185, 129, 0.25);
+  border-style: solid;
+  border-color: #10b981;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+}
+
+.uavugv-control-panel {
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 15px rgba(16, 185, 129, 0.15) !important;
+}
+
+.uavugv-control-panel .light-panel-header {
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.05)) !important;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.3) !important;
+}
+
+.uavugv-control-panel .light-tab-btn:hover {
+  background: rgba(16, 185, 129, 0.1) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  color: #10b981 !important;
+}
+
+.uavugv-control-panel .light-tab-btn.active {
+  background: rgba(16, 185, 129, 0.25) !important;
+  border-color: #10b981 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.2) !important;
+}
+
+/* 🚗 无人车悬浮窗微调面板专属蓝色高端拟态样式 */
+.dock-tool-btn.ugvpopup-btn {
+  border: 1px dashed #3b82f6;
+  color: #3b82f6;
+}
+.dock-tool-btn.ugvpopup-btn:hover,
+.dock-tool-btn.ugvpopup-btn.active {
+  background: rgba(59, 130, 246, 0.25);
+  border-style: solid;
+  border-color: #3b82f6;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+}
+
+.ugvpopup-control-panel {
+  border-color: rgba(59, 130, 246, 0.4) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 15px rgba(59, 130, 246, 0.15) !important;
+}
+
+.ugvpopup-control-panel .light-panel-header {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.05)) !important;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.3) !important;
+}
+
+/* 🚁 无人机悬浮窗微调面板专属青色高端拟态样式 */
+.dock-tool-btn.uavpopup-btn {
+  border: 1px dashed #00e5ff;
+  color: #00e5ff;
+}
+.dock-tool-btn.uavpopup-btn:hover,
+.dock-tool-btn.uavpopup-btn.active {
+  background: rgba(0, 229, 255, 0.25);
+  border-style: solid;
+  border-color: #00e5ff;
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.5);
+}
+
+.uavpopup-control-panel {
+  border-color: rgba(0, 229, 255, 0.4) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 229, 255, 0.15) !important;
+}
+
+.uavpopup-control-panel .light-panel-header {
+  background: linear-gradient(90deg, rgba(0, 229, 255, 0.2), rgba(0, 229, 255, 0.05)) !important;
+  border-bottom: 1px solid rgba(0, 229, 255, 0.3) !important;
 }
 </style>
 
