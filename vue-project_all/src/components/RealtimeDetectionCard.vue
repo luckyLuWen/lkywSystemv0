@@ -566,13 +566,13 @@ onBeforeUnmount(() => {
 .card-title {
   margin: 0;
   color: #ffcf8b;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.2;
 }
 
 .card-subtitle {
   margin: 4px 0 0 0;
-  font-size: 13px;
+  font-size: 14.5px;
   color: rgba(255, 255, 255, 0.72);
   word-break: break-all;
 }
@@ -617,14 +617,14 @@ onBeforeUnmount(() => {
 .bracket {
   color: #00f2fe;
   font-weight: bold;
-  font-size: 20px;
+  font-size: 18px;
   text-shadow: 0 0 6px rgba(0, 242, 254, 0.5);
 }
 
 .section-subtitle-text {
   margin: 0;
   color: #00f2fe;
-  font-size: 16px;
+  font-size: 17.5px;
   font-weight: bold;
   letter-spacing: 1px;
   text-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
@@ -641,7 +641,7 @@ onBeforeUnmount(() => {
 }
 
 .control-label-text {
-  font-size: 13px;
+  font-size: 14.5px;
   color: rgba(255, 255, 255, 0.6);
 }
 
@@ -681,7 +681,7 @@ onBeforeUnmount(() => {
 .slider-label-row {
   display: flex;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: 14.5px;
   color: rgba(255, 255, 255, 0.82);
 }
 
@@ -720,7 +720,7 @@ onBeforeUnmount(() => {
 }
 
 .input-label {
-  font-size: 12px;
+  font-size: 14.5px;
   color: rgba(255, 255, 255, 0.5);
 }
 
@@ -737,7 +737,7 @@ onBeforeUnmount(() => {
   border-radius: 6px;
   background: rgba(10, 19, 35, 0.85);
   color: #fff;
-  font-size: 13px;
+  font-size: 14.5px;
   outline: none;
 }
 .config-input-compact:focus {
@@ -751,7 +751,7 @@ onBeforeUnmount(() => {
   background: rgba(0, 242, 254, 0.1);
   border: 1px solid rgba(0, 242, 254, 0.3);
   color: #00f2fe;
-  font-size: 13px;
+  font-size: 14.5px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -776,12 +776,12 @@ onBeforeUnmount(() => {
 }
 
 .status-lbl {
-  font-size: 11px;
+  font-size: 14.5px;
   color: rgba(255, 255, 255, 0.6);
 }
 
 .status-val-txt {
-  font-size: 13px;
+  font-size: 14.5px;
   font-weight: 500;
 }
 .status-val-txt.ok {
@@ -822,7 +822,7 @@ onBeforeUnmount(() => {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.85);
-  font-size: 13px;
+  font-size: 14.5px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -850,13 +850,13 @@ onBeforeUnmount(() => {
 }
 
 .telemetry-col-label {
-  font-size: 13px;
+  font-size: 14.5px;
   color: rgba(255, 255, 255, 0.6);
   font-family: monospace;
 }
 
 .telemetry-col-val {
-  font-size: 14px;
+  font-size: 14.5px;
   color: #fff;
   font-weight: bold;
   font-family: monospace;
@@ -909,13 +909,13 @@ onBeforeUnmount(() => {
 }
 
 .metric-val {
-  font-size: 18px;
+  font-size: 26px;
   font-weight: bold;
   font-family: monospace;
 }
 
 .metric-lbl {
-  font-size: 11px;
+  font-size: 14.5px;
   color: rgba(255, 255, 255, 0.5);
   white-space: nowrap;
 }
@@ -929,7 +929,7 @@ onBeforeUnmount(() => {
 }
 
 .chart-title-label {
-  font-size: 13px;
+  font-size: 14.5px;
   color: #ffb84d;
   font-weight: bold;
   margin-bottom: 4px;
@@ -959,7 +959,7 @@ onBeforeUnmount(() => {
 }
 
 .total-text {
-  font-size: 14px;
+  font-size: 16px;
   color: #ffcf8b;
   font-weight: bold;
 }
@@ -977,7 +977,7 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  font-size: 14.5px;
 }
 
 .legend-name {
@@ -1016,7 +1016,7 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  font-size: 14.5px;
 }
 
 .usage-name {
@@ -1061,7 +1061,7 @@ onBeforeUnmount(() => {
 
 .offline-placeholder p {
   margin: 0;
-  font-size: 13px;
+  font-size: 14.5px;
   color: #ffb4b4;
 }
 
@@ -1072,7 +1072,7 @@ onBeforeUnmount(() => {
   min-height: 26px;
   padding: 0 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 14px;
 }
 .status-badge.online {
   color: #ffd68e;
