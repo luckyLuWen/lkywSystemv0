@@ -507,6 +507,25 @@
         
         <div class="light-panel-body">
           <div class="light-control-row">
+            <label class="light-control-label">切换场景</label>
+            <div class="light-select-tabs" style="width: 100%;">
+              <button 
+                :class="['light-tab-btn', { active: currentScene === 'truck' }]"
+                @click.stop="currentScene = 'truck'"
+                style="flex: 1;"
+              >
+                货车现场
+              </button>
+              <button 
+                :class="['light-tab-btn', { active: currentScene === 'tanker' }]"
+                @click.stop="currentScene = 'tanker'"
+                style="flex: 1;"
+              >
+                油罐车现场
+              </button>
+            </div>
+          </div>
+          <div class="light-control-row">
             <label class="light-control-label">微调目标</label>
             <div class="light-select-tabs" style="width: 100%;">
               <button 
@@ -596,6 +615,14 @@
                 <input type="number" v-model.number="currentRescueCarAdjust.heading" step="1" class="light-slider-input" />
               </div>
             </div>
+
+            <div class="light-control-row">
+              <label class="light-control-label">行驶偏航 (MoveHeading)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="currentRescueCarAdjust.moveHeading" min="-180" max="360" step="1" class="light-slider" />
+                <input type="number" v-model.number="currentRescueCarAdjust.moveHeading" step="1" class="light-slider-input" />
+              </div>
+            </div>
           </template>
 
           <div class="light-panel-buttons" style="flex-direction: column; gap: 6px;">
@@ -610,7 +637,7 @@
       <!-- 🚗 无人车已就位/出发悬浮窗微调面板 -->
       <div v-if="isUgvPopupPanelExpanded" class="light-control-panel ugvpopup-control-panel">
         <div class="light-panel-header" @click="toggleUgvPopupPanel">
-          <span class="light-panel-title">🚗 无人车悬浮窗微调</span>
+          <span class="light-panel-title">🚗 无人车悬浮窗微调 ({{ currentScene === 'truck' ? '货车现场' : '油罐车现场' }})</span>
           <span class="light-panel-toggle">✕</span>
         </div>
         
@@ -623,7 +650,7 @@
           <div class="light-control-row">
             <label class="light-control-label">水平偏移 (X Offset)</label>
             <div class="light-slider-container">
-              <input type="range" v-model.number="ugvPopup.xOffset" min="-200" max="200" step="1" class="light-slider" />
+              <input type="range" v-model.number="ugvPopup.xOffset" min="-1000" max="1000" step="1" class="light-slider" />
               <input type="number" v-model.number="ugvPopup.xOffset" step="1" class="light-slider-input" />
             </div>
           </div>
@@ -631,7 +658,7 @@
           <div class="light-control-row">
             <label class="light-control-label">垂直偏移 (Y Offset)</label>
             <div class="light-slider-container">
-              <input type="range" v-model.number="ugvPopup.yOffset" min="-200" max="200" step="1" class="light-slider" />
+              <input type="range" v-model.number="ugvPopup.yOffset" min="-1000" max="1000" step="1" class="light-slider" />
               <input type="number" v-model.number="ugvPopup.yOffset" step="1" class="light-slider-input" />
             </div>
           </div>
@@ -663,7 +690,7 @@
       <!-- 🚁 无人机已就位/出发悬浮窗微调面板 -->
       <div v-if="isUavPopupPanelExpanded" class="light-control-panel uavpopup-control-panel">
         <div class="light-panel-header" @click="toggleUavPopupPanel">
-          <span class="light-panel-title">🚁 无人机悬浮窗微调</span>
+          <span class="light-panel-title">🚁 无人机悬浮窗微调 ({{ currentScene === 'truck' ? '货车现场' : '油罐车现场' }})</span>
           <span class="light-panel-toggle">✕</span>
         </div>
         
@@ -676,7 +703,7 @@
           <div class="light-control-row">
             <label class="light-control-label">水平偏移 (X Offset)</label>
             <div class="light-slider-container">
-              <input type="range" v-model.number="rescuePopup.xOffset" min="-200" max="200" step="1" class="light-slider" />
+              <input type="range" v-model.number="rescuePopup.xOffset" min="-1000" max="1000" step="1" class="light-slider" />
               <input type="number" v-model.number="rescuePopup.xOffset" step="1" class="light-slider-input" />
             </div>
           </div>
@@ -684,7 +711,7 @@
           <div class="light-control-row">
             <label class="light-control-label">垂直偏移 (Y Offset)</label>
             <div class="light-slider-container">
-              <input type="range" v-model.number="rescuePopup.yOffset" min="-200" max="200" step="1" class="light-slider" />
+              <input type="range" v-model.number="rescuePopup.yOffset" min="-1000" max="1000" step="1" class="light-slider" />
               <input type="number" v-model.number="rescuePopup.yOffset" step="1" class="light-slider-input" />
             </div>
           </div>
@@ -2074,14 +2101,14 @@ const initialPhaseCameraConfigs = {
   },
   tanker: {
     1: { range: 2500, pitch: -45, heading: 0 },
-    2: { range: 1800, pitch: -35, heading: -15 },
+    2: { range: 950, pitch: -35, heading: -15 },
     3: { range: 400, pitch: -25, heading: 33 },
-    4: { range: 1200, pitch: -30, heading: 10 },
-    5: { range: 1500, pitch: -40, heading: -20 },
+    4: { range: 400, pitch: -30, heading: 10 },
+    5: { range: 400, pitch: -40, heading: -20 },
     6: { range: 1600, pitch: -45, heading: 0 },
-    7: { range: 33000, pitch: -45, heading: 352 },
-    8: { range: 1200, pitch: -30, heading: -10 },
-    9: { range: 1800, pitch: -45, heading: 0 },
+    7: { range: 9000, pitch: -45, heading: 352 },
+    8: { range: 600, pitch: -30, heading: -10 },
+    9: { range: 600, pitch: -18, heading: -21 },
     10: { range: 2200, pitch: -50, heading: 0 }
   }
 }
@@ -2434,33 +2461,10 @@ coordCopiedMessage.value = '复制失败，请手动记录';
 }
 
 const uavPopupCopiedMessage = ref('');
+const ugvPopupCopiedMessage = ref('');
 const simulationPopupCopiedMessage = ref('');
 
-function resetUavPopupCoords() {
-  if (rescuePopup.title === '无人机已到达') {
-    rescuePopup.xOffset = 161;
-    rescuePopup.yOffset = -62;
-  } else {
-    rescuePopup.xOffset = -10;
-    rescuePopup.yOffset = 15;
-  }
-}
 
-function copyUavPopupParams() {
-  const params = `rescuePopup.xOffset = ${rescuePopup.xOffset};\nrescuePopup.yOffset = ${rescuePopup.yOffset};`;
-  navigator.clipboard.writeText(params).then(() => {
-    uavPopupCopiedMessage.value = '已成功复制偏移参数到剪贴板！';
-    setTimeout(() => {
-      uavPopupCopiedMessage.value = '';
-    }, 2000);
-  }).catch(err => {
-    console.error('复制失败:', err);
-    uavPopupCopiedMessage.value = '复制失败，请手动记录';
-    setTimeout(() => {
-      uavPopupCopiedMessage.value = '';
-    }, 2000);
-  });
-}
 
 function resetSimulationPopupCoords() {
   simulationPopup.xOffset = -342;
@@ -2792,6 +2796,140 @@ const ugvPopup = reactive({
   yOffset: -133
 });
 
+// 场景隔离的悬浮窗微调存储
+const truckRescuePopupAdjust = reactive({
+  xOffset: -10,
+  yOffset: 15,
+  reachedXOffset: 161,
+  reachedYOffset: -62
+});
+
+const tankerRescuePopupAdjust = reactive({
+  xOffset: -239,
+  yOffset: -9,
+  reachedXOffset: 186,
+  reachedYOffset: -434
+});
+
+const truckUgvPopupAdjust = reactive({
+  xOffset: -27,
+  yOffset: -133,
+  reachedXOffset: -200,
+  reachedYOffset: 143
+});
+
+const tankerUgvPopupAdjust = reactive({
+  xOffset: 115,
+  yOffset: -133,
+  reachedXOffset: -540,
+  reachedYOffset: 274
+});
+
+// 监听微调变更，自动回写到对应场景配置中
+watch(() => [rescuePopup.xOffset, rescuePopup.yOffset], ([x, y]) => {
+  const isTanker = currentScene.value === 'tanker';
+  const target = isTanker ? tankerRescuePopupAdjust : truckRescuePopupAdjust;
+  if (rescuePopup.title === '无人机已到达') {
+    target.reachedXOffset = x;
+    target.reachedYOffset = y;
+  } else {
+    target.xOffset = x;
+    target.yOffset = y;
+  }
+});
+
+watch(() => [ugvPopup.xOffset, ugvPopup.yOffset], ([x, y]) => {
+  const isTanker = currentScene.value === 'tanker';
+  const target = isTanker ? tankerUgvPopupAdjust : truckUgvPopupAdjust;
+  if (ugvPopup.title === '无人车已就位') {
+    target.reachedXOffset = x;
+    target.reachedYOffset = y;
+  } else {
+    target.xOffset = x;
+    target.yOffset = y;
+  }
+});
+
+function resetUavPopupCoords() {
+  const isTanker = currentScene.value === 'tanker';
+  if (rescuePopup.title === '无人机已到达') {
+    if (isTanker) {
+      rescuePopup.xOffset = tankerRescuePopupAdjust.reachedXOffset;
+      rescuePopup.yOffset = tankerRescuePopupAdjust.reachedYOffset;
+    } else {
+      rescuePopup.xOffset = 161;
+      rescuePopup.yOffset = -62;
+    }
+  } else {
+    if (isTanker) {
+      rescuePopup.xOffset = tankerRescuePopupAdjust.xOffset;
+      rescuePopup.yOffset = tankerRescuePopupAdjust.yOffset;
+    } else {
+      rescuePopup.xOffset = -10;
+      rescuePopup.yOffset = 15;
+    }
+  }
+}
+
+function copyUavPopupParams() {
+  const isTanker = currentScene.value === 'tanker';
+  const prefix = isTanker ? 'tanker' : 'truck';
+  const stateStr = rescuePopup.title === '无人机已到达' ? 'reached' : 'start';
+  const params = `// ${prefix} UAV popup (${stateStr})\nrescuePopup.xOffset = ${rescuePopup.xOffset};\nrescuePopup.yOffset = ${rescuePopup.yOffset};`;
+  navigator.clipboard.writeText(params).then(() => {
+    uavPopupCopiedMessage.value = '已成功复制偏移参数到剪贴板！';
+    setTimeout(() => {
+      uavPopupCopiedMessage.value = '';
+    }, 2000);
+  }).catch(err => {
+    console.error('复制失败:', err);
+    uavPopupCopiedMessage.value = '复制失败，请手动记录';
+    setTimeout(() => {
+      uavPopupCopiedMessage.value = '';
+    }, 2000);
+  });
+}
+
+function resetUgvPopupCoords() {
+  const isTanker = currentScene.value === 'tanker';
+  if (ugvPopup.title === '无人车已就位') {
+    if (isTanker) {
+      ugvPopup.xOffset = tankerUgvPopupAdjust.reachedXOffset;
+      ugvPopup.yOffset = tankerUgvPopupAdjust.reachedYOffset;
+    } else {
+      ugvPopup.xOffset = -200;
+      ugvPopup.yOffset = 143;
+    }
+  } else {
+    if (isTanker) {
+      ugvPopup.xOffset = tankerUgvPopupAdjust.xOffset;
+      ugvPopup.yOffset = tankerUgvPopupAdjust.yOffset;
+    } else {
+      ugvPopup.xOffset = -27;
+      ugvPopup.yOffset = -133;
+    }
+  }
+}
+
+function copyUgvPopupParams() {
+  const isTanker = currentScene.value === 'tanker';
+  const prefix = isTanker ? 'tanker' : 'truck';
+  const stateStr = ugvPopup.title === '无人车已就位' ? 'reached' : 'start';
+  const params = `// ${prefix} UGV popup (${stateStr})\nugvPopup.xOffset = ${ugvPopup.xOffset};\nugvPopup.yOffset = ${ugvPopup.yOffset};`;
+  navigator.clipboard.writeText(params).then(() => {
+    ugvPopupCopiedMessage.value = '已成功复制偏移参数到剪贴板！';
+    setTimeout(() => {
+      ugvPopupCopiedMessage.value = '';
+    }, 2000);
+  }).catch(err => {
+    console.error('复制失败:', err);
+    ugvPopupCopiedMessage.value = '复制失败，请手动记录';
+    setTimeout(() => {
+      ugvPopupCopiedMessage.value = '';
+    }, 2000);
+  });
+}
+
 // 无人车传感器面板的 A/B 切换标签
 const activeUgvSensorTab = ref('A');
 
@@ -2803,6 +2941,8 @@ let rescueMarkerEntity = null;
 
 let sharedTruckRescueCarPosition = null;
 let sharedTankerRescueCarPosition = null;
+let sharedTruckUavPosition = null;
+let sharedTankerUavPosition = null;
 
 // 无人车实时数据及浮窗位置
 const ugvA = reactive({
@@ -2932,6 +3072,7 @@ const uavAdjust = reactive({
 const rescueCarAdjust = reactive({
   scale: 260.7,
   heading: 195,
+  moveHeading: 0,
   lng: 113.1073,
   lat: 30.3849,
   height: -1.8
@@ -2939,6 +3080,7 @@ const rescueCarAdjust = reactive({
 
 let uavEntities = []
 let rescueCarEntities = []
+let phase6StartTime = 0
 let phase7StartTime = 0
 let uavOrbitStartTime = 0
 let diffusionStartTime = 0
@@ -2946,7 +3088,7 @@ let lastUavPhaseIndex = -1
 
 // 油罐车场景的无人机和救援车配置（独立控制）
 const tankerUavAdjust = reactive({
-  scale: 35.5,
+  scale: 67.3,
   heading: 34,
   lng: 114.89539,
   lat: 30.63129,
@@ -2955,17 +3097,262 @@ const tankerUavAdjust = reactive({
 
 const tankerRescueCarAdjust = reactive({
   scale: 250,
-  heading: 155,
-  lng: 114.89417,
-  lat: 30.63182,
-  height: 6.5
+  heading: -32,
+  moveHeading: 0,
+  lng: 114.894141,
+  lat: 30.631815,
+  height: 0.0
 });
+
+const activeUavUgvTarget = ref('uav');
+const uavUgvCopiedMessage = ref('');
+
+function snapUavUgvToDefault() {
+  const isTanker = currentScene.value === 'tanker';
+  if (activeUavUgvTarget.value === 'uav') {
+    if (isTanker) {
+      tankerUavAdjust.scale = 67.3;
+      tankerUavAdjust.heading = 34;
+      tankerUavAdjust.lng = 114.89539;
+      tankerUavAdjust.lat = 30.63129;
+      tankerUavAdjust.height = 120.0;
+    } else {
+      uavAdjust.scale = 58.3;
+      uavAdjust.heading = 18;
+      uavAdjust.lng = 113.202;
+      uavAdjust.lat = 30.3268;
+      uavAdjust.height = 98.8;
+    }
+  } else {
+    if (isTanker) {
+      tankerRescueCarAdjust.scale = 250;
+      tankerRescueCarAdjust.heading = -32;
+      tankerRescueCarAdjust.moveHeading = 0;
+      tankerRescueCarAdjust.lng = 114.894141;
+      tankerRescueCarAdjust.lat = 30.631815;
+      tankerRescueCarAdjust.height = 0.0;
+    } else {
+      rescueCarAdjust.scale = 260.7;
+      rescueCarAdjust.heading = 195;
+      rescueCarAdjust.moveHeading = 0;
+      rescueCarAdjust.lng = 113.1073;
+      rescueCarAdjust.lat = 30.3849;
+      rescueCarAdjust.height = -1.8;
+    }
+  }
+}
+
+function copyUavUgvCoords() {
+  const isTanker = currentScene.value === 'tanker';
+  const targetName = activeUavUgvTarget.value === 'uav' ? 'UAV' : 'UGV';
+  const prefix = isTanker ? 'tanker' : 'truck';
+  const objName = activeUavUgvTarget.value === 'uav' 
+    ? (isTanker ? 'tankerUavAdjust' : 'uavAdjust')
+    : (isTanker ? 'tankerRescueCarAdjust' : 'rescueCarAdjust');
+  
+  const obj = activeUavUgvTarget.value === 'uav' ? currentUavAdjust.value : currentRescueCarAdjust.value;
+  const params = `// ${prefix} ${targetName} positioning\n${objName}.lng = ${obj.lng.toFixed(6)};\n${objName}.lat = ${obj.lat.toFixed(6)};\n${objName}.height = ${obj.height.toFixed(1)};\n${objName}.scale = ${obj.scale.toFixed(1)};\n${objName}.heading = ${obj.heading};`;
+  
+  navigator.clipboard.writeText(params).then(() => {
+    uavUgvCopiedMessage.value = `已成功复制当前${targetName}配置参数到剪贴板！`;
+    setTimeout(() => {
+      uavUgvCopiedMessage.value = '';
+    }, 2000);
+  }).catch(err => {
+    console.error('复制失败:', err);
+    uavUgvCopiedMessage.value = '复制失败，请手动记录';
+    setTimeout(() => {
+      uavUgvCopiedMessage.value = '';
+    }, 2000);
+  });
+}
+
+let highlightPathEntity = null;
+
+function updateHighlightPath(positions) {
+  if (!viewer) return;
+  
+  if (highlightPathEntity) {
+    viewer.entities.remove(highlightPathEntity);
+    highlightPathEntity = null;
+  }
+  
+  if (!positions || positions.length < 2) return;
+  
+  highlightPathEntity = viewer.entities.add({
+    id: 'Car_Path_Highlight',
+    name: '无人感知部署段 (200m)',
+    polyline: {
+      positions: positions,
+      width: 6,
+      material: new Cesium.PolylineGlowMaterialProperty({
+        glowPower: 0.2,
+        color: Cesium.Color.fromCssColorString('#00ffcc')
+      }),
+      clampToGround: true
+    }
+  });
+}
+
+function getPathTotalLength(pathPoints) {
+  if (!pathPoints || pathPoints.length < 2) return 0;
+  let totalLength = 0;
+  for (let i = 0; i < pathPoints.length - 1; i++) {
+    totalLength += Cesium.Cartesian3.distance(pathPoints[i], pathPoints[i+1]);
+  }
+  return totalLength;
+}
+
+function getUgvLast200mPosition(currentSceneName, activePhaseIndex, phaseStartTime, viewerTime) {
+  if (!viewer || !currentMissionDataSource) return null;
+  
+  const carPath = currentMissionDataSource.entities.getById('Car_Path');
+  const uavPath = currentMissionDataSource.entities.getById('UAV_Path');
+  if (!carPath || !carPath.polyline || !carPath.polyline.positions || !uavPath || !uavPath.polyline || !uavPath.polyline.positions) return null;
+  
+  const rawPositions = carPath.polyline.positions.getValue(viewerTime) ||
+                    carPath.polyline.positions.getValue(new Cesium.JulianDate());
+  if (!rawPositions || rawPositions.length < 2) return null;
+  
+  let positions = rawPositions;
+  
+  const fullLength = getPathTotalLength(positions);
+  const ratio200m = fullLength > 0.0 ? Math.max(0.0, fullLength - 200.0) / fullLength : 0.0;
+  const targetStopDist = currentSceneName === 'tanker' ? 80.0 : 50.0;
+  const ratioStop = fullLength > 0.0 ? Math.max(0.0, fullLength - targetStopDist) / fullLength : 0.0;
+  
+  if (activePhaseIndex === 6) {
+    // 阶段6：无人装备出动。从起点行驶到最后200m起点 (6秒内)
+    if (currentSceneName === 'truck') {
+      if (!phase6StartTime) {
+        phase6StartTime = Date.now();
+      }
+    } else {
+      if (!tankerPhase6StartTime) {
+        tankerPhase6StartTime = Date.now();
+      }
+    }
+    const actualStartTime = currentSceneName === 'truck' ? phase6StartTime : tankerPhase6StartTime;
+    const elapsed = Date.now() - actualStartTime;
+    const duration = 10000;
+    const t = Math.min(elapsed / duration, 1.0);
+    
+    if (t >= 1.0) {
+      const pos200m = getPositionAtRatio(positions, ratio200m);
+      const pos200mNext = getPositionAtRatio(positions, Math.min(ratio200m + 0.01, 1.0));
+      const baseHeading = getSegmentHeading(positions[positions.length - 2], positions[positions.length - 1]);
+      const heading = (pos200m && pos200mNext) ? getSegmentHeading(pos200m, pos200mNext) : baseHeading;
+      return { pos: pos200m, headingRad: heading };
+    }
+    
+    const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const currentRatio = ratio200m * easeT;
+    const pos = getPositionAtRatio(positions, currentRatio);
+    
+    const nextT = Math.min((elapsed + 100) / duration, 1.0);
+    const nextEaseT = nextT < 0.5 ? 2 * nextT * nextT : 1 - Math.pow(-2 * nextT + 2, 2) / 2;
+    const nextRatio = ratio200m * nextEaseT;
+    const nextPos = getPositionAtRatio(positions, nextRatio);
+    let heading = 0;
+    if (pos && nextPos) {
+      heading = getSegmentHeading(pos, nextPos);
+    }
+    return { pos, headingRad: heading };
+    
+  } else if (activePhaseIndex === 7) {
+    // 阶段7：从200米起点运动到终点 (6秒内)
+    if (currentSceneName === 'truck') {
+      if (!phase7StartTime) {
+        phase7StartTime = Date.now();
+      }
+    } else {
+      if (!tankerPhase7StartTime) {
+        tankerPhase7StartTime = Date.now();
+      }
+    }
+    const actualStartTime = currentSceneName === 'truck' ? phase7StartTime : tankerPhase7StartTime;
+    const elapsed = Date.now() - actualStartTime;
+    const duration = 6000;
+    const t = Math.min(elapsed / duration, 1.0);
+    
+    if (t >= 1.0) {
+      const finalPos = getPositionAtRatio(positions, ratioStop);
+      const finalPosPrev = getPositionAtRatio(positions, Math.max(0.0, ratioStop - 0.01));
+      const heading = (finalPosPrev && finalPos) ? getSegmentHeading(finalPosPrev, finalPos) : 0;
+      return { pos: finalPos, headingRad: heading, isParked: true };
+    }
+    
+    const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const currentRatio = ratio200m + (ratioStop - ratio200m) * easeT;
+    const pos = getPositionAtRatio(positions, currentRatio);
+    
+    const nextT = Math.min((elapsed + 100) / duration, 1.0);
+    const nextEaseT = nextT < 0.5 ? 2 * nextT * nextT : 1 - Math.pow(-2 * nextT + 2, 2) / 2;
+    const nextRatio = ratio200m + (ratioStop - ratio200m) * nextEaseT;
+    const nextPos = getPositionAtRatio(positions, nextRatio);
+    let heading = 0;
+    if (pos && nextPos) {
+      heading = getSegmentHeading(pos, nextPos);
+    }
+    return { pos, headingRad: heading };
+    
+  } else {
+    // 阶段8及以后：停在现场终点处
+    const finalPos = getPositionAtRatio(positions, ratioStop);
+    const finalPosPrev = getPositionAtRatio(positions, Math.max(0.0, ratioStop - 0.01));
+    const heading = (finalPosPrev && finalPos) ? getSegmentHeading(finalPosPrev, finalPos) : 0;
+    return { pos: finalPos, headingRad: heading, isParked: true };
+  }
+}
+
+function getSegmentHeading(p1, p2) {
+  if (!p1 || !p2) return 0;
+  const cartoCur = Cesium.Cartographic.fromCartesian(p1);
+  const cartoNext = Cesium.Cartographic.fromCartesian(p2);
+  return Math.PI / 2 - Math.atan2(
+    Cesium.Math.toDegrees(cartoNext.latitude) - Cesium.Math.toDegrees(cartoCur.latitude),
+    Cesium.Math.toDegrees(cartoNext.longitude) - Cesium.Math.toDegrees(cartoCur.longitude)
+  );
+}
+
+function getPositionAtRatio(pathPoints, ratio) {
+  if (!pathPoints || pathPoints.length === 0) return null;
+  if (pathPoints.length === 1) return pathPoints[0];
+  
+  let totalLength = 0;
+  const segmentLengths = [];
+  for (let i = 0; i < pathPoints.length - 1; i++) {
+    const len = Cesium.Cartesian3.distance(pathPoints[i], pathPoints[i+1]);
+    segmentLengths.push(len);
+    totalLength += len;
+  }
+  
+  if (totalLength === 0) return pathPoints[0];
+  
+  const targetDist = totalLength * ratio;
+  let currentDist = 0;
+  
+  for (let i = 0; i < pathPoints.length - 1; i++) {
+    const len = segmentLengths[i];
+    if (currentDist + len >= targetDist) {
+      const remaining = targetDist - currentDist;
+      const fraction = len > 0 ? (remaining / len) : 0;
+      const result = new Cesium.Cartesian3();
+      Cesium.Cartesian3.lerp(pathPoints[i], pathPoints[i+1], fraction, result);
+      return result;
+    }
+    currentDist += len;
+  }
+  return pathPoints[pathPoints.length - 1];
+}
+
 
 const TANKER_STOP_FACTOR = 1.0;
 
 // 油罐车场景的无人机和救援车实体数组
 let tankerUavEntities = []
 let tankerRescueCarEntities = []
+let tankerPhase6StartTime = 0
 let tankerPhase7StartTime = 0
 let tankerUavOrbitStartTime = 0
 let lastTankerUavPhaseIndex = -1
@@ -3247,6 +3634,37 @@ const loadMission = async () => {
     currentMissionDataSource = dataSource;
     viewer.dataSources.add(dataSource);
 
+    // 让 CZML 的 UAV 和 Car 实体位置与自定义 3D 模型位置完全对齐，避免分叉
+    const czmlCar = dataSource.entities.getById('Car');
+    if (czmlCar) {
+      if (!czmlCar.originalPosition) {
+        czmlCar.originalPosition = czmlCar.position;
+      }
+      czmlCar.position = new Cesium.CallbackProperty(() => {
+        const isTanker = props.focusedPointId === 'accident_red';
+        const callback = isTanker ? sharedTankerRescueCarPosition : sharedTruckRescueCarPosition;
+        if (callback) {
+          return callback.getValue(viewer.clock.currentTime);
+        }
+        return czmlCar.originalPosition ? czmlCar.originalPosition.getValue(viewer.clock.currentTime) : null;
+      }, false);
+    }
+    
+    const czmlUav = dataSource.entities.getById('UAV');
+    if (czmlUav) {
+      if (!czmlUav.originalPosition) {
+        czmlUav.originalPosition = czmlUav.position;
+      }
+      czmlUav.position = new Cesium.CallbackProperty(() => {
+        const isTanker = props.focusedPointId === 'accident_red';
+        const callback = isTanker ? sharedTankerUavPosition : sharedTruckUavPosition;
+        if (callback) {
+          return callback.getValue(viewer.clock.currentTime);
+        }
+        return czmlUav.originalPosition ? czmlUav.originalPosition.getValue(viewer.clock.currentTime) : null;
+      }, false);
+    }
+
     // 同步时间轴
     if (dataSource.clock) {
       viewer.clock.startTime = dataSource.clock.startTime;
@@ -3265,6 +3683,35 @@ const loadMission = async () => {
     if (carPath) {
       carPath.show = true;
       if (carPath.polyline) carPath.polyline.show = true;
+      
+      const positions = carPath.polyline.positions.getValue(viewer.clock.currentTime) ||
+                        carPath.polyline.positions.getValue(new Cesium.JulianDate());
+      if (positions && positions.length >= 2) {
+        const last200mPoints = [];
+        let accumDist = 0;
+        const targetDist = 200.0;
+        
+        last200mPoints.unshift(positions[positions.length - 1]);
+        
+        for (let i = positions.length - 1; i > 0; i--) {
+          const pCurrent = positions[i];
+          const pPrev = positions[i - 1];
+          const dist = Cesium.Cartesian3.distance(pCurrent, pPrev);
+          
+          if (accumDist + dist >= targetDist) {
+            const remaining = targetDist - accumDist;
+            const fraction = dist > 0 ? (remaining / dist) : 0;
+            const lerpedCartesian = new Cesium.Cartesian3();
+            Cesium.Cartesian3.lerp(pCurrent, pPrev, fraction, lerpedCartesian);
+            last200mPoints.unshift(lerpedCartesian);
+            break;
+          } else {
+            accumDist += dist;
+            last200mPoints.unshift(pPrev);
+          }
+        }
+        updateHighlightPath(last200mPoints);
+      }
     }
 
     // 根据用户要求，加快无人机无人车行走的时间
@@ -3318,8 +3765,6 @@ function updateModelsReadyStatus() {
   const allEntities = [...truckEntities, ...tankerEntities, ...uavEntities, ...tankerUavEntities];
   
   allEntities.forEach(entity => {
-    if (modelsReadyStatus[entity.id]) return;
-    
     // 先从缓存找
     let p = primitiveCache.get(entity.id);
     
@@ -3343,9 +3788,34 @@ function updateModelsReadyStatus() {
                       (p.model && p.model.ready);
       
       if (isReady) {
-        modelsReadyStatus[entity.id] = true;
-        changed = true;
-        console.log(`[Cesium] 检测到模型就绪: ${entity.id}`);
+        if (!modelsReadyStatus[entity.id]) {
+          modelsReadyStatus[entity.id] = true;
+          changed = true;
+          console.log(`[Cesium] 检测到模型就绪: ${entity.id}`);
+        }
+
+        // 核心修复逻辑：如果是无人机，且可见，则强制要求以高速持续旋转
+        if (entity.id.includes('uav_model') && entity.show) {
+          const hasNoAnimations = !p.activeAnimations || p.activeAnimations.length === 0;
+          if (!p._customAnimStarted || hasNoAnimations) {
+            console.log(`[Cesium] 正在强制接管无人机螺旋桨动画: ${entity.id}`);
+            try {
+              if (p.activeAnimations) {
+                p.activeAnimations.removeAll();
+                const options = {
+                  loop: Cesium.ModelAnimationLoop.REPEAT,
+                  multiplier: 6.0,
+                  startTime: viewer.clock.currentTime,
+                  removeOnStop: false
+                };
+                p.activeAnimations.addAll(options);
+              }
+              p._customAnimStarted = true;
+            } catch (animErr) {
+              console.warn(`[Cesium] 激活无人机螺旋桨动画失败: ${entity.id}`, animErr);
+            }
+          }
+        }
       }
     }
   });
@@ -3688,10 +4158,10 @@ function createDiffusionSystem(lng, lat) {
 function updatePopupPosition() {
   if (!viewer) return;
 
-  // 无人机出动阶段：让无人机浮窗跟随 UAV 模型位置实时移动
+  // 无人机出动阶段：让无人机浮窗严格跟随 UAV 模型位置实时移动，从消防队一路跟随到现场
   if (rescuePopup.show && Number(props.activePhaseIndex) === 6) {
     const isTanker = props.focusedPointId === 'accident_red';
-    const uavId = isTanker ? 'uav_model_tanker' : 'uav_model';
+    const uavId = isTanker ? 'tanker_uav_model' : 'uav_model';
     const uavEntity = viewer.entities.getById(uavId);
     if (uavEntity) {
       const pos = uavEntity.position.getValue(viewer.clock.currentTime);
@@ -3713,28 +4183,30 @@ function updatePopupPosition() {
     }
   }
 
-// 无人车出动阶段：让无人车浮窗跟随救援车模型位置实时移动
-    if (ugvPopup.show && Number(props.activePhaseIndex) === 6) {
-      const isTanker = props.focusedPointId === 'accident_red';
-      const carId = isTanker ? 'tanker_rescue_car_model' : 'rescue_car_model';
-      const carEntity = viewer.entities.getById(carId);
-      if (carEntity) {
-        const pos = carEntity.position.getValue(viewer.clock.currentTime);
-        if (pos) {
-          const cartographic = Cesium.Cartographic.fromCartesian(pos);
-          ugvCoords.lng = Cesium.Math.toDegrees(cartographic.longitude);
-          ugvCoords.lat = Cesium.Math.toDegrees(cartographic.latitude);
-          ugvCoords.height = cartographic.height + 10.0;
-        }
+  // 无人车出动阶段：让无人车浮窗严格跟随救援车模型位置实时移动，从消防队一路跟随到现场
+  if (ugvPopup.show && Number(props.activePhaseIndex) === 6) {
+    const isTanker = props.focusedPointId === 'accident_red';
+    const carId = isTanker ? 'tanker_rescue_car_model' : 'rescue_car_model';
+    const carEntity = viewer.entities.getById(carId);
+    if (carEntity) {
+      const pos = carEntity.position.getValue(viewer.clock.currentTime);
+      if (pos) {
+        const cartographic = Cesium.Cartographic.fromCartesian(pos);
+        ugvCoords.lng = Cesium.Math.toDegrees(cartographic.longitude);
+        ugvCoords.lat = Cesium.Math.toDegrees(cartographic.latitude);
+        ugvCoords.height = cartographic.height + 10.0;
       }
     }
+  }
 
     if (ugvPopup.show) {
       const cartesian = Cesium.Cartesian3.fromDegrees(ugvCoords.lng, ugvCoords.lat, ugvCoords.height);
       const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
       if (canvasPosition) {
-        ugvPopup.x = canvasPosition.x + (ugvPopup.xOffset !== undefined ? ugvPopup.xOffset : (ugvPopup.title === '无人车已就位' ? -200 : -27));
-        ugvPopup.y = canvasPosition.y + (ugvPopup.yOffset !== undefined ? ugvPopup.yOffset : (ugvPopup.title === '无人车已就位' ? 143 : -133));
+        const fallbackX = ugvPopup.title === '无人车已就位' ? (currentScene.value === 'tanker' ? -2 : -200) : -27;
+        const fallbackY = ugvPopup.title === '无人车已就位' ? (currentScene.value === 'tanker' ? -175 : 143) : -133;
+        ugvPopup.x = canvasPosition.x + (ugvPopup.xOffset !== undefined ? ugvPopup.xOffset : fallbackX);
+        ugvPopup.y = canvasPosition.y + (ugvPopup.yOffset !== undefined ? ugvPopup.yOffset : fallbackY);
       }
     }
 
@@ -4044,9 +4516,7 @@ async function initViewer() {
           zoomToPoint('accident_blue');
           return;
         } else if (pickedId.startsWith('city-boundary-huanggang') || pickedId.startsWith('city-boundary-421100')) {
-          // 点击黄冈市行政区域 → 与点击红色事故点效果相同，跳转到第二视角
-          emit('accident-picked', 'accident_red');
-          zoomToPoint('accident_red');
+          // 点击黄冈市行政区域 → 不需要跳转到第二视角
           return;
         }
       }
@@ -4985,15 +5455,29 @@ function initLkywVehiclesFromGeoJson(geojson) {
 
   if (allRoutes.length === 0) return;
 
-  // 按线路长度降序排列
-  allRoutes.sort((a, b) => b.totalDist - a.totalDist);
-
-  // 关键修复：智能选线逻辑！防止 minDistance 设置过高导致候选线路骤减为 1~2 条而使所有车辆挤成一堆
-  // 保证候选线路池数量至少覆盖车辆数，确保车辆全省均匀分布
   const totalVehicles = Math.min(trafficConfig.vehicleCount, 40);
-  let candidateRoutes = allRoutes.filter(r => r.totalDist >= trafficConfig.minDistance * 0.3);
-  if (candidateRoutes.length < totalVehicles) {
-    candidateRoutes = allRoutes.slice(0, Math.max(totalVehicles, 20));
+  
+  // 优先应用 UI 设置的最小距离过滤
+  let validRoutes = allRoutes.filter(r => r.totalDist >= trafficConfig.minDistance * 0.3);
+  
+  // 如果符合条件的路线太少，则降低阈值以保证全省有车（特别是保护十堰等山区短路段）
+  if (validRoutes.length < totalVehicles) {
+    validRoutes = allRoutes.filter(r => r.totalDist >= 3000);
+    if (validRoutes.length < totalVehicles) validRoutes = allRoutes;
+  }
+
+  // 关键修复：按路线中心点的经度从西向东排序，确保全省东西跨度（最西边的十堰、恩施等）都能均匀覆盖
+  validRoutes.sort((a, b) => {
+    const ptA = a.coords[Math.floor(a.coords.length / 2)];
+    const ptB = b.coords[Math.floor(b.coords.length / 2)];
+    return ptA[0] - ptB[0];
+  });
+
+  // 均匀采样抽取线路，绝对保证地理分布的广泛性
+  let candidateRoutes = [];
+  const step = validRoutes.length / totalVehicles;
+  for (let i = 0; i < totalVehicles; i++) {
+    candidateRoutes.push(validRoutes[Math.floor(i * step)]);
   }
 
   const hazardPlates = ['鄂A·H8921', '鄂A·H3329', '鄂F·H7712', '鄂B·H9021', '鄂D·H5518', '鄂C·H1289', '鄂E·H6610'];
@@ -5138,13 +5622,15 @@ function initTrafficVehiclesFromGeoJson(geojson) {
 
   if (allRoutes.length === 0) return;
 
-  // 背景车流按长度排序
-  allRoutes.sort((a, b) => b.totalDist - a.totalDist);
-
-  let candidateRoutes = allRoutes.filter(r => r.totalDist >= trafficConfig.minDistance * 0.3);
-  if (candidateRoutes.length < 15) {
-    candidateRoutes = allRoutes.slice(0, Math.max(30, allRoutes.length));
+  // 背景车流降低过滤阈值，避免强行按长度截断导致山区(十堰)无背景车
+  let candidateRoutes = allRoutes.filter(r => r.totalDist >= trafficConfig.minDistance * 0.2);
+  if (candidateRoutes.length < 30) {
+    candidateRoutes = allRoutes.filter(r => r.totalDist >= 3000);
+    if (candidateRoutes.length < 30) candidateRoutes = allRoutes;
   }
+  
+  // 随机打乱背景候选路线，防止集中在某一区域，确保自然分布
+  candidateRoutes.sort(() => Math.random() - 0.5);
 
   candidateRoutes.forEach((route, routeIndex) => {
     const vehicleCount = route.totalDist > 20000 ? 5 : (route.totalDist > 8000 ? 3 : 2);
@@ -5637,15 +6123,31 @@ function addEventEntities() {
     show: false,
     polyline: {
       positions: new Cesium.CallbackProperty(() => {
-        const targetLng = Number(truckAdjust.lng) || 113.104833;
-        const targetLat = Number(truckAdjust.lat) || 30.385469;
-        const targetHeight = Number(uavAdjust.height) || 18.5;
+        let centerLng = Number(truckAdjust.lng) || 113.104833;
+        let centerLat = Number(truckAdjust.lat) || 30.385469;
+        let centerHeight = Number(uavAdjust.height) || 18.5;
+
+        if (currentMissionDataSource) {
+          const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+          if (pathEntity && pathEntity.polyline && pathEntity.polyline.positions) {
+            const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime) ||
+                              pathEntity.polyline.positions.getValue(new Cesium.JulianDate());
+            if (positions && positions.length > 0) {
+              const pEnd = positions[positions.length - 1];
+              const cartoEnd = Cesium.Cartographic.fromCartesian(pEnd);
+              centerLng = Cesium.Math.toDegrees(cartoEnd.longitude);
+              centerLat = Cesium.Math.toDegrees(cartoEnd.latitude);
+              centerHeight = cartoEnd.height;
+            }
+          }
+        }
+
         const pts = [];
         for (let i = 0; i <= 72; i++) {
           const angle = (i / 72) * 2.0 * Math.PI;
-          const lng = targetLng + 0.00055 * Math.cos(angle);
-          const lat = targetLat + 0.00045 * Math.sin(angle);
-          pts.push(Cesium.Cartesian3.fromDegrees(lng, lat, targetHeight));
+          const lng = centerLng + 0.00055 * Math.cos(angle);
+          const lat = centerLat + 0.00045 * Math.sin(angle);
+          pts.push(Cesium.Cartesian3.fromDegrees(lng, lat, centerHeight));
         }
         return pts;
       }, false),
@@ -5664,26 +6166,31 @@ function addEventEntities() {
     show: false,
     polyline: {
       positions: new Cesium.CallbackProperty(() => {
-        let targetLng = 114.89209;
-        let targetLat = 30.63101;
+        let centerLng = Number(tankerPointAdjust.lng) || 114.89209;
+        let centerLat = Number(tankerPointAdjust.lat) || 30.63101;
+        let centerHeight = Number(tankerUavAdjust.height) || 120.0;
+
         if (currentMissionDataSource) {
           const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
           if (pathEntity && pathEntity.polyline && pathEntity.polyline.positions) {
-            const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime);
+            const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime) ||
+                              pathEntity.polyline.positions.getValue(new Cesium.JulianDate());
             if (positions && positions.length > 0) {
-              const carto = Cesium.Cartographic.fromCartesian(positions[positions.length - 1]);
-              targetLng = Cesium.Math.toDegrees(carto.longitude);
-              targetLat = Cesium.Math.toDegrees(carto.latitude);
+              const pEnd = positions[positions.length - 1];
+              const cartoEnd = Cesium.Cartographic.fromCartesian(pEnd);
+              centerLng = Cesium.Math.toDegrees(cartoEnd.longitude);
+              centerLat = Cesium.Math.toDegrees(cartoEnd.latitude);
+              centerHeight = cartoEnd.height;
             }
           }
         }
-        const targetHeight = Number(tankerUavAdjust.height) || 120.0;
+
         const pts = [];
         for (let i = 0; i <= 72; i++) {
           const angle = (i / 72) * 2.0 * Math.PI;
-          const lng = targetLng + 0.00055 * Math.cos(angle);
-          const lat = targetLat + 0.00045 * Math.sin(angle);
-          pts.push(Cesium.Cartesian3.fromDegrees(lng, lat, targetHeight));
+          const lng = centerLng + 0.0005 * Math.cos(angle);
+          const lat = centerLat + 0.0005 * Math.sin(angle);
+          pts.push(Cesium.Cartesian3.fromDegrees(lng, lat, centerHeight));
         }
         return pts;
       }, false),
@@ -5863,7 +6370,7 @@ function addEventEntities() {
         heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, // 使用 Cesium 原生贴地
         // 关闭原生动画循环，手动控制
         runAnimations: false,
-        silhouetteColor: Cesium.Color.fromCssColorString('#ff3344'),
+        silhouetteColor: Cesium.Color.fromCssColorString('#ffea00'),
         silhouetteSize: 2.0
       }
     })
@@ -5885,14 +6392,70 @@ function addEventEntities() {
       const targetLat = Number(truckAdjust.lat) || 30.385469;
       const targetHeight = startHeight; // 保持在原先的高度高空悬停
 
-      if (props.activePhaseIndex === 6) {
-        if (currentMissionDataSource) {
-          const entity = currentMissionDataSource.entities.getById('UAV');
-          if (entity) {
-            const pos = entity.position.getValue(viewer.clock.currentTime);
-            if (pos) return pos;
+      let circleCenterLng = targetLng;
+      let circleCenterLat = targetLat;
+      let circleCenterHeight = startHeight;
+
+      if (currentMissionDataSource) {
+        const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+        if (pathEntity && pathEntity.polyline && pathEntity.polyline.positions) {
+          const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime) ||
+                            pathEntity.polyline.positions.getValue(new Cesium.JulianDate());
+          if (positions && positions.length > 0) {
+            const pEnd = positions[positions.length - 1];
+            const cartoEnd = Cesium.Cartographic.fromCartesian(pEnd);
+            circleCenterLng = Cesium.Math.toDegrees(cartoEnd.longitude);
+            circleCenterLat = Cesium.Math.toDegrees(cartoEnd.latitude);
+            circleCenterHeight = cartoEnd.height;
           }
         }
+      }
+
+      if (props.activePhaseIndex === 6) {
+        if (!currentMissionDataSource) {
+          return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
+        }
+        const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+        const carPathEntity = currentMissionDataSource.entities.getById('Car_Path');
+        if (!pathEntity || !pathEntity.polyline || !pathEntity.polyline.positions || !carPathEntity || !carPathEntity.polyline || !carPathEntity.polyline.positions) {
+          return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
+        }
+        const rawPositions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime) ||
+                          pathEntity.polyline.positions.getValue(new Cesium.JulianDate());
+        if (!rawPositions || rawPositions.length <= 1) {
+          return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
+        }
+
+        if (!phase6StartTime) {
+          phase6StartTime = Date.now();
+        }
+        const elapsed = Date.now() - phase6StartTime;
+        const duration = 10000;
+        
+        // 让无人车先出发，走到一半时无人机开始出发，并在最后同时到达
+        const delay = 5000;
+        let t = 0;
+        if (elapsed > delay) {
+          t = Math.min((elapsed - delay) / (duration - delay), 1.0);
+        }
+        const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+        let positions = rawPositions;
+        const pEnd = positions[positions.length - 1];
+              let startIndex = 0;
+              const targetDistance = 180.0;
+              for (let i = positions.length - 2; i >= 0; i--) {
+                const dist = Cesium.Cartesian3.distance(positions[i], pEnd);
+                if (dist >= targetDistance) {
+                  startIndex = i;
+                  break;
+                }
+              }
+              const subPositions = positions.slice(0, startIndex + 1);
+              if (subPositions.length > 1) {
+                const pos = getPositionAtRatio(subPositions, easeT);
+                if (pos) return pos;
+              }
         return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
       } else if (props.activePhaseIndex < 6) {
         return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
@@ -5909,7 +6472,8 @@ function addEventEntities() {
         if (currentMissionDataSource) {
           const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
           if (pathEntity && pathEntity.polyline && pathEntity.polyline.positions) {
-            const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime);
+            const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime) ||
+                              pathEntity.polyline.positions.getValue(new Cesium.JulianDate());
             if (positions && positions.length > 1) {
               const pEnd = positions[positions.length - 1];
               let startIndex = 0;
@@ -5960,32 +6524,32 @@ function addEventEntities() {
         const radiusLng = 0.00055;
         const radiusLat = 0.00045;
         
-        const currentLng = targetLng + radiusLng * Math.cos(angle);
-        const currentLat = targetLat + radiusLat * Math.sin(angle);
+        const currentLng = circleCenterLng + radiusLng * Math.cos(angle);
+        const currentLat = circleCenterLat + radiusLat * Math.sin(angle);
 
         // 触发多角度照片拍摄状态 (在圆周飞行不同弧度时拍照)
         if (angle >= 0.5 * Math.PI && !capturedPhotos.value[0]) {
           capturedPhotos.value[0] = true;
           activePhotoIndex.value = 0;
-          triggerPhotoAnimation(0, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, targetHeight));
+          triggerPhotoAnimation(0, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, circleCenterHeight));
         }
         if (angle >= 1.0 * Math.PI && !capturedPhotos.value[1]) {
           capturedPhotos.value[1] = true;
           activePhotoIndex.value = 1;
-          triggerPhotoAnimation(1, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, targetHeight));
+          triggerPhotoAnimation(1, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, circleCenterHeight));
         }
         if (angle >= 1.5 * Math.PI && !capturedPhotos.value[2]) {
           capturedPhotos.value[2] = true;
           activePhotoIndex.value = 2;
-          triggerPhotoAnimation(2, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, targetHeight));
+          triggerPhotoAnimation(2, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, circleCenterHeight));
         }
         if (angle >= 2.0 * Math.PI && !capturedPhotos.value[3]) {
           capturedPhotos.value[3] = true;
           activePhotoIndex.value = 3;
-          triggerPhotoAnimation(3, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, targetHeight));
+          triggerPhotoAnimation(3, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, circleCenterHeight));
         }
 
-        return Cesium.Cartesian3.fromDegrees(currentLng, currentLat, targetHeight);
+        return Cesium.Cartesian3.fromDegrees(currentLng, currentLat, circleCenterHeight);
       }
     }, false);
 
@@ -6023,7 +6587,8 @@ function addEventEntities() {
         if (currentMissionDataSource) {
           const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
           if (pathEntity && pathEntity.polyline && pathEntity.polyline.positions) {
-            const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime);
+            const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime) ||
+                              pathEntity.polyline.positions.getValue(new Cesium.JulianDate());
             if (positions && positions.length > 1) {
               const pEnd = positions[positions.length - 1];
               let startIndex = 0;
@@ -6094,13 +6659,16 @@ function addEventEntities() {
         scale: new Cesium.CallbackProperty(() => uavAdjust.scale > 0 ? uavAdjust.scale : 0.1, false),
         minimumPixelSize: 1, // 改为 1 像素，使无人机完全遵循真实的 3D 空间透视，随视角远近自然缩放
         heightReference: Cesium.HeightReference.NONE,
-        // 关闭 Entity 自带的动画调度，避免与手动 addAll 产生冲突
-        runAnimations: false,
+        // 开启 Entity 自带的动画调度，使螺旋桨持续高速旋转
+        runAnimations: true,
         silhouetteColor: Cesium.Color.fromCssColorString('#00f2fe'),
         silhouetteSize: 2.0
       }
     });
     uavEntities.push(entity);
+    if (config.id === 'uav_model') {
+      sharedTruckUavPosition = uavPosition;
+    }
   });
 
   // 初始化救援车
@@ -6120,17 +6688,39 @@ function addEventEntities() {
       const targetLat = startLat + 0.78 * (accidentLat - startLat);
       const targetHeight = -1.5; // 保持与起点的 Z 轴高度一致，防止陷车
 
-      if (props.activePhaseIndex === 6) {
+      if (props.activePhaseIndex >= 6) {
+        const ugvInfo = getUgvLast200mPosition('truck', props.activePhaseIndex, phase7StartTime, viewer.clock.currentTime);
+        if (ugvInfo && ugvInfo.pos) {
+          const carto = Cesium.Cartographic.fromCartesian(ugvInfo.pos);
+          let baseHeight = carto.height;
+          if (viewer && viewer.scene && viewer.scene.globe) {
+            const terrainHeight = viewer.scene.globe.getHeight(carto);
+            if (terrainHeight !== undefined) baseHeight = terrainHeight;
+          }
+          carto.height = baseHeight + (Number(rescueCarAdjust.height) || 0.0);
+          return Cesium.Cartographic.toCartesian(carto);
+        }
         if (currentMissionDataSource) {
           const entity = currentMissionDataSource.entities.getById('Car');
           if (entity) {
-            const pos = entity.position.getValue(viewer.clock.currentTime);
-            if (pos) return pos;
+            const pos = entity.originalPosition ? entity.originalPosition.getValue(viewer.clock.currentTime) : entity.position.getValue(viewer.clock.currentTime);
+            if (pos) {
+              const carto = Cesium.Cartographic.fromCartesian(pos);
+              let baseHeight = carto.height;
+              if (viewer && viewer.scene && viewer.scene.globe) {
+                const terrainHeight = viewer.scene.globe.getHeight(carto);
+                if (terrainHeight !== undefined) baseHeight = terrainHeight;
+              }
+              carto.height = baseHeight + (Number(rescueCarAdjust.height) || 0.0);
+              return Cesium.Cartographic.toCartesian(carto);
+            }
           }
         }
-        return Cesium.Cartesian3.fromDegrees(113.202, 30.3268, 0.0);
+      }
+      if (props.activePhaseIndex === 6) {
+        return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
       } else if (props.activePhaseIndex < 6) {
-        return Cesium.Cartesian3.fromDegrees(113.202, 30.3268, 0.0);
+        return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
       } else if (props.activePhaseIndex === 7) {
         if (!phase7StartTime) {
           phase7StartTime = Date.now();
@@ -6156,8 +6746,13 @@ function addEventEntities() {
       if (!pos) return undefined;
       
       let headingRad;
-      if (props.activePhaseIndex === 6) {
-        if (currentMissionDataSource) {
+      if (props.activePhaseIndex >= 6) {
+        const ugvInfo = getUgvLast200mPosition('truck', props.activePhaseIndex, phase7StartTime, viewer.clock.currentTime);
+        if (ugvInfo && ugvInfo.headingRad !== undefined) {
+          // 彻底抛弃路径朝向，全程锁定为你设定的“航向 (Heading)”参数
+          const headingDeg = Number(rescueCarAdjust.heading) || 195;
+          headingRad = Cesium.Math.toRadians(headingDeg);
+        } else if (currentMissionDataSource) {
           const entity = currentMissionDataSource.entities.getById('Car');
           if (entity) {
             const nextTime = Cesium.JulianDate.addSeconds(viewer.clock.currentTime, 0.5, new Cesium.JulianDate());
@@ -6168,7 +6763,7 @@ function addEventEntities() {
               headingRad = Math.PI / 2 - Math.atan2(
                 Cesium.Math.toDegrees(cartoNext.latitude) - Cesium.Math.toDegrees(cartoCur.latitude),
                 Cesium.Math.toDegrees(cartoNext.longitude) - Cesium.Math.toDegrees(cartoCur.longitude)
-              );
+              ) + Cesium.Math.toRadians(Number(rescueCarAdjust.moveHeading) || 0);
             } else {
               headingRad = Cesium.Math.toRadians(Number(rescueCarAdjust.heading) || 195);
             }
@@ -6179,6 +6774,7 @@ function addEventEntities() {
           headingRad = Cesium.Math.toRadians(Number(rescueCarAdjust.heading) || 195);
         }
       } else {
+        // 阶段 < 6：尚未出发，处于初始停泊状态，完全听从“航向 (Heading)”滑块的绝对角度
         const headingDeg = Number(rescueCarAdjust.heading) || 195;
         headingRad = Cesium.Math.toRadians(headingDeg);
       }
@@ -6214,29 +6810,75 @@ function addEventEntities() {
 
     const tankerUavPosition = new Cesium.CallbackProperty(() => {
       const startHeight = Number(tankerUavAdjust.height) || 120.0;
-      let targetLng = 114.89209;
-      let targetLat = 30.63101;
+      // 绕飞圆心固定使用事故点坐标，与红线终点和盘旋轨迹圆完全对齐
+      const targetLng = Number(tankerPointAdjust.lng) || 114.89209;
+      const targetLat = Number(tankerPointAdjust.lat) || 30.63101;
+
+      let circleCenterLng = targetLng;
+      let circleCenterLat = targetLat;
+      let circleCenterHeight = startHeight;
+
       if (currentMissionDataSource) {
         const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
         if (pathEntity && pathEntity.polyline && pathEntity.polyline.positions) {
-          const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime);
+          const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime) ||
+                            pathEntity.polyline.positions.getValue(new Cesium.JulianDate());
           if (positions && positions.length > 0) {
-            const carto = Cesium.Cartographic.fromCartesian(positions[positions.length - 1]);
-            targetLng = Cesium.Math.toDegrees(carto.longitude);
-            targetLat = Cesium.Math.toDegrees(carto.latitude);
+            const pEnd = positions[positions.length - 1];
+            const cartoEnd = Cesium.Cartographic.fromCartesian(pEnd);
+            circleCenterLng = Cesium.Math.toDegrees(cartoEnd.longitude);
+            circleCenterLat = Cesium.Math.toDegrees(cartoEnd.latitude);
+            circleCenterHeight = cartoEnd.height;
           }
         }
       }
 
       if (props.activePhaseIndex === 6) {
-        if (currentMissionDataSource) {
-          const entity = currentMissionDataSource.entities.getById('UAV');
-          if (entity) {
-            const pos = entity.position.getValue(viewer.clock.currentTime);
-            if (pos) return pos;
+        if (!currentMissionDataSource) {
+          return Cesium.Cartesian3.fromDegrees(114.9238, 30.5158, startHeight);
+        }
+        const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+        const carPathEntity = currentMissionDataSource.entities.getById('Car_Path');
+        if (!pathEntity || !pathEntity.polyline || !pathEntity.polyline.positions || !carPathEntity || !carPathEntity.polyline || !carPathEntity.polyline.positions) {
+          return Cesium.Cartesian3.fromDegrees(114.9238, 30.5158, startHeight);
+        }
+        const rawPositions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime) ||
+                          pathEntity.polyline.positions.getValue(new Cesium.JulianDate());
+        if (!rawPositions || rawPositions.length <= 1) {
+          return Cesium.Cartesian3.fromDegrees(114.9238, 30.5158, startHeight);
+        }
+
+        if (!tankerPhase6StartTime) {
+          tankerPhase6StartTime = Date.now();
+        }
+        const elapsed = Date.now() - tankerPhase6StartTime;
+        const duration = 10000;
+        
+        // 让无人车先出发，走到一半时无人机开始出发，并在最后同时到达
+        const delay = 5000;
+        let t = 0;
+        if (elapsed > delay) {
+          t = Math.min((elapsed - delay) / (duration - delay), 1.0);
+        }
+        const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+        let positions = rawPositions;
+        const pEnd = positions[positions.length - 1];
+        let startIndex = 0;
+        const targetDistance = 180.0;
+        for (let i = positions.length - 2; i >= 0; i--) {
+          const dist = Cesium.Cartesian3.distance(positions[i], pEnd);
+          if (dist >= targetDistance) {
+            startIndex = i;
+            break;
           }
         }
-        return Cesium.Cartesian3.fromDegrees(114.9238, 30.5158, startHeight); // 黄冈市黄州区路口镇专职消防队
+        const subPositions = positions.slice(0, startIndex + 1);
+        if (subPositions.length > 1) {
+          const pos = getPositionAtRatio(subPositions, easeT);
+          if (pos) return pos;
+        }
+        return Cesium.Cartesian3.fromDegrees(114.9238, 30.5158, startHeight);
       } else if (props.activePhaseIndex < 6) {
         return Cesium.Cartesian3.fromDegrees(114.9238, 30.5158, startHeight);
       } else if (props.activePhaseIndex === 7) {
@@ -6252,7 +6894,8 @@ function addEventEntities() {
         if (currentMissionDataSource) {
           const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
           if (pathEntity && pathEntity.polyline && pathEntity.polyline.positions) {
-            const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime);
+            const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime) ||
+                              pathEntity.polyline.positions.getValue(new Cesium.JulianDate());
             if (positions && positions.length > 1) {
               const pEnd = positions[positions.length - 1];
               let startIndex = 0;
@@ -6321,43 +6964,43 @@ function addEventEntities() {
           // 围绕圆心（红线终点）进行圆周绕飞拍照 (顺时针，角度递减 2*PI)
           const angle = startAngle - (elapsed / orbitDuration) * 2.0 * Math.PI;
           
-          const currentLng = targetLng + radius * Math.cos(angle);
-          const currentLat = targetLat + radius * Math.sin(angle);
+          const currentLng = circleCenterLng + radius * Math.cos(angle);
+          const currentLat = circleCenterLat + radius * Math.sin(angle);
           
           // 触发多角度照片拍摄状态 (根据经过的角度比例)
           const angleDiff = startAngle - angle; // 从 0 增加到 2*PI
           if (angleDiff >= 0.5 * Math.PI && !capturedPhotos.value[0]) {
             capturedPhotos.value[0] = true;
             activePhotoIndex.value = 0;
-            triggerPhotoAnimation(0, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, startHeight));
+            triggerPhotoAnimation(0, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, circleCenterHeight));
           }
           if (angleDiff >= 1.0 * Math.PI && !capturedPhotos.value[1]) {
             capturedPhotos.value[1] = true;
             activePhotoIndex.value = 1;
-            triggerPhotoAnimation(1, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, startHeight));
+            triggerPhotoAnimation(1, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, circleCenterHeight));
           }
           if (angleDiff >= 1.5 * Math.PI && !capturedPhotos.value[2]) {
             capturedPhotos.value[2] = true;
             activePhotoIndex.value = 2;
-            triggerPhotoAnimation(2, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, startHeight));
+            triggerPhotoAnimation(2, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, circleCenterHeight));
           }
           if (angleDiff >= 1.95 * Math.PI && !capturedPhotos.value[3]) {
             capturedPhotos.value[3] = true;
             activePhotoIndex.value = 3;
-            triggerPhotoAnimation(3, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, startHeight));
+            triggerPhotoAnimation(3, Cesium.Cartesian3.fromDegrees(currentLng, currentLat, circleCenterHeight));
           }
 
-          return Cesium.Cartesian3.fromDegrees(currentLng, currentLat, startHeight);
+          return Cesium.Cartesian3.fromDegrees(currentLng, currentLat, circleCenterHeight);
         } else {
           // 绕飞结束，悬停在终点
-          const endLng = targetLng + radius * Math.cos(startAngle - 2.0 * Math.PI);
-          const endLat = targetLat + radius * Math.sin(startAngle - 2.0 * Math.PI);
+          const endLng = circleCenterLng + radius * Math.cos(startAngle - 2.0 * Math.PI);
+          const endLat = circleCenterLat + radius * Math.sin(startAngle - 2.0 * Math.PI);
           if (!capturedPhotos.value[3]) {
             capturedPhotos.value[3] = true;
             activePhotoIndex.value = 3;
-            triggerPhotoAnimation(3, Cesium.Cartesian3.fromDegrees(endLng, endLat, startHeight));
+            triggerPhotoAnimation(3, Cesium.Cartesian3.fromDegrees(endLng, endLat, circleCenterHeight));
           }
-          return Cesium.Cartesian3.fromDegrees(endLng, endLat, startHeight);
+          return Cesium.Cartesian3.fromDegrees(endLng, endLat, circleCenterHeight);
         }
       }
     }, false);
@@ -6371,7 +7014,8 @@ function addEventEntities() {
         if (currentMissionDataSource) {
           const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
           if (pathEntity && pathEntity.polyline && pathEntity.polyline.positions) {
-            const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime);
+            const positions = pathEntity.polyline.positions.getValue(viewer.clock.currentTime) ||
+                              pathEntity.polyline.positions.getValue(new Cesium.JulianDate());
             if (positions && positions.length > 1) {
               const pEnd = positions[positions.length - 1];
               let startIndex = 0;
@@ -6411,9 +7055,9 @@ function addEventEntities() {
           headingRad = Cesium.Math.toRadians(headingDeg);
         }
       } else if (props.activePhaseIndex >= 8) {
-        // 计算无人机当前位置指向事故中心的朝向角度，使其镜头始终对准事故车拍照
-        const targetLng = Number(tankerPointAdjust.lng) || 114.8945;
-        const targetLat = Number(tankerPointAdjust.lat) || 30.632161;
+        // 计算无人机当前位置指向事故中心的朝向角度，使镜头始终对准事故车拍照
+        const targetLng = Number(tankerPointAdjust.lng) || 114.89209;
+        const targetLat = Number(tankerPointAdjust.lat) || 30.63101;
         
         const carto = Cesium.Cartographic.fromCartesian(pos);
         const currentLng = Cesium.Math.toDegrees(carto.longitude);
@@ -6440,12 +7084,16 @@ function addEventEntities() {
         scale: new Cesium.CallbackProperty(() => tankerUavAdjust.scale > 0 ? tankerUavAdjust.scale : 0.1, false),
         minimumPixelSize: 1, // 改为 1 像素，使无人机完全遵循真实的 3D 空间透视，随视角远近自然缩放
         heightReference: Cesium.HeightReference.NONE,
-        runAnimations: false,
+        // 开启 Entity 自带的动画调度，使螺旋桨持续高速旋转
+        runAnimations: true,
         silhouetteColor: Cesium.Color.fromCssColorString('#00f2fe'),
         silhouetteSize: 2.0
       }
     });
     tankerUavEntities.push(entity);
+    if (config.id === 'uav_model') {
+      sharedTankerUavPosition = tankerUavPosition;
+    }
   });
 
   // 初始化油罐车场景的救援车
@@ -6461,17 +7109,39 @@ function addEventEntities() {
       const targetLat = Number(tankerPointAdjust.lat) || 30.632161;
       const targetHeight = startHeight;
 
-      if (props.activePhaseIndex === 6) {
+      if (props.activePhaseIndex >= 6) {
+        const ugvInfo = getUgvLast200mPosition('tanker', props.activePhaseIndex, tankerPhase7StartTime, viewer.clock.currentTime);
+        if (ugvInfo && ugvInfo.pos) {
+          const carto = Cesium.Cartographic.fromCartesian(ugvInfo.pos);
+          let baseHeight = carto.height;
+          if (viewer && viewer.scene && viewer.scene.globe) {
+            const terrainHeight = viewer.scene.globe.getHeight(carto);
+            if (terrainHeight !== undefined) baseHeight = terrainHeight;
+          }
+          carto.height = baseHeight + (Number(tankerRescueCarAdjust.height) || 0.0);
+          return Cesium.Cartographic.toCartesian(carto);
+        }
         if (currentMissionDataSource) {
           const entity = currentMissionDataSource.entities.getById('Car');
           if (entity) {
-            const pos = entity.position.getValue(viewer.clock.currentTime);
-            if (pos) return pos;
+            const pos = entity.originalPosition ? entity.originalPosition.getValue(viewer.clock.currentTime) : entity.position.getValue(viewer.clock.currentTime);
+            if (pos) {
+              const carto = Cesium.Cartographic.fromCartesian(pos);
+              let baseHeight = carto.height;
+              if (viewer && viewer.scene && viewer.scene.globe) {
+                const terrainHeight = viewer.scene.globe.getHeight(carto);
+                if (terrainHeight !== undefined) baseHeight = terrainHeight;
+              }
+              carto.height = baseHeight + (Number(tankerRescueCarAdjust.height) || 0.0);
+              return Cesium.Cartographic.toCartesian(carto);
+            }
           }
         }
-        return Cesium.Cartesian3.fromDegrees(114.9238, 30.5158, 0.0); // 黄冈市黄州区路口镇专职消防队
+      }
+      if (props.activePhaseIndex === 6) {
+        return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
       } else if (props.activePhaseIndex < 6) {
-        return Cesium.Cartesian3.fromDegrees(114.9238, 30.5158, 0.0);
+        return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
       } else if (props.activePhaseIndex === 7) {
         if (!tankerPhase7StartTime) {
           tankerPhase7StartTime = Date.now();
@@ -6500,8 +7170,13 @@ function addEventEntities() {
       if (!pos) return undefined;
 
       let headingRad;
-      if (props.activePhaseIndex === 6) {
-        if (currentMissionDataSource) {
+      if (props.activePhaseIndex >= 6) {
+        const ugvInfo = getUgvLast200mPosition('tanker', props.activePhaseIndex, tankerPhase7StartTime, viewer.clock.currentTime);
+        if (ugvInfo && ugvInfo.headingRad !== undefined) {
+          // 彻底抛弃路径朝向，全程锁定为你设定的“航向 (Heading)”参数
+          const headingDeg = Number(tankerRescueCarAdjust.heading) || -89;
+          headingRad = Cesium.Math.toRadians(headingDeg);
+        } else if (currentMissionDataSource) {
           const entity = currentMissionDataSource.entities.getById('Car');
           if (entity) {
             const nextTime = Cesium.JulianDate.addSeconds(viewer.clock.currentTime, 0.5, new Cesium.JulianDate());
@@ -6608,8 +7283,13 @@ function updatePhaseScene(index, animate = false) {
   }
 
   try {
+    if (index !== 6) {
+      phase6StartTime = 0;
+      tankerPhase6StartTime = 0;
+    }
     if (index !== 7) {
       phase7StartTime = 0;
+      tankerPhase7StartTime = 0;
     }
     if (index !== 8) {
       uavOrbitStartTime = 0;
@@ -6682,8 +7362,8 @@ function updatePhaseScene(index, animate = false) {
       rescuePopup.altitude = '100 m';
       rescuePopup.speed = '15 m/s';
       rescuePopup.status = '已出发';
-      rescuePopup.xOffset = -10;
-      rescuePopup.yOffset = 15;
+      rescuePopup.xOffset = truckRescuePopupAdjust.xOffset;
+      rescuePopup.yOffset = truckRescuePopupAdjust.yOffset;
       rescueCoords.lng = 113.202;
       rescueCoords.lat = 30.3268;
       rescueCoords.height = 120.0;
@@ -6693,8 +7373,8 @@ function updatePhaseScene(index, animate = false) {
       ugvPopup.count = '2 辆';
       ugvPopup.speed = '5 km/h';
       ugvPopup.status = '已出发';
-      ugvPopup.xOffset = -27;
-      ugvPopup.yOffset = -133;
+      ugvPopup.xOffset = truckUgvPopupAdjust.xOffset;
+      ugvPopup.yOffset = truckUgvPopupAdjust.yOffset;
       ugvCoords.lng = 113.202;
       ugvCoords.lat = 30.3268;
       ugvCoords.height = 10.0;
@@ -6708,15 +7388,15 @@ function updatePhaseScene(index, animate = false) {
       rescuePopup.altitude = '100 m';
       rescuePopup.speed = '0 m/s';
       rescuePopup.status = '感知部署中';
-      rescuePopup.xOffset = 161;
-      rescuePopup.yOffset = -62;
+      rescuePopup.xOffset = truckRescuePopupAdjust.reachedXOffset;
+      rescuePopup.yOffset = truckRescuePopupAdjust.reachedYOffset;
       rescueCoords.lng = 113.104833;
       rescueCoords.lat = 30.385469;
       rescueCoords.height = 120.0;
       ugvPopup.title = '无人车已就位';
       ugvPopup.status = '传感器布设中';
-      ugvPopup.xOffset = -200;
-      ugvPopup.yOffset = 143;
+      ugvPopup.xOffset = truckUgvPopupAdjust.reachedXOffset;
+      ugvPopup.yOffset = truckUgvPopupAdjust.reachedYOffset;
       ugvCoords.lng = 113.104833;
       ugvCoords.lat = 30.385469;
       ugvCoords.height = 10.0;
@@ -6738,8 +7418,8 @@ function updatePhaseScene(index, animate = false) {
       rescuePopup.altitude = '100 m';
       rescuePopup.speed = '15 m/s';
       rescuePopup.status = '已出发';
-      rescuePopup.xOffset = -10;
-      rescuePopup.yOffset = 15;
+      rescuePopup.xOffset = truckRescuePopupAdjust.xOffset;
+      rescuePopup.yOffset = truckRescuePopupAdjust.yOffset;
       rescueCoords.lng = 113.202;
       rescueCoords.lat = 30.3268;
       rescueCoords.height = 120.0;
@@ -6748,8 +7428,8 @@ function updatePhaseScene(index, animate = false) {
       ugvPopup.count = '2 辆';
       ugvPopup.speed = '5 km/h';
       ugvPopup.status = '已出发';
-      ugvPopup.xOffset = -27;
-      ugvPopup.yOffset = -133;
+      ugvPopup.xOffset = truckUgvPopupAdjust.xOffset;
+      ugvPopup.yOffset = truckUgvPopupAdjust.yOffset;
       ugvCoords.lng = 113.202;
       ugvCoords.lat = 30.3268;
       ugvCoords.height = 10.0;
@@ -6779,8 +7459,8 @@ function updatePhaseScene(index, animate = false) {
       rescuePopup.altitude = String(Math.round(tankerUavAdjust.height)) + ' m';
       rescuePopup.speed = '12 m/s';
       rescuePopup.status = '已出发';
-      rescuePopup.xOffset = -10;
-      rescuePopup.yOffset = 15;
+      rescuePopup.xOffset = tankerRescuePopupAdjust.xOffset;
+      rescuePopup.yOffset = tankerRescuePopupAdjust.yOffset;
       rescueCoords.lng = 114.9238;
       rescueCoords.lat = 30.5158;
       rescueCoords.height = tankerUavAdjust.height + 10.0;
@@ -6790,8 +7470,8 @@ function updatePhaseScene(index, animate = false) {
       ugvPopup.count = '2 辆';
       ugvPopup.speed = '5 km/h';
       ugvPopup.status = '已出发';
-      ugvPopup.xOffset = -27;
-      ugvPopup.yOffset = -133;
+      ugvPopup.xOffset = tankerUgvPopupAdjust.xOffset;
+      ugvPopup.yOffset = tankerUgvPopupAdjust.yOffset;
       ugvCoords.lng = 114.9238;
       ugvCoords.lat = 30.5158;
       ugvCoords.height = 15.0;
@@ -6805,15 +7485,15 @@ function updatePhaseScene(index, animate = false) {
       rescuePopup.altitude = String(Math.round(tankerUavAdjust.height)) + ' m';
       rescuePopup.speed = '0 m/s';
       rescuePopup.status = '感知部署中';
-      rescuePopup.xOffset = 161;
-      rescuePopup.yOffset = -62;
+      rescuePopup.xOffset = tankerRescuePopupAdjust.reachedXOffset;
+      rescuePopup.yOffset = tankerRescuePopupAdjust.reachedYOffset;
       rescueCoords.lng = tankerPointAdjust.lng;
       rescueCoords.lat = tankerPointAdjust.lat;
       rescueCoords.height = 17.0;
       ugvPopup.title = '无人车已就位';
       ugvPopup.status = '传感器布设中';
-      ugvPopup.xOffset = -200;
-      ugvPopup.yOffset = 143;
+      ugvPopup.xOffset = tankerUgvPopupAdjust.reachedXOffset;
+      ugvPopup.yOffset = tankerUgvPopupAdjust.reachedYOffset;
       ugvCoords.lng = tankerPointAdjust.lng;
       ugvCoords.lat = tankerPointAdjust.lat;
       ugvCoords.height = 10.0;
@@ -6835,8 +7515,8 @@ function updatePhaseScene(index, animate = false) {
       rescuePopup.altitude = '80 m';
       rescuePopup.speed = '12 m/s';
       rescuePopup.status = '已出发';
-      rescuePopup.xOffset = -10;
-      rescuePopup.yOffset = 15;
+      rescuePopup.xOffset = tankerRescuePopupAdjust.xOffset;
+      rescuePopup.yOffset = tankerRescuePopupAdjust.yOffset;
       rescueCoords.lng = tankerPointAdjust.lng;
       rescueCoords.lat = tankerPointAdjust.lat;
       rescueCoords.height = 17.0;
@@ -6845,8 +7525,8 @@ function updatePhaseScene(index, animate = false) {
       ugvPopup.count = '2 辆';
       ugvPopup.speed = '5 km/h';
       ugvPopup.status = '已出发';
-      ugvPopup.xOffset = -27;
-      ugvPopup.yOffset = -133;
+      ugvPopup.xOffset = tankerUgvPopupAdjust.xOffset;
+      ugvPopup.yOffset = tankerUgvPopupAdjust.yOffset;
       ugvCoords.lng = tankerPointAdjust.lng;
       ugvCoords.lat = tankerPointAdjust.lat;
       ugvCoords.height = 10.0;
@@ -6896,6 +7576,10 @@ function updatePhaseScene(index, animate = false) {
       if (currentMissionDataSource) {
         viewer.dataSources.remove(currentMissionDataSource);
         currentMissionDataSource = null;
+      }
+      if (highlightPathEntity) {
+        viewer.entities.remove(highlightPathEntity);
+        highlightPathEntity = null;
       }
       
       // 强力清除可能因为异步加载残留的其他 CZML 数据源
@@ -7229,7 +7913,10 @@ watch(() => props.activePhaseIndex, (next, prev) => {
       viewer.clock.shouldAnimate = true;
     } else if (next >= 7) {
       viewer.clock.currentTime = currentMissionDataSource.clock.stopTime;
-      viewer.clock.shouldAnimate = false;
+      // 必须保持时钟运行，否则模型自带的动画（如无人机旋翼）会完全冻结
+      viewer.clock.shouldAnimate = true;
+      viewer.clock.multiplier = 1.0;
+      viewer.clock.clockRange = Cesium.ClockRange.UNBOUNDED;
     }
   }
 
