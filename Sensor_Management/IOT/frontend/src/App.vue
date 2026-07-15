@@ -85,7 +85,7 @@ const connectWS = () => {
 // === 菜单控制状态变量整合 ===
 const isOverviewOpen = ref(true)
 const isLogicMenuOpen = ref(false)
-const isNodeGroupOpen = ref(false) // 统一接管监测点A和B的菜单展开状态
+const isNodeGroupOpen = ref(false) // 统一接管感知单元A和B的菜单展开状态
 const isFixedNodeGroupOpen = ref(false)
 const isDroneGroupOpen = ref(false)
 
