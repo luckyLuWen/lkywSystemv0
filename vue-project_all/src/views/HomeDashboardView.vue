@@ -820,6 +820,32 @@ onMounted(() => {
   }, 3000)
 
   activeMenuKey.value = 'home'
+
+  // 初始化时检查 URL 路由参数
+  const queryScene = route.query.scene
+  const queryPhaseIndex = route.query.phaseIndex !== undefined ? parseInt(route.query.phaseIndex, 10) : null
+
+  if (queryScene && queryPhaseIndex !== null) {
+    const idx = accidentPoints.findIndex(acc => acc.id === queryScene)
+    if (idx !== -1) {
+      activeAccidentIndex.value = idx
+    }
+    accidentPhaseIndices.value = {
+      'rear-end': queryScene === 'rear-end' ? queryPhaseIndex : 0,
+      'leakage': queryScene === 'leakage' ? queryPhaseIndex : 0
+    }
+    const currentAcc = accidentPoints[activeAccidentIndex.value]
+    if (currentAcc && currentAcc.phases[queryPhaseIndex]) {
+      currentFocusedPoint.value = currentAcc.phases[queryPhaseIndex].focusPoint || currentAcc.focusPoint
+    }
+
+    // 清除 URL 中的查询参数，避免刷新页面时再次加载指定阶段
+    try {
+      window.history.replaceState(null, '', window.location.pathname)
+    } catch (e) {
+      console.warn('Failed to clear URL query parameters:', e)
+    }
+  }
 })
 
 onBeforeUnmount(() => {
@@ -837,18 +863,45 @@ watch(
       activeMenuKey.value = 'home'
       activeServiceId.value = ''
 
-      // 重置所有事故时间线
-      accidentPhaseIndices.value = {
-        'rear-end': 0,
-        'leakage': 0
-      }
+      const queryScene = route.query.scene
+      const queryPhaseIndex = route.query.phaseIndex !== undefined ? parseInt(route.query.phaseIndex, 10) : null
 
-      // 清除当前聚焦点
-      currentFocusedPoint.value = ''
+      if (queryScene && queryPhaseIndex !== null) {
+        // 设置指定场景索引与阶段索引
+        const idx = accidentPoints.findIndex(acc => acc.id === queryScene)
+        if (idx !== -1) {
+          activeAccidentIndex.value = idx
+        }
+        
+        accidentPhaseIndices.value = {
+          'rear-end': queryScene === 'rear-end' ? queryPhaseIndex : 0,
+          'leakage': queryScene === 'leakage' ? queryPhaseIndex : 0
+        }
 
-      // Cesium恢复默认视角
-      if (globeRef.value) {
-        globeRef.value.resetView()
+        const currentAcc = accidentPoints[activeAccidentIndex.value]
+        if (currentAcc && currentAcc.phases[queryPhaseIndex]) {
+          currentFocusedPoint.value = currentAcc.phases[queryPhaseIndex].focusPoint || currentAcc.focusPoint
+        }
+
+        // 清除 URL 中的查询参数，避免刷新页面时再次加载指定阶段
+        try {
+          window.history.replaceState(null, '', window.location.pathname)
+        } catch (e) {
+          console.warn('Failed to clear URL query parameters:', e)
+        }
+      } else {
+        // 重置所有事故时间线
+        accidentPhaseIndices.value = {
+          'rear-end': 0,
+          'leakage': 0
+        }
+        // 清除当前聚焦点
+        currentFocusedPoint.value = ''
+
+        // Cesium恢复默认视角
+        if (globeRef.value) {
+          globeRef.value.resetView()
+        }
       }
     }
   }
