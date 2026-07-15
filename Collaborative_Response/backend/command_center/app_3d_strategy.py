@@ -82,10 +82,10 @@ print(f"[智能体POI] 场景={args.end_point}, 共 {len(AGENT_POIS)} 个智能�
 # 禁飞区 & 拥堵区 — 紧凑尺寸（~500m），精确位于路径中点
 NFZ_CONFIG = {
     'leak': {
-        'nfz': [{  # 核心禁飞区 ~500m，横跨无人机直飞路径中点
+        'nfz': [{  # 限飞区 ~300m，位于救援起点→事故点航线中点(30.634,114.885)
             'polygon': [
-                [30.635, 114.877], [30.637, 114.881], [30.639, 114.879],
-                [30.640, 114.877], [30.638, 114.875], [30.636, 114.875],
+                [30.633, 114.883], [30.634, 114.887], [30.636, 114.886],
+                [30.637, 114.884], [30.635, 114.882], [30.633, 114.882],
             ],
             'name': '团风城区低空限飞区',
             'level': 'RESTRICTED',
@@ -94,15 +94,15 @@ NFZ_CONFIG = {
             'authority': '团风县应急管理局',
             'effective': '全时段',
         }],
-        'buffer': [{  # 缓冲区（外扩~150m）
+        'buffer': [{  # 缓冲区
             'polygon': [
-                [30.634, 114.876], [30.636, 114.882], [30.639, 114.880],
-                [30.641, 114.877], [30.639, 114.874], [30.636, 114.874],
+                [30.632, 114.882], [30.633, 114.888], [30.636, 114.887],
+                [30.638, 114.883], [30.636, 114.881], [30.632, 114.881],
             ],
         }],
-        'congestion': [  # 团风大道施工拥堵 ~400m，位于道路中点
-            [30.634, 114.880], [30.636, 114.883], [30.638, 114.882],
-            [30.639, 114.881], [30.637, 114.879], [30.635, 114.878],
+        'congestion': [  # 施工拥堵 ~250m，位于路径中点
+            [30.633, 114.883], [30.634, 114.886], [30.636, 114.885],
+            [30.637, 114.884], [30.635, 114.882], [30.633, 114.882],
         ],
         'congestion_name': '团风大道施工拥堵区',
         'congestion_info': '道路半幅封闭施工 | 通行延时+40%',
@@ -123,12 +123,12 @@ NFZ_CONFIG = {
                 [30.364, 113.148], [30.360, 113.138], [30.349, 113.138],
             ],
         }],
-        'congestion': [  # G318国道胡场段施工 ~600m，距事故约4km
-            [30.352, 113.144], [30.355, 113.152], [30.360, 113.150],
-            [30.362, 113.145], [30.358, 113.140], [30.353, 113.139],
+        'congestion': [  # G50高速入口匝道施工 ~300m，仅堵入口
+            [30.356, 113.148], [30.358, 113.152], [30.360, 113.150],
+            [30.359, 113.146], [30.357, 113.145],
         ],
-        'congestion_name': 'G318国道胡场段施工拥堵',
-        'congestion_info': '国道半幅封闭施工 | 08:00-18:00 通行延时+50%',
+        'congestion_name': 'G50高速入口匝道施工',
+        'congestion_info': '入口匝道半幅封闭 | 通行延时+30%',
     },
 }
 NFZ_LIST = NFZ_CONFIG[args.end_point]['nfz']
@@ -306,21 +306,12 @@ def generate_car_path_bfs(G=None):
             straight_dist = calculate_distance(START_POINT[0], START_POINT[1], END_POINT[0], END_POINT[1])
             fetch_radius = max(int(straight_dist * 1.15), 5000)
             G = load_drive_graph_from_local_or_osm(
-                START_POINT, dist=fetch_radius, network_type='drive', simplify=False,
+                ((START_POINT[0] + END_POINT[0]) / 2, (START_POINT[1] + END_POINT[1]) / 2),
+                dist=fetch_radius, network_type='drive', simplify=False,
             )
-        lats, lons = [p[0] for p in CONGESTION_ZONE_POLYGON], [p[1] for p in CONGESTION_ZONE_POLYGON]
-        min_lat, max_lat, min_lon, max_lon = min(lats), max(lats), min(lons), max(lons)
-        blocked_edges = set()
-        for u, v, k, data in G.edges(keys=True, data=True):
-            u_node, v_node = G.nodes[u], G.nodes[v]
-            if UGV_BLOCKED and ((min_lat <= u_node['y'] <= max_lat and min_lon <= u_node['x'] <= max_lon) or \
-               (min_lat <= v_node['y'] <= max_lat and min_lon <= v_node['x'] <= max_lon)):
-                blocked_edges.add((u, v))
-        if UGV_BLOCKED:
-            G.remove_edges_from(blocked_edges)
         orig = ox.nearest_nodes(G, START_POINT[1], START_POINT[0])
         dest = ox.nearest_nodes(G, END_POINT[1], END_POINT[0])
-        route = nx.shortest_path(G, orig, dest, weight=None)  # BFS: weight=None = 所有边权重为1
+        route = nx.shortest_path(G, orig, dest, weight=None)
         path_coords = [(G.nodes[n]['y'], G.nodes[n]['x']) for n in route]
         if path_coords[0][0] != START_POINT[0]: path_coords.insert(0, START_POINT)
         # 确保终点精确对齐到事故点坐标，避免无人机/无人车终点偏离
@@ -347,23 +338,7 @@ def generate_uav_path_greedy():
     max_lon = max(START_POINT[1], END_POINT[1]) + pad
     rows = int(calculate_distance(min_lat, min_lon, max_lat, min_lon) / GRID_RES)
     cols = int(calculate_distance(min_lat, min_lon, min_lat, max_lon) / GRID_RES)
-    grid = np.zeros((rows, cols), dtype=int)
-    if UAV_SMOKE:
-        for nfz in NFZ_LIST + NEW_NFZ_LIST:
-            if 'polygon' in nfz:
-                poly = nfz['polygon']
-                for ri in range(rows):
-                    for ci in range(cols):
-                        cell_lat = min_lat + (ri / rows) * (max_lat - min_lat)
-                        cell_lon = min_lon + (ci / cols) * (max_lon - min_lon)
-                        if _point_in_polygon(cell_lat, cell_lon, poly):
-                            grid[ri][ci] = 1
-            else:
-                r = int((nfz['center'][0] - min_lat) / (max_lat - min_lat) * rows)
-                c = int((nfz['center'][1] - min_lon) / (max_lon - min_lon) * cols)
-                rad = int(nfz['radius'] * 1.1 / GRID_RES)
-                y, x = np.ogrid[-r:rows-r, -c:cols-c]
-                grid[x*x + y*y <= rad*rad] = 1
+    grid = np.zeros((rows, cols), dtype=int)  # Greedy 不避障，直接穿行禁飞区
     start_node = (min(rows-1, int((START_POINT[0]-min_lat)/(max_lat-min_lat)*rows)),
                   min(cols-1, int((START_POINT[1]-min_lon)/(max_lon-min_lon)*cols)))
     end_node = (min(rows-1, int((END_POINT[0]-min_lat)/(max_lat-min_lat)*rows)),
@@ -648,7 +623,7 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
 
         for p in pois:
             is_selected = p['name'] in _selected_poi_names
-            marker_color = bright if not multi_agent_data else (bright if is_selected else dim)
+            marker_color = bright if not multi_agent_data else (bright if is_selected else 'lightgray')
             if is_selected:
                 tooltip = f"★ {cfg['label']}：{p['name']}（{p['dist_km']} km）— 已启动"
             else:
@@ -659,17 +634,7 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
                 tooltip=tooltip,
             ).add_to(fg)
 
-        # 该类型选中站点的救援路径
-        if multi_agent_data:
-            for p in pois:
-                if p['name'] in _agent_path_by_name:
-                    ainfo = _agent_path_by_name[p['name']]
-                    if ainfo.get('path'):
-                        folium.PolyLine(
-                            ainfo['path'], color=cfg['color'], weight=5, opacity=0.85,
-                            tooltip=f"{cfg['label']} 救援路径",
-                        ).add_to(fg)
-                    break  # 每种类型只画一条路径
+        # 静态路径线取消（由 TimestampedGeoJson 动画动态绘制，避免重复杂乱）
 
     folium.LayerControl(collapsed=True).add_to(m)
 
@@ -683,20 +648,46 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
     if COMPARE and uav_greedy_interp is not None:
         folium.PolyLine(uav_greedy_interp[['lat', 'lon']].values.tolist(), color='#f97316', weight=3, opacity=0.6, dash_array='8, 6').add_to(uav_base_group)
 
-    car_feature = {'type': 'Feature', 'geometry': {'type': 'LineString', 'coordinates': list(map(list, car_interp[['lon', 'lat']].values))}, 'properties': {'times': list(car_interp['timestamp'].dt.strftime('%Y-%m-%dT%H:%M:%S')), 'style': {'color': '#0000ff', 'weight': 5}, 'icon': 'circle', 'iconstyle': {'fillColor': '#0000ff', 'radius': 6}}}
-    uav_feature = {'type': 'Feature', 'geometry': {'type': 'LineString', 'coordinates': list(map(list, uav_interp[['lon', 'lat']].values))}, 'properties': {'times': list(uav_interp['timestamp'].dt.strftime('%Y-%m-%dT%H:%M:%S')), 'style': {'color': '#ff00ff', 'weight': 3}, 'icon': 'circle', 'iconstyle': {'fillColor': '#ff00ff', 'radius': 6}}}
-    
-    duration = int((max(car_interp['timestamp'].max(), uav_interp['timestamp'].max()) - START_TIME).total_seconds())
-    
-    folium.plugins.TimestampedGeoJson(
-        {'type': 'FeatureCollection', 'features': [car_feature, uav_feature]}, 
-        period='PT1S', 
-        add_last_point=True, 
-        duration=f"PT{duration}S", 
-        transition_time=1000, 
-        loop=False, 
-        auto_play=True
-    ).add_to(m)
+    # 动画推演：多智能体模式下显示五类救援路径，否则显示 UGV+UAV
+    if multi_agent_data:
+        features = []
+        agent_feature_colors = {
+            'medical': '#22c55e', 'fire': '#f97316', 'police': '#3b82f6',
+            'hazmat': '#a855f7', 'road': '#94a3b8',
+        }
+        for agent_key, ainfo in multi_agent_data.items():
+            path = ainfo.get('path')
+            if not path:
+                continue
+            color = agent_feature_colors.get(agent_key, '#888')
+            coords = [[lon, lat] for lat, lon in path]
+            full_dur = max(car_interp['timestamp'].max(), uav_interp['timestamp'].max()) - START_TIME
+            steps = len(coords)
+            times = [(START_TIME + pd.Timedelta(seconds=i / max(steps-1, 1) * full_dur.total_seconds())).strftime('%Y-%m-%dT%H:%M:%S') for i in range(steps)]
+            features.append({
+                'type': 'Feature',
+                'geometry': {'type': 'LineString', 'coordinates': coords},
+                'properties': {
+                    'times': times,
+                    'style': {'color': color, 'weight': 5},
+                    'icon': 'circle', 'iconstyle': {'fillColor': color, 'radius': 6}
+                }
+            })
+        duration = int(full_dur.total_seconds())
+        folium.plugins.TimestampedGeoJson(
+            {'type': 'FeatureCollection', 'features': features},
+            period='PT1S', add_last_point=True, duration=f"PT{duration}S",
+            transition_time=1000, loop=False, auto_play=True
+        ).add_to(m)
+    else:
+        car_feature = {'type': 'Feature', 'geometry': {'type': 'LineString', 'coordinates': list(map(list, car_interp[['lon', 'lat']].values))}, 'properties': {'times': list(car_interp['timestamp'].dt.strftime('%Y-%m-%dT%H:%M:%S')), 'style': {'color': '#0000ff', 'weight': 5}, 'icon': 'circle', 'iconstyle': {'fillColor': '#0000ff', 'radius': 6}}}
+        uav_feature = {'type': 'Feature', 'geometry': {'type': 'LineString', 'coordinates': list(map(list, uav_interp[['lon', 'lat']].values))}, 'properties': {'times': list(uav_interp['timestamp'].dt.strftime('%Y-%m-%dT%H:%M:%S')), 'style': {'color': '#ff00ff', 'weight': 3}, 'icon': 'circle', 'iconstyle': {'fillColor': '#ff00ff', 'radius': 6}}}
+        duration = int((max(car_interp['timestamp'].max(), uav_interp['timestamp'].max()) - START_TIME).total_seconds())
+        folium.plugins.TimestampedGeoJson(
+            {'type': 'FeatureCollection', 'features': [car_feature, uav_feature]},
+            period='PT1S', add_last_point=True, duration=f"PT{duration}S",
+            transition_time=1000, loop=False, auto_play=True
+        ).add_to(m)
 
     # 协同效能评估面板 (左上角) — 全中文标注，含完整路径参数
     time_diff = abs(car_df['time_s'].iloc[-1] - uav_df['time_s'].iloc[-1])
@@ -842,7 +833,7 @@ def _load_path_from_json(endpoint, strategy, ugv_block, uav_smoke):
         return None
 
 
-def save_to_czml(uav_df, car_df, delay):
+def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
     print("[CZML] Exporting CZML file...")
     uav_df = uav_df.copy()
     car_df = car_df.copy()
@@ -854,7 +845,7 @@ def save_to_czml(uav_df, car_df, delay):
     
     def format_timestamp(ts):
         if ts.tzinfo is None:
-            return ts.strftime('%Y-%m-%dT%H:%M:%S') + 'Z'
+            return ts.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
         return ts.isoformat()
 
     global_start_time = min(uav_df['timestamp'].min(), car_df['timestamp'].min())
@@ -873,31 +864,82 @@ def save_to_czml(uav_df, car_df, delay):
     uav_line = []
     for _, r in uav_df.iterrows(): uav_line.extend([r['lon'], r['lat'], r['alt']])
     czml.append({"id": "UAV_Path", "polyline": {"positions": {"cartographicDegrees": uav_line}, "width": 3, "material": {"solidColor": {"color": {"rgba": [255, 0, 0, 150]}}}}})
-    czml.append({
-        "id": "UAV_Path",
-        "polyline": {
-            "positions": {"cartographicDegrees": uav_line},
-            "width": 5,
-            "material": {"solidColor": {"color": {"rgba": [255, 0, 0, 200]}}}
-        }
-    })
-    
-    
+    czml.append({"id": "UAV_Path", "polyline": {"positions": {"cartographicDegrees": uav_line}, "width": 5, "material": {"solidColor": {"color": {"rgba": [255, 0, 0, 200]}}}}})
     car_line = []
     for _, r in car_df.iterrows(): car_line.extend([r['lon'], r['lat'], 2])
     czml.append({"id": "Car_Path", "polyline": {"positions": {"cartographicDegrees": car_line}, "width": 3, "material": {"solidColor": {"color": {"rgba": [0, 0, 255, 150]}}}}})
-    czml.append({
-        "id": "Car_Path",
-        "polyline": {
-            "positions": {"cartographicDegrees": car_line},
-            "width": 5,
-            "material": {"solidColor": {"color": {"rgba": [0, 0, 255, 200]}}},
-            "clampToGround": True
-        }
-    })
+    czml.append({"id": "Car_Path", "polyline": {"positions": {"cartographicDegrees": car_line}, "width": 5, "material": {"solidColor": {"color": {"rgba": [0, 0, 255, 200]}}}, "clampToGround": True}})
+
+    # 五类救援智能体 POI（始终渲染所有站点）
+    agent_colors_czml = {
+        'medical': [34, 197, 94, 220], 'fire': [249, 115, 22, 220],
+        'police': [59, 130, 246, 220], 'hazmat': [168, 85, 247, 220],
+        'road': [148, 163, 184, 220],
+    }
+    # 已选中 POI 名称 → 路径起点坐标 映射（装备出动后使用路径起点而非DB坐标）
+    selected_start_positions = {}
+    if multi_agent_data:
+        for agent_key, ainfo in multi_agent_data.items():
+            poi = ainfo.get('poi')
+            path = ainfo.get('path')
+            if poi and path and len(path) > 0:
+                selected_start_positions[poi['name']] = path[0]  # 路径第一个点（最近路网节点）
+
+    for p in AGENT_POIS:
+        is_sel = p['name'] in selected_start_positions
+        rgba = agent_colors_czml.get(p.get('agent_key', ''), [200,200,200,220])
+        # 选中时使用路径起点坐标，未选中时使用DB坐标
+        pos_lon = selected_start_positions[p['name']][1] if p['name'] in selected_start_positions else p['lon']
+        pos_lat = selected_start_positions[p['name']][0] if p['name'] in selected_start_positions else p['lat']
+        if not multi_agent_data:
+            color = rgba; prefix = p['label'] + ': '; size = 10
+        elif is_sel:
+            color = rgba; prefix = '★ ' + p['label'] + ': '; size = 12
+        else:
+            color = [120, 120, 120, 160]; prefix = p['label'] + ': '; size = 8
+        czml.append({
+            "id": f"AgentPOI_{p['agent_key']}_{p['name'][:6]}",
+            "position": {"cartographicDegrees": [pos_lon, pos_lat, 0]},
+            "point": {"pixelSize": size, "color": {"rgba": color},
+                      "outlineColor": {"rgba": [255,255,255,200] if is_sel or not multi_agent_data else [0,0,0,0]},
+                      "outlineWidth": 2 if is_sel else 0},
+            "label": {"text": prefix + p['name'], "font": "11px Microsoft YaHei",
+                      "pixelOffset": {"cartesian2": [0, -14]}}
+        })
+
+    # 路径 + 动画（仅装备出动后）
+    if multi_agent_data:
+        for agent_key, ainfo in multi_agent_data.items():
+            poi = ainfo.get('poi')
+            path = ainfo.get('path')
+            if not poi or not path:
+                continue
+            rgba = agent_colors_czml.get(agent_key, [200,200,200,220])
+            line_flat = []
+            for lat, lon in path: line_flat.extend([lon, lat, 3])
+            czml.append({
+                "id": f"AgentPath_{agent_key}",
+                "polyline": {"positions": {"cartographicDegrees": line_flat}, "width": 4,
+                             "material": {"solidColor": {"color": {"rgba": rgba}}}, "clampToGround": True}
+            })
+            agent_pos = []
+            path_len = len(path)
+            for i, (lat, lon) in enumerate(path):
+                t = global_start_time + pd.Timedelta(seconds=i / max(path_len-1,1) * (global_end_time - global_start_time).total_seconds())
+                agent_pos.extend([t.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z', lon, lat, 8])
+            czml.append({
+                "id": f"Agent_{agent_key}", "name": ainfo['label'],
+                "availability": avail,
+                "position": {"epoch": start_str, "cartographicDegrees": agent_pos,
+                             "interpolationAlgorithm": "LINEAR", "interpolationDegree": 1},
+                "point": {"pixelSize": 12, "color": {"rgba": rgba},
+                          "outlineColor": {"rgba": [255,255,255,230]}, "outlineWidth": 2},
+                "label": {"text": ainfo['label'], "font": "12px Microsoft YaHei",
+                          "pixelOffset": {"cartesian2": [0, -20]}},
+            })
     
 
-    # 动态对象
+    # 动态对象（始终包含 UAV/Car）
     uav_pos = []
     for _, r in uav_df.iterrows(): uav_pos.extend([format_timestamp(r['timestamp']), r['lon'], r['lat'], r['alt']])
     czml.append({
@@ -974,7 +1016,7 @@ if __name__ == '__main__':
         if True:  # 始终计算基线对比数据
             print("--- 正在运行基线对比算法 ---")
             print("  [基线] BFS 车辆路径 (最少边数, 忽略道路长度)...")
-            car_bfs_df, _ = generate_car_path_bfs(G=car_G.copy() if car_G is not None else None)
+            car_bfs_df, _ = generate_car_path_bfs(G=car_G if car_G is not None else None)
             bfs_dist = car_bfs_df['dist'].sum() / 1000 if 'dist' in car_bfs_df.columns else 0
             print(f"  [基线] BFS 完成, 路径距离: {bfs_dist:.1f} km")
             print("  [基线] Greedy 无人机路径 (仅朝目标移动, 忽略全局代价)...")
@@ -986,8 +1028,10 @@ if __name__ == '__main__':
                 uav_greedy_interp = interpolate_path(uav_greedy_df, ANIMATION_INTERVAL)
             car_dist = car_df['dist'].sum() / 1000 if 'dist' in car_df.columns else 0
             uav_dist = sum(calculate_distance(uav_df.iloc[i-1]['lat'], uav_df.iloc[i-1]['lon'], uav_df.iloc[i]['lat'], uav_df.iloc[i]['lon']) for i in range(1, len(uav_df))) / 1000
-            print(f"  算法优越性: Dijkstra={car_dist:.1f} vs BFS={bfs_dist:.1f} km (节省{(bfs_dist-car_dist)/bfs_dist*100:.1f}%)")
-            print(f"  算法优越性: A*={uav_dist:.1f} vs Greedy={greedy_dist:.1f} km (节省{(greedy_dist-uav_dist)/greedy_dist*100:.1f}%)")
+            _car_save = (bfs_dist - car_dist) / bfs_dist * 100 if bfs_dist > 0 else 0
+            _uav_save = (greedy_dist - uav_dist) / greedy_dist * 100 if greedy_dist > 0 else 0
+            print(f"  算法优越性: Dijkstra={car_dist:.1f} vs BFS={bfs_dist:.1f} km (节省{_car_save:.1f}%)")
+            print(f"  算法优越性: A*={uav_dist:.1f} vs Greedy={greedy_dist:.1f} km (节省{_uav_save:.1f}%)")
 
     # 多智能体救援路径（五类 POI）
     multi_agent_data = None
@@ -1120,4 +1164,4 @@ if __name__ == '__main__':
         json.dump(result_data, f, ensure_ascii=False, indent=2)
     
     # 导出并覆盖 mission.czml 供三维地图同步载入
-    save_to_czml(uav_df, car_df, delay)
+    save_to_czml(uav_df, car_df, delay, multi_agent_data=multi_agent_data)

@@ -32,7 +32,7 @@ def find_agent_paths(scenario: str, end_point: tuple) -> dict:
     for p in all_pois:
         p["dist_km"] = round(geodesic((p["lat"], p["lon"]), (lat, lon)).kilometers, 2)
 
-    graph = load_drive_graph_from_local_or_osm((lat, lon), dist=30000, network_type="drive")
+    graph = load_drive_graph_from_local_or_osm((lat, lon), dist=35000, network_type="drive")
     dest_node = ox.nearest_nodes(graph, lon, lat)
 
     # 按类型分组，每组选最近的一个计算路径
