@@ -105,6 +105,25 @@
         </div>
         <p v-if="deductionStatus" class="ctrl-status">{{ deductionStatus }}</p>
       </div>
+
+      <!-- 三维态势控制面板 -->
+      <div v-if="currentView === '3d'" class="deduction-controls">
+        <h4 class="ctrl-title">三维态势控制</h4>
+        <label class="ctrl-field">
+          <span>事故场景</span>
+          <select v-model="cesiumScene" class="ctrl-select">
+            <option value="leak">油罐车泄露现场</option>
+            <option value="crash">货车追尾现场</option>
+          </select>
+        </label>
+        <div class="ctrl-btns">
+          <button class="ctrl-btn blue" :disabled="cesiumPending" @click="triggerCesiumUGVUAV">无人装备出动</button>
+        </div>
+        <div class="ctrl-btns">
+          <button class="ctrl-btn green" :disabled="cesiumPending" @click="triggerCesiumMultiAgent">救援装备出动</button>
+        </div>
+        <p v-if="cesiumStatus" class="ctrl-status">{{ cesiumStatus }}</p>
+      </div>
     </aside>
 
     <main class="content">
@@ -324,6 +343,10 @@ const deductionObstacle = ref('1')
 const deductionStrategy = ref('rcd')
 const deductionPending = ref(false)
 const deductionStatus = ref('')
+
+const cesiumScene = ref('leak')
+const cesiumPending = ref(false)
+const cesiumStatus = ref('')
 
 const streamlitMode = ref('medical')
 const streamlitSeverity = ref('中度')
@@ -626,7 +649,7 @@ function refreshFrames() {
     { t: Date.now() }
   )
   cesiumFrameSrc.value = appendUrlParams(
-    buildCommandCenterUrl('cesium_viewer', resolvedCommandCenterBaseUrl.value),
+    buildCommandCenterUrl('cesium_viewer?end_point=' + cesiumScene.value, resolvedCommandCenterBaseUrl.value),
     { t: Date.now() }
   )
   streamlitFrameKey.value += 1
@@ -685,11 +708,10 @@ async function show2DView() {
 }
 
 async function show3DView() {
-  await openManagedView('3d', 'commandCenter', () => {
-    cesiumFrameSrc.value = appendUrlParams(
-      buildCommandCenterUrl('cesium_viewer', resolvedCommandCenterBaseUrl.value),
-      { t: Date.now() }
-    )
+  await openManagedView('3d', 'commandCenter', async () => {
+    // 先确保 CZML 处于默认状态（全部 POI 亮色）
+    await fetch(buildCommandCenterUrl(`api/run_3d_cesium?end_point=${cesiumScene.value}`, commandCenterBaseUrl.value)).catch(()=>{})
+    cesiumFrameSrc.value = buildCommandCenterUrl('cesium_viewer?end_point=' + cesiumScene.value, resolvedCommandCenterBaseUrl.value)
     cesiumFrameKey.value += 1
   })
 }
@@ -763,6 +785,26 @@ async function triggerMultiAgent() {
   } finally {
     deductionPending.value = false
   }
+}
+
+async function triggerCesiumUGVUAV() {
+  cesiumPending.value = true; cesiumStatus.value = '无人装备出动中...'
+  try {
+    const r = await fetch(buildCommandCenterUrl(`api/run_3d_cesium?end_point=${cesiumScene.value}`, commandCenterBaseUrl.value))
+    if (!r.ok) throw new Error('HTTP ' + r.status)
+    cesiumStatus.value = '已出动'
+    cesiumFrameSrc.value = ''; setTimeout(() => refreshFrames(), 800)
+  } catch (e) { cesiumStatus.value = '失败: ' + e.message } finally { cesiumPending.value = false }
+}
+
+async function triggerCesiumMultiAgent() {
+  cesiumPending.value = true; cesiumStatus.value = '救援装备出动中...'
+  try {
+    const r = await fetch(buildCommandCenterUrl(`api/run_multi_agent?end_point=${cesiumScene.value}&strategy=rcd`, commandCenterBaseUrl.value))
+    if (!r.ok) throw new Error('HTTP ' + r.status)
+    cesiumStatus.value = '已出动'
+    cesiumFrameSrc.value = ''; setTimeout(() => refreshFrames(), 1000)
+  } catch (e) { cesiumStatus.value = '失败: ' + e.message } finally { cesiumPending.value = false }
 }
 
 function saveStreamlitUrl() {
