@@ -1317,103 +1317,6 @@
       <div class="detection-popup-arrow"></div>
     </div>
 
-    <!-- light1 路侧摄像头模拟监控视频 -->
-    <div
-      v-if="cameraStreamPopup.show"
-      class="camera-stream-popup"
-      :style="{ left: cameraStreamPopup.x + 'px', top: cameraStreamPopup.y + 'px' }"
-    >
-      <div class="camera-stream-header">
-        <div class="camera-title-wrap">
-          <span class="camera-live-dot"></span>
-          <span class="camera-stream-title">{{ cameraStreamPopup.title }}</span>
-        </div>
-        <button class="close-btn" @click="cameraStreamPopup.show = false">×</button>
-      </div>
-      <div class="camera-stream-body">
-        <div class="camera-video-wrap">
-          <video
-            ref="cameraStreamVideoRef"
-            class="camera-stream-video"
-            :src="cameraStreamPopup.videoSrc"
-            autoplay
-            muted
-            loop
-            playsinline
-            controls
-            @timeupdate="syncCameraVideoBoxes"
-            @seeking="syncCameraVideoBoxes"
-            @seeked="syncCameraVideoBoxes"
-            @play="syncCameraVideoBoxes"
-            @loadedmetadata="syncCameraVideoBoxes"
-          ></video>
-          <svg
-            v-if="cameraStreamPopup.activeVideoBoxes.length"
-            class="camera-video-overlay"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-            aria-hidden="true"
-          >
-            <g
-              v-for="(box, index) in cameraStreamPopup.activeVideoBoxes"
-              :key="`${box.label}-${index}`"
-            >
-              <rect
-                :x="box.x"
-                :y="box.y"
-                :width="box.width"
-                :height="box.height"
-                :class="['camera-box-rect', box.kind]"
-              />
-              <text
-                :x="box.x"
-                :y="box.labelY"
-                :class="['camera-box-label', box.kind]"
-              >{{ box.label }} {{ box.confidence }}</text>
-            </g>
-          </svg>
-        </div>
-        <div class="camera-info-grid compact">
-          <div class="camera-info-item online">
-            <span>摄像头状态</span>
-            <strong>{{ cameraStreamPopup.status }}</strong>
-          </div>
-          <div class="camera-info-item">
-            <span>当前阶段</span>
-            <strong>{{ props.phases?.[props.activePhaseIndex]?.shortLabel || '--' }}</strong>
-          </div>
-        </div>
-        <div class="camera-detection-panel" :class="`is-${cameraStreamPopup.detectionState}`">
-          <div class="camera-detection-head">
-            <span>SFGA-YOLO26M 视频检测</span>
-            <strong>{{ cameraStreamPopup.detectionStatus }}</strong>
-          </div>
-          <div class="camera-detection-body">
-            <template v-if="cameraStreamPopup.detectionState === 'done'">
-              <div class="camera-live-result-head">
-                <span>当前画面检测结果</span>
-                <strong>{{ cameraStreamPopup.activeVideoBoxes.length ? '已识别' : '未检测到目标' }}</strong>
-              </div>
-              <div v-if="cameraStreamPopup.activeVideoBoxes.length" class="camera-live-result-list">
-                <div
-                  v-for="(box, index) in cameraStreamPopup.activeVideoBoxes"
-                  :key="`${box.label}-${index}`"
-                  class="camera-live-result-item"
-                  :class="box.kind"
-                >
-                  <span>{{ box.label }}</span>
-                  <strong>{{ box.confidence }}</strong>
-                </div>
-              </div>
-            </template>
-            <template v-else>
-              <span>{{ cameraStreamPopup.detectionMessage }}</span>
-            </template>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- 仿真推演模块悬浮窗 (无人感知执行阶段 index === 8) -->
     <div 
       v-if="simulationPopup.show && props.activePhaseIndex === 8 && (props.focusedPointId === 'accident_blue' || props.focusedPointId === 'accident_red')" 
@@ -2528,7 +2431,69 @@ const lights = reactive([
   { id: 'light3', name: '灯光 3', show: true, lng: 113.104482, lat: 30.385632, height: 8.5, scale: 0.003, heading: 198, pitch: 0, roll: 0 },
   { id: 'light4', name: '灯光 4', show: true, lng: 114.891139, lat: 30.630711, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
   { id: 'light5', name: '灯光 5', show: true, lng: 114.892429, lat: 30.631096, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
-  { id: 'light6', name: '灯光 6', show: true, lng: 114.894472, lat: 30.632203, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light6', name: '灯光 6 (原3D自带)', show: true, lng: 114.893327, lat: 30.631683, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { 
+ id: 'light7', 
+ name: '灯光 7', 
+ show: true,
+ lng: 113.106713,
+ lat: 30.385096,
+ height: 8.5,
+ scale: 0.003,
+ heading: 201,
+ pitch: 0,
+ roll: 0
+},
+
+{ 
+ id: 'light8', 
+ name: '灯光 8', 
+ show: true,
+ lng: 113.106053,
+ lat: 30.385035,
+ height: 8.5,
+ scale: 0.003,
+ heading: 201,
+ pitch: 0,
+ roll: 0
+},
+
+{ 
+ id: 'light9', 
+ name: '灯光 9', 
+ show: true,
+ lng: 113.106993,
+ lat: 30.384839,
+ height: 8.5,
+ scale: 0.003,
+ heading: 201,
+ pitch: 0,
+ roll: 0
+},
+
+{ 
+ id: 'light10', 
+ name: '灯光 10', 
+ show: true,
+ lng: 113.104025,
+ lat: 30.385567,
+ height: 8.5,
+ scale: 0.003,
+ heading: 201,
+ pitch: 0,
+ roll: 0
+},
+{ id: 'light11', name: '灯光 11', show: true, lng: 113.103713, lat: 30.385879, height: 8.5, scale: 0.003, heading: 16, pitch: 0, roll: 0 },
+  { id: 'light12', name: '灯光 12', show: true, lng: 113.102937, lat: 30.385845, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
+  { id: 'light13', name: '灯光 13', show: true, lng: 113.102025, lat: 30.386324, height: 8.5, scale: 0.003, heading: 16, pitch: 0, roll: 0 },
+  { id: 'light14', name: '灯光 14', show: true, lng: 113.100805, lat: 30.386452, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
+  { id: 'light15', name: '灯光 15', show: true, lng: 113.100141, lat:30.386877, height: 8.5, scale: 0.003, heading: 16, pitch: 0, roll: 0 },
+  { id: 'light16', name: '灯光 16', show: true, lng:113.09881, lat: 30.387111, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
+  { id: 'light17', name: '灯光 17', show: true, lng: 113.0977, lat:30.387665, height: 8.5, scale: 0.003, heading: 16, pitch: 0, roll: 0 },
+  { id: 'light18', name: '灯光 18', show: true, lng:113.096165, lat: 30.38803, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
+ { id: 'light19', name: '灯光 19', show: true, lng: 113.108476, lat: 30.384758, height: 8.5, scale: 0.003, heading: 16, pitch: 0, roll: 0 },
+  { id: 'light20', name: '灯光 20', show: true, lng:113.10978, lat:30.384221, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
+  { id: 'light21', name: '灯光 21', show: true, lng: 113.110784, lat: 30.384221, height: 8.5, scale: 0.003, heading: 198, pitch: 0, roll: 0 },
 ])
 
 const lightAdjust = reactive({
@@ -2544,8 +2509,18 @@ const lightAdjust = reactive({
 
 // 当切换当前编辑的灯光时，将对应的参数回填到 lightAdjust
 watch(activeLightIndex, (newIdx) => {
-  const currentLight = lights[newIdx]
-  if (currentLight) {
+  if (newIdx === 5) {
+    // light6 (索引 5) 转变成对原 3D 事故模型 (tankerAdjust) 的位置与姿态控制
+    lightAdjust.show = true
+    lightAdjust.lng = tankerAdjust.lng
+    lightAdjust.lat = tankerAdjust.lat
+    lightAdjust.height = tankerAdjust.height
+    lightAdjust.scale = tankerAdjust.scale
+    lightAdjust.heading = tankerAdjust.heading
+    lightAdjust.pitch = 0
+    lightAdjust.roll = 0
+  } else {
+    const currentLight = lights[newIdx]
     lightAdjust.show = currentLight.show
     lightAdjust.lng = currentLight.lng
     lightAdjust.lat = currentLight.lat
@@ -2559,8 +2534,22 @@ watch(activeLightIndex, (newIdx) => {
 
 // 当微调面板修改了 lightAdjust 时，同步回对应目标
 watch(lightAdjust, (newVals) => {
-  const currentLight = lights[activeLightIndex.value]
-  if (currentLight) {
+  if (activeLightIndex.value === 5) {
+    // 同步修改到原 3D 事故模型 tankerAdjust，从而直接控制该模型在地图上的经纬度、高度、朝向与比例
+    tankerAdjust.lng = newVals.lng
+    tankerAdjust.lat = newVals.lat
+    tankerAdjust.height = newVals.height
+    tankerAdjust.scale = newVals.scale
+    tankerAdjust.heading = newVals.heading
+    // 同时同步记录回 lights[5]
+    const currentLight = lights[5]
+    currentLight.lng = newVals.lng
+    currentLight.lat = newVals.lat
+    currentLight.height = newVals.height
+    currentLight.scale = newVals.scale
+    currentLight.heading = newVals.heading
+  } else {
+    const currentLight = lights[activeLightIndex.value]
     currentLight.show = newVals.show
     currentLight.lng = newVals.lng
     currentLight.lat = newVals.lat
@@ -3693,193 +3682,6 @@ const detectionPopup = reactive({
 let detectionTimer = null
 let storyDetectionRequestId = 0
 
-const cameraStreamVideoRef = ref(null)
-
-const cameraStreamPopup = reactive({
-  show: false,
-  x: 0,
-  y: 0,
-  title: '前方路侧摄像头',
-  location: 'light1 路侧监控点',
-  status: '在线',
-  videoSrc: '/Dashboard/videos/light1-kling3.mp4',
-  detectionState: 'idle',
-  detectionStatus: '待检测',
-  detectionMessage: '点击摄像头后自动从视频 2.2s 处开始检测',
-  sampledFrames: 0,
-  detectionCount: 0,
-  bestLabel: '',
-  bestConfidence: '--',
-  videoWidth: 0,
-  videoHeight: 0,
-  videoFrames: [],
-  activeVideoBoxes: []
-})
-let cameraVideoDetectionRequestId = 0
-
-function resetCameraVideoDetectionState() {
-  cameraStreamPopup.detectionState = 'detecting'
-  cameraStreamPopup.detectionStatus = '检测中'
-  cameraStreamPopup.detectionMessage = '正在调用 SFGA-YOLO26M，从视频 2.2s 后开始抽帧检测...'
-  cameraStreamPopup.sampledFrames = 0
-  cameraStreamPopup.detectionCount = 0
-  cameraStreamPopup.bestLabel = ''
-  cameraStreamPopup.bestConfidence = '--'
-  cameraStreamPopup.videoWidth = 0
-  cameraStreamPopup.videoHeight = 0
-  cameraStreamPopup.videoFrames = []
-  cameraStreamPopup.activeVideoBoxes = []
-}
-
-function getCameraVideoBoxKind(className) {
-  const key = String(className || '').toLowerCase()
-  if (key.includes('nofire') || key.includes('no_fire') || key.includes('normal') || key.includes('无火') || key.includes('正常')) {
-    return 'nofire'
-  }
-  if (key.includes('fire') || key.includes('火')) return 'fire'
-  return 'default'
-}
-
-function normalizeCameraVideoFrame(frame, videoWidth, videoHeight) {
-  const width = Math.max(Number(videoWidth) || 1, 1)
-  const height = Math.max(Number(videoHeight) || 1, 1)
-  const parsedTime = Number(frame?.time_s)
-  const timeSeconds = Number.isFinite(parsedTime)
-    ? parsedTime
-    : (Number.parseFloat(String(frame?.time || '').replace('s', '')) || 0)
-
-  const boxes = (Array.isArray(frame?.detections) ? frame.detections : [])
-    .map((item) => {
-      const coordinates = Array.isArray(item?.bbox) ? item.bbox.map(Number) : []
-      if (coordinates.length < 4 || coordinates.some((value) => !Number.isFinite(value))) return null
-      const [x1, y1, x2, y2] = coordinates
-      const left = Math.max(0, Math.min(x1, width))
-      const top = Math.max(0, Math.min(y1, height))
-      const right = Math.max(left, Math.min(x2, width))
-      const bottom = Math.max(top, Math.min(y2, height))
-      if (right <= left || bottom <= top) return null
-      const x = (left / width) * 100
-      const y = (top / height) * 100
-      const boxWidth = ((right - left) / width) * 100
-      const boxHeight = ((bottom - top) / height) * 100
-      return {
-        x,
-        y,
-        width: boxWidth,
-        height: boxHeight,
-        labelY: Math.max(4, y - 1),
-        label: item?.class || '目标',
-        confidence: formatDetectionConfidence(item?.confidence),
-        kind: getCameraVideoBoxKind(item?.class)
-      }
-    })
-    .filter(Boolean)
-
-  return { timeSeconds, boxes }
-}
-
-function syncCameraVideoBoxes() {
-  const video = cameraStreamVideoRef.value
-  const frames = cameraStreamPopup.videoFrames
-  const currentTime = Number(video?.currentTime)
-  if (!video || !frames.length || !Number.isFinite(currentTime)) {
-    cameraStreamPopup.activeVideoBoxes = []
-    return
-  }
-
-  let activeFrame = null
-  for (const frame of frames) {
-    if (frame.timeSeconds <= currentTime) {
-      activeFrame = frame
-    } else {
-      break
-    }
-  }
-  cameraStreamPopup.activeVideoBoxes = activeFrame?.boxes || []
-}
-
-function summarizeVideoDetections(frames) {
-  let detectionCount = 0
-  let bestDetection = null
-  ;(frames || []).forEach((frame) => {
-    const detections = Array.isArray(frame.detections) ? frame.detections : []
-    detectionCount += detections.length
-    detections.forEach((item) => {
-      const confidence = Number(item.confidence)
-      if (!Number.isFinite(confidence)) return
-      if (!bestDetection || confidence > Number(bestDetection.confidence)) {
-        bestDetection = item
-      }
-    })
-  })
-  return { detectionCount, bestDetection }
-}
-
-async function runLight1VideoDetection() {
-  const requestId = ++cameraVideoDetectionRequestId
-  resetCameraVideoDetectionState()
-
-  try {
-    const videoResponse = await fetch(cameraStreamPopup.videoSrc, { cache: 'no-store' })
-    if (!videoResponse.ok) throw new Error(`video HTTP ${videoResponse.status}`)
-
-    const videoBlob = await videoResponse.blob()
-    const formData = new FormData()
-    formData.append('file', videoBlob, 'light1-kling3.mp4')
-    formData.append('model', STORY_DETECTION_MODEL)
-    formData.append('conf', '0.25')
-    formData.append('iou', '0.45')
-    formData.append('interval', '15')
-    formData.append('start_time', '2.2')
-
-    const response = await fetch(buildRealtimeDetectionApiUrl('api/detect/video', getRealtimeDetectionBaseUrl()), {
-      method: 'POST',
-      body: formData
-    })
-    if (!response.ok) throw new Error(`detection HTTP ${response.status}`)
-
-    const payload = await response.json()
-    if (requestId !== cameraVideoDetectionRequestId) return
-    if (!payload.success) throw new Error(payload.error || '检测失败')
-
-    const frames = Array.isArray(payload.frames) ? payload.frames : []
-    const videoWidth = Number(payload.video_width) || Number(cameraStreamVideoRef.value?.videoWidth) || 1
-    const videoHeight = Number(payload.video_height) || Number(cameraStreamVideoRef.value?.videoHeight) || 1
-    cameraStreamPopup.videoWidth = videoWidth
-    cameraStreamPopup.videoHeight = videoHeight
-    cameraStreamPopup.videoFrames = frames.map((frame) => (
-      normalizeCameraVideoFrame(frame, videoWidth, videoHeight)
-    ))
-    syncCameraVideoBoxes()
-    const { detectionCount, bestDetection } = summarizeVideoDetections(frames)
-    cameraStreamPopup.detectionState = 'done'
-    cameraStreamPopup.detectionStatus = '完成'
-    cameraStreamPopup.sampledFrames = payload.sampled_frames || frames.length
-    cameraStreamPopup.detectionCount = detectionCount
-    cameraStreamPopup.bestLabel = bestDetection?.class || ''
-    cameraStreamPopup.bestConfidence = bestDetection ? formatDetectionConfidence(bestDetection.confidence) : '--'
-    cameraStreamPopup.detectionMessage = detectionCount ? '检测完成' : '检测完成，未发现目标'
-  } catch (error) {
-    if (requestId !== cameraVideoDetectionRequestId) return
-    cameraStreamPopup.detectionState = 'error'
-    cameraStreamPopup.detectionStatus = '失败'
-    cameraStreamPopup.detectionMessage = '视频检测失败，请确认实时检测后端已启动且 SFGA-YOLO26M 可用。'
-  }
-}
-
-function openLight1CameraStream(movement) {
-  const canvas = viewer?.scene?.canvas
-  const width = canvas?.clientWidth || window.innerWidth || 1200
-  const height = canvas?.clientHeight || window.innerHeight || 720
-  const clickX = Number(movement?.position?.x) || width * 0.62
-  const clickY = Number(movement?.position?.y) || height * 0.34
-
-  cameraStreamPopup.x = Math.min(Math.max(clickX + 22, 24), width - 500)
-  cameraStreamPopup.y = Math.min(Math.max(clickY + 72, 118), height - 430)
-  cameraStreamPopup.show = true
-  runLight1VideoDetection()
-}
-
 const currentStoryDetectionScenario = computed(() => {
   return STORY_DETECTION_SCENARIOS[detectionPopup.scenarioKey] || null
 })
@@ -4117,12 +3919,8 @@ const loadMission = async () => {
     dataSource._lastEndpoint = endpoint;
     
     // 清除 CZML 实体的时间范围可用性限制，防止时间走完或越界时实体在地图上消失
-    const phaseIdx = Number(props.activePhaseIndex);
     dataSource.entities.values.forEach(entity => {
       entity.availability = undefined;
-      if (phaseIdx === 6) {
-        entity.show = false;
-      }
     });
 
     currentMissionDataSource = dataSource;
@@ -4183,13 +3981,13 @@ const loadMission = async () => {
     // 确保从 CZML 加载的规划路线实体在地图上显式可见
     const uavPath = dataSource.entities.getById('UAV_Path');
     if (uavPath) {
-      uavPath.show = (phaseIdx !== 6);
-      if (uavPath.polyline) uavPath.polyline.show = (phaseIdx !== 6);
+      uavPath.show = true;
+      if (uavPath.polyline) uavPath.polyline.show = true;
     }
     const carPath = dataSource.entities.getById('Car_Path');
     if (carPath) {
-      carPath.show = (phaseIdx !== 6);
-      if (carPath.polyline) carPath.polyline.show = (phaseIdx !== 6);
+      carPath.show = true;
+      if (carPath.polyline) carPath.polyline.show = true;
       
       const positions = carPath.polyline.positions.getValue(getQueryTime()) ||
                         carPath.polyline.positions.getValue(new Cesium.JulianDate());
@@ -4217,14 +4015,7 @@ const loadMission = async () => {
             last200mPoints.unshift(pPrev);
           }
         }
-        if (phaseIdx !== 6) {
-          updateHighlightPath(last200mPoints);
-        } else {
-          if (highlightPathEntity) {
-            viewer.entities.remove(highlightPathEntity);
-            highlightPathEntity = null;
-          }
-        }
+        updateHighlightPath(last200mPoints);
       }
     }
 
@@ -4997,6 +4788,11 @@ async function initViewer() {
   
   // 屏蔽 Cesium 默认的红色崩溃弹窗，由 Vue 捕获并友好提示
   if (Cesium) {
+    if (typeof Cesium['showHtmlErrorPanel'] === 'function') {
+      Cesium['showHtmlErrorPanel'] = function(title, message, error) {
+        console.error('[Cesium Widget Error]', title, message, error);
+      };
+    }
     if (Cesium.CesiumWidget && Cesium.CesiumWidget.prototype) {
       Cesium.CesiumWidget.prototype.showErrorPanel = function(title, message, error) {
         console.error('[Cesium Widget Proto Error Blocked]', title, message, error);
@@ -6765,14 +6561,62 @@ function addEventEntities() {
   
 // 接入 6 个 light.glb 3D灯光模型及相关链路/视场
   lights.forEach((l) => {
+    // =====================================
+    // 1. light1 light2 light3 添加感知视场
+    // =====================================
+    if (['light1', 'light2', 'light3'].includes(l.id)) {
+      const heightOffset = 8.0;
+      const pitchAngle = -45;
+
+      let headingOffset = 0;
+      let fovAngle = 22;
+      let maxRange = 100;
+
+      if (l.id === 'light1') {
+        headingOffset = -150;
+        fovAngle = 20;
+        maxRange = 80;
+      }
+      if (l.id === 'light2') {
+        headingOffset = 0;
+        fovAngle = 35;
+        maxRange = 250;
+      }
+      if (l.id === 'light3') {
+        headingOffset = 180;
+        fovAngle = 35;
+        maxRange = 200;
+      }
+
+      createLightFOV(
+        viewer,
+        `${l.id}-fov`,
+        Number(l.lng),
+        Number(l.lat),
+        Number(l.height) + heightOffset,
+        Number(l.heading) + headingOffset,
+        pitchAngle,
+        fovAngle,
+        maxRange,
+        // 阶段截断控制逻辑
+        () => {
+          if (Number(props.activePhaseIndex) >= 2) {
+            return true; // 第 2 阶段及以后显示视场
+          }
+          return false;
+        }
+      );
+    }
+
+    // =====================================
+    // 2. 加载路灯 3D 模型
+    // =====================================
+    if (l.id === 'light6') return; // light6 使用原3D场景自带路灯模型，清除动态生成
+
     viewer.entities.add({
       id: `${l.id}-glb-entity`,
-      show: new Cesium.CallbackProperty(() => {
-        if (l.id === 'light6' && currentScene.value === 'tanker') {
-          return false; // 避免与油罐车模型自带的烘焙路灯模型重叠产生重影
-        }
-        return l.show;
-      }, false),
+      name: `事故现场灯光模型-${l.id}`,
+      show: new Cesium.CallbackProperty(() => l.show, false),
       position: new Cesium.CallbackProperty(() => {
         return Cesium.Cartesian3.fromDegrees(Number(l.lng), Number(l.lat), Number(l.height));
       }, false),
@@ -6788,9 +6632,7 @@ function addEventEntities() {
       model: {
         uri: '/Dashboard/models/light.glb',
         scale: new Cesium.CallbackProperty(() => l.scale, false),
-        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-        silhouetteColor: l.id === 'light1' ? Cesium.Color.fromCssColorString('#38bdf8') : undefined,
-        silhouetteSize: l.id === 'light1' ? 3.0 : 0.0
+        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
       }
     });
 
@@ -6828,35 +6670,6 @@ function addEventEntities() {
       });
     }
   });
-
-  const light1 = lights.find((item) => item.id === 'light1');
-  if (light1) {
-    viewer.entities.add({
-      id: 'light1-camera-marker',
-      name: '前方路侧摄像头可点击标记',
-      show: new Cesium.CallbackProperty(() => light1.show, false),
-      position: new Cesium.CallbackProperty(() => {
-        return Cesium.Cartesian3.fromDegrees(Number(light1.lng), Number(light1.lat), Number(light1.height) + 16);
-      }, false),
-      point: {
-        pixelSize: 18,
-        color: Cesium.Color.fromCssColorString('#38bdf8').withAlpha(0.92),
-        outlineColor: Cesium.Color.WHITE,
-        outlineWidth: 2,
-        disableDepthTestDistance: Number.POSITIVE_INFINITY
-      },
-      label: {
-        text: '前方摄像头',
-        font: 'bold 14px sans-serif',
-        fillColor: Cesium.Color.WHITE,
-        outlineColor: Cesium.Color.fromCssColorString('#082f49'),
-        outlineWidth: 3,
-        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-        pixelOffset: new Cesium.Cartesian2(0, -26),
-        disableDepthTestDistance: Number.POSITIVE_INFINITY
-      }
-    });
-  }
   // 📡 接入 jizhan.glb 3D 5G通信基站模型 (货车追尾事故现场)
   viewer.entities.add({
     id: 'jizhan-glb-entity',
@@ -8165,11 +7978,6 @@ tankerRescueCarEntities.forEach((carEntity, modelIndex) => {
       const primitive = pickedObject.primitive;
       
       const entityId = entity ? entity.id : null;
-
-      if (entityId === 'light1-glb-entity' || entityId === 'light1-camera-marker') {
-        openLight1CameraStream(movement);
-        return;
-      }
       
       // 1. 判断是否点击了烟雾粒子或三维车辆模型，若是且当前是中视角，则拉近到近视角
       const isSmokeClick = (primitive === smokeParticle || primitive === fireParticle || primitive === leakParticle || primitive === diffusionParticle);
@@ -8316,9 +8124,9 @@ function updatePhaseScene(index, animate = false) {
       ugvCoords.lat = 30.3268;
       ugvCoords.height = 10.0;
       
-      if (rescueMarkerEntity) rescueMarkerEntity.show = false;
-      rescuePopup.show = false;
-      ugvPopup.show = false;
+      if (rescueMarkerEntity) rescueMarkerEntity.show = true;
+      rescuePopup.show = true;
+      ugvPopup.show = true;
     } else if (isTruckScene && index === 7) {
       rescuePopup.title = '无人机已到达';
       rescuePopup.model = 'DJI M300 RTK';
@@ -8435,9 +8243,9 @@ function updatePhaseScene(index, animate = false) {
       ugvCoords.lat = 30.5158;
       ugvCoords.height = 15.0;
       
-      if (rescueMarkerEntity) rescueMarkerEntity.show = false;
-      rescuePopup.show = false;
-      ugvPopup.show = false;
+      if (rescueMarkerEntity) rescueMarkerEntity.show = true;
+      rescuePopup.show = true;
+      ugvPopup.show = true;
     } else if (isTankerScene && index === 7) {
       rescuePopup.title = '无人机已到达';
       rescuePopup.model = 'DJI M300 RTK';
@@ -8540,16 +8348,19 @@ function updatePhaseScene(index, animate = false) {
       const expectedEndpoint = currentScene.value === 'truck' ? 'crash' : 'leak';
       if (!currentMissionDataSource || currentMissionDataSource._lastEndpoint !== expectedEndpoint) {
         loadMission();
-      } else {
-        // 如果数据源已加载，根据是否是第6阶段显式隐藏/显示规划路线和模型
-        currentMissionDataSource.entities.values.forEach(entity => {
-          entity.show = (index !== 6);
-        });
-        if (index === 6) {
-          if (highlightPathEntity) {
-            viewer.entities.remove(highlightPathEntity);
-            highlightPathEntity = null;
-          }
+} else {
+        // 同事的补丁：如果数据源已加载，显式确保规划路线可见，防止 Bug 导致线段丢失
+        if (currentMissionDataSource) {
+            const uavPath = currentMissionDataSource.entities.getById('UAV_Path');
+            if (uavPath) {
+              uavPath.show = true;
+              if (uavPath.polyline) uavPath.polyline.show = true;
+            }
+            const carPath = currentMissionDataSource.entities.getById('Car_Path');
+            if (carPath) {
+              carPath.show = true;
+              if (carPath.polyline) carPath.polyline.show = true;
+            }
         }
       }
 
@@ -8611,19 +8422,18 @@ function updatePhaseScene(index, animate = false) {
             // 🚨 核心修改：使用 includes('move') 来动态匹配 1/2/3 号无人机
             const isTarget = (index === 6 && !entity.id.includes('move')) || (index >= 7 && entity.id.includes('move'));
             if (isTarget) {
-              const needsAnimation = !entity.show || (entity.id === 'uav_model_move' && index === 7 && lastUavPhaseIndex !== 7);
-              // 恢复显示无人机模型 (在阶段6隐藏)
-              entity.show = (index !== 6);
-              if (needsAnimation && index !== 6) {
-                // 两个阶段的无人机螺旋桨都需要持续高速旋转
+              const needsAnimation = !entity.show || (entity.id.includes('move') && index === 7 && lastUavPhaseIndex !== 7);
+              entity.show = true;
+              if (needsAnimation) {
                 playEntityAnimation(entity, true, 0, 6.0);
               }
             } else {
               entity.show = false;
             }
           });
-          // 恢复显示救援车模型 (在阶段6隐藏)
-          rescueCarEntities.forEach(entity => { entity.show = (index !== 6) });
+          // ...后面保持不变
+          // 恢复显示救援车模型
+          rescueCarEntities.forEach(entity => { entity.show = true });
           
           // 隐藏油罐车场景的无人机和救援车
           tankerUavEntities.forEach(entity => { entity.show = false })
@@ -8642,33 +8452,26 @@ function updatePhaseScene(index, animate = false) {
             // 🚨 核心修改同上
             const isTarget = (index === 6 && !entity.id.includes('move')) || (index >= 7 && entity.id.includes('move'));
             if (isTarget) {
-              const needsAnimation = !entity.show || (entity.id === 'uav_model_move_tanker' && index === 7 && lastTankerUavPhaseIndex !== 7);
-              // 恢复显示无人机模型 (在阶段6隐藏)
-              entity.show = (index !== 6);
-              if (needsAnimation && index !== 6) {
-                // 两个阶段的无人机螺旋桨都需要持续高速旋转
+              const needsAnimation = !entity.show || (entity.id.includes('move') && index === 7 && lastTankerUavPhaseIndex !== 7);
+              entity.show = true;
+              if (needsAnimation) {
                 playEntityAnimation(entity, true, 0, 6.0);
               }
             } else {
               entity.show = false;
             }
           });
-          // 恢复显示救援车模型 (在阶段6隐藏)
-          tankerRescueCarEntities.forEach(entity => { entity.show = (index !== 6) });
+          tankerRescueCarEntities.forEach(entity => { entity.show = true });
           
           // 隐藏货车场景的无人机和救援车
           uavEntities.forEach(entity => { entity.show = false })
           rescueCarEntities.forEach(entity => { entity.show = false })
           
-          // 隐藏所有粒子效果，只保留模型 (但在阶段6，显示泄露和扩散粒子)
+          // 隐藏所有粒子效果，只保留模型
           if (smokeParticle) smokeParticle.show = false
           if (fireParticle) fireParticle.show = false
-          if (leakParticle) {
-            leakParticle.show = (index === 6);
-          }
-          if (diffusionParticle) {
-            diffusionParticle.show = (index === 6);
-          }
+          if (leakParticle) leakParticle.show = false
+          if (diffusionParticle) diffusionParticle.show = false
         } else {
           // 如果视角切换到其他地方，隐藏所有无人机和救援车
           uavEntities.forEach(entity => { entity.show = false })
@@ -9569,268 +9372,6 @@ onBeforeUnmount(() => {
   border-color: rgba(255, 255, 255, 0.3);
 }
 
-
-.camera-stream-popup {
-  position: absolute;
-  width: 460px;
-  border: 1px solid rgba(56, 189, 248, 0.42);
-  border-radius: 8px;
-  background: rgba(3, 7, 18, 0.92);
-  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.62), 0 0 20px rgba(56, 189, 248, 0.16);
-  z-index: 880;
-  overflow: hidden;
-  backdrop-filter: blur(8px);
-}
-
-.camera-stream-header {
-  min-height: 42px;
-  padding: 8px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid rgba(56, 189, 248, 0.22);
-  background: rgba(14, 165, 233, 0.12);
-}
-
-.camera-title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.camera-live-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 10px #22c55e;
-}
-
-.camera-stream-title {
-  color: #e0f2fe;
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: 0;
-}
-
-.camera-stream-body {
-  padding: 10px;
-}
-
-.camera-video-wrap {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border-radius: 6px;
-  background: #000;
-}
-
-.camera-stream-video {
-  display: block;
-  width: 100%;
-  height: 100%;
-  background: #000;
-  border-radius: 6px;
-  object-fit: fill;
-}
-
-.camera-video-overlay {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  overflow: visible;
-}
-
-.camera-box-rect {
-  fill: transparent;
-  stroke-width: 0.8;
-  vector-effect: non-scaling-stroke;
-}
-
-.camera-box-rect.fire {
-  stroke: #ef4444;
-}
-
-.camera-box-rect.nofire {
-  stroke: #f59e0b;
-}
-
-.camera-box-rect.default {
-  stroke: #38bdf8;
-}
-
-.camera-box-label {
-  font-size: 3px;
-  font-weight: 700;
-  paint-order: stroke;
-  stroke: rgba(2, 6, 23, 0.9);
-  stroke-width: 0.55px;
-  stroke-linejoin: round;
-}
-
-.camera-box-label.fire {
-  fill: #fecaca;
-}
-
-.camera-box-label.nofire {
-  fill: #fde68a;
-}
-
-.camera-box-label.default {
-  fill: #bae6fd;
-}
-
-.camera-stream-meta {
-  margin-top: 8px;
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  color: rgba(226, 232, 240, 0.72);
-  font-size: 13px;
-}
-
-.camera-info-grid {
-  margin-top: 10px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.camera-info-item {
-  min-height: 48px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(15, 23, 42, 0.64);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-}
-
-.camera-info-item span {
-  color: rgba(226, 232, 240, 0.62);
-  font-size: 12px;
-}
-
-.camera-info-item strong {
-  color: #f8fafc;
-  font-size: 15px;
-  line-height: 1.15;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.camera-info-item.online strong {
-  color: #86efac;
-}
-
-.camera-detection-panel {
-  margin-top: 10px;
-  border: 1px solid rgba(56, 189, 248, 0.22);
-  border-radius: 6px;
-  background: rgba(8, 47, 73, 0.28);
-  overflow: hidden;
-}
-
-.camera-detection-panel.is-error {
-  border-color: rgba(239, 68, 68, 0.45);
-  background: rgba(127, 29, 29, 0.22);
-}
-
-.camera-detection-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 10px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
-  color: #e0f2fe;
-  font-size: 13px;
-}
-
-.camera-detection-head strong {
-  color: #67e8f9;
-  white-space: nowrap;
-}
-
-.camera-detection-panel.is-error .camera-detection-head strong {
-  color: #fecaca;
-}
-
-.camera-detection-body {
-  padding: 9px 10px;
-  color: rgba(226, 232, 240, 0.74);
-  font-size: 13px;
-}
-
-.camera-live-result-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 7px;
-  color: rgba(226, 232, 240, 0.68);
-}
-
-.camera-live-result-head strong {
-  color: #67e8f9;
-  font-size: 14px;
-  white-space: nowrap;
-}
-
-.camera-live-result-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.camera-live-result-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-width: 0;
-  padding: 6px 8px;
-  border: 1px solid rgba(56, 189, 248, 0.24);
-  border-radius: 4px;
-  background: rgba(15, 23, 42, 0.58);
-}
-
-.camera-live-result-item span {
-  min-width: 0;
-  overflow: hidden;
-  color: #e2e8f0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.camera-live-result-item strong {
-  flex: 0 0 auto;
-  color: #bae6fd;
-  font-size: 14px;
-}
-
-.camera-live-result-item.fire {
-  border-color: rgba(239, 68, 68, 0.56);
-  background: rgba(127, 29, 29, 0.22);
-}
-
-.camera-live-result-item.fire strong {
-  color: #fecaca;
-}
-
-.camera-live-result-item.nofire {
-  border-color: rgba(245, 158, 11, 0.56);
-  background: rgba(120, 53, 15, 0.22);
-}
-
-.camera-live-result-item.nofire strong {
-  color: #fde68a;
-}
 
 .story-detection-alert {
   width: 760px;
