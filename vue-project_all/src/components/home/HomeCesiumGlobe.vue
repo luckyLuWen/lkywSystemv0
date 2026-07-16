@@ -13049,7 +13049,7 @@ onBeforeUnmount(() => {
   border-color: #10b981;
 }
 
-/* 场景切换标签页样式 */
+/* 场景切换标签样式 */
 .phase-card-scene-tabs {
   display: flex;
   background: rgba(0, 0, 0, 0.4);
