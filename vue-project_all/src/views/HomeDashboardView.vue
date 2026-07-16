@@ -75,7 +75,7 @@
           <div class="right-tab-panel">
             <div v-if="activeRightTab === 'sensor'" class="sensor-data-panel">
               <div class="sensor-header-row">
-                <span class="sensor-section-title">实时环境传感器</span>
+                <span class="sensor-section-title">地面移动监测节点情况</span>
                 <span class="sensor-source-badge" :class="{ online: isSensorDeployed && isWsConnected }">
                   {{ !isSensorDeployed ? '⚠️ 尚未部署 (断联)' : (isWsConnected ? '📡 网关在线' : '⚠️ 离线模拟') }}
                 </span>
@@ -84,7 +84,7 @@
               <div class="ugv-cards-container">
                 <div class="ugv-card">
                   <div class="ugv-header">
-                    <span class="ugv-title">无人车 A</span>
+                    <span class="ugv-title">地面感知单元-001</span>
                     <span class="ugv-status" :class="{ offline: !isSensorDeployed }">{{ isSensorDeployed ? '在线' : '断联' }}</span>
                   </div>
                   <div class="ugv-data">
@@ -105,7 +105,7 @@
 
                 <div class="ugv-card">
                   <div class="ugv-header">
-                    <span class="ugv-title">无人车 B</span>
+                    <span class="ugv-title">地面感知单元-002</span>
                     <span class="ugv-status" :class="{ offline: !isSensorDeployed }">{{ isSensorDeployed ? '在线' : '断联' }}</span>
                   </div>
                   <div class="ugv-data">
@@ -125,7 +125,7 @@
                 </div>
               </div>
 
-              <div class="sensor-section-title" style="margin-top: 18px;">局部气象环境</div>
+              <div class="sensor-section-title" style="margin-top: 18px;">固定环境感知情况</div>
               
               <div class="meteorology-card">
                 <div class="met-icon">🌬️</div>
@@ -143,7 +143,7 @@
               </div>
 
            
-              <div class="sensor-section-title" style="margin-top: 18px;">无人机航拍图片</div>
+              <div class="sensor-section-title" style="margin-top: 18px;">空域监测移动节点情况</div>
                  <div class="capability-panel" style="margin-top: 18px;">
                
               </div>
@@ -164,13 +164,6 @@
                         <div class="cap-item row-flex">
                           <span class="c-lbl">网络拓扑结构</span>
                           <span class="c-val tag-blue">{{ networkStats.networkType }}</span>
-                        </div>
-                        <div class="cap-item row-flex">
-                          <span class="c-lbl">网内节点存活率</span>
-                          <div class="progress-wrap">
-                            <div class="progress-bar"><div class="progress-fill" :style="{width: networkStats.alivePercent + '%'}"></div></div>
-                            <span class="c-val">{{ networkStats.aliveRatio }}</span>
-                          </div>
                         </div>
                         <div class="cap-item row-flex">
                           <span class="c-lbl">传感吞吐频率</span>
@@ -259,7 +252,7 @@
               <span :class="['mini-status',
               resourceStatus.ugv1?'on':'off']">
 
-                1号无人车:
+                地面感知单元-001:
                 {{resourceStatus.ugv1?'在线':'离线'}}
 
               </span>
@@ -268,7 +261,7 @@
               <span :class="['mini-status',
               resourceStatus.ugv2?'on':'off']">
 
-                2号无人车:
+                地面感知单元-002:
                 {{resourceStatus.ugv2?'在线':'离线'}}
 
               </span>
@@ -360,22 +353,6 @@
         </span>
 
       </div>
-
-
-      <div class="cap-item row-flex">
-
-        <span>
-          网内节点存活率
-        </span>
-
-
-        <span>
-          {{networkStats.aliveRatio}}
-        </span>
-
-
-      </div>
-
 
       <div class="cap-item row-flex">
 
@@ -685,7 +662,7 @@ const isSensorDeployed = computed(() => {
 
 const topMenus = [
   { key: 'home', label: '地图大屏', path: '/' },
-  { key: 'sensor', label: '传感器管理', path: '/sensor-manage' },
+  { key: 'sensor', label: '感知组网', path: '/sensor-manage' },
   { key: 'realtime', label: '实时检测', path: '/realtime' },
   { key: 'coordination', label: '协同响应', path: '/coordination' },
   { key: 'modeling', label: '精细建模', path: '/modeling' },
@@ -734,29 +711,13 @@ const timelinePhases = computed(() => {
 })
 
 const phaseToModelMap = {
-  1: 'model_normal',
-  2: 'model_accident',
-  3: 'model_accident',
-  4: 'model_accident',
-  5: 'model_accident',
-  6: 'model_accident',
-  7: 'model_accident',
-  8: 'model_accident',
-  9: 'model_accident',
-  10: 'model_accident'
+  1: 'model_normal', 2: 'model_accident', 3: 'model_accident', 4: 'model_accident', 5: 'model_accident', 
+  6: 'model_accident', 7: 'model_accident', 8: 'model_accident', 9: 'model_accident', 10: 'model_accident'
 }
 
 const tankerPhaseToModelMap = {
-  1: 'tanker_normal',
-  2: 'tanker_accident',
-  3: 'tanker_accident',
-  4: 'tanker_accident',
-  5: 'tanker_accident',
-  6: 'tanker_accident',
-  7: 'tanker_accident',
-  8: 'tanker_accident',
-  9: 'tanker_accident',
-  10: 'tanker_accident'
+  1: 'tanker_normal', 2: 'tanker_accident', 3: 'tanker_accident', 4: 'tanker_accident', 5: 'tanker_accident', 
+  6: 'tanker_accident', 7: 'tanker_accident', 8: 'tanker_accident', 9: 'tanker_accident', 10: 'tanker_accident'
 }
 
 const phasesReady = computed(() => {
@@ -775,7 +736,6 @@ function goTo(item) {
     if (globeRef.value) globeRef.value.resetView()
     currentFocusedPoint.value = ''
     activeServiceId.value = ''
-    // 返回首页时重置所有事故场景的时间线到“仿真开始”阶段
     accidentPhaseIndices.value = { 'rear-end': 0, 'leakage': 0 }
   }
   activeMenuKey.value = item.key
@@ -906,7 +866,6 @@ watch(
     }
   }
 )
-
 </script>
 <style scoped>
 /* Main Layout structure */
@@ -1428,7 +1387,7 @@ watch(
 /* Floating Timeline floating beautifully above the globe */
 .timeline-container {
   position: absolute;
-  bottom: 12px;
+  bottom: 20px; /* 往上移动一点，贴近视口 */
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 40px);
