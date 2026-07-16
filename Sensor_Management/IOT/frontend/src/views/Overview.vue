@@ -3,7 +3,22 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { setGatewaySampling } from '../gateway-api'
 import { buildGatewayApiUrl, buildGatewayVideoUrl } from '../gateway-config'
 import { store } from '../store.js'
+// 当前任务态势
+// 动态获取当天日期并格式化为 YYYYMMDD
+const today = new Date()
+const yyyy = today.getFullYear()
+const mm = String(today.getMonth() + 1).padStart(2, '0')
+const dd = String(today.getDate()).padStart(2, '0')
+const dynamicDate = `${yyyy}${mm}${dd}`
 
+// 当前任务态势
+const taskStatus = ref({
+  name: '环境风险巡检任务',
+  id: `TASK-${dynamicDate}-001`,
+  state: '等待调度',
+  area: '监测区域A',
+  units: 'UAV-001 / UGV-001'
+})
 const THRESHOLDS = {
   TEMP_WARN: 50.0,
   TVOC_WARN: 2.0,
@@ -15,11 +30,10 @@ const THRESHOLDS = {
 
 const totalPackets = ref(15240)
 
-// 【已修正】感知网络统计：明确 4 个物理节点，不再动态计算
+// 感知网络统计：严格匹配实际 4 个物理节点 (2台UGV, 1台UAV, 1个气象站)
 const networkStats = computed(() => {
   const nodes = store.nodes || {}
   
-  // 四个独立逻辑位
   const status = {
     ugv1: !!nodes.node1?.online,
     ugv2: !!nodes.node2?.online,
@@ -28,13 +42,13 @@ const networkStats = computed(() => {
   }
 
   const onlineCount = Object.values(status).filter(Boolean).length
-  const totalNodes = 4 // 明确指定为 4 个物理实体
+  const totalNodes = 4
 
   return {
     aliveRatio: `${onlineCount}/${totalNodes}`,
     alivePercent: Math.round((onlineCount / totalNodes) * 100),
     networkType: '异构多链路直连',
-    throughput: '1Hz  (边缘端实时解析)',
+    throughput: '2Hz (0.5s) 周期采集',
     sensingDimensions: 7,
   }
 })
@@ -48,8 +62,6 @@ const resourceStatus = computed(() => {
     weather: store.nodes?.node3?.online || false
   }
 })
-
-// ... 其余逻辑保持不变 ...
 
 const maxVals = computed(() => {
   const n1 = store.data.node1 || { temp: 0, hum: 0, smoke: 0, tvoc: 0, co: 0 }
@@ -100,32 +112,23 @@ const systemState = computed(() => {
 })
 
 const gatewayHeadline = computed(() => {
-  if (!store.gatewayOnline) return '边缘端离线'
-  return store.gatewayMode === 'simulation' ? '模拟边缘网关在线' : '边缘端在线'
+
+  if (!store.gatewayOnline) {
+    return '边缘计算节点失联'
+  }
+
+  if(store.gatewayMode === 'simulation'){
+    return '边缘计算节点（仿真模式）'
+  }
+
+  return '边缘计算节点在线'
+
 })
 
-const samplingStatusText = computed(() => (store.samplingRunning ? '采集中' : '已暂停'))
+const samplingStatusText = computed(() => (store.samplingRunning ? '数据采集中' : '采集已暂停'))
 const realtimeStatusText = computed(() => (store.connected ? '实时通道在线' : '实时通道断开'))
 const videoStatusText = computed(() => (store.videoOnline ? '视频在线' : '视频离线'))
 const databaseStatusText = computed(() => (store.databaseOnline ? '数据库正常' : '数据库异常'))
-
-const nodeStatusSummary = computed(() => {
-  const rs = resourceStatus.value
-
-  const entries = [
-    `UGV1 ${rs.ugv1 ? '在线' : '离线'}`,
-    `UGV2 ${rs.ugv2 ? '在线' : '离线'}`,
-    `UAV ${rs.uav ? '在线' : '离线'}`,
-    `气象 ${rs.weather ? '在线' : '离线'}`,
-  ]
-
-  return entries.join(' / ')
-})
-
-const lastSampleLabel = computed(() => {
-  if (!store.lastSampleAt) return '暂无'
-  return store.lastSampleAt.replace('T', ' ')
-})
 
 const lastRealtimeLabel = computed(() => {
   if (!store.lastRealtimeAt) return '暂无'
@@ -190,7 +193,7 @@ const toggleSampling = async () => {
     const data = await setGatewaySampling(!store.samplingRunning)
     store.samplingRunning = Boolean(data.running)
     store.lastSampleAt = data.last_sample_at || store.lastSampleAt
-    addLog(store.samplingRunning ? '已发送开始采集命令' : '已发送停止采集命令', 'success')
+    addLog(store.samplingRunning ? '已发送2Hz采集命令' : '已发送停止采集命令', 'success')
   } catch (error) {
     addLog('采集控制命令发送失败', 'danger')
   }
@@ -334,579 +337,447 @@ onBeforeUnmount(() => {
   stopAllActions()
 })
 </script>
-
 <template>
-  <div class="dashboard-container">
-    <h1 class="page-title">协同指挥中心</h1>
-
-    <div class="top-section">
-      <div class="decision-panel" :class="systemState.level">
-        <div class="status-header">
-          <div class="status-main-row">
-            <div class="status-icon">
-              {{ systemState.level === 'danger' ? '⚠' : (systemState.level === 'warning' ? '!' : '✓') }}
-            </div>
-            <div class="status-text">
-              <h2>{{ gatewayHeadline }}</h2>
-              <p>{{ systemState.msg }}</p>
-            </div>
-          </div>
-          <div class="status-actions">
-            <button class="ctrl-link-btn" :class="store.samplingRunning ? 'btn-stop' : 'btn-start'" @click="toggleSampling">
-              {{ store.samplingRunning ? '停止采集' : '开始采集' }}
-            </button>
-            <button class="link-btn" @click="$router.push('/logic')">查看逻辑图谱 →</button>
-          </div>
-        </div>
-
-        <div class="gateway-strip">
-          <div class="gateway-pill">
-            <span>边缘端状态</span>
-            <strong>{{ store.gatewayOnline ? '在线' : '离线' }}</strong>
-          </div>
-          <div class="gateway-pill">
-            <span>采集状态</span>
-            <strong>{{ samplingStatusText }}</strong>
-          </div>
-          <div class="gateway-pill">
-            <span>节点概览</span>
-            <strong>{{ nodeStatusSummary }}</strong>
-          </div>
-          <div class="gateway-pill wide">
-            <span>最近采样</span>
-            <strong>{{ lastSampleLabel }}</strong>
-          </div>
-        </div>
-
-        <div class="logic-grid">
-          <div class="logic-item">
-            <div class="bar-label"><span>早期预警</span><span class="val">{{ maxVals.temp }}°C</span></div>
-            <div class="logic-bar"><div class="fill" :style="{ width: Math.min((maxVals.temp / 80) * 100, 100) + '%', background: '#ecc94b' }"></div></div>
-          </div>
-          <div class="logic-item">
-            <div class="bar-label"><span>火灾确认</span><span class="val">{{ maxVals.smoke }} ug</span></div>
-            <div class="logic-bar"><div class="fill" :style="{ width: Math.min((maxVals.smoke / 1000000) * 100, 100) + '%', background: '#f56565' }"></div></div>
-          </div>
-        </div>
-
-        <div class="logic-footer">
-          <span class="mini-tag">态势: <b :style="{ color: spreadAnalysis.color }">{{ spreadAnalysis.msg }}</b></span>
-          <span class="mini-tag">环境: <b :style="{ color: envAnalysis.isInterference ? '#3182ce' : '#718096' }">{{ envAnalysis.msg }}</b></span>
-          <span class="mini-tag">网关: <b>{{ store.gatewayBaseUrl }}</b></span>
-        </div>
-      </div>
-
-      <div class="drone-panel">
-        <div class="drone-header">
-          <h3>实时侦查</h3>
-          <span class="status-indicator">{{ uploadStatus || (isPlaying ? '视频连接中' : videoStatusText) }}</span>
-        </div>
-        <div class="drone-body">
-          <div class="video-container">
-            <img v-if="isPlaying" ref="videoElement" :src="videoUrl" class="video-feed" crossorigin="anonymous" />
-            <div v-else class="no-signal">无视频信号</div>
-            <div v-if="isRecording" class="rec-badge">REC</div>
-          </div>
-          <div class="drone-controls">
-            <button @click="togglePlay" class="mini-btn" :class="isPlaying ? 'btn-stop' : 'btn-start'">{{ isPlaying ? '断开' : '连接' }}</button>
-            <button @click="manualSnapshot" :disabled="!isPlaying" class="mini-btn btn-blue">抓拍</button>
-            <button @click="toggleAutoCapture" :disabled="!isPlaying" class="mini-btn" :class="isAutoCapturing ? 'btn-active' : 'btn-gray'">{{ isAutoCapturing ? '自动中' : '自动' }}</button>
-            <button @click="toggleRecording" :disabled="!isPlaying" class="mini-btn" :class="isRecording ? 'btn-stop' : 'btn-red'">{{ isRecording ? '停止' : '录像' }}</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="capability-panel">
-      <div class="panel-header">
-        <h3>感知网络与组网资源效能</h3>
-      </div>
-      <div class="capability-grid">
-        
-        <div class="cap-group">
-          <div class="cap-title">组网实体资源状态</div>
-          <div class="cap-items">
-            <div class="cap-item icon-item">
-              <span class="cap-icon">🚙</span>
-              <div class="cap-info flex-1">
-                <div class="row-flex">
-                  <span class="c-lbl">地面机动节点 (UGV) <small class="c-sub"></small></span>
-                </div>
-                <div class="c-val sub-status-row">
-                  <span :class="['mini-status', resourceStatus.ugv1 ? 'on' : 'off']">
-                    1号无人车: {{ resourceStatus.ugv1 ? '在线' : '离线' }}
-                  </span>
-                  <span :class="['mini-status', resourceStatus.ugv2 ? 'on' : 'off']">
-                    2号无人车: {{ resourceStatus.ugv2 ? '在线' : '离线' }}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div class="cap-item icon-item">
-              <span class="cap-icon">🚁</span>
-              <div class="cap-info flex-1">
-                <div class="row-flex">
-                  <span class="c-lbl">空中感知侦查 (UAV)</span>
-                </div>
-                <div class="c-val sub-status-row">
-                  <span :class="['mini-status', resourceStatus.uav ? 'on' : 'off']">
-                    广角图传: {{ resourceStatus.uav ? '信号正常' : '信号断开' }}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div class="cap-item icon-item">
-              <span class="cap-icon">🗼</span>
-              <div class="cap-info flex-1">
-                <div class="row-flex">
-                  <span class="c-lbl">气象基准站</span>
-                </div>
-                <div class="c-val sub-status-row">
-                  <span :class="['mini-status', resourceStatus.weather ? 'on' : 'off']">
-                    风速风向监测: {{ resourceStatus.weather ? '在线' : '离线' }}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="cap-group">
-          <div class="cap-title">通信与链路效能</div>
-          <div class="cap-items">
-             <div class="cap-item row-flex">
-               <span class="c-lbl">网络拓扑结构</span>
-               <span class="c-val tag-blue">{{ networkStats.networkType }}</span>
-             </div>
-             <div class="cap-item row-flex">
-               <span class="c-lbl">网内节点存活率</span>
-               <div class="progress-wrap">
-                 <div class="progress-bar"><div class="progress-fill" :style="{width: networkStats.alivePercent + '%'}"></div></div>
-                 <span class="c-val">{{ networkStats.aliveRatio }}</span>
-               </div>
-             </div>
-             <div class="cap-item row-flex">
-               <span class="c-lbl">传感吞吐频率</span>
-               <span class="c-val highlight">{{ networkStats.throughput }}</span>
-             </div>
-          </div>
-        </div>
-
-        <div class="cap-group">
-          <div class="cap-title">多源感知数据态势</div>
-          <div class="cap-items data-stats">
-            <div class="stat-box">
-              <span class="s-lbl">全量感知维度</span>
-              <span class="s-val">{{ networkStats.sensingDimensions }} <small>项</small></span>
-              <span class="s-desc">温/湿/烟/TVOC/CO/风</span>
-            </div>
-            <div class="stat-box">
-              <span class="s-lbl">累计数据吞吐量</span>
-              <span class="s-val">{{ totalPackets }} <small>包</small></span>
-              <span class="s-desc">边缘端实时解析</span>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <div class="cards-grid">
-  <div class="card env-card" @click="$router.push('/node1')">
-    <div class="card-header">
-      <h2 class="card-title">感知单元(UGV)-001</h2>
-      <span class="tag" :class="store.nodes?.node1?.online ? 'tag-online' : 'tag-offline'">
-        {{ store.nodes?.node1?.online ? '在线' : '离线' }}
-      </span>
-    </div>
-    <div class="card-body">
-      <div class="sensor-list">
-        <div class="sensor-inline-item">
-          <span class="lbl">温度</span>
-          <span class="val">{{ store.data.node1?.temp || 0 }}</span>
-        </div>
-        <div class="sensor-inline-item">
-          <span class="lbl">湿度</span>
-          <span class="val">{{ store.data.node1?.hum || 0 }}%</span>
-        </div>
-        <div class="sensor-inline-item">
-          <span class="lbl">烟雾</span>
-          <span class="val">{{ store.data.node1?.smoke || 0 }} ug</span>
-        </div>
-        <div class="sensor-inline-item">
-          <span class="lbl">TVOC</span>
-          <span class="val">{{ store.data.node1?.tvoc || 0 }}</span>
-        </div>
-        <div class="sensor-inline-item">
-          <span class="lbl">CO</span>
-          <span class="val">{{ store.data.node1?.co || 0 }}</span>
-        </div>
-      </div>
-    </div>
-    <div class="card-footer">点击查看详情 →</div>
-  </div>
-
-  <div class="card env-card" @click="$router.push('/node2')">
-    <div class="card-header">
-      <h2 class="card-title">感知单元(UGV)-002</h2>
-      <span class="tag" :class="store.nodes?.node2?.online ? 'tag-online' : 'tag-offline'">
-        {{ store.nodes?.node2?.online ? '在线' : '离线' }}
-      </span>
-    </div>
-    <div class="card-body">
-      <div class="sensor-list">
-        <div class="sensor-inline-item">
-          <span class="lbl">温度</span>
-          <span class="val">{{ store.data.node2?.temp || 0 }}</span>
-        </div>
-        <div class="sensor-inline-item">
-          <span class="lbl">湿度</span>
-          <span class="val">{{ store.data.node2?.hum || 0 }}%</span>
-        </div>
-        <div class="sensor-inline-item">
-          <span class="lbl">烟雾</span>
-          <span class="val">{{ store.data.node2?.smoke || 0 }} ug</span>
-        </div>
-        <div class="sensor-inline-item">
-          <span class="lbl">TVOC</span>
-          <span class="val">{{ store.data.node2?.tvoc || 0 }}</span>
-        </div>
-        <div class="sensor-inline-item">
-          <span class="lbl">CO</span>
-          <span class="val">{{ store.data.node2?.co || 0 }}</span>
-        </div>
-      </div>
-    </div>
-    <div class="card-footer">点击查看详情 →</div>
-  </div>
-
-  <div class="card weather-card" @click="$router.push('/node3')">
-    <div class="card-header">
-      <h2 class="card-title">风速风向固定环境感知节点总控</h2>
-      <span class="tag" :class="store.nodes?.node3?.online ? 'tag-online blue' : 'tag-offline'">
-        {{ store.nodes?.node3?.online ? '在线' : '离线' }}
-      </span>
-    </div>
-    <div class="card-body">
-      <div class="weather-list">
-        <div class="sensor-inline-item highlight-item">
-          <span class="lbl">风速 (m/s)</span>
-          <span class="val big-val">{{ store.data.node3?.wind || 0 }}</span>
-        </div>
-        <div class="sensor-inline-item highlight-item">
-          <span class="lbl">风向</span>
-          <span class="val big-val">{{ store.data.node3?.wind_dir || 0 }}</span>
-        </div>
-      </div>
-      <div class="wind-grade-box">
-        <span class="lbl">当前风力等级</span>
-        <span class="val grade-val">
-          {{ (store.data.node3?.wind || 0) > 10.7 ? '强风' : ((store.data.node3?.wind || 0) > 5.4 ? '和风' : '微风') }}
+  <div class="command-center-container">
+    <!-- ================= 顶部全局头部 ================= -->
+    <header class="cc-header">
+      <div class="header-left">
+        <span class="sys-badge" :class="store.gatewayOnline ? 'online' : 'offline'">
+          {{ gatewayHeadline }}
         </span>
       </div>
-    </div>
-    <div class="card-footer">点击查看详情 →</div>
-  </div>
-</div>
-
-    <div class="bottom-panel">
-      <div class="log-section">
-        <div class="log-header">
-          <span>实时协同日志</span>
-          <span class="count">{{ sysLogs.length }} 条记录</span>
+      <h1 class="cc-title">协同指挥中心平台</h1>
+      <div class="header-right">
+        <span class="sys-time">{{ new Date().toLocaleDateString() }} {{ sysLogs[0]?.time || '' }}</span>
+        <div class="sys-status-mini">
+          <span :class="store.databaseOnline ? 'ok' : 'err'">DB</span>
+          <span :class="store.connected ? 'ok' : 'err'">LINK</span>
+          <span :class="store.videoOnline ? 'ok' : 'err'">VDO</span>
         </div>
-        <div class="log-list">
-          <div v-for="(log, index) in sysLogs" :key="index" class="log-row" :class="log.type">
-            <span class="log-time">[{{ log.time }}]</span>
-            <span class="log-msg">{{ log.msg }}</span>
+      </div>
+    </header>
+
+    <main class="cc-main">
+      <!-- ================= 左侧：宏观态势与核心资源 ================= -->
+      <aside class="cc-column cc-left">
+        <div class="cc-panel">
+          <div class="panel-header">态势与安全预警</div>
+          <div class="panel-body">
+            <div class="alert-box" :class="'alert-' + systemState.level">
+              <div class="alert-icon">{{ systemState.level === 'danger' ? '⚠️' : '🛡️' }}</div>
+              <div class="alert-info">
+                <h4>{{ systemState.msg || '系统正常运行' }}</h4>
+                <p>当前任务模式：协同巡检</p>
+              </div>
+            </div>
+            
+            <div class="logic-bars">
+              <div class="logic-item">
+                <div class="bar-label"><span>早期预警 (TVOC/温)</span><span class="val warning-text">{{ maxVals.temp }}°C</span></div>
+                <div class="logic-bar"><div class="fill warning-fill" :style="{ width: Math.min((maxVals.temp / 80) * 100, 100) + '%' }"></div></div>
+              </div>
+              <div class="logic-item">
+                <div class="bar-label"><span>火灾确认 (烟雾/CO)</span><span class="val danger-text">{{ maxVals.smoke }} ug</span></div>
+                <div class="logic-bar"><div class="fill danger-fill" :style="{ width: Math.min((maxVals.smoke / 1000000) * 100, 100) + '%' }"></div></div>
+              </div>
+            </div>
+
+            <div class="analysis-tags">
+              <span class="cc-tag" :style="{ borderColor: spreadAnalysis.color, color: spreadAnalysis.color }">{{ spreadAnalysis.msg }}</span>
+              <span class="cc-tag" :class="envAnalysis.isInterference ? 'tag-warn' : 'tag-safe'">{{ envAnalysis.msg }}</span>
+            </div>
+            
+            <div class="control-actions">
+              <button class="cc-btn" :class="store.samplingRunning ? 'btn-danger' : 'btn-primary'" @click="toggleSampling">
+                {{ store.samplingRunning ? '⏹ 停止协同采集' : '▶ 启动协同采集' }}
+              </button>
+              <button class="cc-btn btn-ghost" @click="$router.push('/logic')">协同关系拓扑 ⎘</button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="system-status-section">
-        <div class="sys-item">
-          <span class="sys-label">边缘端</span>
-          <span class="sys-val" :class="store.gatewayOnline ? 'good' : 'bad'">{{ store.gatewayOnline ? '在线' : '离线' }}</span>
+        <div class="cc-panel highlight-panel">
+          <div class="panel-header res-header">
+            <span>全局实体资源编队</span>
+            <span class="res-live-tag">● 实时调度中</span>
+          </div>
+          <div class="panel-body resource-body">
+            <div class="resource-grid">
+              <div class="res-card">
+                <div class="res-icon uav-glow">🚁</div>
+                <div class="res-title">空域监测移动节点 (UAV)</div>
+                <div class="res-divide"></div>
+                <div class="res-data-row">
+                  <div class="r-data"><span>就绪</span><strong class="tech-text">3</strong></div>
+                  <div class="r-data"><span>总量</span><strong>17</strong></div>
+                </div>
+              </div>
+              <div class="res-card">
+                <div class="res-icon ugv-glow">🚙</div>
+                <div class="res-title">地面监测移动节点 (UGV)</div>
+                <div class="res-divide"></div>
+                <div class="res-data-row">
+                  <div class="r-data"><span>就绪</span><strong class="tech-text">5</strong></div>
+                  <div class="r-data"><span>总量</span><strong>12</strong></div>
+                </div>
+              </div>
+              <div class="res-card">
+                <div class="res-icon station-glow">🗼</div>
+                <div class="res-title">固定环境感知节点</div>
+                <div class="res-divide"></div>
+                <div class="res-data-row">
+                  <div class="r-data"><span>在线</span><strong class="tech-text">8</strong></div>
+                  <div class="r-data"><span>部署</span><strong>8</strong></div>
+                </div>
+              </div>
+              <div class="res-card">
+                <div class="res-icon video-glow">📷</div>
+                <div class="res-title">视频视觉节点</div>
+                <div class="res-divide"></div>
+                <div class="res-data-row">
+                  <div class="r-data"><span>在线</span><strong class="tech-text">4</strong></div>
+                  <div class="r-data"><span>总量</span><strong>6</strong></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="sys-item">
-          <span class="sys-label">数据库</span>
-          <span class="sys-val" :class="store.databaseOnline ? 'good' : 'bad'">{{ databaseStatusText }}</span>
+
+        <div class="cc-panel">
+          <div class="panel-header">感知网络状态</div>
+          <div class="panel-body compact-body">
+            <div class="alive-ratio">
+              <div class="lbl-row">
+                <span>节点存活率 ({{ networkStats.aliveRatio }})</span>
+                <span class="tech-text">{{ networkStats.alivePercent }}%</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill tech-fill" :style="{width: networkStats.alivePercent + '%'}"></div>
+              </div>
+            </div>
+            <div class="net-info-row">
+              <span class="cc-tag tag-blue">组网: {{ networkStats.networkType }}</span>
+              <span class="cc-tag tag-blue">感知维度: {{ networkStats.sensingDimensions }} 项</span>
+            </div>
+          </div>
         </div>
-        <div class="sys-item">
-          <span class="sys-label">视频流</span>
-          <span class="sys-val" :class="store.videoOnline ? 'good' : 'bad'">{{ videoStatusText }}</span>
+      </aside>
+
+      <!-- ================= 中央：核心视图 ================= -->
+      <section class="cc-column cc-center">
+        <div class="task-banner">
+          <div class="tb-item"><span>任务ID</span><strong>{{ taskStatus.id }}</strong></div>
+          <div class="tb-item"><span>任务名称</span><strong>{{ taskStatus.name }}</strong></div>
+          <div class="tb-item"><span>执行单元</span><strong>{{ taskStatus.units }}</strong></div>
+          <div class="tb-item"><span>覆盖区域</span><strong>{{ taskStatus.area }}</strong></div>
+          <div class="tb-item status"><span>状态</span><strong class="tech-text">{{ taskStatus.state }}</strong></div>
         </div>
-        <div class="sys-item">
-          <span class="sys-label">实时通道</span>
-          <span class="sys-val" :class="store.connected ? 'good' : 'bad'">{{ realtimeStatusText }}</span>
+
+        <div class="drone-console">
+          <div class="dc-header">
+            <div class="title-with-icon"><span class="blink-dot"></span>空域监测移动节点点 (UAV) 实时图传</div>
+            <div class="dc-status">{{ uploadStatus || (isPlaying ? '📡 链路已连接' : videoStatusText) }}</div>
+          </div>
+          
+          <div class="dc-viewport">
+            <img v-if="isPlaying" ref="videoElement" :src="videoUrl" class="video-feed" crossorigin="anonymous" />
+            <div v-else class="no-signal">
+              <div class="signal-icon">⚠️</div>
+              <p>NO VIDEO SIGNAL</p>
+            </div>
+            <div v-if="isRecording" class="rec-badge">🔴 REC</div>
+            
+            <div class="hud-overlay top-left"></div>
+            <div class="hud-overlay top-right"></div>
+            <div class="hud-overlay bottom-left"></div>
+            <div class="hud-overlay bottom-right"></div>
+          </div>
+
+          <div class="dc-controls">
+            <button @click="togglePlay" class="cc-btn" :class="isPlaying ? 'btn-danger' : 'btn-tech'">
+              {{ isPlaying ? '⏹ 断开图传' : '▶ 接管图传' }}
+            </button>
+            <button @click="manualSnapshot" :disabled="!isPlaying" class="cc-btn btn-ghost">📸 抓拍环境</button>
+            <button @click="toggleAutoCapture" :disabled="!isPlaying" class="cc-btn" :class="isAutoCapturing ? 'btn-active' : 'btn-ghost'">
+              {{ isAutoCapturing ? '🔄 自动扫描中' : '⟳ 自动扫描' }}
+            </button>
+            <button @click="toggleRecording" :disabled="!isPlaying" class="cc-btn" :class="isRecording ? 'btn-danger' : 'btn-ghost'">
+              {{ isRecording ? '⏹ 停止录像' : '⏺ 录像归档' }}
+            </button>
+          </div>
         </div>
-        <div class="sys-item">
-          <span class="sys-label">最近实时包</span>
-          <span class="sys-val">{{ lastRealtimeLabel }}</span>
+
+        <div class="cc-panel log-panel">
+          <div class="panel-header">实时协同指令日志 <span class="log-count">Total: {{ sysLogs.length }}</span></div>
+          <div class="log-viewport">
+            <div v-for="(log, index) in sysLogs" :key="index" class="log-row" :class="log.type">
+              <span class="log-time">[{{ log.time }}]</span>
+              <span class="log-msg">{{ log.msg }}</span>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      </section>
+
+      <!-- ================= 右侧：节点详情 ================= -->
+      <aside class="cc-column cc-right">
+        <!-- UGV 001 -->
+        <div class="cc-panel node-card" @click="$router.push('/node1')">
+          <div class="node-header">
+            <h3>监测点-001 <small>(UGV)</small></h3>
+            <span class="node-status" :class="{online: store.nodes?.node1?.online}">{{ store.nodes?.node1?.online ? 'ONLINE' : 'OFFLINE' }}</span>
+          </div>
+          <div class="dashboard-grid">
+            <div class="n-box"><span class="n-lbl">温度</span><strong class="n-val">{{ store.data.node1?.temp || 0 }}<small>°C</small></strong></div>
+            <div class="n-box"><span class="n-lbl">湿度</span><strong class="n-val">{{ store.data.node1?.hum || 0 }}<small>%</small></strong></div>
+            <div class="n-box"><span class="n-lbl">TVOC</span><strong class="n-val">{{ store.data.node1?.tvoc || 0 }}</strong></div>
+            <div class="n-box"><span class="n-lbl">CO浓度</span><strong class="n-val">{{ store.data.node1?.co || 0 }}</strong></div>
+            <div class="n-box wide-box"><span class="n-lbl">烟雾浓度 (ug)</span><strong class="n-val danger-text">{{ store.data.node1?.smoke || 0 }}</strong></div>
+          </div>
+        </div>
+
+        <!-- UGV 002 -->
+        <div class="cc-panel node-card" @click="$router.push('/node2')">
+          <div class="node-header">
+            <h3>监测点-002 <small>(UGV)</small></h3>
+            <span class="node-status" :class="{online: store.nodes?.node2?.online}">{{ store.nodes?.node2?.online ? 'ONLINE' : 'OFFLINE' }}</span>
+          </div>
+          <div class="dashboard-grid">
+            <div class="n-box"><span class="n-lbl">温度</span><strong class="n-val">{{ store.data.node2?.temp || 0 }}<small>°C</small></strong></div>
+            <div class="n-box"><span class="n-lbl">湿度</span><strong class="n-val">{{ store.data.node2?.hum || 0 }}<small>%</small></strong></div>
+            <div class="n-box"><span class="n-lbl">TVOC</span><strong class="n-val">{{ store.data.node2?.tvoc || 0 }}</strong></div>
+            <div class="n-box"><span class="n-lbl">CO浓度</span><strong class="n-val">{{ store.data.node2?.co || 0 }}</strong></div>
+            <div class="n-box wide-box"><span class="n-lbl">烟雾浓度 (ug)</span><strong class="n-val danger-text">{{ store.data.node2?.smoke || 0 }}</strong></div>
+          </div>
+        </div>
+
+        <!-- 固定环境感知节点 -->
+        <div class="cc-panel node-card" @click="$router.push('/node3')">
+          <div class="node-header">
+            <h3>固定环境感知节点</h3>
+            <span class="node-status tech" :class="{online: store.nodes?.node3?.online}">{{ store.nodes?.node3?.online ? 'ONLINE' : 'OFFLINE' }}</span>
+          </div>
+          <div class="dashboard-grid">
+            <div class="n-box"><span class="n-lbl">风速</span><strong class="n-val tech-text">{{ store.data.node3?.wind || 0 }}<small>m/s</small></strong></div>
+            <div class="n-box"><span class="n-lbl">风向</span><strong class="n-val tech-text">{{ store.data.node3?.wind_dir || 0 }}</strong></div>
+            <div class="n-box"><span class="n-lbl">评估</span><strong class="n-val warning-text">{{ (store.data.node3?.wind || 0) > 10.7 ? '强风' : ((store.data.node3?.wind || 0) > 5.4 ? '和风' : '微风') }}</strong></div>
+          </div>
+        </div>
+
+        <!-- 底部通道状态：去除了flex-fill，极限压缩高度 -->
+        <div class="cc-panel sys-status-panel">
+          <div class="sys-grid">
+            <div class="s-row"><span>实时数据通道</span> <b :class="store.connected ? 'ok' : 'err'">{{ realtimeStatusText }}</b></div>
+            <div class="s-row"><span>网络心跳回传</span> <b>{{ lastRealtimeLabel }}</b></div>
+          </div>
+        </div>
+      </aside>
+    </main>
 
     <canvas ref="canvasElement" style="display: none;"></canvas>
   </div>
 </template>
 
 <style scoped>
-/* ================= 全局 & 原有页面基础样式 ================= */
-.dashboard-container { padding: 15px 25px; max-width: 1600px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
-.page-title { color: #2c3e50; margin: 0 0 10px 0; font-weight: 700; font-size: 1.3rem; }
+/* ================= 核心色板与全局设定 ================= */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap');
 
-.top-section { display: flex; gap: 15px; margin-bottom: 15px; height: 240px; min-height: 240px; flex-shrink: 0; }
+.command-center-container {
+  background: #050b14 radial-gradient(circle at 50% 0%, #0a192f 0%, #050b14 100%);
+  color: #e2e8f0;
+  height: 100vh;
+  width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, 'Rajdhani', sans-serif;
+  box-sizing: border-box;
+}
+* { box-sizing: border-box; }
 
-/* 全局公用标签与文本属性 (保留原有以防影响其他面板) */
-.lbl { font-size: 0.75rem; color: #909399; margin-bottom: 2px; }
-.val { font-size: 0.95rem; font-weight: bold; color: #2c3e50; }
+/* ================= 顶部全局头部 ================= */
+.cc-header {
+  height: 50px; 
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0 20px; background: rgba(6, 13, 26, 0.8);
+  border-bottom: 1px solid #1a365d; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 10;
+}
+.header-left, .header-right { flex: 1; display: flex; align-items: center; }
+.header-right { justify-content: flex-end; gap: 12px; }
+.cc-title { flex: 2; text-align: center; margin: 0; font-size: 1.3rem; font-weight: 700; letter-spacing: 2px; color: #64ffda; text-shadow: 0 0 10px rgba(100, 255, 218, 0.4); font-family: 'Orbitron', sans-serif; }
 
-/* ================= 决策与状态面板 (保留原有) ================= */
-.decision-panel { flex: 5; background: white; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid #ccc; }
-.decision-panel.success { border-left-color: #48bb78; background: #f0fff4; }
-.decision-panel.warning { border-left-color: #ecc94b; background: #fffff0; }
-.decision-panel.danger { border-left-color: #f56565; background: #fff5f5; }
+.sys-badge { padding: 3px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; border: 1px solid; }
+.sys-badge.online { background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: #10b981; }
+.sys-badge.offline { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: #ef4444; }
 
-.status-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 8px; }
-.status-main-row { display: flex; align-items: center; min-width: 0; }
-.status-icon { font-size: 1.8rem; margin-right: 10px; }
-.status-text h2 { margin: 0; font-size: 1.1rem; color: #2d3748; }
-.status-text p { margin: 0; font-size: 0.75rem; color: #718096; }
-.status-actions { display: flex; align-items: center; gap: 8px; }
+.sys-time { font-family: 'Orbitron', monospace; font-size: 0.85rem; color: #94a3b8; }
+.sys-status-mini { display: flex; gap: 6px; font-size: 0.7rem; font-weight: bold; }
+.sys-status-mini span { padding: 2px 5px; border-radius: 3px; border: 1px solid; }
+.sys-status-mini .ok { color: #10b981; border-color: rgba(16, 185, 129, 0.5); }
+.sys-status-mini .err { color: #ef4444; border-color: rgba(239, 68, 68, 0.5); }
 
-.link-btn, .ctrl-link-btn { border: 1px solid #dcdfe6; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; transition: 0.2s; }
-.link-btn { background: none; color: #606266; }
-.link-btn:hover { color: #409eff; border-color: #409eff; background: #ecf5ff; }
-.ctrl-link-btn { color: white; border-color: transparent; }
-
-.gateway-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
-.gateway-pill { padding: 10px 12px; border-radius: 8px; background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 4px; }
-.gateway-pill.wide { grid-column: span 1; }
-.gateway-pill span { font-size: 0.72rem; color: #718096; }
-.gateway-pill strong { font-size: 0.85rem; color: #2d3748; }
-
-.logic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-.logic-item { font-size: 0.8rem; }
-.bar-label { display: flex; justify-content: space-between; margin-bottom: 3px; color: #4a5568; font-weight: bold; }
-.logic-bar { height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
-.fill { height: 100%; transition: width 0.5s ease; }
-.logic-footer { display: flex; gap: 10px; margin-top: auto; flex-wrap: wrap; }
-.mini-tag { background: rgba(255,255,255,0.7); padding: 1px 6px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.05); font-size: 0.75rem; color: #4a5568; }
-
-/* ================= 无人机面板 (保留原有) ================= */
-.drone-panel { flex: 4; background: white; border-radius: 10px; padding: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
-.drone-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.9rem; font-weight: bold; color: #2c3e50; }
-.status-indicator { font-size: 0.7rem; color: #718096; font-weight: normal; }
-.drone-body { flex: 1; display: flex; gap: 8px; min-height: 0; }
-.video-container { flex: 3; background: #000; border-radius: 5px; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
-.video-feed { width: 100%; height: 100%; object-fit: contain; }
-.no-signal { color: #555; font-size: 0.8rem; }
-.rec-badge { position: absolute; top: 5px; right: 5px; background: rgba(220, 38, 38, 0.9); color: white; padding: 1px 4px; border-radius: 3px; font-size: 0.6rem; animation: pulse 1s infinite; }
-.drone-controls { flex: 1; display: flex; flex-direction: column; gap: 5px; justify-content: center; }
-.mini-btn { padding: 4px 0; border: none; border-radius: 4px; font-size: 0.7rem; cursor: pointer; color: white; transition: 0.2s; }
-.btn-start { background: #48bb78; }
-.btn-stop { background: #e53e3e; }
-.btn-blue { background: #3182ce; }
-.btn-red { background: #e53e3e; }
-.btn-gray { background: #e2e8f0; color: #666; }
-.btn-active { background: #3182ce; animation: pulse 2s infinite; }
-.mini-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* ================= 实体资源与效能状态 (保留原有) ================= */
-.flex-1 { flex: 1; }
-.sub-status-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
-.mini-status { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid transparent; font-weight: normal; }
-.mini-status.on { background: #f0fff4; color: #2f855a; border-color: #c6f6d5; }
-.mini-status.off { background: #fff5f5; color: #c53030; border-color: #fed7d7; }
-.mini-status.on::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; background: #48bb78; box-shadow: 0 0 4px #48bb78; animation: pulse-dot 2s infinite; }
-.mini-status.off::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; background: #e53e3e; }
-
-.capability-panel { background: #fff; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #eee; display: flex; flex-direction: column; flex-shrink: 0; }
-.panel-header { padding: 10px 15px; background: #f8f9fa; border-bottom: 1px solid #eee; border-radius: 10px 10px 0 0; }
-.panel-header h3 { margin: 0; font-size: 0.95rem; color: #2c3e50; font-weight: bold; }
-.capability-grid { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 20px; padding: 15px; }
-.cap-group { display: flex; flex-direction: column; gap: 10px; }
-.cap-title { font-size: 0.8rem; color: #718096; font-weight: bold; border-left: 3px solid #3182ce; padding-left: 8px; margin-bottom: 4px; }
-.cap-items { display: flex; flex-direction: column; gap: 8px; }
-.cap-item { background: #f9fafc; border: 1px solid #f0f2f5; border-radius: 6px; padding: 8px 12px; }
-.cap-item.icon-item { display: flex; align-items: center; gap: 12px; }
-.cap-icon { font-size: 1.3rem; }
-.cap-info { display: flex; flex-direction: column; }
-.row-flex { display: flex; justify-content: space-between; align-items: center; }
-.c-lbl { font-size: 0.75rem; color: #4a5568; }
-.c-val { font-size: 0.85rem; color: #2d3748; font-weight: bold; }
-.c-sub { color: #a0aec0; font-weight: normal; font-size: 0.7rem; }
-.tag-blue { background: #ebf8ff; color: #3182ce; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; }
-.highlight { color: #38a169; }
-.progress-wrap { display: flex; align-items: center; gap: 8px; width: 120px; }
-.progress-bar { flex: 1; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
-.progress-fill { height: 100%; background: #48bb78; transition: width 0.3s; }
-
-.data-stats { flex-direction: row; height: 100%; }
-.stat-box { flex: 1; background: #f0f4f8; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #e2e8f0; }
-.s-lbl { font-size: 0.75rem; color: #718096; margin-bottom: 4px; }
-.s-val { font-size: 1.4rem; color: #2b6cb0; font-weight: bold; line-height: 1.2; }
-.s-val small { font-size: 0.8rem; color: #4a5568; font-weight: normal; }
-.s-desc { font-size: 0.7rem; color: #a0aec0; margin-top: 4px; }
-
-
-/* ================= 【深度整合】传感器卡片模块 ================= */
-.cards-grid { 
-  display: grid; 
-  /* 融合原有与新版布局：自适应排列，响应式更强 */
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
-  gap: 20px; 
-  margin-bottom: 15px; 
-  flex-shrink: 0; 
-  font-size: 16px; /* 提升卡片整体基础字号 */
+/* ================= 核心栅格布局 ================= */
+.cc-main {
+  flex: 1; display: grid;
+  grid-template-columns: 2.6fr 4.2fr 3.2fr; 
+  gap: 12px; padding: 12px; 
+  overflow: hidden;
 }
 
-/* 卡片外层基础统一 */
-.node-card { 
-  background: white; 
-  border-radius: 12px; 
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
-  cursor: pointer; 
-  transition: transform 0.2s, box-shadow 0.2s; 
-  border: 1px solid #eee; 
+.cc-column { display: flex; flex-direction: column; gap: 12px; height: 100%; overflow-y: auto; overflow-x: hidden; }
+.cc-column::-webkit-scrollbar { width: 4px; }
+.cc-column::-webkit-scrollbar-thumb { background: rgba(30, 58, 138, 0.5); border-radius: 2px; }
+
+/* 面板通用 */
+.cc-panel { background: rgba(10, 25, 47, 0.6); border: 1px solid #1e3a8a; border-radius: 6px; display: flex; flex-direction: column; flex-shrink: 0; }
+.panel-header { padding: 8px 12px; background: linear-gradient(90deg, rgba(30, 58, 138, 0.4) 0%, transparent 100%); border-bottom: 1px solid rgba(30, 58, 138, 0.5); font-size: 0.9rem; font-weight: 700; color: #60a5fa; display: flex; justify-content: space-between; align-items: center; }
+.panel-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
+.compact-body { padding: 8px 12px; gap: 8px; }
+.flex-fill { flex: 1; min-height: 0; }
+
+/* ================= 左侧：态势预警 ================= */
+.alert-box { display: flex; gap: 10px; padding: 8px; border-radius: 6px; border-left: 4px solid; background: rgba(0,0,0,0.2); }
+.alert-icon { font-size: 1.3rem; }
+.alert-info h4 { margin: 0 0 2px 0; font-size: 1rem; color: #fff; }
+.alert-info p { margin: 0; font-size: 0.75rem; color: #94a3b8; }
+.alert-danger { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+.alert-warning { border-left-color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+.alert-success { border-left-color: #10b981; background: rgba(16, 185, 129, 0.1); }
+
+.logic-bars { display: flex; flex-direction: column; gap: 8px; }
+.logic-item { font-size: 0.75rem; }
+.bar-label { display: flex; justify-content: space-between; margin-bottom: 3px; color: #cbd5e1; }
+.logic-bar { height: 5px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+.fill { height: 100%; transition: width 0.5s; }
+.warning-fill { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+.danger-fill { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+.tech-fill { background: #3b82f6; box-shadow: 0 0 8px #3b82f6; }
+
+.warning-text { color: #f59e0b; font-weight: bold; }
+.danger-text { color: #ef4444; font-weight: bold; text-shadow: 0 0 6px rgba(239,68,68,0.4); }
+.tech-text { color: #64ffda; font-weight: bold; font-family: 'Orbitron', monospace; text-shadow: 0 0 6px rgba(100,255,218,0.3);}
+
+.analysis-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.cc-tag { padding: 3px 6px; border: 1px solid; border-radius: 4px; font-size: 0.7rem; background: rgba(0,0,0,0.3); }
+.tag-warn { border-color: #f59e0b; color: #f59e0b; }
+.tag-safe { border-color: #10b981; color: #10b981; }
+.tag-blue { border-color: #3b82f6; color: #60a5fa; }
+
+.control-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 2px; }
+
+/* ================= 左侧：资源矩阵 ================= */
+.highlight-panel { border-color: rgba(96, 165, 250, 0.4); box-shadow: 0 0 15px rgba(59, 130, 246, 0.1) inset; }
+.res-header { background: linear-gradient(90deg, rgba(59, 130, 246, 0.3) 0%, transparent 100%); border-bottom-color: rgba(96, 165, 250, 0.4); }
+.res-live-tag { font-size: 0.65rem; color: #10b981; animation: pulse 1.5s infinite; background: rgba(16,185,129,0.1); padding: 2px 4px; border-radius: 4px;}
+
+.resource-body { padding: 8px; }
+.resource-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.res-card { background: rgba(15, 30, 60, 0.5); border: 1px solid rgba(96, 165, 250, 0.2); border-radius: 6px; padding: 8px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.2s; }
+.res-icon { font-size: 1.6rem; margin-bottom: 4px; }
+.res-title { font-size: 0.75rem; font-weight: bold; color: #f8fafc; margin-bottom: 6px; }
+.res-divide { width: 50%; height: 2px; background: linear-gradient(90deg, transparent, rgba(96,165,250,0.4), transparent); margin-bottom: 6px; }
+.res-data-row { display: flex; width: 100%; justify-content: space-around; }
+.r-data { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.r-data span { font-size: 0.65rem; color: #94a3b8; }
+.r-data strong { font-size: 1rem; font-family: 'Orbitron', monospace; color: #cbd5e1; line-height: 1;}
+
+.alive-ratio .lbl-row { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px; color: #cbd5e1; }
+.progress-bar { height: 5px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+.net-info-row { display: flex; gap: 8px; margin-top: 6px; }
+
+/* ================= 中央：视频与指令 ================= */
+.task-banner { display: flex; justify-content: space-between; background: rgba(10, 25, 47, 0.8); border: 1px solid #1e3a8a; border-radius: 6px; padding: 6px 15px; }
+.tb-item { display: flex; flex-direction: column; gap: 2px; }
+.tb-item span { font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; }
+.tb-item strong { font-size: 0.85rem; color: #e2e8f0; }
+
+.drone-console { flex: 1; display: flex; flex-direction: column; background: #000; border: 1px solid #1e3a8a; border-radius: 6px; overflow: hidden; min-height: 200px; position: relative; }
+.dc-header { position: absolute; top: 0; left: 0; right: 0; padding: 8px 12px; background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%); display: flex; justify-content: space-between; align-items: center; z-index: 2; }
+.title-with-icon { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: bold; }
+.blink-dot { width: 6px; height: 6px; background: #ef4444; border-radius: 50%; box-shadow: 0 0 6px #ef4444; animation: pulse 1.5s infinite; }
+.dc-status { font-size: 0.7rem; color: #64ffda; }
+.dc-viewport { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.video-feed { width: 100%; height: 100%; object-fit: contain; }
+.no-signal { text-align: center; color: #475569; }
+.signal-icon { font-size: 2.5rem; margin-bottom: 5px; opacity: 0.5; }
+.rec-badge { position: absolute; top: 10px; right: 10px; background: rgba(239,68,68,0.9); color: white; padding: 3px 6px; border-radius: 3px; font-size: 0.7rem; font-weight: bold; animation: pulse 1s infinite; z-index: 2;}
+
+.hud-overlay { position: absolute; width: 20px; height: 20px; border: 2px solid #60a5fa; z-index: 2; opacity: 0.5; }
+.top-left { top: 15px; left: 15px; border-right: none; border-bottom: none; }
+.top-right { top: 15px; right: 15px; border-left: none; border-bottom: none; }
+.bottom-left { bottom: 15px; left: 15px; border-right: none; border-top: none; }
+.bottom-right { bottom: 15px; right: 15px; border-left: none; border-top: none; }
+
+.dc-controls { padding: 6px; background: rgba(10, 25, 47, 0.9); border-top: 1px solid #1e3a8a; display: flex; gap: 8px; justify-content: center; }
+
+/* 缩小日志高度 */
+.log-panel { height: 120px; flex-shrink: 0; }
+.log-count { float: right; font-size: 0.7rem; color: #94a3b8; font-weight: normal; }
+.log-viewport { flex: 1; overflow-y: auto; padding: 6px 8px; background: rgba(0,0,0,0.3); border-radius: 4px; font-family: 'Consolas', monospace; font-size: 0.7rem; }
+.log-row { margin-bottom: 2px; line-height: 1.2; border-bottom: 1px dashed rgba(255,255,255,0.05); padding-bottom: 2px; }
+.log-time { color: #64ffda; margin-right: 6px; }
+
+/* ================= 右侧：节点详情 (同一行左右对齐，垂直向下排列) ================= */
+.node-card { cursor: pointer; transition: 0.2s; display: flex; flex-direction: column;}
+.node-card:hover { border-color: #60a5fa; box-shadow: 0 0 12px rgba(96,165,250,0.3); }
+.node-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.node-header h3 { margin: 0; font-size: 0.8rem; color: #e2e8f0; }
+.node-header small { color: #94a3b8; font-size: 0.65rem;}
+.node-status { font-size: 0.6rem; padding: 2px 4px; border-radius: 3px; background: rgba(239,68,68,0.2); color: #ef4444; }
+.node-status.online { background: rgba(16,185,129,0.2); color: #10b981; }
+.node-status.tech.online { background: rgba(59,130,246,0.2); color: #60a5fa; }
+
+/* 容器：Flex垂直排布 */
+.dashboard-grid { 
   display: flex; 
   flex-direction: column; 
-}
-.node-card:hover { 
-  transform: translateY(-5px); 
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  border-color: #42b983; 
+  gap: 4px; 
+  padding: 8px 10px; 
 }
 
-/* 卡片类型差异化主题 */
-.env-card { border-top: 5px solid #4CAF50; }
-.weather-card { 
-  background: linear-gradient(145deg, #f0f7ff 0%, #e6f0fa 100%); 
-  border-top: 5px solid #2196F3; 
-}
-
-/* 卡片头部与大标题 */
-.card-header { 
-  padding: 12px 15px; 
-  background: #f8f9fa; 
-  border-bottom: 1px solid #eee; 
-  border-radius: 11px 11px 0 0; /* 适配圆角 */
+/* 子元素：Flex水平排布，标签在左，数值在右 */
+.n-box { 
+  background: rgba(0,0,0,0.3); 
+  border: 1px solid rgba(255,255,255,0.02); 
+  border-radius: 4px; 
+  padding: 5px 10px; 
   display: flex; 
-  justify-content: space-between; 
+  flex-direction: row; 
   align-items: center; 
-}
-.card-title { 
-  margin: 0; 
-  font-size: 1.6rem; /* 标题保持最大层级 */
-  color: #333; 
-  font-weight: bold; 
-}
-
-/* 状态标签(在线/离线)统一大小 */
-.tag { 
-  padding: 4px 10px; 
-  border-radius: 6px; 
-  font-size: 0.85rem; 
-  font-weight: bold; 
-}
-.tag-online { background: #e6fffa; color: #38a169; }
-.tag-online.blue { background: #ebf8ff; color: #3182ce; }
-.tag-offline { background: #fff5f5; color: #e53e3e; }
-
-/* 卡片主体与内联列表样式 */
-.card-body { padding: 15px; flex: 1; }
-
-.sensor-list { display: flex; flex-direction: column; gap: 12px; }
-
-.sensor-inline-item {
-  display: flex;
   justify-content: space-between; 
-  align-items: center;
-  font-size: 1.35rem; /* 大字号 */
-  background: rgba(0,0,0,0.02);
-  padding: 12px 15px; 
-  border-radius: 8px;
-}
-/* 严格作用域，防止污染全局 .lbl 和 .val */
-.sensor-inline-item .lbl { 
-  color: #666; 
-  font-weight: 500; 
-  margin-bottom: 0; 
-  font-size: inherit; 
-}
-.sensor-inline-item .val { 
-  color: #222; 
-  font-weight: bold; 
-  font-size: inherit; 
 }
 
-/* 气象卡片特殊大字与排版 */
-.weather-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
-.weather-card .highlight-item { 
-  background: #ffffff; 
-  box-shadow: 0 2px 6px rgba(33, 150, 243, 0.1); 
-}
-.weather-card .big-val { font-size: 1.5rem; color: #1976D2; }
+/* 取消原有的宽列设定，因为现在是一行一个 */
+.wide-box { }
 
-.wind-grade-box {
-  display: flex; 
-  justify-content: space-between; 
-  align-items: center;
-  background-color: #1976D2; 
-  color: white;
-  padding: 12px 15px; 
-  border-radius: 8px;
-  font-size: 1.35rem; 
-}
-.wind-grade-box .lbl { color: rgba(255,255,255,0.9); margin-bottom: 0; font-size: inherit;}
-.wind-grade-box .grade-val { font-weight: bold; font-size: 1.45rem; }
+.n-lbl { font-size: 0.7rem; color: #94a3b8; margin-bottom: 0; }
+.n-val { font-size: 0.85rem; color: #f8fafc; font-family: 'Orbitron', monospace; line-height: 1; }
+.n-val small { font-size: 0.65rem; margin-left: 4px; color: #64748b; font-family: sans-serif; }
 
-/* 底部交互提示 */
-.card-footer { 
-  padding: 10px 15px; 
-  font-size: 0.9rem; 
-  color: #999; 
-  text-align: right; 
-  border-top: 1px solid #eee; 
-  margin-top: auto; 
-}
-.node-card:hover .card-footer { color: #2196F3; }
+/* 极限压缩底部的系统状态栏高度 */
+.sys-status-panel { padding: 6px 10px; display: flex; flex-direction: column; justify-content: center; }
+.sys-grid { display: flex; flex-direction: column; gap: 4px; }
+.s-row { display: flex; justify-content: space-between; font-size: 0.7rem; padding-bottom: 2px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.s-row:last-child { border-bottom: none; padding-bottom: 0; }
+.s-row span { color: #94a3b8; }
+.s-row b { font-family: monospace; color: #e2e8f0; }
+.s-row .ok { color: #10b981; }
+.s-row .err { color: #ef4444; }
 
+/* 按钮及动画 */
+.cc-btn { padding: 4px 8px; border: none; border-radius: 3px; font-size: 0.7rem; font-weight: bold; cursor: pointer; transition: all 0.2s; }
+.btn-primary { background: #3b82f6; color: white; }
+.btn-danger { background: #ef4444; color: white; }
+.btn-tech { background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid #10b981; }
+.btn-ghost { background: rgba(255,255,255,0.05); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); }
+.btn-active { background: rgba(96,165,250,0.2); color: #60a5fa; border: 1px solid #60a5fa; animation: pulse 2s infinite; }
+.cc-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
 
-/* ================= 底部日志与系统面板 (保留原有) ================= */
-.bottom-panel { background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; gap: 20px; padding: 15px; border: 1px solid #eee; height: 180px; flex-shrink: 0; margin-bottom: 20px; }
-.log-section { flex: 3; display: flex; flex-direction: column; }
-.log-header { font-size: 0.85rem; font-weight: bold; color: #4a5568; margin-bottom: 8px; display: flex; justify-content: space-between; }
-.log-header .count { font-weight: normal; color: #a0aec0; }
-.log-list { flex: 1; background: #1e1e1e; border-radius: 6px; overflow-y: auto; padding: 8px; font-family: 'Consolas', monospace; font-size: 0.75rem; }
-.log-row { margin-bottom: 4px; color: #d4d4d4; }
-.log-time { color: #569cd6; margin-right: 8px; }
-.log-row.success .log-msg { color: #6a9955; }
-.log-row.warning .log-msg { color: #dcdcaa; }
-.log-row.danger .log-msg { color: #f44747; }
-.log-row.info .log-msg { color: #9cdcfe; }
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-.system-status-section { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; border-left: 1px solid #eee; padding-left: 20px; }
-.sys-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 0.8rem; color: #4a5568; }
-.sys-label { flex: 0 0 72px; }
-.sys-val { text-align: right; font-weight: bold; font-size: 0.76rem; color: #2d3748; }
-.sys-val.good { color: #48bb78; }
-.sys-val.bad { color: #e53e3e; }
-
-
-/* ================= 动画与响应式 (保留并整合) ================= */
-@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
-@keyframes pulse-dot { 0% { transform: scale(0.95); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.7; } 100% { transform: scale(0.95); opacity: 1; } }
-
-@media (max-width: 1200px) {
-  .top-section { height: auto; flex-direction: column; }
-  .decision-panel, .drone-panel { width: 100%; height: auto; }
-  .drone-body { height: 200px; }
-  .capability-grid { grid-template-columns: 1fr; }
-  .cards-grid { grid-template-columns: 1fr; }
-  .bottom-panel { flex-direction: column; height: auto; }
-  .system-status-section { border-left: none; padding-left: 0; border-top: 1px solid #eee; padding-top: 15px; }
-  .gateway-strip { grid-template-columns: 1fr 1fr; }
+/* 响应式降级 */
+@media (max-width: 1400px) { 
+  .cc-main { grid-template-columns: 2.8fr 4.2fr 3.0fr; } 
 }
 </style>

@@ -40,7 +40,7 @@ const envSensors = [
 function createChart(element, title, color) {
   const chart = echarts.init(element)
   chart.setOption({
-    title: { 
+   title: { 
   text: title, 
   left: 'center', 
   top: 8, // 让标题距离顶部有一定呼吸感
@@ -205,7 +205,7 @@ onUnmounted(() => {
     
     <div class="header-bar">
       <div class="title-wrapper">
-        <h2>多源数据感知单元-002</h2>
+        <h2>多源数据感知单元-004</h2>
         <span class="status-badge" :class="nodeState.online ? 'online' : 'offline'">
           {{ nodeState.online ? '● 设备在线' : '○ 设备离线' }}
         </span>

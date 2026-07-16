@@ -75,7 +75,7 @@
           <div class="right-tab-panel">
             <div v-if="activeRightTab === 'sensor'" class="sensor-data-panel">
               <div class="sensor-header-row">
-                <span class="sensor-section-title">实时环境传感器</span>
+                <span class="sensor-section-title">地面移动监测节点情况</span>
                 <span class="sensor-source-badge" :class="{ online: isSensorDeployed && isWsConnected }">
                   {{ !isSensorDeployed ? '⚠️ 尚未部署 (断联)' : (isWsConnected ? '📡 网关在线' : '⚠️ 离线模拟') }}
                 </span>
@@ -84,7 +84,7 @@
               <div class="ugv-cards-container">
                 <div class="ugv-card">
                   <div class="ugv-header">
-                    <span class="ugv-title">无人车 A</span>
+                    <span class="ugv-title">地面感知单元-001</span>
                     <span class="ugv-status" :class="{ offline: !isSensorDeployed }">{{ isSensorDeployed ? '在线' : '断联' }}</span>
                   </div>
                   <div class="ugv-data">
@@ -105,7 +105,7 @@
 
                 <div class="ugv-card">
                   <div class="ugv-header">
-                    <span class="ugv-title">无人车 B</span>
+                    <span class="ugv-title">地面感知单元-002</span>
                     <span class="ugv-status" :class="{ offline: !isSensorDeployed }">{{ isSensorDeployed ? '在线' : '断联' }}</span>
                   </div>
                   <div class="ugv-data">
@@ -125,7 +125,7 @@
                 </div>
               </div>
 
-              <div class="sensor-section-title" style="margin-top: 18px;">局部气象环境</div>
+              <div class="sensor-section-title" style="margin-top: 18px;">固定环境感知情况</div>
               
               <div class="meteorology-card">
                 <div class="met-icon">🌬️</div>
@@ -143,7 +143,7 @@
               </div>
 
            
-              <div class="sensor-section-title" style="margin-top: 18px;">无人机航拍图片</div>
+              <div class="sensor-section-title" style="margin-top: 18px;">空域监测移动节点情况</div>
                  <div class="capability-panel" style="margin-top: 18px;">
                
               </div>
@@ -164,13 +164,6 @@
                         <div class="cap-item row-flex">
                           <span class="c-lbl">网络拓扑结构</span>
                           <span class="c-val tag-blue">{{ networkStats.networkType }}</span>
-                        </div>
-                        <div class="cap-item row-flex">
-                          <span class="c-lbl">网内节点存活率</span>
-                          <div class="progress-wrap">
-                            <div class="progress-bar"><div class="progress-fill" :style="{width: networkStats.alivePercent + '%'}"></div></div>
-                            <span class="c-val">{{ networkStats.aliveRatio }}</span>
-                          </div>
                         </div>
                         <div class="cap-item row-flex">
                           <span class="c-lbl">传感吞吐频率</span>
@@ -259,7 +252,7 @@
               <span :class="['mini-status',
               resourceStatus.ugv1?'on':'off']">
 
-                1号无人车:
+                地面感知单元-001:
                 {{resourceStatus.ugv1?'在线':'离线'}}
 
               </span>
@@ -268,7 +261,7 @@
               <span :class="['mini-status',
               resourceStatus.ugv2?'on':'off']">
 
-                2号无人车:
+                地面感知单元-002:
                 {{resourceStatus.ugv2?'在线':'离线'}}
 
               </span>
@@ -360,22 +353,6 @@
         </span>
 
       </div>
-
-
-      <div class="cap-item row-flex">
-
-        <span>
-          网内节点存活率
-        </span>
-
-
-        <span>
-          {{networkStats.aliveRatio}}
-        </span>
-
-
-      </div>
-
 
       <div class="cap-item row-flex">
 
@@ -685,7 +662,7 @@ const isSensorDeployed = computed(() => {
 
 const topMenus = [
   { key: 'home', label: '地图大屏', path: '/' },
-  { key: 'sensor', label: '传感器管理', path: '/sensor-manage' },
+  { key: 'sensor', label: '感知组网', path: '/sensor-manage' },
   { key: 'realtime', label: '实时检测', path: '/realtime' },
   { key: 'coordination', label: '协同响应', path: '/coordination' },
   { key: 'modeling', label: '精细建模', path: '/modeling' },
@@ -734,29 +711,13 @@ const timelinePhases = computed(() => {
 })
 
 const phaseToModelMap = {
-  1: 'model_normal',
-  2: 'model_accident',
-  3: 'model_accident',
-  4: 'model_accident',
-  5: 'model_accident',
-  6: 'model_accident',
-  7: 'model_accident',
-  8: 'model_accident',
-  9: 'model_accident',
-  10: 'model_accident'
+  1: 'model_normal', 2: 'model_accident', 3: 'model_accident', 4: 'model_accident', 5: 'model_accident', 
+  6: 'model_accident', 7: 'model_accident', 8: 'model_accident', 9: 'model_accident', 10: 'model_accident'
 }
 
 const tankerPhaseToModelMap = {
-  1: 'tanker_normal',
-  2: 'tanker_accident',
-  3: 'tanker_accident',
-  4: 'tanker_accident',
-  5: 'tanker_accident',
-  6: 'tanker_accident',
-  7: 'tanker_accident',
-  8: 'tanker_accident',
-  9: 'tanker_accident',
-  10: 'tanker_accident'
+  1: 'tanker_normal', 2: 'tanker_accident', 3: 'tanker_accident', 4: 'tanker_accident', 5: 'tanker_accident', 
+  6: 'tanker_accident', 7: 'tanker_accident', 8: 'tanker_accident', 9: 'tanker_accident', 10: 'tanker_accident'
 }
 
 const phasesReady = computed(() => {
@@ -775,7 +736,6 @@ function goTo(item) {
     if (globeRef.value) globeRef.value.resetView()
     currentFocusedPoint.value = ''
     activeServiceId.value = ''
-    // 返回首页时重置所有事故场景的时间线到“仿真开始”阶段
     accidentPhaseIndices.value = { 'rear-end': 0, 'leakage': 0 }
   }
   activeMenuKey.value = item.key
@@ -820,6 +780,32 @@ onMounted(() => {
   }, 3000)
 
   activeMenuKey.value = 'home'
+
+  // 初始化时检查 URL 路由参数
+  const queryScene = route.query.scene
+  const queryPhaseIndex = route.query.phaseIndex !== undefined ? parseInt(route.query.phaseIndex, 10) : null
+
+  if (queryScene && queryPhaseIndex !== null) {
+    const idx = accidentPoints.findIndex(acc => acc.id === queryScene)
+    if (idx !== -1) {
+      activeAccidentIndex.value = idx
+    }
+    accidentPhaseIndices.value = {
+      'rear-end': queryScene === 'rear-end' ? queryPhaseIndex : 0,
+      'leakage': queryScene === 'leakage' ? queryPhaseIndex : 0
+    }
+    const currentAcc = accidentPoints[activeAccidentIndex.value]
+    if (currentAcc && currentAcc.phases[queryPhaseIndex]) {
+      currentFocusedPoint.value = currentAcc.phases[queryPhaseIndex].focusPoint || currentAcc.focusPoint
+    }
+
+    // 清除 URL 中的查询参数，避免刷新页面时再次加载指定阶段
+    try {
+      window.history.replaceState(null, '', window.location.pathname)
+    } catch (e) {
+      console.warn('Failed to clear URL query parameters:', e)
+    }
+  }
 })
 
 onBeforeUnmount(() => {
@@ -837,23 +823,49 @@ watch(
       activeMenuKey.value = 'home'
       activeServiceId.value = ''
 
-      // 重置所有事故时间线
-      accidentPhaseIndices.value = {
-        'rear-end': 0,
-        'leakage': 0
-      }
+      const queryScene = route.query.scene
+      const queryPhaseIndex = route.query.phaseIndex !== undefined ? parseInt(route.query.phaseIndex, 10) : null
 
-      // 清除当前聚焦点
-      currentFocusedPoint.value = ''
+      if (queryScene && queryPhaseIndex !== null) {
+        // 设置指定场景索引与阶段索引
+        const idx = accidentPoints.findIndex(acc => acc.id === queryScene)
+        if (idx !== -1) {
+          activeAccidentIndex.value = idx
+        }
+        
+        accidentPhaseIndices.value = {
+          'rear-end': queryScene === 'rear-end' ? queryPhaseIndex : 0,
+          'leakage': queryScene === 'leakage' ? queryPhaseIndex : 0
+        }
 
-      // Cesium恢复默认视角
-      if (globeRef.value) {
-        globeRef.value.resetView()
+        const currentAcc = accidentPoints[activeAccidentIndex.value]
+        if (currentAcc && currentAcc.phases[queryPhaseIndex]) {
+          currentFocusedPoint.value = currentAcc.phases[queryPhaseIndex].focusPoint || currentAcc.focusPoint
+        }
+
+        // 清除 URL 中的查询参数，避免刷新页面时再次加载指定阶段
+        try {
+          window.history.replaceState(null, '', window.location.pathname)
+        } catch (e) {
+          console.warn('Failed to clear URL query parameters:', e)
+        }
+      } else {
+        // 重置所有事故时间线
+        accidentPhaseIndices.value = {
+          'rear-end': 0,
+          'leakage': 0
+        }
+        // 清除当前聚焦点
+        currentFocusedPoint.value = ''
+
+        // Cesium恢复默认视角
+        if (globeRef.value) {
+          globeRef.value.resetView()
+        }
       }
     }
   }
 )
-
 </script>
 <style scoped>
 /* Main Layout structure */
@@ -1104,14 +1116,14 @@ watch(
 
 .sidebar-title {
   margin: 0;
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 700;
   color: #ffffff;
   letter-spacing: 0.5px;
 }
 
 .sidebar-subtitle {
-  font-size: 11px;
+  font-size: 14.5px;
   color: #00f2fe;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -1375,7 +1387,7 @@ watch(
 /* Floating Timeline floating beautifully above the globe */
 .timeline-container {
   position: absolute;
-  bottom: 12px;
+  bottom: 20px; /* 往上移动一点，贴近视口 */
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 40px);
@@ -1630,7 +1642,7 @@ watch(
 }
 
 .sensor-section-title {
-  font-size: 15px;
+  font-size: 17.5px;
   font-weight: 700;
   color: #ffffff;
   text-transform: uppercase;
@@ -1677,13 +1689,13 @@ watch(
 }
 
 .sensor-card-item .sensor-name {
-  font-size: 12px;
+  font-size: 14.5px;
   color: #94a3b8;
   font-weight: 600;
 }
 
 .sensor-card-item .sensor-val {
-  font-size: 17px;
+  font-size: 26px;
   color: #ffffff;
   font-weight: 700;
   font-family: monospace;
@@ -1691,7 +1703,7 @@ watch(
 }
 
 .sensor-card-item .unit {
-  font-size: 11px;
+  font-size: 16px;
   color: #00f2fe;
   font-weight: bold;
 }
@@ -1769,13 +1781,13 @@ watch(
 }
 
 .meteorology-card .met-label {
-  font-size: 12px;
+  font-size: 14.5px;
   color: #94a3b8;
   font-weight: 600;
 }
 
 .meteorology-card .met-val {
-  font-size: 16px;
+  font-size: 18px;
   color: #ffffff;
   font-weight: 700;
   text-shadow: 0 0 4px rgba(0, 242, 254, 0.3);
@@ -1936,7 +1948,7 @@ watch(
 
 .right-sidebar :deep(.card-title) {
   color: #ffffff !important;
-  font-size: 16px !important;
+  font-size: 18px !important;
   font-weight: 700 !important;
   text-shadow: 0 0 6px rgba(0, 242, 254, 0.3);
 }
@@ -1944,6 +1956,7 @@ watch(
 .right-sidebar :deep(.card-subtitle),
 .right-sidebar :deep(.tip-text) {
   color: #94a3b8 !important;
+  font-size: 14.5px !important;
 }
 
 .right-sidebar :deep(.config-input),
@@ -2220,13 +2233,13 @@ watch(
 
 .ugv-card .ugv-title {
   font-weight: bold;
-  font-size: 16px;
+  font-size: 18px;
   color: #00ffff;
   letter-spacing: 1px;
 }
 
 .ugv-card .ugv-status {
-  font-size: 13px;
+  font-size: 14px;
   color: #00ff88;
   font-weight: bold;
   padding: 2px 5px;
@@ -2273,12 +2286,12 @@ watch(
 }
 
 .ugv-card .ugv-label {
-  font-size: 13px;
+  font-size: 14.5px;
   color: #8fa3b0;
 }
 
 .ugv-card .ugv-value {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: #e0f2fe;
   text-shadow: 0 0 5px rgba(224, 242, 254, 0.4);
@@ -2287,7 +2300,7 @@ watch(
 .ugv-card .ugv-footer {
   text-align: right;
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: 14.5px;
   color: #00ffff;
   background: rgba(0, 255, 255, 0.05);
   border-top: 1px solid rgba(0, 255, 255, 0.15);
@@ -2311,7 +2324,7 @@ watch(
 
 .panel-header h3 {
   margin: 0 0 12px 0;
-  font-size: 15px;
+  font-size: 17.5px;
   color: #38bdf8;
   font-weight: 600;
   text-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
@@ -2331,7 +2344,7 @@ watch(
 }
 
 .cap-title {
-  font-size: 12px;
+  font-size: 14.5px;
   color: #94a3b8;
   margin-bottom: 8px;
   border-left: 2px solid #38bdf8;
@@ -2352,11 +2365,11 @@ watch(
   width: 100%;
 }
 
-.c-lbl { font-size: 12px; color: #cbd5e1; }
-.c-val { font-size: 12px; color: #f8fafc; font-weight: 500; }
+.c-lbl { font-size: 14.5px; color: #cbd5e1; }
+.c-val { font-size: 14.5px; color: #f8fafc; font-weight: 500; }
 
 .mini-status {
-  font-size: 10px;
+  font-size: 13px;
   padding: 2px 6px;
   border-radius: 4px;
 }
@@ -2408,7 +2421,7 @@ watch(
 }
 
 .s-val {
-  font-size: 16px;
+  font-size: 26px;
   color: #38bdf8;
   font-weight: bold;
   margin: 2px 0;

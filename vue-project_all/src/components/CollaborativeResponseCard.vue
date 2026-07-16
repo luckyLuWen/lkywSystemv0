@@ -26,16 +26,33 @@
               <span class="info-val scene-color">{{ strategyMetrics.end_point_name }}</span>
             </div>
             <div class="info-row">
-              <span class="info-label">救援起点</span>
-              <span class="info-val">{{ strategyMetrics.start_point_name || '--' }}</span>
-            </div>
-            <div class="info-row">
               <span class="info-label">协同机制</span>
               <span class="info-val mech-color">{{ strategyLabel }}</span>
             </div>
             <div class="info-row">
               <span class="info-label">更新时间</span>
               <span class="info-val">{{ updateTimeStr }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1.5 候选救援点 -->
+        <div v-if="candidatePoints.length > 0" class="card-section">
+          <div class="section-title-wrapper">
+            <span class="bracket">[</span>
+            <h4 class="section-subtitle-text">救援点选取</h4>
+            <span class="bracket">]</span>
+          </div>
+          <div class="candidate-list">
+            <div
+              v-for="(p, idx) in candidatePoints"
+              :key="idx"
+              class="candidate-row"
+              :class="{ selected: p.selected }"
+            >
+              <span class="candidate-dot" :class="{ on: p.selected }"></span>
+              <span class="candidate-name">{{ p.name }}</span>
+              <span class="candidate-dist">{{ p.dist_km }} km</span>
             </div>
           </div>
         </div>
@@ -184,6 +201,7 @@ const strategyLabel = computed(() => {
 })
 
 const comparison = computed(() => strategyMetrics.value?.comparison || null)
+const candidatePoints = computed(() => strategyMetrics.value?.candidate_points || [])
 const scenario = computed(() => strategyMetrics.value?.scenario || null)
 const speeds = computed(() => strategyMetrics.value?.speeds || { carKmh: 80, uavMs: 20 })
 
@@ -260,13 +278,13 @@ onBeforeUnmount(() => {
 .card-title {
   margin: 0;
   color: #93c5fd;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.2;
 }
 
 .card-subtitle {
   margin: 4px 0 0 0;
-  font-size: 13px;
+  font-size: 14.5px;
   color: rgba(255, 255, 255, 0.72);
 }
 
@@ -277,7 +295,7 @@ onBeforeUnmount(() => {
   min-height: 26px;
   padding: 0 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .status-badge.online {
@@ -328,14 +346,14 @@ onBeforeUnmount(() => {
 .bracket {
   color: #60a5fa;
   font-weight: bold;
-  font-size: 20px;
+  font-size: 18px;
   text-shadow: 0 0 6px rgba(96, 165, 250, 0.5);
 }
 
 .section-subtitle-text {
   margin: 0;
   color: #60a5fa;
-  font-size: 15px;
+  font-size: 17.5px;
   font-weight: bold;
   letter-spacing: 0.5px;
 }
@@ -359,12 +377,12 @@ onBeforeUnmount(() => {
 }
 
 .info-label {
-  font-size: 13px;
+  font-size: 14.5px;
   color: rgba(255, 255, 255, 0.6);
 }
 
 .info-val {
-  font-size: 13px;
+  font-size: 14.5px;
   color: #fff;
   font-weight: 600;
   text-align: right;
@@ -409,7 +427,7 @@ onBeforeUnmount(() => {
 }
 
 .metric-val {
-  font-size: 18px;
+  font-size: 26px;
   font-weight: bold;
   font-family: 'JetBrains Mono', Consolas, monospace;
   color: #e2e8f0;
@@ -426,10 +444,10 @@ onBeforeUnmount(() => {
 .metric-val.text-green { color: #34d399; }
 .metric-val.text-purple { color: #a78bfa; }
 .metric-val.text-pink { color: #f472b6; }
-.metric-val.dim { font-size: 14px; color: #cbd5e1; }
+.metric-val.dim { font-size: 16px; color: #cbd5e1; }
 
 .metric-lbl {
-  font-size: 11px;
+  font-size: 14.5px;
   color: rgba(255, 255, 255, 0.5);
   white-space: nowrap;
 }
@@ -476,12 +494,12 @@ onBeforeUnmount(() => {
 }
 
 .env-label {
-  font-size: 11px;
+  font-size: 14.5px;
   color: rgba(255, 255, 255, 0.6);
 }
 
 .env-state {
-  font-size: 12px;
+  font-size: 14.5px;
   font-weight: 600;
   color: #64748b;
 }
@@ -501,14 +519,68 @@ onBeforeUnmount(() => {
 }
 
 .congestion-name {
-  font-size: 12px;
+  font-size: 14.5px;
   font-weight: 600;
   color: #93c5fd;
 }
 
 .congestion-detail {
-  font-size: 11px;
+  font-size: 13px;
   color: rgba(147, 197, 253, 0.7);
+}
+
+/* ===== 候选救援点列表 ===== */
+.candidate-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.candidate-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.candidate-row.selected {
+  color: #fff;
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+}
+
+.candidate-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #475569;
+  flex-shrink: 0;
+}
+
+.candidate-dot.on {
+  background: #34d399;
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.6);
+}
+
+.candidate-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.candidate-row.selected .candidate-name {
+  font-weight: 600;
+  color: #fff;
+}
+
+.candidate-dist {
+  font-family: monospace;
+  font-size: 10px;
+  color: inherit;
+  flex-shrink: 0;
 }
 
 /* ===== 距离卡片算法对比 ===== */
@@ -517,7 +589,7 @@ onBeforeUnmount(() => {
 }
 
 .metric-vs {
-  font-size: 9px;
+  font-size: 12px;
   color: #4ade80;
   margin-top: 2px;
   white-space: nowrap;
@@ -541,7 +613,7 @@ onBeforeUnmount(() => {
 
 .error-text {
   margin: 0;
-  font-size: 11px;
+  font-size: 13px;
   color: #ffb4b4;
   text-align: center;
 }
