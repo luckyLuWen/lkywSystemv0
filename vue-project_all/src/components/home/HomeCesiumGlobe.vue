@@ -2364,7 +2364,7 @@ const lights = reactive([
   { id: 'light3', name: '灯光 3', show: true, lng: 113.104482, lat: 30.385632, height: 8.5, scale: 0.003, heading: 198, pitch: 0, roll: 0 },
   { id: 'light4', name: '灯光 4', show: true, lng: 114.891139, lat: 30.630711, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
   { id: 'light5', name: '灯光 5', show: true, lng: 114.892429, lat: 30.631096, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
-  { id: 'light6', name: '灯光 6 (原3D自带)', show: true, lng: 114.894472, lat: 30.632203, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light6', name: '灯光 6', show: true, lng: 114.894472, lat: 30.632203, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
 ])
 
 const lightAdjust = reactive({
@@ -2380,18 +2380,8 @@ const lightAdjust = reactive({
 
 // 当切换当前编辑的灯光时，将对应的参数回填到 lightAdjust
 watch(activeLightIndex, (newIdx) => {
-  if (newIdx === 5) {
-    // light6 (索引 5) 转变成对原 3D 事故模型 (tankerAdjust) 的位置与姿态控制
-    lightAdjust.show = true
-    lightAdjust.lng = tankerAdjust.lng
-    lightAdjust.lat = tankerAdjust.lat
-    lightAdjust.height = tankerAdjust.height
-    lightAdjust.scale = tankerAdjust.scale
-    lightAdjust.heading = tankerAdjust.heading
-    lightAdjust.pitch = 0
-    lightAdjust.roll = 0
-  } else {
-    const currentLight = lights[newIdx]
+  const currentLight = lights[newIdx]
+  if (currentLight) {
     lightAdjust.show = currentLight.show
     lightAdjust.lng = currentLight.lng
     lightAdjust.lat = currentLight.lat
@@ -2405,22 +2395,8 @@ watch(activeLightIndex, (newIdx) => {
 
 // 当微调面板修改了 lightAdjust 时，同步回对应目标
 watch(lightAdjust, (newVals) => {
-  if (activeLightIndex.value === 5) {
-    // 同步修改到原 3D 事故模型 tankerAdjust，从而直接控制该模型在地图上的经纬度、高度、朝向与比例
-    tankerAdjust.lng = newVals.lng
-    tankerAdjust.lat = newVals.lat
-    tankerAdjust.height = newVals.height
-    tankerAdjust.scale = newVals.scale
-    tankerAdjust.heading = newVals.heading
-    // 同时同步记录回 lights[5]
-    const currentLight = lights[5]
-    currentLight.lng = newVals.lng
-    currentLight.lat = newVals.lat
-    currentLight.height = newVals.height
-    currentLight.scale = newVals.scale
-    currentLight.heading = newVals.heading
-  } else {
-    const currentLight = lights[activeLightIndex.value]
+  const currentLight = lights[activeLightIndex.value]
+  if (currentLight) {
     currentLight.show = newVals.show
     currentLight.lng = newVals.lng
     currentLight.lat = newVals.lat
@@ -3778,8 +3754,12 @@ const loadMission = async () => {
     dataSource._lastEndpoint = endpoint;
     
     // 清除 CZML 实体的时间范围可用性限制，防止时间走完或越界时实体在地图上消失
+    const phaseIdx = Number(props.activePhaseIndex);
     dataSource.entities.values.forEach(entity => {
       entity.availability = undefined;
+      if (phaseIdx === 6) {
+        entity.show = false;
+      }
     });
 
     currentMissionDataSource = dataSource;
@@ -3840,13 +3820,13 @@ const loadMission = async () => {
     // 确保从 CZML 加载的规划路线实体在地图上显式可见
     const uavPath = dataSource.entities.getById('UAV_Path');
     if (uavPath) {
-      uavPath.show = true;
-      if (uavPath.polyline) uavPath.polyline.show = true;
+      uavPath.show = (phaseIdx !== 6);
+      if (uavPath.polyline) uavPath.polyline.show = (phaseIdx !== 6);
     }
     const carPath = dataSource.entities.getById('Car_Path');
     if (carPath) {
-      carPath.show = true;
-      if (carPath.polyline) carPath.polyline.show = true;
+      carPath.show = (phaseIdx !== 6);
+      if (carPath.polyline) carPath.polyline.show = (phaseIdx !== 6);
       
       const positions = carPath.polyline.positions.getValue(getQueryTime()) ||
                         carPath.polyline.positions.getValue(new Cesium.JulianDate());
@@ -3874,7 +3854,14 @@ const loadMission = async () => {
             last200mPoints.unshift(pPrev);
           }
         }
-        updateHighlightPath(last200mPoints);
+        if (phaseIdx !== 6) {
+          updateHighlightPath(last200mPoints);
+        } else {
+          if (highlightPathEntity) {
+            viewer.entities.remove(highlightPathEntity);
+            highlightPathEntity = null;
+          }
+        }
       }
     }
 
@@ -4647,11 +4634,6 @@ async function initViewer() {
   
   // 屏蔽 Cesium 默认的红色崩溃弹窗，由 Vue 捕获并友好提示
   if (Cesium) {
-    if (typeof Cesium['showHtmlErrorPanel'] === 'function') {
-      Cesium['showHtmlErrorPanel'] = function(title, message, error) {
-        console.error('[Cesium Widget Error]', title, message, error);
-      };
-    }
     if (Cesium.CesiumWidget && Cesium.CesiumWidget.prototype) {
       Cesium.CesiumWidget.prototype.showErrorPanel = function(title, message, error) {
         console.error('[Cesium Widget Proto Error Blocked]', title, message, error);
@@ -6283,11 +6265,14 @@ function replayCurrentPhase() {
 function addEventEntities() {
   // 接入 6 个 light.glb 3D灯光模型
   lights.forEach((l) => {
-    if (l.id === 'light6') return; // light6 使用原3D场景自带路灯模型，清除动态生成
     viewer.entities.add({
       id: `${l.id}-glb-entity`,
-      name: `事故现场灯光模型-${l.id}`,
-      show: new Cesium.CallbackProperty(() => l.show, false),
+      show: new Cesium.CallbackProperty(() => {
+        if (l.id === 'light6' && currentScene.value === 'tanker') {
+          return false; // 避免与油罐车模型自带的烘焙路灯模型重叠产生重影
+        }
+        return l.show;
+      }, false),
       position: new Cesium.CallbackProperty(() => {
         return Cesium.Cartesian3.fromDegrees(Number(l.lng), Number(l.lat), Number(l.height));
       }, false),
@@ -7598,9 +7583,9 @@ function updatePhaseScene(index, animate = false) {
       ugvCoords.lat = 30.3268;
       ugvCoords.height = 10.0;
       
-      if (rescueMarkerEntity) rescueMarkerEntity.show = true;
-      rescuePopup.show = true;
-      ugvPopup.show = true;
+      if (rescueMarkerEntity) rescueMarkerEntity.show = false;
+      rescuePopup.show = false;
+      ugvPopup.show = false;
     } else if (isTruckScene && index === 7) {
       rescuePopup.title = '无人机已到达';
       rescuePopup.model = 'DJI M300 RTK';
@@ -7717,9 +7702,9 @@ function updatePhaseScene(index, animate = false) {
       ugvCoords.lat = 30.5158;
       ugvCoords.height = 15.0;
       
-      if (rescueMarkerEntity) rescueMarkerEntity.show = true;
-      rescuePopup.show = true;
-      ugvPopup.show = true;
+      if (rescueMarkerEntity) rescueMarkerEntity.show = false;
+      rescuePopup.show = false;
+      ugvPopup.show = false;
     } else if (isTankerScene && index === 7) {
       rescuePopup.title = '无人机已到达';
       rescuePopup.model = 'DJI M300 RTK';
@@ -7823,16 +7808,15 @@ function updatePhaseScene(index, animate = false) {
       if (!currentMissionDataSource || currentMissionDataSource._lastEndpoint !== expectedEndpoint) {
         loadMission();
       } else {
-        // 如果数据源已加载，显式确保规划路线可见
-        const uavPath = currentMissionDataSource.entities.getById('UAV_Path');
-        if (uavPath) {
-          uavPath.show = true;
-          if (uavPath.polyline) uavPath.polyline.show = true;
-        }
-        const carPath = currentMissionDataSource.entities.getById('Car_Path');
-        if (carPath) {
-          carPath.show = true;
-          if (carPath.polyline) carPath.polyline.show = true;
+        // 如果数据源已加载，根据是否是第6阶段显式隐藏/显示规划路线和模型
+        currentMissionDataSource.entities.values.forEach(entity => {
+          entity.show = (index !== 6);
+        });
+        if (index === 6) {
+          if (highlightPathEntity) {
+            viewer.entities.remove(highlightPathEntity);
+            highlightPathEntity = null;
+          }
         }
       }
     } else {
@@ -7872,9 +7856,9 @@ function updatePhaseScene(index, animate = false) {
             const isTarget = (index === 6 && entity.id === 'uav_model') || (index >= 7 && entity.id === 'uav_model_move');
             if (isTarget) {
               const needsAnimation = !entity.show || (entity.id === 'uav_model_move' && index === 7 && lastUavPhaseIndex !== 7);
-              // 恢复显示无人机模型
-              entity.show = true;
-              if (needsAnimation) {
+              // 恢复显示无人机模型 (在阶段6隐藏)
+              entity.show = (index !== 6);
+              if (needsAnimation && index !== 6) {
                 // 两个阶段的无人机螺旋桨都需要持续高速旋转
                 playEntityAnimation(entity, true, 0, 6.0);
               }
@@ -7882,8 +7866,8 @@ function updatePhaseScene(index, animate = false) {
               entity.show = false;
             }
           });
-          // 恢复显示救援车模型
-          rescueCarEntities.forEach(entity => { entity.show = true });
+          // 恢复显示救援车模型 (在阶段6隐藏)
+          rescueCarEntities.forEach(entity => { entity.show = (index !== 6) });
           
           // 隐藏油罐车场景的无人机和救援车
           tankerUavEntities.forEach(entity => { entity.show = false })
@@ -7902,8 +7886,9 @@ function updatePhaseScene(index, animate = false) {
             const isTarget = (index === 6 && entity.id === 'uav_model_tanker') || (index >= 7 && entity.id === 'uav_model_move_tanker');
             if (isTarget) {
               const needsAnimation = !entity.show || (entity.id === 'uav_model_move_tanker' && index === 7 && lastTankerUavPhaseIndex !== 7);
-              entity.show = true;
-              if (needsAnimation) {
+              // 恢复显示无人机模型 (在阶段6隐藏)
+              entity.show = (index !== 6);
+              if (needsAnimation && index !== 6) {
                 // 两个阶段的无人机螺旋桨都需要持续高速旋转
                 playEntityAnimation(entity, true, 0, 6.0);
               }
@@ -7911,17 +7896,22 @@ function updatePhaseScene(index, animate = false) {
               entity.show = false;
             }
           });
-          tankerRescueCarEntities.forEach(entity => { entity.show = true });
+          // 恢复显示救援车模型 (在阶段6隐藏)
+          tankerRescueCarEntities.forEach(entity => { entity.show = (index !== 6) });
           
           // 隐藏货车场景的无人机和救援车
           uavEntities.forEach(entity => { entity.show = false })
           rescueCarEntities.forEach(entity => { entity.show = false })
           
-          // 隐藏所有粒子效果，只保留模型
+          // 隐藏所有粒子效果，只保留模型 (但在阶段6，显示泄露和扩散粒子)
           if (smokeParticle) smokeParticle.show = false
           if (fireParticle) fireParticle.show = false
-          if (leakParticle) leakParticle.show = false
-          if (diffusionParticle) diffusionParticle.show = false
+          if (leakParticle) {
+            leakParticle.show = (index === 6);
+          }
+          if (diffusionParticle) {
+            diffusionParticle.show = (index === 6);
+          }
         } else {
           // 如果视角切换到其他地方，隐藏所有无人机和救援车
           uavEntities.forEach(entity => { entity.show = false })
