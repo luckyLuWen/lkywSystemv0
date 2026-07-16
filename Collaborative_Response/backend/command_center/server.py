@@ -79,12 +79,18 @@ def file_info(path: Path) -> dict[str, Any]:
 
 
 def run_script(script_name: str, *extra_args: str) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
     return subprocess.run(
         [PYTHON_BIN, script_name, *extra_args],
         cwd=BASE_DIR,
         text=True,
         capture_output=True,
         check=False,
+        encoding="utf-8",
+        errors="replace",
+        env=env,
     )
 
 
@@ -103,8 +109,13 @@ def load_strategy_metrics() -> dict[str, Any]:
         "message": "已读取当前策略评估结果",
         "end_point": payload.get("end_point", ""),
         "end_point_name": payload.get("end_point_name", ""),
+        "start_point_name": payload.get("start_point_name", ""),
         "strategy": payload.get("strategy", ""),
         "metrics": payload.get("metrics", {}),
+        "comparison": payload.get("comparison"),
+        "scenario": payload.get("scenario"),
+        "speeds": payload.get("speeds"),
+        "candidate_points": payload.get("candidate_points", []),
         "obstacles": payload.get("obstacles", []),
         "updated_at": file_info(PATH_RESULT_PATH)["updated_at"],
     }
@@ -470,9 +481,47 @@ def serve_2d_deduction():
     return send_from_directory(BASE_DIR, "2d_deduction.html")
 
 
+@app.route("/api/agent_paths")
+def serve_agent_paths():
+    """返回五类救援智能体的路径数据（JSON），供三维地图直接渲染。"""
+    if not MISSION_PATH.exists():
+        return jsonify({"agents": []})
+    import json as _json
+    with open(MISSION_PATH, "r", encoding="utf-8") as f:
+        czml = _json.load(f)
+    agents = {}
+    for item in czml:
+        iid = item.get("id", "")
+        if iid.startswith("Agent_") and "Path" not in iid and "POI" not in iid:
+            key = iid.replace("Agent_", "")
+            pos = item.get("position", {}).get("cartographicDegrees", [])
+            samples = []
+            for i in range(0, len(pos), 4):
+                samples.append({"t": pos[i], "lon": pos[i+1], "lat": pos[i+2], "alt": pos[i+3]})
+            agents[key] = {"samples": samples}
+        elif iid.startswith("AgentPOI_"):
+            key = iid.replace("AgentPOI_", "")
+            if key not in agents:
+                agents[key] = {}
+            pos = item.get("position", {}).get("cartographicDegrees", [])
+            agents[key]["poi"] = {"lon": pos[0], "lat": pos[1], "name": (item.get("label", {}).get("text", ""))}
+    # 也返回事故点坐标
+    end_point = {"lon": None, "lat": None}
+    for item in czml:
+        if item.get("id") == "EndMarker":
+            ep = item.get("position", {}).get("cartographicDegrees", [])
+            end_point = {"lon": ep[0], "lat": ep[1]}
+            break
+    return jsonify({"agents": agents, "end_point": end_point})
+
+
 @app.route("/mission.czml")
 def serve_czml():
-    return send_from_directory(BASE_DIR, "mission.czml")
+    response = send_from_directory(BASE_DIR, "mission.czml")
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 @app.route("/path_result.json")
@@ -521,15 +570,14 @@ def run_3d_strategy():
     ugv_block = request.args.get("ugv_block", "1")
     uav_smoke = request.args.get("uav_smoke", "1")
     strategy = request.args.get("strategy", "rcd")
-    compare = request.args.get("compare", "0")
+    compare = request.args.get("compare", "1")  # 默认开启对比，前端可传 compare=0 关闭
     extra_args = [
         "--end_point", end_point,
         "--ugv_block", ugv_block,
         "--uav_smoke", uav_smoke,
         "--strategy", strategy,
+        "--compare", compare,
     ]
-    if compare == "1":
-        extra_args += ["--compare", "1"]
     result = run_script("app_3d_strategy.py", *extra_args)
     if result.returncode != 0:
         return error_response(
@@ -544,17 +592,50 @@ def run_3d_strategy():
     )
 
 
+@app.route("/api/run_multi_agent")
+def run_multi_agent():
+    end_point = request.args.get("end_point", "leak")
+    if end_point not in ("leak", "crash"):
+        end_point = "leak"
+    ugv_block = request.args.get("ugv_block", "1")
+    uav_smoke = request.args.get("uav_smoke", "1")
+    strategy = request.args.get("strategy", "rcd")
+    compare = request.args.get("compare", "1")
+    extra_args = [
+        "--end_point", end_point,
+        "--ugv_block", ugv_block,
+        "--uav_smoke", uav_smoke,
+        "--strategy", strategy,
+        "--compare", compare,
+        "--multi_agent", "1",
+    ]
+    result = run_script("app_3d_strategy.py", *extra_args)
+    if result.returncode != 0:
+        return error_response(
+            "多智能体救援路径生成失败",
+            stderr=result.stderr.strip(),
+            stdout=result.stdout.strip(),
+        )
+    return success_response(
+        "五类救援装备路径已生成",
+        url="/2d_deduction.html",
+        end_point=end_point,
+    )
+
+
 @app.route("/api/run_3d_cesium")
 def run_3d_cesium():
     end_point = request.args.get("end_point", "crash")
     ugv_block = request.args.get("ugv_block", "1")
     uav_smoke = request.args.get("uav_smoke", "1")
     strategy = request.args.get("strategy", "rcd")
+    compare = request.args.get("compare", "1")  # 默认开启对比，前端可传 compare=0 关闭
     extra_args = [
         "--end_point", end_point,
         "--ugv_block", ugv_block,
         "--uav_smoke", uav_smoke,
         "--strategy", strategy,
+        "--compare", compare,
     ]
     result = run_script("app_3d_strategy.py", *extra_args)
     if result.returncode != 0:

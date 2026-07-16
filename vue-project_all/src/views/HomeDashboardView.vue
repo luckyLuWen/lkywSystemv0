@@ -37,7 +37,7 @@
             <HomeCesiumGlobe
               ref="globeRef"
               :phases="timelinePhases"
-              :active-phase-index="activePhaseIndex"
+               v-model:active-phase-index="activePhaseIndex"
               :focused-point-id="currentFocusedPoint"
               :sensor-data="displaySensorData"
               :is-ws-connected="isWsConnected"
@@ -63,13 +63,13 @@
         <button class="toggle-btn toggle-btn-right" type="button" @click="isRightCollapsed = !isRightCollapsed">
           {{ isRightCollapsed ? '▶' : '◀' }}
         </button>
-        <div class="sidebar-header">
+        <div v-if="activeRightTab !== 'detection'" class="sidebar-header">
           <h2 class="sidebar-title">
             {{ activeRightTab === 'sensor' ? '传感器数据' : activeRightTab === 'detection' ? '检测数据' : '规划数据' }}
           </h2>
-          <span class="sidebar-subtitle">
+          <!-- <span class="sidebar-subtitle">
             {{ activeRightTab === 'sensor' ? 'Sensor Data Gateway' : activeRightTab === 'detection' ? 'Real-time Detection' : 'Collaborative Planning' }}
-          </span>
+          </span> -->
         </div>
         <div class="sidebar-content right-sidebar-flex-content">
           <div class="right-tab-panel">
@@ -190,7 +190,7 @@
                   <div class="sidebar-uav-overlay" v-if="globeRef.activePhotoIndex !== null">
                     <span class="timestamp">{{ globeRef.currentTimeStr }}</span>
                     <span class="coords">
-                      {{ currentAccidentId === 'rear-end' ? '113.1048°E, 30.3855°N' : '114.8945°E, 30.6322°N' }}
+                      {{ currentAccidentId === 'rear-end' ? '113.1048°E, 30.3855°N' : '114.8933°E, 30.6317°N' }}
                     </span>
                   </div>
                 </div>
@@ -442,7 +442,6 @@
             </div>
 
             <div v-else-if="activeRightTab === 'detection'" class="detection-data-panel">
-              <div class="sensor-section-title">AI 目标检测流</div>
               <RealtimeDetectionCard />
             </div>
 
@@ -487,7 +486,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, computed, reactive } from 'vue' // 新增 reactive
+import { ref, onMounted, onBeforeUnmount, watch, computed, nextTick, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import CollaborativeResponseCard from '../components/CollaborativeResponseCard.vue'
 import RealtimeDetectionCard from '../components/RealtimeDetectionCard.vue'
@@ -657,7 +656,7 @@ const activePhaseIndex = computed({
   }
 })
 
-const isSensorDeployed = computed( () => {
+const isSensorDeployed = computed(() => {
   return activePhaseIndex.value >= 2
 })
 
@@ -680,7 +679,7 @@ const accidentPoints = [
       { id: 't-normal', time: '14:05', shortLabel: '正常行驶', title: '车辆正常行驶阶段', systems: ['边缘网关'], focusPoint: 'accident_blue' },
       { id: 't-accident', time: '14:12', shortLabel: '事故发生', title: '货车追尾事故瞬间', systems: ['实时检测'], focusPoint: 'detection' },
       { id: 't-smoke', time: '14:18', shortLabel: '次生灾害（烟雾）', title: '事故现场产生大量烟雾', systems: ['协同响应'], focusPoint: 'command' },
-      { id: 't-fire', time: '14:26', shortLabel: '次生灾害（起火）', title: '事故车辆开始起火', systems: ['协同响应'], focusPoint: 'response' },
+      { id: 't-fire', time: '14:26', shortLabel: '次生灾害（起火）', title: '事故车辆开始起火', systems: ['实时检测', '协同响应'], focusPoint: 'response' },
       { id: 't-spread', time: '14:40', shortLabel: '次生灾害（大火）', title: '火势进一步扩大蔓延', systems: ['总系统首页'], focusPoint: 'gateway' },
       { id: 't-uav-start', time: '14:45', shortLabel: '无人装备出动', title: '无人装备协同出动', systems: ['协同响应'], focusPoint: 'accident_blue' },
       { id: 't-uav-deploy', time: '14:50', shortLabel: '无人感知部署', title: '无人感知节点部署', systems: ['实时检测'], focusPoint: 'accident_blue' },
@@ -746,8 +745,8 @@ function goTo(item) {
 function onAccidentPickedOnGlobe(entityId) {
   const index = accidentPoints.findIndex((acc) => acc.focusPoint === entityId)
   if (index !== -1) {
-    activeAccidentIndex.value = index
     currentFocusedPoint.value = entityId
+    activeAccidentIndex.value = index
   }
 }
 function handleLocate() {
@@ -781,6 +780,32 @@ onMounted(() => {
   }, 3000)
 
   activeMenuKey.value = 'home'
+
+  // 初始化时检查 URL 路由参数
+  const queryScene = route.query.scene
+  const queryPhaseIndex = route.query.phaseIndex !== undefined ? parseInt(route.query.phaseIndex, 10) : null
+
+  if (queryScene && queryPhaseIndex !== null) {
+    const idx = accidentPoints.findIndex(acc => acc.id === queryScene)
+    if (idx !== -1) {
+      activeAccidentIndex.value = idx
+    }
+    accidentPhaseIndices.value = {
+      'rear-end': queryScene === 'rear-end' ? queryPhaseIndex : 0,
+      'leakage': queryScene === 'leakage' ? queryPhaseIndex : 0
+    }
+    const currentAcc = accidentPoints[activeAccidentIndex.value]
+    if (currentAcc && currentAcc.phases[queryPhaseIndex]) {
+      currentFocusedPoint.value = currentAcc.phases[queryPhaseIndex].focusPoint || currentAcc.focusPoint
+    }
+
+    // 清除 URL 中的查询参数，避免刷新页面时再次加载指定阶段
+    try {
+      window.history.replaceState(null, '', window.location.pathname)
+    } catch (e) {
+      console.warn('Failed to clear URL query parameters:', e)
+    }
+  }
 })
 
 onBeforeUnmount(() => {
@@ -798,18 +823,45 @@ watch(
       activeMenuKey.value = 'home'
       activeServiceId.value = ''
 
-      // 重置所有事故时间线
-      accidentPhaseIndices.value = {
-        'rear-end': 0,
-        'leakage': 0
-      }
+      const queryScene = route.query.scene
+      const queryPhaseIndex = route.query.phaseIndex !== undefined ? parseInt(route.query.phaseIndex, 10) : null
 
-      // 清除当前聚焦点
-      currentFocusedPoint.value = ''
+      if (queryScene && queryPhaseIndex !== null) {
+        // 设置指定场景索引与阶段索引
+        const idx = accidentPoints.findIndex(acc => acc.id === queryScene)
+        if (idx !== -1) {
+          activeAccidentIndex.value = idx
+        }
+        
+        accidentPhaseIndices.value = {
+          'rear-end': queryScene === 'rear-end' ? queryPhaseIndex : 0,
+          'leakage': queryScene === 'leakage' ? queryPhaseIndex : 0
+        }
 
-      // Cesium恢复默认视角
-      if (globeRef.value) {
-        globeRef.value.resetView()
+        const currentAcc = accidentPoints[activeAccidentIndex.value]
+        if (currentAcc && currentAcc.phases[queryPhaseIndex]) {
+          currentFocusedPoint.value = currentAcc.phases[queryPhaseIndex].focusPoint || currentAcc.focusPoint
+        }
+
+        // 清除 URL 中的查询参数，避免刷新页面时再次加载指定阶段
+        try {
+          window.history.replaceState(null, '', window.location.pathname)
+        } catch (e) {
+          console.warn('Failed to clear URL query parameters:', e)
+        }
+      } else {
+        // 重置所有事故时间线
+        accidentPhaseIndices.value = {
+          'rear-end': 0,
+          'leakage': 0
+        }
+        // 清除当前聚焦点
+        currentFocusedPoint.value = ''
+
+        // Cesium恢复默认视角
+        if (globeRef.value) {
+          globeRef.value.resetView()
+        }
       }
     }
   }
@@ -1064,14 +1116,14 @@ watch(
 
 .sidebar-title {
   margin: 0;
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 700;
   color: #ffffff;
   letter-spacing: 0.5px;
 }
 
 .sidebar-subtitle {
-  font-size: 11px;
+  font-size: 14.5px;
   color: #00f2fe;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -1340,13 +1392,15 @@ watch(
   transform: translateX(-50%);
   width: calc(100% - 40px);
   max-width: 1400px;
-  background: rgba(15, 23, 42, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  padding: 12px 20px;
-  z-index: 5;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+  background: transparent;
+  border: none;
+  padding: 0;
+  z-index: 20;
+  pointer-events: none;
+  overflow: visible;
+}
+.timeline-container > * {
+  pointer-events: auto;
 }
 
 /* Right Sidebar elements */
@@ -1588,7 +1642,7 @@ watch(
 }
 
 .sensor-section-title {
-  font-size: 15px;
+  font-size: 17.5px;
   font-weight: 700;
   color: #ffffff;
   text-transform: uppercase;
@@ -1635,13 +1689,13 @@ watch(
 }
 
 .sensor-card-item .sensor-name {
-  font-size: 12px;
+  font-size: 14.5px;
   color: #94a3b8;
   font-weight: 600;
 }
 
 .sensor-card-item .sensor-val {
-  font-size: 17px;
+  font-size: 26px;
   color: #ffffff;
   font-weight: 700;
   font-family: monospace;
@@ -1649,7 +1703,7 @@ watch(
 }
 
 .sensor-card-item .unit {
-  font-size: 11px;
+  font-size: 16px;
   color: #00f2fe;
   font-weight: bold;
 }
@@ -1727,13 +1781,13 @@ watch(
 }
 
 .meteorology-card .met-label {
-  font-size: 12px;
+  font-size: 14.5px;
   color: #94a3b8;
   font-weight: 600;
 }
 
 .meteorology-card .met-val {
-  font-size: 16px;
+  font-size: 18px;
   color: #ffffff;
   font-weight: 700;
   text-shadow: 0 0 4px rgba(0, 242, 254, 0.3);
@@ -1894,7 +1948,7 @@ watch(
 
 .right-sidebar :deep(.card-title) {
   color: #ffffff !important;
-  font-size: 16px !important;
+  font-size: 18px !important;
   font-weight: 700 !important;
   text-shadow: 0 0 6px rgba(0, 242, 254, 0.3);
 }
@@ -1902,6 +1956,7 @@ watch(
 .right-sidebar :deep(.card-subtitle),
 .right-sidebar :deep(.tip-text) {
   color: #94a3b8 !important;
+  font-size: 14.5px !important;
 }
 
 .right-sidebar :deep(.config-input),
@@ -1926,6 +1981,215 @@ watch(
 .right-sidebar :deep(.status-label),
 .right-sidebar :deep(.service-label) {
   color: #94a3b8 !important;
+}
+
+/* Detection data card readability overrides */
+.right-sidebar :deep(.realtime-detection-card) {
+  gap: 20px !important;
+  padding: 18px !important;
+  font-size: 17px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .card-head) {
+  padding-bottom: 16px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .card-title) {
+  font-size: 26px !important;
+  line-height: 1.25 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .card-subtitle) {
+  font-size: 22px !important;
+  line-height: 1.45 !important;
+  font-weight: 600 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .scroll-container) {
+  gap: 20px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .card-section) {
+  gap: 16px !important;
+  padding-bottom: 20px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .section-subtitle-text) {
+  font-size: 22px !important;
+  letter-spacing: 0 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .model-select-group) {
+  padding: 16px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .control-label-text),
+.right-sidebar :deep(.realtime-detection-card .slider-label-row),
+.right-sidebar :deep(.realtime-detection-card .telemetry-col-label) {
+  font-size: 18px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .cyber-select-compact) {
+  min-height: 54px !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .tag-compact),
+.right-sidebar :deep(.realtime-detection-card .slider-val-text),
+.right-sidebar :deep(.realtime-detection-card .legend-val),
+.right-sidebar :deep(.realtime-detection-card .usage-name),
+.right-sidebar :deep(.realtime-detection-card .usage-val) {
+  font-size: 18px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .performance-grid) {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .performance-item) {
+  min-height: 74px !important;
+  padding: 12px 14px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .performance-item.wide) {
+  grid-column: 1 / -1 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .map50-item) {
+  min-height: 82px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .perf-label) {
+  font-size: 17px !important;
+  line-height: 1.25 !important;
+  font-weight: 700 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .performance-item strong) {
+  font-size: 24px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .performance-item small) {
+  font-size: 15px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .telemetry-row) {
+  padding: 11px 0 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .telemetry-col-val) {
+  font-size: 16px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .telemetry-row) {
+  gap: 14px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .telemetry-col-label) {
+  flex: 0 0 96px !important;
+  white-space: nowrap !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .telemetry-col-val) {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .mini-metrics-row) {
+  gap: 8px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .metric-block) {
+  min-height: 66px !important;
+  padding: 8px 6px !important;
+  justify-content: center !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .metric-val) {
+  font-size: 24px !important;
+  line-height: 1.05 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .metric-lbl) {
+  font-size: 14px !important;
+  line-height: 1.15 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .chart-title-label) {
+  font-size: 19px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .doughnut-chart) {
+  width: 154px !important;
+  height: 154px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .doughnut-hole) {
+  width: 104px !important;
+  height: 104px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .total-text) {
+  font-size: 20px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legends-grid) {
+  grid-template-columns: 1fr !important;
+  gap: 6px !important;
+  padding: 8px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legend-item) {
+  gap: 8px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legend-name),
+.right-sidebar :deep(.realtime-detection-card .legend-val) {
+  white-space: nowrap !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legend-name) {
+  min-width: 0 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legend-val) {
+  flex: 0 0 auto !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legend-item),
+.right-sidebar :deep(.realtime-detection-card .usage-label-row) {
+  font-size: 15px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .legend-dot) {
+  width: 11px !important;
+  height: 11px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .usage-track) {
+  height: 12px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .model-usage-list) {
+  gap: 16px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .model-usage-item) {
+  gap: 8px !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .usage-name),
+.right-sidebar :deep(.realtime-detection-card .usage-val) {
+  font-size: 20px !important;
+  font-weight: 700 !important;
+}
+
+.right-sidebar :deep(.realtime-detection-card .usage-fill) {
+  min-width: 8px !important;
 }
 
 /* Sidebar UGV Cards - 赛博朋克深色主题 */
@@ -1969,13 +2233,13 @@ watch(
 
 .ugv-card .ugv-title {
   font-weight: bold;
-  font-size: 16px;
+  font-size: 18px;
   color: #00ffff;
   letter-spacing: 1px;
 }
 
 .ugv-card .ugv-status {
-  font-size: 13px;
+  font-size: 14px;
   color: #00ff88;
   font-weight: bold;
   padding: 2px 5px;
@@ -2022,12 +2286,12 @@ watch(
 }
 
 .ugv-card .ugv-label {
-  font-size: 13px;
+  font-size: 14.5px;
   color: #8fa3b0;
 }
 
 .ugv-card .ugv-value {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: #e0f2fe;
   text-shadow: 0 0 5px rgba(224, 242, 254, 0.4);
@@ -2036,7 +2300,7 @@ watch(
 .ugv-card .ugv-footer {
   text-align: right;
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: 14.5px;
   color: #00ffff;
   background: rgba(0, 255, 255, 0.05);
   border-top: 1px solid rgba(0, 255, 255, 0.15);
@@ -2060,7 +2324,7 @@ watch(
 
 .panel-header h3 {
   margin: 0 0 12px 0;
-  font-size: 15px;
+  font-size: 17.5px;
   color: #38bdf8;
   font-weight: 600;
   text-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
@@ -2080,7 +2344,7 @@ watch(
 }
 
 .cap-title {
-  font-size: 12px;
+  font-size: 14.5px;
   color: #94a3b8;
   margin-bottom: 8px;
   border-left: 2px solid #38bdf8;
@@ -2101,11 +2365,11 @@ watch(
   width: 100%;
 }
 
-.c-lbl { font-size: 12px; color: #cbd5e1; }
-.c-val { font-size: 12px; color: #f8fafc; font-weight: 500; }
+.c-lbl { font-size: 14.5px; color: #cbd5e1; }
+.c-val { font-size: 14.5px; color: #f8fafc; font-weight: 500; }
 
 .mini-status {
-  font-size: 10px;
+  font-size: 13px;
   padding: 2px 6px;
   border-radius: 4px;
 }
@@ -2157,7 +2421,7 @@ watch(
 }
 
 .s-val {
-  font-size: 16px;
+  font-size: 26px;
   color: #38bdf8;
   font-weight: bold;
   margin: 2px 0;

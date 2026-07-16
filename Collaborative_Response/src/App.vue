@@ -25,6 +25,105 @@
           <strong :class="streamlitStatusClass">{{ streamlitStatusText }}</strong>
         </div>
       </div>
+
+      <!-- 协同调度控制面板 -->
+      <div v-if="currentView === 'streamlit'" class="deduction-controls">
+        <h4 class="ctrl-title">联合指挥应急控制台</h4>
+        <label class="ctrl-field">
+          <span>调度主体优先级类型</span>
+          <select v-model="streamlitMode" class="ctrl-select">
+            <option value="medical">人员伤亡（医疗急救）</option>
+            <option value="fire">火灾事故（消防灭火）</option>
+            <option value="police">现场封控（公安交警）</option>
+            <option value="hazmat">危化品泄漏（防化部队）</option>
+            <option value="road">道路清障（交通路政）</option>
+          </select>
+        </label>
+        <label class="ctrl-field">
+          <span>交通事故响应等级</span>
+          <select v-model="streamlitSeverity" class="ctrl-select">
+            <option value="轻微">轻微</option>
+            <option value="中度">中度</option>
+            <option value="危重">危重</option>
+            <option value="一般">一般</option>
+            <option value="较大">较大</option>
+            <option value="特大">特大</option>
+          </select>
+        </label>
+        <div class="ctrl-subtitle">环境参数</div>
+        <div class="ctrl-row">
+          <label class="ctrl-field" style="flex: 1;">
+            <span>时间</span>
+            <input type="time" v-model="streamlitTime" class="ctrl-select" />
+          </label>
+          <label class="ctrl-field" style="flex: 1;">
+            <span>天气</span>
+            <select v-model="streamlitWeather" class="ctrl-select">
+              <option value="☀️ 晴朗">晴朗</option>
+              <option value="🌧️ 小雨">小雨</option>
+              <option value="⛈️ 暴雨">暴雨</option>
+              <option value="🌫️ 大雾">大雾</option>
+              <option value="❄️ 积雪">积雪</option>
+            </select>
+          </label>
+        </div>
+        <div class="ctrl-btns">
+          <button class="ctrl-btn ghost" :disabled="streamlitPending" @click="applyStreamlitSettings">应用设置</button>
+        </div>
+        <p class="ctrl-hint">事故模拟交互和规划按钮在右侧地图中操作</p>
+        <p v-if="streamlitStatus" class="ctrl-status">{{ streamlitStatus }}</p>
+      </div>
+
+      <!-- 二维推演控制面板 -->
+      <div v-if="currentView === '2d'" class="deduction-controls">
+        <h4 class="ctrl-title">推演控制</h4>
+        <label class="ctrl-field">
+          <span>事故场景</span>
+          <select v-model="deductionScene" class="ctrl-select">
+            <option value="leak">油罐车泄露现场</option>
+            <option value="crash">货车追尾现场</option>
+          </select>
+        </label>
+        <label class="ctrl-field">
+          <span>障碍物设置</span>
+          <select v-model="deductionObstacle" class="ctrl-select">
+            <option value="1">开启（禁飞区/拥堵区）</option>
+            <option value="0">关闭（直连路径）</option>
+          </select>
+        </label>
+        <label class="ctrl-field">
+          <span>协同策略</span>
+          <select v-model="deductionStrategy" class="ctrl-select">
+            <option value="rcd">逆向推演（RCD）</option>
+            <option value="independent">极速独立（ISD）</option>
+            <option value="wait">基地待命（CAS）</option>
+          </select>
+        </label>
+        <div class="ctrl-btns">
+          <button class="ctrl-btn blue" :disabled="deductionPending" @click="triggerReplan">规划路径</button>
+          <button class="ctrl-btn green" :disabled="deductionPending" @click="triggerMultiAgent">装备启动</button>
+        </div>
+        <p v-if="deductionStatus" class="ctrl-status">{{ deductionStatus }}</p>
+      </div>
+
+      <!-- 三维态势控制面板 -->
+      <div v-if="currentView === '3d'" class="deduction-controls">
+        <h4 class="ctrl-title">三维态势控制</h4>
+        <label class="ctrl-field">
+          <span>事故场景</span>
+          <select v-model="cesiumScene" class="ctrl-select">
+            <option value="leak">油罐车泄露现场</option>
+            <option value="crash">货车追尾现场</option>
+          </select>
+        </label>
+        <div class="ctrl-btns">
+          <button class="ctrl-btn blue" :disabled="cesiumPending" @click="triggerCesiumUGVUAV">无人装备出动</button>
+        </div>
+        <div class="ctrl-btns">
+          <button class="ctrl-btn green" :disabled="cesiumPending" @click="triggerCesiumMultiAgent">救援装备出动</button>
+        </div>
+        <p v-if="cesiumStatus" class="ctrl-status">{{ cesiumStatus }}</p>
+      </div>
     </aside>
 
     <main class="content">
@@ -238,6 +337,23 @@ const evaluation = reactive({
   metrics: {},
   updatedAt: '',
 })
+
+const deductionScene = ref('leak')
+const deductionObstacle = ref('1')
+const deductionStrategy = ref('rcd')
+const deductionPending = ref(false)
+const deductionStatus = ref('')
+
+const cesiumScene = ref('leak')
+const cesiumPending = ref(false)
+const cesiumStatus = ref('')
+
+const streamlitMode = ref('medical')
+const streamlitSeverity = ref('中度')
+const streamlitWeather = ref('☀️ 晴朗')
+const streamlitTime = ref('08:30')
+const streamlitPending = ref(false)
+const streamlitStatus = ref('')
 
 let pollingTimer = null
 
@@ -533,7 +649,7 @@ function refreshFrames() {
     { t: Date.now() }
   )
   cesiumFrameSrc.value = appendUrlParams(
-    buildCommandCenterUrl('cesium_viewer', resolvedCommandCenterBaseUrl.value),
+    buildCommandCenterUrl('cesium_viewer?end_point=' + cesiumScene.value, resolvedCommandCenterBaseUrl.value),
     { t: Date.now() }
   )
   streamlitFrameKey.value += 1
@@ -559,9 +675,24 @@ async function openManagedView(viewId, serviceId, frameBuilder) {
   frameBuilder()
 }
 
+function buildStreamlitUrl() {
+  const base = (resolvedStreamlitUrl.value || streamlitUrl.value).split('?')[0]
+  const p = new URLSearchParams({ embed: 'true', sidebar: 'minimal', mode: streamlitMode.value, severity: streamlitSeverity.value, weather: streamlitWeather.value })
+  if (streamlitTime.value) p.set('time', streamlitTime.value)
+  return base + '?' + p.toString()
+}
+
+function applyStreamlitSettings() {
+  streamlitPending.value = true
+  streamlitStatus.value = '应用设置中...'
+  streamlitFrameSrc.value = buildStreamlitUrl()
+  streamlitFrameKey.value += 1
+  setTimeout(() => { streamlitPending.value = false; streamlitStatus.value = '' }, 1500)
+}
+
 async function showStreamlitView() {
   await openManagedView('streamlit', 'streamlit', () => {
-    streamlitFrameSrc.value = appendUrlParams(resolvedStreamlitUrl.value, { embed: 'true', t: Date.now() })
+    streamlitFrameSrc.value = buildStreamlitUrl()
     streamlitFrameKey.value += 1
   })
 }
@@ -577,11 +708,10 @@ async function show2DView() {
 }
 
 async function show3DView() {
-  await openManagedView('3d', 'commandCenter', () => {
-    cesiumFrameSrc.value = appendUrlParams(
-      buildCommandCenterUrl('cesium_viewer', resolvedCommandCenterBaseUrl.value),
-      { t: Date.now() }
-    )
+  await openManagedView('3d', 'commandCenter', async () => {
+    // 先确保 CZML 处于默认状态（全部 POI 亮色）
+    await fetch(buildCommandCenterUrl(`api/run_3d_cesium?end_point=${cesiumScene.value}`, commandCenterBaseUrl.value)).catch(()=>{})
+    cesiumFrameSrc.value = buildCommandCenterUrl('cesium_viewer?end_point=' + cesiumScene.value, resolvedCommandCenterBaseUrl.value)
     cesiumFrameKey.value += 1
   })
 }
@@ -612,6 +742,69 @@ function generateStrategy() {
 function generateCesium() {
   const ep = cesiumEndpoint.value || 'crash'
   runCommandCenterAction(`api/run_3d_cesium?end_point=${encodeURIComponent(ep)}`, '3d')
+}
+
+async function triggerReplan() {
+  deductionPending.value = true
+  deductionStatus.value = '规划中...'
+  try {
+    const params = new URLSearchParams({
+      end_point: deductionScene.value,
+      ugv_block: deductionObstacle.value,
+      uav_smoke: deductionObstacle.value,
+      strategy: deductionStrategy.value,
+      compare: '1',
+    })
+    const resp = await fetch(buildCommandCenterUrl(`api/run_3d_strategy?${params}`, commandCenterBaseUrl.value))
+    if (!resp.ok) throw new Error('HTTP ' + resp.status)
+    deductionStatus.value = '规划完成'
+    refreshFrames()
+  } catch (e) {
+    deductionStatus.value = '规划失败: ' + e.message
+  } finally {
+    deductionPending.value = false
+  }
+}
+
+async function triggerMultiAgent() {
+  deductionPending.value = true
+  deductionStatus.value = '装备启动中...'
+  try {
+    const params = new URLSearchParams({
+      end_point: deductionScene.value,
+      ugv_block: deductionObstacle.value,
+      uav_smoke: deductionObstacle.value,
+      strategy: deductionStrategy.value,
+    })
+    const resp = await fetch(buildCommandCenterUrl(`api/run_multi_agent?${params}`, commandCenterBaseUrl.value))
+    if (!resp.ok) throw new Error('HTTP ' + resp.status)
+    deductionStatus.value = '装备已启动'
+    refreshFrames()
+  } catch (e) {
+    deductionStatus.value = '启动失败: ' + e.message
+  } finally {
+    deductionPending.value = false
+  }
+}
+
+async function triggerCesiumUGVUAV() {
+  cesiumPending.value = true; cesiumStatus.value = '无人装备出动中...'
+  try {
+    const r = await fetch(buildCommandCenterUrl(`api/run_3d_cesium?end_point=${cesiumScene.value}`, commandCenterBaseUrl.value))
+    if (!r.ok) throw new Error('HTTP ' + r.status)
+    cesiumStatus.value = '已出动'
+    cesiumFrameSrc.value = ''; setTimeout(() => refreshFrames(), 800)
+  } catch (e) { cesiumStatus.value = '失败: ' + e.message } finally { cesiumPending.value = false }
+}
+
+async function triggerCesiumMultiAgent() {
+  cesiumPending.value = true; cesiumStatus.value = '救援装备出动中...'
+  try {
+    const r = await fetch(buildCommandCenterUrl(`api/run_multi_agent?end_point=${cesiumScene.value}&strategy=rcd`, commandCenterBaseUrl.value))
+    if (!r.ok) throw new Error('HTTP ' + r.status)
+    cesiumStatus.value = '已出动'
+    cesiumFrameSrc.value = ''; setTimeout(() => refreshFrames(), 1000)
+  } catch (e) { cesiumStatus.value = '失败: ' + e.message } finally { cesiumPending.value = false }
 }
 
 function saveStreamlitUrl() {
@@ -734,6 +927,77 @@ onUnmounted(() => {
 
 .pending {
   color: #facc15;
+}
+
+.deduction-controls {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ctrl-title {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #93c5fd;
+}
+.ctrl-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ctrl-field span {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+.ctrl-select {
+  padding: 7px 28px 7px 10px;
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 6px;
+  background: rgba(2, 10, 22, 0.7);
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+}
+.ctrl-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.ctrl-btn {
+  flex: 1;
+  min-height: 36px;
+  border-radius: 8px;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ctrl-btn.blue {
+  background: linear-gradient(to right, #2563eb, #38bdf8);
+  color: #fff;
+}
+.ctrl-btn.green {
+  background: linear-gradient(to right, #059669, #10b981);
+  color: #fff;
+}
+.ctrl-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ctrl-status {
+  margin: 0;
+  font-size: 11px;
+  color: #fbbf24;
+  text-align: center;
 }
 
 .content {

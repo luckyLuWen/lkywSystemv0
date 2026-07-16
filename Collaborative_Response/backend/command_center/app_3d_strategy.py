@@ -12,6 +12,7 @@ from scipy.interpolate import splprep, splev
 import json
 import argparse
 from graph_utils import load_drive_graph_from_local_or_osm, load_drive_graph_bbox
+from rescue_points import get_rescue_points, log_selection, get_agent_pois, AGENT_CONFIG
 
 warnings.filterwarnings("ignore")
 
@@ -25,25 +26,18 @@ parser.add_argument('--end_point', type=str, default='leak', choices=['leak', 'c
                     help='终点选择: leak=油罐车泄露现场, crash=货车追尾现场')
 parser.add_argument('--compare', type=int, default=0,
                     help='是否开启对比模式: 1=同时生成基线算法路径进行对比')
+parser.add_argument('--multi_agent', type=int, default=0,
+                    help='是否开启五类救援智能体: 1=查询POI并规划五条救援路径')
 args = parser.parse_args()
 
 UGV_BLOCKED = (args.ugv_block == 1)
 UAV_SMOKE = (args.uav_smoke == 1)
 SYNC_STRATEGY = str(args.strategy).strip().lower()
 COMPARE = (args.compare == 1)
+MULTI_AGENT = (args.multi_agent == 1)
 
 CAR_SPEED = 22.22  # 80 km/h (长途救援真实车速)
 UAV_SPEED = 20.0   # 20 m/s (大型救援无人机)
-
-# 起点按终点分别配置：不同灾情场景由最近的消防站出警
-START_POINTS = {
-    'leak':  (30.5158, 114.9238),                         # 黄冈市黄州区路口镇专职消防队
-    'crash': (30.3354, 113.4275),                         # 仙桃市毛嘴镇消防站
-}
-START_POINT_NAMES = {
-    'leak':  '黄冈市黄州区路口镇专职消防队',
-    'crash': '仙桃市毛嘴镇消防站',
-}
 
 END_POINTS = {
     'leak':  (30.63101, 114.89209),                       # 油罐车泄漏现场
@@ -53,65 +47,88 @@ END_POINT_NAMES = {
     'leak':  '市区道路-油罐车泄漏现场',
     'crash': '高速公路-货车追尾现场',
 }
-START_POINT = START_POINTS[args.end_point]
-START_POINT_NAME = START_POINT_NAMES[args.end_point]
 END_POINT = END_POINTS[args.end_point]
 END_POINT_NAME = END_POINT_NAMES[args.end_point]
 
-# 禁飞区 & 拥堵区 — 双层管制体系（核心区+缓冲区），含完整元数据
+# 从数据库读取当前场景的候选救援点，自动选取距事故点最近的作为起点
+ALL_CANDIDATE_POINTS = get_rescue_points(args.end_point)
+if not ALL_CANDIDATE_POINTS:
+    raise RuntimeError(f"场景 '{args.end_point}' 没有救援点数据，请先运行 rescue_points.py 初始化数据库")
+
+# 计算每个候选点到事故终点的直线距离，按距离升序排列
+for p in ALL_CANDIDATE_POINTS:
+    p['dist_to_accident_km'] = round(
+        geodesic((p['lat'], p['lon']), END_POINT).kilometers, 2
+    )
+ALL_CANDIDATE_POINTS.sort(key=lambda p: p['dist_to_accident_km'])
+
+# 选取最近点作为最优起点
+best_point = ALL_CANDIDATE_POINTS[0]
+START_POINT = (best_point['lat'], best_point['lon'])
+START_POINT_NAME = best_point['name']
+log_selection(args.end_point, best_point['id'], f"最近距离 {best_point['dist_to_accident_km']} km")
+
+print(f"[救援点选择] 场景={args.end_point}, 候选={len(ALL_CANDIDATE_POINTS)}个")
+for i, p in enumerate(ALL_CANDIDATE_POINTS):
+    marker = "★ 选中" if i == 0 else f"  #{i}"
+    print(f"  {marker} {p['name']} ({p['lat']}, {p['lon']}) — {p['dist_to_accident_km']} km")
+
+# 从数据库加载五类救援智能体 POI（仅标记，无路径）
+AGENT_POIS = get_agent_pois(args.end_point)
+for p in AGENT_POIS:
+    p['dist_km'] = round(geodesic((p['lat'], p['lon']), END_POINT).kilometers, 2)
+print(f"[智能体POI] 场景={args.end_point}, 共 {len(AGENT_POIS)} 个智能体站点")
+
+# 禁飞区 & 拥堵区 — 紧凑尺寸（~500m），精确位于路径中点
 NFZ_CONFIG = {
     'leak': {
-        'nfz': [{  # 核心禁飞区：黄冈城铁站沿线（铁路走廊不规则多边形）
+        'nfz': [{  # 限飞区 ~300m，位于救援起点→事故点航线中点(30.634,114.885)
             'polygon': [
-                [30.555, 114.890], [30.559, 114.896], [30.564, 114.893],
-                [30.571, 114.898], [30.576, 114.904], [30.573, 114.910],
-                [30.567, 114.913], [30.560, 114.909], [30.554, 114.913],
-                [30.549, 114.907], [30.550, 114.901], [30.552, 114.895],
+                [30.633, 114.883], [30.634, 114.887], [30.636, 114.886],
+                [30.637, 114.884], [30.635, 114.882], [30.633, 114.882],
             ],
-            'name': '黄冈城铁站沿线限飞区',
+            'name': '团风城区低空限飞区',
             'level': 'RESTRICTED',
-            'ceiling': '300m AGL',
-            'reason': '铁路枢纽安全保障',
-            'authority': '黄冈市应急管理局',
+            'ceiling': '200m AGL',
+            'reason': '城区人口密集区低空安全',
+            'authority': '团风县应急管理局',
             'effective': '全时段',
-        }],
-        'buffer': [{  # 缓冲区（核心区外扩200-400m）
-            'polygon': [
-                [30.553, 114.887], [30.557, 114.894], [30.562, 114.891],
-                [30.569, 114.896], [30.575, 114.902], [30.573, 114.909],
-                [30.567, 114.912], [30.561, 114.908], [30.556, 114.912],
-                [30.551, 114.908], [30.552, 114.902], [30.554, 114.896],
-            ],
-        }],
-        'congestion': [  # 黄州城区早高峰拥堵区（覆盖路径40-55%段）
-            [30.540, 114.912], [30.548, 114.920], [30.558, 114.916],
-            [30.555, 114.905], [30.548, 114.900],
-        ],
-        'congestion_name': '黄州城区早高峰拥堵区',
-        'congestion_info': '07:00-09:00 常态拥堵 | 通行延时+40%',
-    },
-    'crash': {
-        'nfz': [{  # 三伏潭镇北侧限飞区
-            'polygon': [
-                [30.355, 113.270], [30.360, 113.278], [30.366, 113.275],
-                [30.368, 113.266], [30.364, 113.258], [30.357, 113.260],
-            ],
-            'name': '三伏潭镇限飞区',
-            'level': 'RESTRICTED', 'ceiling': '200m AGL',
-            'reason': '人口密集区低空安全', 'authority': '仙桃市应急管理局', 'effective': '全时段',
         }],
         'buffer': [{  # 缓冲区
             'polygon': [
-                [30.352, 113.272], [30.358, 113.282], [30.368, 113.278],
-                [30.371, 113.267], [30.366, 113.255], [30.355, 113.257],
+                [30.632, 114.882], [30.633, 114.888], [30.636, 114.887],
+                [30.638, 114.883], [30.636, 114.881], [30.632, 114.881],
             ],
         }],
-        'congestion': [  # 胡场镇路段拥堵区（偏南，非必经之路）
-            [30.355, 113.218], [30.362, 113.226], [30.368, 113.221],
-            [30.365, 113.212], [30.358, 113.210],
+        'congestion': [  # 施工拥堵 ~250m，位于路径中点
+            [30.633, 114.883], [30.634, 114.886], [30.636, 114.885],
+            [30.637, 114.884], [30.635, 114.882], [30.633, 114.882],
         ],
-        'congestion_name': '胡场镇路段拥堵区',
-        'congestion_info': '集镇路段 08:00-18:00 | 通行延时+50%',
+        'congestion_name': '团风大道施工拥堵区',
+        'congestion_info': '道路半幅封闭施工 | 通行延时+40%',
+    },
+    'crash': {
+        'nfz': [{  # 限飞区 ~1km，位于三伏潭→事故点航线中点，距事故约5km
+            'polygon': [
+                [30.348, 113.147], [30.352, 113.158], [30.358, 113.155],
+                [30.362, 113.149], [30.358, 113.140], [30.350, 113.140],
+            ],
+            'name': '巡航空域限飞区',
+            'level': 'RESTRICTED', 'ceiling': '200m AGL',
+            'reason': '军事训练空域管制', 'authority': '仙桃市应急管理局', 'effective': '全时段',
+        }],
+        'buffer': [{  # 缓冲区
+            'polygon': [
+                [30.346, 113.144], [30.350, 113.160], [30.359, 113.157],
+                [30.364, 113.148], [30.360, 113.138], [30.349, 113.138],
+            ],
+        }],
+        'congestion': [  # G50高速入口匝道施工 ~300m，仅堵入口
+            [30.356, 113.148], [30.358, 113.152], [30.360, 113.150],
+            [30.359, 113.146], [30.357, 113.145],
+        ],
+        'congestion_name': 'G50高速入口匝道施工',
+        'congestion_info': '入口匝道半幅封闭 | 通行延时+30%',
     },
 }
 NFZ_LIST = NFZ_CONFIG[args.end_point]['nfz']
@@ -125,10 +142,10 @@ ANIMATION_INTERVAL = 1.0
 def calculate_distance(lat1, lon1, lat2, lon2):
     return geodesic((lat1, lon1), (lat2, lon2)).meters
 
-# 统一路网 bbox：覆盖全部起点+终点的矩形走廊，比圆形区域小 70%+，避免切换终点时重复下载
+# 统一路网 bbox：覆盖当前场景所有候选点+终点的矩形走廊
 _PAD = 0.05  # 每边约 5km 缓冲
-_ALL_LATS = [p[0] for p in START_POINTS.values()] + [p[0] for p in END_POINTS.values()]
-_ALL_LONS = [p[1] for p in START_POINTS.values()] + [p[1] for p in END_POINTS.values()]
+_ALL_LATS = [p['lat'] for p in ALL_CANDIDATE_POINTS] + [END_POINT[0]]
+_ALL_LONS = [p['lon'] for p in ALL_CANDIDATE_POINTS] + [END_POINT[1]]
 UNIFIED_BBOX = (
     max(_ALL_LATS) + _PAD,   # north
     min(_ALL_LATS) - _PAD,   # south
@@ -289,21 +306,12 @@ def generate_car_path_bfs(G=None):
             straight_dist = calculate_distance(START_POINT[0], START_POINT[1], END_POINT[0], END_POINT[1])
             fetch_radius = max(int(straight_dist * 1.15), 5000)
             G = load_drive_graph_from_local_or_osm(
-                START_POINT, dist=fetch_radius, network_type='drive', simplify=False,
+                ((START_POINT[0] + END_POINT[0]) / 2, (START_POINT[1] + END_POINT[1]) / 2),
+                dist=fetch_radius, network_type='drive', simplify=False,
             )
-        lats, lons = [p[0] for p in CONGESTION_ZONE_POLYGON], [p[1] for p in CONGESTION_ZONE_POLYGON]
-        min_lat, max_lat, min_lon, max_lon = min(lats), max(lats), min(lons), max(lons)
-        blocked_edges = set()
-        for u, v, k, data in G.edges(keys=True, data=True):
-            u_node, v_node = G.nodes[u], G.nodes[v]
-            if UGV_BLOCKED and ((min_lat <= u_node['y'] <= max_lat and min_lon <= u_node['x'] <= max_lon) or \
-               (min_lat <= v_node['y'] <= max_lat and min_lon <= v_node['x'] <= max_lon)):
-                blocked_edges.add((u, v))
-        if UGV_BLOCKED:
-            G.remove_edges_from(blocked_edges)
         orig = ox.nearest_nodes(G, START_POINT[1], START_POINT[0])
         dest = ox.nearest_nodes(G, END_POINT[1], END_POINT[0])
-        route = nx.shortest_path(G, orig, dest, weight=None)  # BFS: weight=None = 所有边权重为1
+        route = nx.shortest_path(G, orig, dest, weight=None)
         path_coords = [(G.nodes[n]['y'], G.nodes[n]['x']) for n in route]
         if path_coords[0][0] != START_POINT[0]: path_coords.insert(0, START_POINT)
         # 确保终点精确对齐到事故点坐标，避免无人机/无人车终点偏离
@@ -316,7 +324,10 @@ def generate_car_path_bfs(G=None):
         df['time_s'] = np.linspace(0, total_time, len(df))
         df['timestamp'] = START_TIME + pd.to_timedelta(df['time_s'], unit='s')
         return df, total_time
-    except Exception: return pd.DataFrame([START_POINT, END_POINT], columns=['lat', 'lon']), 100
+    except Exception:
+        df = pd.DataFrame([START_POINT, END_POINT], columns=['lat', 'lon'])
+        df['time_s'] = [0, 100]
+        return df, 100
 
 def generate_uav_path_greedy():
     """基线算法：Greedy Best-First — 每次只朝目标方向移动，不考虑全局代价，对比 A* 最优路径"""
@@ -327,23 +338,7 @@ def generate_uav_path_greedy():
     max_lon = max(START_POINT[1], END_POINT[1]) + pad
     rows = int(calculate_distance(min_lat, min_lon, max_lat, min_lon) / GRID_RES)
     cols = int(calculate_distance(min_lat, min_lon, min_lat, max_lon) / GRID_RES)
-    grid = np.zeros((rows, cols), dtype=int)
-    if UAV_SMOKE:
-        for nfz in NFZ_LIST + NEW_NFZ_LIST:
-            if 'polygon' in nfz:
-                poly = nfz['polygon']
-                for ri in range(rows):
-                    for ci in range(cols):
-                        cell_lat = min_lat + (ri / rows) * (max_lat - min_lat)
-                        cell_lon = min_lon + (ci / cols) * (max_lon - min_lon)
-                        if _point_in_polygon(cell_lat, cell_lon, poly):
-                            grid[ri][ci] = 1
-            else:
-                r = int((nfz['center'][0] - min_lat) / (max_lat - min_lat) * rows)
-                c = int((nfz['center'][1] - min_lon) / (max_lon - min_lon) * cols)
-                rad = int(nfz['radius'] * 1.1 / GRID_RES)
-                y, x = np.ogrid[-r:rows-r, -c:cols-c]
-                grid[x*x + y*y <= rad*rad] = 1
+    grid = np.zeros((rows, cols), dtype=int)  # Greedy 不避障，直接穿行禁飞区
     start_node = (min(rows-1, int((START_POINT[0]-min_lat)/(max_lat-min_lat)*rows)),
                   min(cols-1, int((START_POINT[1]-min_lon)/(max_lon-min_lon)*cols)))
     end_node = (min(rows-1, int((END_POINT[0]-min_lat)/(max_lat-min_lat)*rows)),
@@ -389,9 +384,11 @@ def generate_uav_path_greedy():
 # ==================== 4. 生成 Folium ====================
 def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, delay,
                          output_filename='2d_deduction.html',
-                         car_bfs_df=None, car_bfs_interp=None, uav_greedy_df=None, uav_greedy_interp=None):
+                         car_bfs_df=None, car_bfs_interp=None, uav_greedy_df=None, uav_greedy_interp=None,
+                         multi_agent_data=None):
     map_center = [(START_POINT[0] + END_POINT[0]) / 2, (START_POINT[1] + END_POINT[1]) / 2]
-    m = folium.Map(location=map_center, zoom_start=11, tiles="OpenStreetMap", detect_retina=True, control_scale=True)
+    m = folium.Map(location=map_center, zoom_start=11, tiles=None, detect_retina=True, control_scale=True)
+    folium.TileLayer(tiles='OpenStreetMap', name='电子地图', show=True).add_to(m)
 
     # --- 添加城市边界遮罩 ---
     if args.end_point == 'crash':
@@ -571,8 +568,75 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
             tooltip=f'&#x1F6D1; {cong_name} | {cong_info}'
         ).add_to(m)
 
-    folium.Marker(START_POINT, icon=folium.Icon(color='green', icon='home'), tooltip=f'起点：{START_POINT_NAME}').add_to(m)
+    # 渲染所有候选救援点：选中 = 绿色，未选中 = 灰色
+    for p in ALL_CANDIDATE_POINTS:
+        is_selected = (p['name'] == START_POINT_NAME)
+        color = 'green' if is_selected else 'lightgray'
+        icon_type = 'home' if is_selected else 'flag'
+        label = '★ 选中起点' if is_selected else f"备选 #{p.get('dist_to_accident_km', '?')} km"
+        tooltip = f"{label}：{p['name']}"
+        folium.Marker(
+            (p['lat'], p['lon']),
+            icon=folium.Icon(color=color, icon=icon_type),
+            tooltip=tooltip,
+        ).add_to(m)
     folium.Marker(END_POINT, icon=folium.Icon(color='red', icon='fire'), tooltip=f'终点：{END_POINT_NAME}').add_to(m)
+
+    # ===== 五类救援智能体 POI（按类型分组，支持图层开关） =====
+    agent_icons_map = {
+        'medical': 'plus', 'fire': 'fire', 'police': 'flag',
+        'hazmat': 'flash', 'road': 'wrench',
+    }
+    # 构建 "选中POI名称 → 路径info" 的快速查找
+    _selected_poi_names = set()
+    _agent_path_by_name = {}
+    if multi_agent_data:
+        for akey, ainfo in multi_agent_data.items():
+            if ainfo.get('poi') and ainfo.get('path'):
+                nm = ainfo['poi']['name']
+                _selected_poi_names.add(nm)
+                _agent_path_by_name[nm] = ainfo
+
+    # 按类型分组 POI
+    from collections import defaultdict
+    _pois_by_type = defaultdict(list)
+    for p in AGENT_POIS:
+        _pois_by_type[p.get('agent_key', 'other')].append(p)
+
+    # 每种类型对应的 Folium 亮/暗颜色
+    _type_colors = {
+        'medical': ('green', 'lightgreen'),
+        'fire':    ('orange', 'beige'),
+        'police':  ('blue', 'lightblue'),
+        'hazmat':  ('purple', 'pink'),
+        'road':    ('gray', 'lightgray'),
+    }
+
+    # 每种类型一个 FeatureGroup
+    for agent_key, cfg in AGENT_CONFIG.items():
+        pois = _pois_by_type.get(agent_key, [])
+        if not pois:
+            continue
+        fg = folium.FeatureGroup(name=f"{cfg['label']}站点", show=True).add_to(m)
+        bright, dim = _type_colors.get(agent_key, ('gray', 'lightgray'))
+        icon_key = agent_icons_map.get(agent_key, 'flag')
+
+        for p in pois:
+            is_selected = p['name'] in _selected_poi_names
+            marker_color = bright if not multi_agent_data else (bright if is_selected else 'lightgray')
+            if is_selected:
+                tooltip = f"★ {cfg['label']}：{p['name']}（{p['dist_km']} km）— 已启动"
+            else:
+                tooltip = f"{cfg['label']}：{p['name']}（{p['dist_km']} km）— 备选"
+            folium.Marker(
+                (p['lat'], p['lon']),
+                icon=folium.Icon(color=marker_color, icon=icon_key),
+                tooltip=tooltip,
+            ).add_to(fg)
+
+        # 静态路径线取消（由 TimestampedGeoJson 动画动态绘制，避免重复杂乱）
+
+    folium.LayerControl(collapsed=True).add_to(m)
 
     # 当前算法 — 车：蓝色实线 / 飞机：紫色虚线
     folium.PolyLine(car_interp[['lat', 'lon']].values.tolist(), color='#0000ff', weight=5, opacity=0.7).add_to(car_path_group)
@@ -584,236 +648,192 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
     if COMPARE and uav_greedy_interp is not None:
         folium.PolyLine(uav_greedy_interp[['lat', 'lon']].values.tolist(), color='#f97316', weight=3, opacity=0.6, dash_array='8, 6').add_to(uav_base_group)
 
-    car_feature = {'type': 'Feature', 'geometry': {'type': 'LineString', 'coordinates': list(map(list, car_interp[['lon', 'lat']].values))}, 'properties': {'times': list(car_interp['timestamp'].dt.strftime('%Y-%m-%dT%H:%M:%S')), 'style': {'color': '#0000ff', 'weight': 5}, 'icon': 'circle', 'iconstyle': {'fillColor': '#0000ff', 'radius': 6}}}
-    uav_feature = {'type': 'Feature', 'geometry': {'type': 'LineString', 'coordinates': list(map(list, uav_interp[['lon', 'lat']].values))}, 'properties': {'times': list(uav_interp['timestamp'].dt.strftime('%Y-%m-%dT%H:%M:%S')), 'style': {'color': '#ff00ff', 'weight': 3}, 'icon': 'circle', 'iconstyle': {'fillColor': '#ff00ff', 'radius': 6}}}
-    
-    duration = int((max(car_interp['timestamp'].max(), uav_interp['timestamp'].max()) - START_TIME).total_seconds())
-    
-    folium.plugins.TimestampedGeoJson(
-        {'type': 'FeatureCollection', 'features': [car_feature, uav_feature]}, 
-        period='PT1S', 
-        add_last_point=True, 
-        duration=f"PT{duration}S", 
-        transition_time=1000, 
-        loop=False, 
-        auto_play=True
-    ).add_to(m)
+    # 动画推演：多智能体模式下显示五类救援路径，否则显示 UGV+UAV
+    if multi_agent_data:
+        features = []
+        agent_feature_colors = {
+            'medical': '#22c55e', 'fire': '#f97316', 'police': '#3b82f6',
+            'hazmat': '#a855f7', 'road': '#94a3b8',
+        }
+        for agent_key, ainfo in multi_agent_data.items():
+            path = ainfo.get('path')
+            if not path:
+                continue
+            color = agent_feature_colors.get(agent_key, '#888')
+            coords = [[lon, lat] for lat, lon in path]
+            full_dur = max(car_interp['timestamp'].max(), uav_interp['timestamp'].max()) - START_TIME
+            steps = len(coords)
+            times = [(START_TIME + pd.Timedelta(seconds=i / max(steps-1, 1) * full_dur.total_seconds())).strftime('%Y-%m-%dT%H:%M:%S') for i in range(steps)]
+            features.append({
+                'type': 'Feature',
+                'geometry': {'type': 'LineString', 'coordinates': coords},
+                'properties': {
+                    'times': times,
+                    'style': {'color': color, 'weight': 5},
+                    'icon': 'circle', 'iconstyle': {'fillColor': color, 'radius': 6}
+                }
+            })
+        duration = int(full_dur.total_seconds())
+        folium.plugins.TimestampedGeoJson(
+            {'type': 'FeatureCollection', 'features': features},
+            period='PT1S', add_last_point=True, duration=f"PT{duration}S",
+            transition_time=1000, loop=False, auto_play=True
+        ).add_to(m)
+    else:
+        car_feature = {'type': 'Feature', 'geometry': {'type': 'LineString', 'coordinates': list(map(list, car_interp[['lon', 'lat']].values))}, 'properties': {'times': list(car_interp['timestamp'].dt.strftime('%Y-%m-%dT%H:%M:%S')), 'style': {'color': '#0000ff', 'weight': 5}, 'icon': 'circle', 'iconstyle': {'fillColor': '#0000ff', 'radius': 6}}}
+        uav_feature = {'type': 'Feature', 'geometry': {'type': 'LineString', 'coordinates': list(map(list, uav_interp[['lon', 'lat']].values))}, 'properties': {'times': list(uav_interp['timestamp'].dt.strftime('%Y-%m-%dT%H:%M:%S')), 'style': {'color': '#ff00ff', 'weight': 3}, 'icon': 'circle', 'iconstyle': {'fillColor': '#ff00ff', 'radius': 6}}}
+        duration = int((max(car_interp['timestamp'].max(), uav_interp['timestamp'].max()) - START_TIME).total_seconds())
+        folium.plugins.TimestampedGeoJson(
+            {'type': 'FeatureCollection', 'features': [car_feature, uav_feature]},
+            period='PT1S', add_last_point=True, duration=f"PT{duration}S",
+            transition_time=1000, loop=False, auto_play=True
+        ).add_to(m)
 
-    # 效能评估报告面板 (左上角)
+    # 协同效能评估面板 (左上角) — 全中文标注，含完整路径参数
     time_diff = abs(car_df['time_s'].iloc[-1] - uav_df['time_s'].iloc[-1])
-    if SYNC_STRATEGY == 'independent': strategy_name = "极速独立模式 (ISD)"
-    elif SYNC_STRATEGY == 'wait': strategy_name = "基地待命模式 (CAS)"
-    else: strategy_name = "RCD 逆向推演 (本文)"
+    if SYNC_STRATEGY == 'independent': strategy_name = "极速独立模式"
+    elif SYNC_STRATEGY == 'wait': strategy_name = "基地待命模式"
+    else: strategy_name = "逆向推演模式"
 
     car_dist = car_df['dist'].sum() / 1000 if 'dist' in car_df.columns else 0
     uav_dist = sum(calculate_distance(uav_df.iloc[i-1]['lat'], uav_df.iloc[i-1]['lon'], uav_df.iloc[i]['lat'], uav_df.iloc[i]['lon']) for i in range(1, len(uav_df))) / 1000
+    car_speed_kmh = CAR_SPEED * 3.6
+    uav_energy = uav_dist * UAV_SPEED * 3.6 / 1000
 
     compare_rows = ''
     if COMPARE:
         bfs_dist = car_bfs_df['dist'].sum() / 1000 if car_bfs_df is not None and 'dist' in car_bfs_df.columns else 0
         greedy_dist = sum(calculate_distance(uav_greedy_df.iloc[i-1]['lat'], uav_greedy_df.iloc[i-1]['lon'], uav_greedy_df.iloc[i]['lat'], uav_greedy_df.iloc[i]['lon']) for i in range(1, len(uav_greedy_df))) / 1000 if uav_greedy_df is not None and len(uav_greedy_df) > 1 else 0
-        car_saving_pct = ((bfs_dist - car_dist) / bfs_dist * 100) if bfs_dist > 0 else 0
-        uav_saving_pct = ((greedy_dist - uav_dist) / greedy_dist * 100) if greedy_dist > 0 else 0
         car_saving_km = bfs_dist - car_dist
         uav_saving_km = greedy_dist - uav_dist
+        car_saving_pct = (car_saving_km / bfs_dist * 100) if bfs_dist > 0 else 0
+        uav_saving_pct = (uav_saving_km / greedy_dist * 100) if greedy_dist > 0 else 0
         compare_rows = f'''
-            <hr style="margin: 10px 0; border: 0; border-top: 1px solid rgba(0, 229, 255, 0.2);">
-            <div style="background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 6px; padding: 10px 12px; margin-bottom: 6px;">
-                <div style="font-size: 12px; font-weight: 700; color: #00e5ff; text-align: center; margin-bottom: 10px;">
-                    ★ 算法优越性分析 ★
+            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(96,165,250,0.12);">
+                <div style="font-size: 11px; font-weight: 600; color: #a78bfa; margin-bottom: 6px;">路径算法优化对比</div>
+                <div style="font-size: 10px; margin-bottom: 4px; background: rgba(0,0,0,0.15); border-radius: 4px; padding: 5px 8px;">
+                    <div style="color: #94a3b8; margin-bottom: 3px;">无人车（地面道路）</div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #fdba74;">广度优先搜索</span><span style="color: #94a3b8;">{bfs_dist:.1f} km</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #93c5fd;">加权最短路径</span><span style="color: #94a3b8;">{car_dist:.1f} km</span>
+                    </div>
+                    <div style="color: #4ade80; text-align: center; margin-top: 2px;">▼ 优化 {car_saving_km:.1f} km（缩短 {car_saving_pct:.1f}%）</div>
                 </div>
-
-                <!-- UGV 对比 -->
-                <div style="margin-bottom: 8px;">
-                    <div style="font-size: 11px; font-weight: 600; color: #94a3b8; margin-bottom: 5px;">
-                        <span style="display:inline-block;width:12px;height:12px;background:#f97316;border-radius:3px;margin-right:6px;vertical-align:middle;"></span>
-                        <span style="color:#fdba74;">基准算法</span>
-                        <span style="float:right;color:#fdba74;">BFS: {bfs_dist:.1f} km</span>
+                <div style="font-size: 10px; background: rgba(0,0,0,0.15); border-radius: 4px; padding: 5px 8px;">
+                    <div style="color: #94a3b8; margin-bottom: 3px;">无人机（空中航线）</div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #fdba74;">贪心搜索</span><span style="color: #94a3b8;">{greedy_dist:.1f} km</span>
                     </div>
-                    <div style="font-size: 11px; font-weight: 600; color: #94a3b8;">
-                        <span style="display:inline-block;width:12px;height:12px;background:#2563eb;border-radius:3px;margin-right:6px;vertical-align:middle;"></span>
-                        <span style="color:#93c5fd;">本文算法</span>
-                        <span style="float:right;color:#93c5fd;">Dijkstra: {car_dist:.1f} km</span>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #93c5fd;">全局最优搜索</span><span style="color: #94a3b8;">{uav_dist:.1f} km</span>
                     </div>
-                    <div style="background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 4px; padding: 3px 8px; margin-top: 4px; text-align: center;">
-                        <span style="font-size: 11px; font-weight: 700; color: #4ade80;">
-                            ▼ 车辆路径优化 <b>{car_saving_km:.1f} km</b>（缩短 <b>{car_saving_pct:.1f}%</b>）
-                        </span>
-                    </div>
-                </div>
-
-                <!-- UAV 对比 -->
-                <div>
-                    <div style="font-size: 11px; font-weight: 600; color: #94a3b8; margin-bottom: 5px;">
-                        <span style="display:inline-block;width:12px;height:12px;background:#f97316;border-radius:3px;margin-right:6px;vertical-align:middle;"></span>
-                        <span style="color:#fdba74;">基准算法</span>
-                        <span style="float:right;color:#fdba74;">Greedy: {greedy_dist:.1f} km</span>
-                    </div>
-                    <div style="font-size: 11px; font-weight: 600; color: #94a3b8;">
-                        <span style="display:inline-block;width:12px;height:12px;background:#2563eb;border-radius:3px;margin-right:6px;vertical-align:middle;"></span>
-                        <span style="color:#93c5fd;">本文算法</span>
-                        <span style="float:right;color:#93c5fd;">A*: {uav_dist:.1f} km</span>
-                    </div>
-                    <div style="background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 4px; padding: 3px 8px; margin-top: 4px; text-align: center;">
-                        <span style="font-size: 11px; font-weight: 700; color: #4ade80;">
-                            ▼ 无人机路径优化 <b>{uav_saving_km:.1f} km</b>（缩短 <b>{uav_saving_pct:.1f}%</b>）
-                        </span>
-                    </div>
-                </div>
-
-                <!-- 总结 -->
-                <div style="background: rgba(34, 197, 94, 0.3); border: 1px solid rgba(34, 197, 94, 0.5); border-radius: 4px; padding: 5px 10px; margin-top: 8px; text-align: center;">
-                    <span style="font-size: 11px; font-weight: 700; color: #dcfce7;">
-                        综合路径总节省 <b>{(car_saving_km + uav_saving_km):.1f} km</b>（平均优化 <b>{((car_saving_pct + uav_saving_pct) / 2):.1f}%</b>）
-                    </span>
+                    <div style="color: #4ade80; text-align: center; margin-top: 2px;">▼ 优化 {uav_saving_km:.1f} km（缩短 {uav_saving_pct:.1f}%）</div>
                 </div>
             </div>
         '''
 
     ui_html = f'''
-    <div style="position: fixed; top: 110px; left: 40px; z-index: 1000; width: 300px; 
-                background: rgba(6, 22, 40, 0.85); padding: 15px; border-radius: 8px; 
-                border: 1px solid rgba(0, 229, 255, 0.4); backdrop-filter: blur(8px); 
-                box-shadow: 0 4px 20px rgba(0,0,0,0.4); font-family: 'Microsoft YaHei', sans-serif; color: #fff;">
-        <h4 style="margin: 0 0 12px; color: #00e5ff; text-align: center; border-bottom: 1px solid rgba(0, 229, 255, 0.2); padding-bottom: 8px;">ISD/CAS/RCD 效能对比</h4>
-        <div style="font-size: 13px; line-height: 1.6;">
-            <div style="display: flex; justify-content: space-between;"><span>协同机制:</span> <b style="color: #00e5ff;">{strategy_name}</b></div>
-            <div style="display: flex; justify-content: space-between; margin-top: 4px;"><span>车辆(UGV)耗时:</span> <b style="color: #e6faff;">{car_df['time_s'].iloc[-1]/60:.1f} min</b></div>
-            <div style="display: flex; justify-content: space-between; margin-top: 4px;"><span>无人机(UAV)飞行:</span> <b style="color: #e6faff;">{(uav_df['time_s'].iloc[-1]-delay)/60:.1f} min</b></div>
-            <div style="display: flex; justify-content: space-between; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 4px; padding: 2px 6px; margin-top: 4px;">
-                <span>无人机地面待机:</span> <b style="color:#fbbf24;">{delay:.1f} s</b>
+    <div style="position: fixed; top: 96px; left: 20px; z-index: 1000; width: 300px;
+                background: rgba(10, 18, 32, 0.82); padding: 14px 16px; border-radius: 10px;
+                border: 1px solid rgba(96, 165, 250, 0.2); backdrop-filter: blur(12px);
+                box-shadow: 0 2px 20px rgba(0,0,0,0.4); font-family: 'Microsoft YaHei', sans-serif; color: #e2e8f0;">
+        <div style="font-size: 14px; font-weight: 700; color: #93c5fd; margin-bottom: 10px;
+                    letter-spacing: 1px; text-align: center;">协同效能评估</div>
+        <!-- 核心指标 -->
+        <div style="font-size: 12px; line-height: 1.8;">
+            <div style="display: flex; justify-content: space-between; padding: 2px 0;">
+                <span style="color: #94a3b8;">协同策略</span>
+                <b style="color: #60a5fa;">{strategy_name}</b>
             </div>
-            <hr style="margin: 10px 0; border: 0; border-top: 1px solid rgba(0, 229, 255, 0.2);">
-            <div style="display: flex; justify-content: space-between; color: #fb7185;"><span>协同终端时间差:</span> <b>{time_diff:.1f} s</b></div>
-            {compare_rows}
+            <div style="display: flex; justify-content: space-between; padding: 2px 0;">
+                <span style="color: #94a3b8;">无人车行驶耗时</span>
+                <b style="color: #e2e8f0;">{car_df['time_s'].iloc[-1]/60:.1f} 分钟</b>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 2px 0;">
+                <span style="color: #94a3b8;">无人机飞行耗时</span>
+                <b style="color: #e2e8f0;">{(uav_df['time_s'].iloc[-1]-delay)/60:.1f} 分钟</b>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 2px 6px; margin: 3px 0;
+                        background: rgba(245,158,11,0.1); border-radius: 4px;">
+                <span style="color: #fbbf24;">空地协同等待</span>
+                <b style="color: #fbbf24;">{delay:.1f} 秒</b>
+            </div>
         </div>
+        <!-- 路径参数 -->
+        <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(96,165,250,0.1); font-size: 11px; line-height: 1.7;">
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #94a3b8;">无人车行驶距离</span><span style="color: #c4b5fd;">{car_dist:.1f} km</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #94a3b8;">无人机飞行距离</span><span style="color: #c4b5fd;">{uav_dist:.1f} km</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #94a3b8;">车辆巡航速度</span><span style="color: #94a3b8;">{car_speed_kmh:.0f} km/h</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #94a3b8;">无人机飞行速度</span><span style="color: #94a3b8;">{UAV_SPEED:.0f} m/s</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span style="color: #94a3b8;">无人机能源消耗</span><span style="color: #f472b6;">{uav_energy:.1f} kWh</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; color: #f87171;">
+                <span>空地到达时间差</span><b>{time_diff:.1f} 秒</b>
+            </div>
+        </div>
+        {compare_rows}
     </div>
     '''
     
     m.get_root().html.add_child(folium.Element(ui_html))
 
-    # 终点切换 + 障碍物开关 + 协同策略 + 对比模式 控制面板
-    leak_selected = 'selected' if args.end_point == 'leak' else ''
-    crash_selected = 'selected' if args.end_point == 'crash' else ''
-    block_on  = 'selected' if UGV_BLOCKED else ''
-    block_off = 'selected' if not UGV_BLOCKED else ''
-    strat_rcd = 'selected' if SYNC_STRATEGY == 'rcd' else ''
-    strat_ind = 'selected' if SYNC_STRATEGY == 'independent' else ''
-    strat_wait = 'selected' if SYNC_STRATEGY == 'wait' else ''
-    cmp_on  = 'selected' if COMPARE else ''
-    cmp_off = 'selected' if not COMPARE else ''
-    selector_html = f'''
-    <div style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999;
-                background: rgba(15, 23, 42, 0.95); padding: 12px 24px; border-radius: 10px;
-                border: 1px solid rgba(0, 229, 255, 0.35); box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-                display: flex; align-items: center; gap: 14px; font-family: 'Microsoft YaHei', sans-serif; flex-wrap: wrap;">
-        <span style="color: #94a3b8; font-size: 13px; font-weight: 500; white-space: nowrap;">终点：</span>
-        <select id="endpoint-selector" style="padding: 6px 32px 6px 12px; border: 1px solid rgba(0, 229, 255, 0.3);
-                border-radius: 6px; background: rgba(2, 10, 22, 0.85); color: #e6faff; font-size: 13px;
-                cursor: pointer; outline: none;">
-            <option value="leak" {leak_selected}>油罐车泄露现场</option>
-            <option value="crash" {crash_selected}>货车追尾现场</option>
-        </select>
-        <span style="color: #94a3b8; font-size: 13px; font-weight: 500; white-space: nowrap;">障碍物：</span>
-        <select id="obstacle-selector" style="padding: 6px 32px 6px 12px; border: 1px solid rgba(0, 229, 255, 0.3);
-                border-radius: 6px; background: rgba(2, 10, 22, 0.85); color: #e6faff; font-size: 13px;
-                cursor: pointer; outline: none;">
-            <option value="1" {block_on}>开启（含禁飞区/拥堵区）</option>
-            <option value="0" {block_off}>关闭（无障碍直连路径）</option>
-        </select>
-        <span style="color: #94a3b8; font-size: 13px; font-weight: 500; white-space: nowrap;">策略：</span>
-        <select id="strategy-selector" style="padding: 6px 32px 6px 12px; border: 1px solid rgba(0, 229, 255, 0.3);
-                border-radius: 6px; background: rgba(2, 10, 22, 0.85); color: #e6faff; font-size: 13px;
-                cursor: pointer; outline: none;">
-            <option value="rcd" {strat_rcd}>RCD 逆向推演</option>
-            <option value="independent" {strat_ind}>ISD 极速独立</option>
-            <option value="wait" {strat_wait}>CAS 基地待命</option>
-        </select>
-        <span style="color: #f97316; font-size: 13px; font-weight: 500; white-space: nowrap;">对比：</span>
-        <select id="compare-selector" style="padding: 6px 32px 6px 12px; border: 1px solid rgba(249, 115, 22, 0.4);
-                border-radius: 6px; background: rgba(2, 10, 22, 0.85); color: #fdba74; font-size: 13px;
-                cursor: pointer; outline: none;">
-            <option value="0" {cmp_off}>关闭对比</option>
-            <option value="1" {cmp_on}>开启对比 (Dijkstra/A* vs BFS/Greedy)</option>
-        </select>
-        <button id="replan-btn" onclick="replanPath()" style="padding: 6px 18px; border: 1px solid rgba(0, 229, 255, 0.25);
-                border-radius: 6px; background: rgba(0, 229, 255, 0.1); color: #00e5ff; font-size: 13px;
-                cursor: pointer; white-space: nowrap; transition: all 0.2s;"
-                onmouseover="this.style.background='rgba(0,229,255,0.2)'"
-                onmouseout="this.style.background='rgba(0,229,255,0.1)'">重新规划路径</button>
-        <span id="replan-status" style="color: #f97316; font-size: 12px; display: none;">规划中...</span>
-    </div>
-    <script>
-    var _replanTimer = null;
-    async function replanPath() {{
-        var ep = document.getElementById('endpoint-selector');
-        var ob = document.getElementById('obstacle-selector');
-        var st = document.getElementById('strategy-selector');
-        var cp = document.getElementById('compare-selector');
-        var btn = document.getElementById('replan-btn');
-        var status = document.getElementById('replan-status');
-        btn.disabled = true;
-        status.style.display = 'inline';
-        status.style.color = '#f97316';
-        var startTime = Date.now();
-        if (_replanTimer) clearInterval(_replanTimer);
-        _replanTimer = setInterval(function() {{
-            var elapsed = Math.floor((Date.now() - startTime) / 1000);
-            status.textContent = '规划中... (' + elapsed + 's)';
-        }}, 1000);
-        var controller = new AbortController();
-        var timer = setTimeout(function() {{ controller.abort(); }}, 180000);
-        try {{
-            var params = '?end_point=' + encodeURIComponent(ep.value)
-                       + '&ugv_block=' + encodeURIComponent(ob.value)
-                       + '&uav_smoke=' + encodeURIComponent(ob.value)
-                       + '&strategy=' + encodeURIComponent(st.value)
-                       + '&compare=' + encodeURIComponent(cp.value);
-            var resp = await fetch('/api/run_3d_strategy' + params, {{ signal: controller.signal }});
-            clearTimeout(timer);
-            clearInterval(_replanTimer);
-            if (!resp.ok) throw new Error('HTTP ' + resp.status);
-            location.reload();
-        }} catch(e) {{
-            clearTimeout(timer);
-            clearInterval(_replanTimer);
-            if (e.name === 'AbortError') {{
-                status.textContent = '规划超时(>3分钟)，请重试';
-            }} else {{
-                status.textContent = '规划失败: ' + e.message;
-            }}
-            status.style.color = '#ef4444';
-            btn.disabled = false;
-        }}
-    }}
-    </script>
-    '''
-    m.get_root().html.add_child(folium.Element(selector_html))
+    # 控制面板已移至 Vue 侧边栏，此处不再渲染
 
     m.save(output_filename)
     print(f"地图已保存至: {output_filename}")
 
 # ==================== 5. 主函数 ====================
 def _load_path_from_json(endpoint, strategy, ugv_block, uav_smoke):
-    """从预计算的 JSON 文件快速加载路径数据，跳过路网下载和路径规划。"""
+    """从预计算的 JSON 文件快速加载路径数据，跳过的路网下载和路径规划。"""
     block_key = f"b{1 if ugv_block else 0}s{1 if uav_smoke else 0}"
     data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "path_data", f"path_{endpoint}_{block_key}.json")
     if not os.path.exists(data_path):
         return None
-    with open(data_path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    if data.get('strategy', '') != strategy:
+    try:
+        with open(data_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        if data.get('ugv_block') != ugv_block or data.get('uav_smoke') != uav_smoke:
+            return None
+        
+        car_df = pd.DataFrame(data['car_path'])
+        uav_df = pd.DataFrame(data['uav_path'])
+        
+        car_bfs_df = pd.DataFrame(data['car_bfs_path']) if data.get('car_bfs_path') is not None else None
+        uav_greedy_df = pd.DataFrame(data['uav_greedy_path']) if data.get('uav_greedy_path') is not None else None
+        comparison = data.get('comparison')
+        
+        # 动态根据当前策略调整无人机的时间与延迟
+        orig_delay = data.get('metrics', {}).get('delay_sec', 0)
+        uav_df['time_s'] = uav_df['time_s'] - orig_delay
+        fly_time = uav_df['time_s'].iloc[-1] if len(uav_df) > 0 else 0
+        car_time = car_df['time_s'].iloc[-1] if len(car_df) > 0 else 0
+        
+        if strategy == 'independent':
+            delay = 0.0
+        else:
+            delay = max(0, car_time - fly_time)
+            
+        uav_df['time_s'] = uav_df['time_s'] + delay
+        uav_df['timestamp'] = START_TIME + pd.to_timedelta(uav_df['time_s'], unit='s')
+        
+        return car_df, uav_df, car_time, delay, car_bfs_df, uav_greedy_df, comparison
+    except Exception as e:
+        print(f"  [缓存加载失败] 读取 {data_path} 异常: {e}")
         return None
-    if data.get('ugv_block') != ugv_block or data.get('uav_smoke') != uav_smoke:
-        return None
-    metrics = data.get('metrics', {})
-    car_df = pd.DataFrame(data['car_path'])
-    uav_df = pd.DataFrame(data['uav_path'])
-    car_time = metrics.get('car_time_min', 0) * 60
-    delay = metrics.get('delay_sec', 0)
-    return car_df, uav_df, car_time, delay
 
-def save_to_czml(uav_df, car_df, delay):
+
+def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
     print("[CZML] Exporting CZML file...")
     uav_df = uav_df.copy()
     car_df = car_df.copy()
@@ -825,7 +845,7 @@ def save_to_czml(uav_df, car_df, delay):
     
     def format_timestamp(ts):
         if ts.tzinfo is None:
-            return ts.strftime('%Y-%m-%dT%H:%M:%S') + 'Z'
+            return ts.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
         return ts.isoformat()
 
     global_start_time = min(uav_df['timestamp'].min(), car_df['timestamp'].min())
@@ -844,12 +864,82 @@ def save_to_czml(uav_df, car_df, delay):
     uav_line = []
     for _, r in uav_df.iterrows(): uav_line.extend([r['lon'], r['lat'], r['alt']])
     czml.append({"id": "UAV_Path", "polyline": {"positions": {"cartographicDegrees": uav_line}, "width": 3, "material": {"solidColor": {"color": {"rgba": [255, 0, 0, 150]}}}}})
-    
+    czml.append({"id": "UAV_Path", "polyline": {"positions": {"cartographicDegrees": uav_line}, "width": 5, "material": {"solidColor": {"color": {"rgba": [255, 0, 0, 200]}}}}})
     car_line = []
     for _, r in car_df.iterrows(): car_line.extend([r['lon'], r['lat'], 2])
     czml.append({"id": "Car_Path", "polyline": {"positions": {"cartographicDegrees": car_line}, "width": 3, "material": {"solidColor": {"color": {"rgba": [0, 0, 255, 150]}}}}})
+    czml.append({"id": "Car_Path", "polyline": {"positions": {"cartographicDegrees": car_line}, "width": 5, "material": {"solidColor": {"color": {"rgba": [0, 0, 255, 200]}}}, "clampToGround": True}})
 
-    # 动态对象
+    # 五类救援智能体 POI（始终渲染所有站点）
+    agent_colors_czml = {
+        'medical': [34, 197, 94, 220], 'fire': [249, 115, 22, 220],
+        'police': [59, 130, 246, 220], 'hazmat': [168, 85, 247, 220],
+        'road': [148, 163, 184, 220],
+    }
+    # 已选中 POI 名称 → 路径起点坐标 映射（装备出动后使用路径起点而非DB坐标）
+    selected_start_positions = {}
+    if multi_agent_data:
+        for agent_key, ainfo in multi_agent_data.items():
+            poi = ainfo.get('poi')
+            path = ainfo.get('path')
+            if poi and path and len(path) > 0:
+                selected_start_positions[poi['name']] = path[0]  # 路径第一个点（最近路网节点）
+
+    for p in AGENT_POIS:
+        is_sel = p['name'] in selected_start_positions
+        rgba = agent_colors_czml.get(p.get('agent_key', ''), [200,200,200,220])
+        # 选中时使用路径起点坐标，未选中时使用DB坐标
+        pos_lon = selected_start_positions[p['name']][1] if p['name'] in selected_start_positions else p['lon']
+        pos_lat = selected_start_positions[p['name']][0] if p['name'] in selected_start_positions else p['lat']
+        if not multi_agent_data:
+            color = rgba; prefix = p['label'] + ': '; size = 10
+        elif is_sel:
+            color = rgba; prefix = '★ ' + p['label'] + ': '; size = 12
+        else:
+            color = [120, 120, 120, 160]; prefix = p['label'] + ': '; size = 8
+        czml.append({
+            "id": f"AgentPOI_{p['agent_key']}_{p['name'][:6]}",
+            "position": {"cartographicDegrees": [pos_lon, pos_lat, 0]},
+            "point": {"pixelSize": size, "color": {"rgba": color},
+                      "outlineColor": {"rgba": [255,255,255,200] if is_sel or not multi_agent_data else [0,0,0,0]},
+                      "outlineWidth": 2 if is_sel else 0},
+            "label": {"text": prefix + p['name'], "font": "11px Microsoft YaHei",
+                      "pixelOffset": {"cartesian2": [0, -14]}}
+        })
+
+    # 路径 + 动画（仅装备出动后）
+    if multi_agent_data:
+        for agent_key, ainfo in multi_agent_data.items():
+            poi = ainfo.get('poi')
+            path = ainfo.get('path')
+            if not poi or not path:
+                continue
+            rgba = agent_colors_czml.get(agent_key, [200,200,200,220])
+            line_flat = []
+            for lat, lon in path: line_flat.extend([lon, lat, 3])
+            czml.append({
+                "id": f"AgentPath_{agent_key}",
+                "polyline": {"positions": {"cartographicDegrees": line_flat}, "width": 4,
+                             "material": {"solidColor": {"color": {"rgba": rgba}}}, "clampToGround": True}
+            })
+            agent_pos = []
+            path_len = len(path)
+            for i, (lat, lon) in enumerate(path):
+                t = global_start_time + pd.Timedelta(seconds=i / max(path_len-1,1) * (global_end_time - global_start_time).total_seconds())
+                agent_pos.extend([t.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z', lon, lat, 8])
+            czml.append({
+                "id": f"Agent_{agent_key}", "name": ainfo['label'],
+                "availability": avail,
+                "position": {"epoch": start_str, "cartographicDegrees": agent_pos,
+                             "interpolationAlgorithm": "LINEAR", "interpolationDegree": 1},
+                "point": {"pixelSize": 12, "color": {"rgba": rgba},
+                          "outlineColor": {"rgba": [255,255,255,230]}, "outlineWidth": 2},
+                "label": {"text": ainfo['label'], "font": "12px Microsoft YaHei",
+                          "pixelOffset": {"cartesian2": [0, -20]}},
+            })
+    
+
+    # 动态对象（始终包含 UAV/Car）
     uav_pos = []
     for _, r in uav_df.iterrows(): uav_pos.extend([format_timestamp(r['timestamp']), r['lon'], r['lat'], r['alt']])
     czml.append({
@@ -898,15 +988,20 @@ def save_to_czml(uav_df, car_df, delay):
     print("[CZML] CZML file generated successfully!")
 
 if __name__ == '__main__':
-    # 快速重载：如果路径数据 JSON 已存在且策略匹配，直接加载跳过路网下载和路径规划
+    # 快速重载：如果路径数据 JSON 已存在，直接加载跳过路网下载和路径规划
     cached = _load_path_from_json(args.end_point, SYNC_STRATEGY, UGV_BLOCKED, UAV_SMOKE)
-    if cached and not COMPARE:
-        car_df, uav_df, car_time, delay = cached
+    if cached:
+        car_df, uav_df, car_time, delay, car_bfs_df, uav_greedy_df, comparison = cached
         raw_uav_df = uav_df  # 快速模式复用平滑路径
-        print(f"[快速模式] 从缓存 JSON 加载路径 (终点={args.end_point})，跳过路网下载与路径规划")
-        car_bfs_df, car_bfs_interp = None, None
-        uav_greedy_df, uav_greedy_interp = None, None
+        print(f"[快速模式] 从缓存 JSON 加载路径 (终点={args.end_point})，已加载对比数据并更新时空同步策略")
+        car_bfs_interp = None
+        uav_greedy_interp = None
+        if COMPARE and car_bfs_df is not None:
+            car_bfs_interp = interpolate_path(car_bfs_df, ANIMATION_INTERVAL)
+        if COMPARE and uav_greedy_df is not None:
+            uav_greedy_interp = interpolate_path(uav_greedy_df, ANIMATION_INTERVAL)
     else:
+        cached = None  # 重置缓存标记，确保后续写入 comparison 和 path_data
         print("正在请求路网数据并规划无人车路径...")
         car_df, car_time, car_G = generate_car_path()
         print(f"无人车路径规划完成，预估耗时: {car_time/60:.1f} 分钟。")
@@ -915,25 +1010,38 @@ if __name__ == '__main__':
         uav_df, raw_uav_df, delay = generate_uav_path(car_time)
         print(f"无人机规划完成。策略: {SYNC_STRATEGY}, 地面待机时间: {delay:.1f} 秒。")
 
-        # 基线对比算法
+        # 基线对比算法（始终运行，供前端规划数据面板展示）
         car_bfs_df, car_bfs_interp = None, None
         uav_greedy_df, uav_greedy_interp = None, None
-        if COMPARE:
-            print("--- 对比模式：正在运行基线算法 ---")
+        if True:  # 始终计算基线对比数据
+            print("--- 正在运行基线对比算法 ---")
             print("  [基线] BFS 车辆路径 (最少边数, 忽略道路长度)...")
-            car_bfs_df, _ = generate_car_path_bfs(G=car_G.copy() if car_G is not None else None)
+            car_bfs_df, _ = generate_car_path_bfs(G=car_G if car_G is not None else None)
             bfs_dist = car_bfs_df['dist'].sum() / 1000 if 'dist' in car_bfs_df.columns else 0
             print(f"  [基线] BFS 完成, 路径距离: {bfs_dist:.1f} km")
             print("  [基线] Greedy 无人机路径 (仅朝目标移动, 忽略全局代价)...")
-            uav_greedy_df, _, _ = generate_uav_path_greedy()
+            uav_greedy_df, _, greedy_fly_time = generate_uav_path_greedy()
             greedy_dist = sum(calculate_distance(uav_greedy_df.iloc[i-1]['lat'], uav_greedy_df.iloc[i-1]['lon'], uav_greedy_df.iloc[i]['lat'], uav_greedy_df.iloc[i]['lon']) for i in range(1, len(uav_greedy_df))) / 1000 if len(uav_greedy_df) > 1 else 0
             print(f"  [基线] Greedy 完成, 路径距离: {greedy_dist:.1f} km")
-            car_bfs_interp = interpolate_path(car_bfs_df, ANIMATION_INTERVAL)
-            uav_greedy_interp = interpolate_path(uav_greedy_df, ANIMATION_INTERVAL)
+            if COMPARE:
+                car_bfs_interp = interpolate_path(car_bfs_df, ANIMATION_INTERVAL)
+                uav_greedy_interp = interpolate_path(uav_greedy_df, ANIMATION_INTERVAL)
             car_dist = car_df['dist'].sum() / 1000 if 'dist' in car_df.columns else 0
             uav_dist = sum(calculate_distance(uav_df.iloc[i-1]['lat'], uav_df.iloc[i-1]['lon'], uav_df.iloc[i]['lat'], uav_df.iloc[i]['lon']) for i in range(1, len(uav_df))) / 1000
-            print(f"  算法优越性: Dijkstra={car_dist:.1f} vs BFS={bfs_dist:.1f} km (节省{(bfs_dist-car_dist)/bfs_dist*100:.1f}%)")
-            print(f"  算法优越性: A*={uav_dist:.1f} vs Greedy={greedy_dist:.1f} km (节省{(greedy_dist-uav_dist)/greedy_dist*100:.1f}%)")
+            _car_save = (bfs_dist - car_dist) / bfs_dist * 100 if bfs_dist > 0 else 0
+            _uav_save = (greedy_dist - uav_dist) / greedy_dist * 100 if greedy_dist > 0 else 0
+            print(f"  算法优越性: Dijkstra={car_dist:.1f} vs BFS={bfs_dist:.1f} km (节省{_car_save:.1f}%)")
+            print(f"  算法优越性: A*={uav_dist:.1f} vs Greedy={greedy_dist:.1f} km (节省{_uav_save:.1f}%)")
+
+    # 多智能体救援路径（五类 POI）
+    multi_agent_data = None
+    if MULTI_AGENT:
+        print("--- 正在查询五类救援智能体 POI 并规划路径 ---")
+        from multi_agent_paths import find_agent_paths, save_multi_agent_result
+        multi_agent_data = find_agent_paths(args.end_point, END_POINT)
+        save_multi_agent_result(args.end_point, multi_agent_data)
+        count = sum(1 for v in multi_agent_data.values() if v["poi"])
+        print(f"  多智能体路径规划完成: {count}/5 类成功")
 
     print("正在进行时空同步插值与交互式网页生成...")
     car_interp = interpolate_path(car_df, ANIMATION_INTERVAL)
@@ -941,7 +1049,8 @@ if __name__ == '__main__':
     output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "2d_deduction.html")
     create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, delay, output_filename=output_path,
                          car_bfs_df=car_bfs_df, car_bfs_interp=car_bfs_interp,
-                         uav_greedy_df=uav_greedy_df, uav_greedy_interp=uav_greedy_interp)
+                         uav_greedy_df=uav_greedy_df, uav_greedy_interp=uav_greedy_interp,
+                         multi_agent_data=multi_agent_data)
 
     # 导出路径数据为 JSON 文件（快速模式跳过，数据未变）
     if not cached:
@@ -950,6 +1059,25 @@ if __name__ == '__main__':
         car_time_min = round(car_time / 60, 1)
         uav_flight_min = round((uav_df['time_s'].iloc[-1] - delay) / 60, 1) if len(uav_df) > 0 else 0
         car_dist = round(car_df['dist'].sum() / 1000, 2) if 'dist' in car_df.columns else 0
+        
+        # 预计算 comparison
+        bfs_dist = car_bfs_df['dist'].sum() / 1000 if car_bfs_df is not None and 'dist' in car_bfs_df.columns else 0
+        greedy_dist = sum(calculate_distance(uav_greedy_df.iloc[i-1]['lat'], uav_greedy_df.iloc[i-1]['lon'], uav_greedy_df.iloc[i]['lat'], uav_greedy_df.iloc[i]['lon']) for i in range(1, len(uav_greedy_df))) / 1000 if uav_greedy_df is not None and len(uav_greedy_df) > 1 else 0
+        car_dist_val = round(car_dist, 1)
+        uav_dist_val = round(uav_dist, 1)
+        comparison = {
+            'carDistKm': car_dist_val,
+            'uavDistKm': uav_dist_val,
+            'baselineCarDistKm': round(bfs_dist, 1),
+            'baselineUavDistKm': round(greedy_dist, 1),
+            'carSavingKm': round(bfs_dist - car_dist_val, 1),
+            'uavSavingKm': round(greedy_dist - uav_dist_val, 1),
+            'carSavingPct': round((bfs_dist - car_dist_val) / bfs_dist * 100, 1) if bfs_dist > 0 else 0,
+            'uavSavingPct': round((greedy_dist - uav_dist_val) / greedy_dist * 100, 1) if greedy_dist > 0 else 0,
+            'totalSavingKm': round((bfs_dist - car_dist_val) + (greedy_dist - uav_dist_val), 1),
+            'avgOptimizationPct': round(((bfs_dist - car_dist_val) / bfs_dist * 100 + (greedy_dist - uav_dist_val) / greedy_dist * 100) / 2, 1) if bfs_dist > 0 and greedy_dist > 0 else 0,
+        }
+
         path_data = {
             'end_point': args.end_point,
             'end_point_name': END_POINT_NAME,
@@ -960,6 +1088,9 @@ if __name__ == '__main__':
             'end_point_coord': {'lat': END_POINT[0], 'lon': END_POINT[1]},
             'car_path': car_records,
             'uav_path': uav_records,
+            'car_bfs_path': car_bfs_df[['lat', 'lon', 'time_s']].to_dict(orient='records') if car_bfs_df is not None else None,
+            'uav_greedy_path': uav_greedy_df[['lat', 'lon', 'alt', 'time_s']].to_dict(orient='records') if uav_greedy_df is not None else None,
+            'comparison': comparison,
             'metrics': {
                 'car_time_min': car_time_min,
                 'uav_flight_time_min': uav_flight_min,
@@ -979,16 +1110,42 @@ if __name__ == '__main__':
     result_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "path_result.json")
     car_time_min = round(car_time / 60, 1)
     uav_flight_min = round((uav_df['time_s'].iloc[-1] - delay) / 60, 1) if len(uav_df) > 0 else 0
+    time_diff = abs(car_time - uav_df['time_s'].iloc[-1]) if len(uav_df) > 0 else 0
+
+    # 基线对比数据
     result_data = {
         'end_point': args.end_point,
         'end_point_name': END_POINT_NAME,
+        'start_point_name': START_POINT_NAME,
         'strategy': SYNC_STRATEGY,
         'metrics': {
             'carTime': str(car_time_min),
             'uavTime': str(uav_flight_min),
             'delay': str(round(delay, 1)),
             'uavEnergy': str(round(uav_flight_min * UAV_SPEED * 3.6, 1)),
+            'timeDiff': str(round(time_diff, 1)),
         },
+        'scenario': {
+            'ugv_blocked': UGV_BLOCKED,
+            'uav_smoke': UAV_SMOKE,
+            'nfz_count': len(NFZ_LIST) + len(NEW_NFZ_LIST),
+            'congestion_name': NFZ_CONFIG[args.end_point].get('congestion_name', ''),
+            'congestion_info': NFZ_CONFIG[args.end_point].get('congestion_info', ''),
+        },
+        'speeds': {
+            'car_kmh': round(CAR_SPEED * 3.6, 1),
+            'uav_ms': UAV_SPEED,
+        },
+        'candidate_points': [
+            {
+                'name': p['name'],
+                'lat': p['lat'],
+                'lon': p['lon'],
+                'dist_km': p['dist_to_accident_km'],
+                'selected': (i == 0),
+            }
+            for i, p in enumerate(ALL_CANDIDATE_POINTS)
+        ],
         'obstacles': (
             [{'type': 'polygon', 'color': '#3b82f6',
               'positions': [p for point in CONGESTION_ZONE_POLYGON for p in [point[1], point[0]]]}]
@@ -1001,8 +1158,10 @@ if __name__ == '__main__':
         ) if UGV_BLOCKED or UAV_SMOKE else [],
         'updated_at': datetime.now(timezone.utc).isoformat() if 'timezone' in dir() else datetime.now().isoformat(),
     }
+    if comparison:
+        result_data['comparison'] = comparison
     with open(result_path, 'w', encoding='utf-8') as f:
         json.dump(result_data, f, ensure_ascii=False, indent=2)
     
     # 导出并覆盖 mission.czml 供三维地图同步载入
-    save_to_czml(uav_df, car_df, delay)
+    save_to_czml(uav_df, car_df, delay, multi_agent_data=multi_agent_data)
