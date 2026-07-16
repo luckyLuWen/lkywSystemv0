@@ -2053,7 +2053,7 @@ const rescuePopup = reactive({
   show: false,
   title: '救援装备出动',
   uavCount: '3 架',
-  carCount: '6 辆',
+  carCount: '4 辆',
   status: '已出发',
   x: 0,
   y: 0
@@ -2184,20 +2184,19 @@ const uavModelConfigs = [
 
 // 救援车配置
 // 救援车配置（共3个模型，每个模型2辆车，合计6辆车视觉效果。采用“品”字形扇形停靠）
+// 救援车配置（2个模型，每个模型2辆车，合计4辆。利用 stopFactor 组成一字纵队）
 const rescueCarModelConfigs = [
-  { id: 'rescue_car_model_1', uri: '/Dashboard/models/recure%20car.glb', label: '1号编队(中)', stopFactor: 0.78, lonOffset: 0, latOffset: 0 },
-  // 左翼车道：稍微靠后停下，向左偏移
-  { id: 'rescue_car_model_2', uri: '/Dashboard/models/recure%20car.glb', label: '2号编队(左)', stopFactor: 0.74, lonOffset: -0.00006, latOffset: -0.00004 },
-  // 右翼车道：稍微靠后停下，向右偏移
-  { id: 'rescue_car_model_3', uri: '/Dashboard/models/recure%20car.glb', label: '3号编队(右)', stopFactor: 0.74, lonOffset: 0.00006, latOffset: 0.00004 }
+  { id: 'rescue_car_model_1', uri: '/Dashboard/models/recure%20car.glb', label: '1号车队(前)', stopFactor: 0.78 },
+  { id: 'rescue_car_model_2', uri: '/Dashboard/models/recure%20car.glb', label: '2号车队(后)', stopFactor: 0.72 }
+]
+
+// 油罐车场景救援车配置（同理，一字纵队排开）
+const tankerRescueCarModelConfigs = [
+  { id: 'tanker_rescue_car_model_1', uri: '/Dashboard/models/recure%20car_2.glb', label: '1号油罐救援(前)', stopFactor: 0.40 },
+  { id: 'tanker_rescue_car_model_2', uri: '/Dashboard/models/recure%20car_2.glb', label: '2号油罐救援(后)', stopFactor: 0.34 }
 ]
 
 // 油罐车场景救援车配置（同理，3个编队扇形包围）
-const tankerRescueCarModelConfigs = [
-  { id: 'tanker_rescue_car_model_1', uri: '/Dashboard/models/recure%20car_2.glb', label: '1号油罐救援编队(中)', stopFactor: 0.40, lonOffset: 0, latOffset: 0 },
-  { id: 'tanker_rescue_car_model_2', uri: '/Dashboard/models/recure%20car_2.glb', label: '2号油罐救援编队(左)', stopFactor: 0.36, lonOffset: -0.00006, latOffset: -0.00004 },
-  { id: 'tanker_rescue_car_model_3', uri: '/Dashboard/models/recure%20car_2.glb', label: '3号油罐救援编队(右)', stopFactor: 0.36, lonOffset: 0.00006, latOffset: 0.00004 }
-]
 // 无人机位置调整（起始点：仙桃市毛嘴镇消防站）
 const uavAdjust = reactive({
   scale: 6,
@@ -4947,20 +4946,16 @@ if (['light1', 'light2', 'light3'].includes(l.id)) {
   // 初始化救援车（多车道战术编队行驶 + 现场动态环绕巡逻）
   // 初始化救援车（多车道战术编队行驶 + 丝滑物理转向）
   // 初始化救援车（多车道战术编队行驶 + 丝滑物理转向）
+  // 初始化救援车（一字编队行驶 + 到达后驻停）
   rescueCarModelConfigs.forEach((config, index) => {
     console.log(`[Cesium] 正在初始化救援车实体: ${config.id}, 路径: ${config.uri}`);
 
-    // 🚨 核心修复：为每辆车独立绑定 Cesium 宇宙时钟锚点，杜绝乱飞闪现
     let phase7StartJulian = undefined;
-    let phase8StartJulian = undefined;
-    let currentHeading = undefined;
     let lastLocalPhase = -1;
 
     const rescueCarPosition = new Cesium.CallbackProperty((time) => {
-      // 监听用户切换阶段，一旦切换立刻重置时间锚点
       if (lastLocalPhase !== props.activePhaseIndex) {
         phase7StartJulian = Cesium.JulianDate.clone(time);
-        phase8StartJulian = Cesium.JulianDate.clone(time);
         lastLocalPhase = props.activePhaseIndex;
       }
 
@@ -4970,40 +4965,24 @@ if (['light1', 'light2', 'light3'].includes(l.id)) {
       const baseAccidentLat = Number(truckAdjust.lat) || 30.385469;
       const startHeight = Number(rescueCarAdjust.height) || -1.5;
 
-      const startLng = baseStartLng + (config.lonOffset || 0);
-      const startLat = baseStartLat + (config.latOffset || 0);
-
       const factor = config.stopFactor || 0.78;
-      const targetLng = baseStartLng + factor * (baseAccidentLng - baseStartLng) + (config.lonOffset || 0);
-      const targetLat = baseStartLat + factor * (baseAccidentLat - baseStartLat) + (config.latOffset || 0);
-      const targetHeight = startHeight; 
+      const targetLng = baseStartLng + factor * (baseAccidentLng - baseStartLng);
+      const targetLat = baseStartLat + factor * (baseAccidentLat - baseStartLat);
 
       if (props.activePhaseIndex < 7) {
-        return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
+        return Cesium.Cartesian3.fromDegrees(baseStartLng, baseStartLat, startHeight);
       } else if (props.activePhaseIndex === 7) {
         const elapsed = Math.max(0, Cesium.JulianDate.secondsDifference(time, phase7StartJulian));
-        const duration = 6.0; // 6秒行驶完毕
+        const duration = 6.0; 
         const t = Math.min(elapsed / duration, 1.0);
         const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
         
-        const lng = startLng + (targetLng - startLng) * easeT;
-        const lat = startLat + (targetLat - startLat) * easeT;
-        return Cesium.Cartesian3.fromDegrees(lng, lat, targetHeight);
+        const lng = baseStartLng + (targetLng - baseStartLng) * easeT;
+        const lat = baseStartLat + (targetLat - baseStartLat) * easeT;
+        return Cesium.Cartesian3.fromDegrees(lng, lat, startHeight);
       } else {
-        const elapsed = Math.max(0, Cesium.JulianDate.secondsDifference(time, phase8StartJulian));
-        const period = 20.0; // 绕场一周 20 秒
-        
-        const dLng = targetLng - baseAccidentLng;
-        const dLat = targetLat - baseAccidentLat;
-        const radius = Math.sqrt(dLng * dLng + dLat * dLat);
-        const startAngle = Math.atan2(dLat, dLng);
-
-        const angle = startAngle + (elapsed / period) * 2.0 * Math.PI;
-
-        const currentLng = baseAccidentLng + radius * Math.cos(angle);
-        const currentLat = baseAccidentLat + radius * Math.sin(angle);
-
-        return Cesium.Cartesian3.fromDegrees(currentLng, currentLat, targetHeight);
+        // 🚨 阶段 >= 8：到达目标点后原地驻停，不再旋转绕圈
+        return Cesium.Cartesian3.fromDegrees(targetLng, targetLat, startHeight);
       }
     }, false);
 
@@ -5011,40 +4990,17 @@ if (['light1', 'light2', 'light3'].includes(l.id)) {
       const pos = rescueCarPosition.getValue(time);
       if (!pos) return undefined;
       
-      let targetHeadingRad;
-      const nextTime = Cesium.JulianDate.addSeconds(time, 0.2, new Cesium.JulianDate());
-      const nextPos = rescueCarPosition.getValue(nextTime);
-      
       const baseStartLng = Number(rescueCarAdjust.lng) || 113.1073;
       const baseStartLat = Number(rescueCarAdjust.lat) || 30.3849;
       const baseAccidentLng = Number(truckAdjust.lng) || 113.104833;
       const baseAccidentLat = Number(truckAdjust.lat) || 30.385469;
       
-      if (nextPos && Cesium.Cartesian3.distance(pos, nextPos) > 0.001) {
-        const cartoCur = Cesium.Cartographic.fromCartesian(pos);
-        const cartoNext = Cesium.Cartographic.fromCartesian(nextPos);
-        const dLng = (cartoNext.longitude - cartoCur.longitude) * Math.cos(cartoCur.latitude);
-        const dLat = cartoNext.latitude - cartoCur.latitude;
-        
-        // 🚨 治愈螃蟹步核心算法：地理真实角度扣除模型自带的 90 度横向偏角，数学化简后刚好等于 -atan2
-        targetHeadingRad = -Math.atan2(dLat, dLng);
-      } else {
-        // 静止状态下的朝向
-        const dLng = (baseAccidentLng - baseStartLng) * Math.cos(baseStartLat * Math.PI / 180);
-        const dLat = baseAccidentLat - baseStartLat;
-        targetHeadingRad = -Math.atan2(dLat, dLng);
-      }
+      // 🚨 始终保持车头朝向事故点（直线行驶，无需方向盘拐弯算法）
+      const dLng = (baseAccidentLng - baseStartLng) * Math.cos(baseStartLat * Math.PI / 180);
+      const dLat = baseAccidentLat - baseStartLat;
+      const targetHeadingRad = -Math.atan2(dLat, dLng);
 
-      // 🚨 加入平滑阻尼器，消除直角拐弯时的 90 度顿挫闪现，实现完美漂移入弯
-      if (currentHeading === undefined) {
-        currentHeading = targetHeadingRad;
-      } else {
-        let diff = targetHeadingRad - currentHeading;
-        diff = Math.atan2(Math.sin(diff), Math.cos(diff)); // 归一化，保证方向盘走最短路径
-        currentHeading += diff * 0.15; 
-      }
-
-      const hpr = new Cesium.HeadingPitchRoll(currentHeading, 0, 0);
+      const hpr = new Cesium.HeadingPitchRoll(targetHeadingRad, 0, 0);
       return Cesium.Transforms.headingPitchRollQuaternion(pos, hpr);
     }, false);
 
@@ -5204,18 +5160,16 @@ if (['light1', 'light2', 'light3'].includes(l.id)) {
   // 初始化油罐车场景的救援车（并排编队 + 现场动态环绕巡逻）
   // 初始化油罐车场景的救援车（并排编队 + 丝滑物理转向）
   // 初始化油罐车场景的救援车（并排编队 + 丝滑物理转向）
+  // 初始化油罐车场景的救援车（一字编队行驶 + 到达后驻停）
   tankerRescueCarModelConfigs.forEach((config, index) => {
     console.log(`[Cesium] 正在初始化油罐车场景救援车实体: ${config.id}, 路径: ${config.uri}`);
 
     let phase7StartJulian = undefined;
-    let phase8StartJulian = undefined;
-    let currentHeading = undefined;
     let lastLocalPhase = -1;
 
     const tankerRescueCarPosition = new Cesium.CallbackProperty((time) => {
       if (lastLocalPhase !== props.activePhaseIndex) {
         phase7StartJulian = Cesium.JulianDate.clone(time);
-        phase8StartJulian = Cesium.JulianDate.clone(time);
         lastLocalPhase = props.activePhaseIndex;
       }
 
@@ -5225,38 +5179,24 @@ if (['light1', 'light2', 'light3'].includes(l.id)) {
       const baseTargetLat = Number(tankerPointAdjust.lat) || 30.632161;
       const startHeight = Number(tankerRescueCarAdjust.height) || -1.5;
 
-      const startLng = baseStartLng + (config.lonOffset || 0);
-      const startLat = baseStartLat + (config.latOffset || 0);
-
       const factor = config.stopFactor || 0.40;
-      const actualTargetLng = baseStartLng + factor * (baseTargetLng - baseStartLng) + (config.lonOffset || 0);
-      const actualTargetLat = baseStartLat + factor * (baseTargetLat - baseStartLat) + (config.latOffset || 0);
+      const actualTargetLng = baseStartLng + factor * (baseTargetLng - baseStartLng);
+      const actualTargetLat = baseStartLat + factor * (baseTargetLat - baseStartLat);
 
       if (props.activePhaseIndex < 7) {
-        return Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight);
+        return Cesium.Cartesian3.fromDegrees(baseStartLng, baseStartLat, startHeight);
       } else if (props.activePhaseIndex === 7) {
         const elapsed = Math.max(0, Cesium.JulianDate.secondsDifference(time, phase7StartJulian));
         const duration = 6.0;
         const t = Math.min(elapsed / duration, 1.0);
         const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
-        const lng = startLng + (actualTargetLng - startLng) * easeT;
-        const lat = startLat + (actualTargetLat - startLat) * easeT;
+        const lng = baseStartLng + (actualTargetLng - baseStartLng) * easeT;
+        const lat = baseStartLat + (actualTargetLat - baseStartLat) * easeT;
         return Cesium.Cartesian3.fromDegrees(lng, lat, startHeight);
       } else {
-        const elapsed = Math.max(0, Cesium.JulianDate.secondsDifference(time, phase8StartJulian));
-        const period = 20.0; 
-
-        const dLng = actualTargetLng - baseTargetLng;
-        const dLat = actualTargetLat - baseTargetLat;
-        const radius = Math.sqrt(dLng * dLng + dLat * dLat);
-        const startAngle = Math.atan2(dLat, dLng);
-
-        const angle = startAngle + (elapsed / period) * 2.0 * Math.PI;
-        const currentLng = baseTargetLng + radius * Math.cos(angle);
-        const currentLat = baseTargetLat + radius * Math.sin(angle);
-
-        return Cesium.Cartesian3.fromDegrees(currentLng, currentLat, startHeight);
+        // 🚨 阶段 >= 8：驻停
+        return Cesium.Cartesian3.fromDegrees(actualTargetLng, actualTargetLat, startHeight);
       }
     }, false);
 
@@ -5264,36 +5204,16 @@ if (['light1', 'light2', 'light3'].includes(l.id)) {
       const pos = tankerRescueCarPosition.getValue(time);
       if (!pos) return undefined;
       
-      let targetHeadingRad;
-      const nextTime = Cesium.JulianDate.addSeconds(time, 0.2, new Cesium.JulianDate());
-      const nextPos = tankerRescueCarPosition.getValue(nextTime);
-      
       const baseStartLng = Number(tankerRescueCarAdjust.lng) || 114.895791;
       const baseStartLat = Number(tankerRescueCarAdjust.lat) || 30.631361;
       const baseTargetLng = Number(tankerPointAdjust.lng) || 114.8945;
       const baseTargetLat = Number(tankerPointAdjust.lat) || 30.632161;
       
-      if (nextPos && Cesium.Cartesian3.distance(pos, nextPos) > 0.001) {
-        const cartoCur = Cesium.Cartographic.fromCartesian(pos);
-        const cartoNext = Cesium.Cartographic.fromCartesian(nextPos);
-        const dLng = (cartoNext.longitude - cartoCur.longitude) * Math.cos(cartoCur.latitude);
-        const dLat = cartoNext.latitude - cartoCur.latitude;
-        targetHeadingRad = -Math.atan2(dLat, dLng);
-      } else {
-        const dLng = (baseTargetLng - baseStartLng) * Math.cos(baseStartLat * Math.PI / 180);
-        const dLat = baseTargetLat - baseStartLat;
-        targetHeadingRad = -Math.atan2(dLat, dLng);
-      }
+      const dLng = (baseTargetLng - baseStartLng) * Math.cos(baseStartLat * Math.PI / 180);
+      const dLat = baseTargetLat - baseStartLat;
+      const targetHeadingRad = -Math.atan2(dLat, dLng);
 
-      if (currentHeading === undefined) {
-        currentHeading = targetHeadingRad;
-      } else {
-        let diff = targetHeadingRad - currentHeading;
-        diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-        currentHeading += diff * 0.15; 
-      }
-
-      const hpr = new Cesium.HeadingPitchRoll(currentHeading, 0, 0);
+      const hpr = new Cesium.HeadingPitchRoll(targetHeadingRad, 0, 0);
       return Cesium.Transforms.headingPitchRollQuaternion(pos, hpr);
     }, false);
 
@@ -5320,82 +5240,94 @@ if (['light1', 'light2', 'light3'].includes(l.id)) {
 // =========================================================
   // 🛰️ 新增：绑定真实数据的 无人机 & 2辆无人车 动态回传链路
   // =========================================================
-
-  // 1. 绑定无人机 (UAV) 链路
-
-  // 2. 绑定 2辆无人车 (UGV) 链路
-  // 遍历你存放无人车实体的 rescueCarEntities 数组，自动为两辆车分别建立连线
+  // 1. 货车追尾现场 - 编队无人车链路 (连向 5G 基站)
   // =========================================================
-  // 🛰️ 新增：绑定真实数据的 无人车 (UGV) 动态回传链路
+  // 🛰️ 终极对准版：加大 X 轴偏移量，精准对齐双车车顶
   // =========================================================
 
-  // 1. 绑定无人机 (UAV) 链路 (这部分不用动，前面已经改好了)
+  // 1. 货车追尾现场 - 编队无人车链路 (连向 5G 基站)
+  // =========================================================
+// 🛰️ 精准定位版：关闭 X 轴(前后)，使用 Y 轴(左右)精准对齐双车
+// =========================================================
 
-  // 2. 绑定 2个无人车 (UGV) 节点链路
-  // =========================================================
-  // 🛰️ 新增：绑定 3个实体编队 × 每个实体2辆车 = 6条 动态回传链路
-  // =========================================================
+// 1. 货车追尾现场 - 编队无人车链路 (连向 5G 基站)
+rescueCarEntities.forEach((carEntity, modelIndex) => {
+  [0, 1].forEach((innerCarIndex) => {
+    viewer.entities.add({
+      id: `line-link-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-real`,
+      name: `链路`,
+      show: new Cesium.CallbackProperty(() => {
+        return Number(props.activePhaseIndex) >= 8 && carEntity.show && currentScene.value === 'truck';
+      }, false),
+      polyline: {
+        positions: new Cesium.CallbackProperty((time) => {
+          if (Number(props.activePhaseIndex) < 8 || currentScene.value !== 'truck') return [];
+          const carCartesian = carEntity.position.getValue(time);
+          const carOrientation = carEntity.orientation.getValue(time);
+          if (!carCartesian || !carOrientation) return [];
 
-  // =========================================================
-  // 🛰️ 新增：绑定 3个实体编队 × 每个实体2辆车 = 6条 动态回传链路
-  // =========================================================
+          const jizhanTop = getModelTopPosition(
+            jizhanAdjust.lng, jizhanAdjust.lat, jizhanAdjust.height,
+            jizhanAdjust.heading, jizhanAdjust.pitch, jizhanAdjust.roll, JIZHAN_TOP_OFFSET
+          );
 
-  rescueCarEntities.forEach((carEntity, modelIndex) => {
-    
-    // 每个 GLB 实体内部有两辆车并排，循环2次打出2条线
-    [0, 1].forEach((innerCarIndex) => {
-      
-      viewer.entities.add({
-        id: `line-link-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-real`,
-        name: `第${modelIndex + 1}编队 - 第${innerCarIndex + 1}辆无人车数据链路`,
-        
-        show: new Cesium.CallbackProperty(() => {
-          return Number(props.activePhaseIndex) >= 8 && carEntity.show;
+          // 🚨 空间几何重新校准：
+          // X = 0 (取消前后偏移)
+          // Y = 左右偏移 (±1.5米左右，这是导致你线飘到路边的罪魁祸首)
+          // Z = 1.6 (车顶高度)
+          const offsetX = 0.0; 
+          const offsetY = (innerCarIndex === 0) ? 1.5 : -1.5; 
+          const offsetZ = 1.6;
+
+          const localOffset = new Cesium.Cartesian3(offsetX, offsetY, offsetZ);
+          const rotationMatrix = Cesium.Matrix3.fromQuaternion(carOrientation);
+          const worldOffset = Cesium.Matrix3.multiplyByVector(rotationMatrix, localOffset, new Cesium.Cartesian3());
+          return [ Cesium.Cartesian3.add(carCartesian, worldOffset, new Cesium.Cartesian3()), jizhanTop ];
         }, false),
-        
-        polyline: {
-          positions: new Cesium.CallbackProperty((time) => {
-            if (Number(props.activePhaseIndex) < 8) return [];
-
-            // 获取车队的中心世界坐标和三维姿态（包含朝向、俯仰、翻滚）
-            const carCartesian = carEntity.position.getValue(time);
-            const carOrientation = carEntity.orientation.getValue(time);
-            if (!carCartesian || !carOrientation) return [];
-
-            const jizhanTop = getModelTopPosition(
-              jizhanAdjust.lng, jizhanAdjust.lat, jizhanAdjust.height,
-              jizhanAdjust.heading, jizhanAdjust.pitch, jizhanAdjust.roll, JIZHAN_TOP_OFFSET
-            );
-
-            // 🚨 核心空间几何算法：相对于车体中心的局部偏移（单位：米）
-            // 如果你发现连线偏前/偏后了，调整 Y 的值；如果宽度不够，调整 X 的值；如果太高太低，调整 Z 的值。
-            // 这里默认向左/向右偏移 1.8 米，高度抬升 1.2 米
-            const offsetX = (innerCarIndex === 0) ? -1.8 : 1.8; // X轴通常控制左右
-            const offsetY = 0.0;  // Y轴通常控制前后
-            const offsetZ = 1.2;  // Z轴控制上下
-
-            const localOffset = new Cesium.Cartesian3(offsetX, offsetY, offsetZ);
-
-            // 将局部偏移通过车辆当前的四元数旋转，转换为真实的地球世界偏移向量
-            const rotationMatrix = Cesium.Matrix3.fromQuaternion(carOrientation);
-            const worldOffset = Cesium.Matrix3.multiplyByVector(rotationMatrix, localOffset, new Cesium.Cartesian3());
-
-            // 车辆中心点 + 经过旋转计算的绝对偏移 = 焊死在车顶左右侧的天线坐标！
-            const antennaPos = Cesium.Cartesian3.add(carCartesian, worldOffset, new Cesium.Cartesian3());
-
-            return [ antennaPos, jizhanTop ];
-          }, false),
-          width: 3.5,
-          material: new DynamicFlowMaterialProperty({
-            color: Cesium.Color.CHARTREUSE,
-            speed: 4.5,
-            repeat: 6.0
-          })
-        }
-      });
-      
+        width: 3.5,
+        material: new DynamicFlowMaterialProperty({ color: Cesium.Color.CHARTREUSE, speed: 4.5, repeat: 6.0 })
+      }
     });
   });
+});
+
+// 2. 油罐车泄露现场 - 编队无人车链路
+tankerRescueCarEntities.forEach((carEntity, modelIndex) => {
+  [0, 1].forEach((innerCarIndex) => {
+    viewer.entities.add({
+      id: `line-link-tanker-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-real`,
+      name: `油罐现场链路`,
+      show: new Cesium.CallbackProperty(() => {
+        return Number(props.activePhaseIndex) >= 8 && carEntity.show && currentScene.value === 'tanker';
+      }, false),
+      polyline: {
+        positions: new Cesium.CallbackProperty((time) => {
+          if (Number(props.activePhaseIndex) < 8 || currentScene.value !== 'tanker') return [];
+          const carCartesian = carEntity.position.getValue(time);
+          const carOrientation = carEntity.orientation.getValue(time);
+          if (!carCartesian || !carOrientation) return [];
+
+          const tankerTargetTop = getModelTopPosition(
+            tankerAdjust.lng, tankerAdjust.lat, tankerAdjust.height,
+            tankerAdjust.heading, 0, 0, LIGHT_TOP_OFFSET + 3.0
+          );
+
+          // 🚨 同样校准油罐车
+          const offsetX = 0.0;
+          const offsetY = (innerCarIndex === 0) ? 1.5 : -1.5;
+          const offsetZ = 1.6;
+
+          const localOffset = new Cesium.Cartesian3(offsetX, offsetY, offsetZ);
+          const rotationMatrix = Cesium.Matrix3.fromQuaternion(carOrientation);
+          const worldOffset = Cesium.Matrix3.multiplyByVector(rotationMatrix, localOffset, new Cesium.Cartesian3());
+          return [ Cesium.Cartesian3.add(carCartesian, worldOffset, new Cesium.Cartesian3()), tankerTargetTop ];
+        }, false),
+        width: 3.5,
+        material: new DynamicFlowMaterialProperty({ color: Cesium.Color.CHARTREUSE, speed: 4.5, repeat: 6.0 })
+      }
+    });
+  });
+});
   viewer.screenSpaceEventHandler.setInputAction((movement) => {
     const pickedObject = viewer.scene.pick(movement.position);
     if (Cesium.defined(pickedObject)) {
