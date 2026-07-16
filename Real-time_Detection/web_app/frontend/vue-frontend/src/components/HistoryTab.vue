@@ -1,5 +1,28 @@
 <template>
   <div class="history-container">
+    <div class="history-toolbar card">
+      <div class="filter-field">
+        <label>模型名称</label>
+        <select v-model="filters.model">
+          <option value="">全部模型</option>
+          <option v-for="model in modelOptions" :key="model" :value="model">{{ model }}</option>
+        </select>
+      </div>
+      <div class="filter-field label-field">
+        <label>检测标签</label>
+        <input
+          v-model.trim="filters.label"
+          type="text"
+          placeholder="例如 lkyw_fire / car_nofire"
+          @keyup.enter="loadRecords"
+        />
+      </div>
+      <div class="filter-actions">
+        <button class="btn-filter primary" @click="loadRecords">查询</button>
+        <button class="btn-filter" @click="resetFilters">重置</button>
+      </div>
+    </div>
+
     <div v-if="loading" class="upload-center">
       <div class="loading-box">
         <div class="spinner"></div>
@@ -10,8 +33,8 @@
     <div v-else-if="records.length === 0" class="upload-center">
       <div class="card upload-card">
         <div class="upload-icon">📋</div>
-        <h3>暂无检测记录</h3>
-        <p>完成检测后，记录将显示在此处</p>
+        <h3>{{ hasActiveFilters ? '未查询到匹配记录' : '暂无检测记录' }}</h3>
+        <p>{{ hasActiveFilters ? '请调整模型名称或检测标签后重试' : '完成检测后，记录将显示在此处' }}</p>
       </div>
     </div>
 
@@ -33,12 +56,16 @@
             <span class="meta-tag">{{ rec.model_name }}</span>
             <span class="meta-tag">{{ rec.source_type }}</span>
           </div>
+          <div class="record-labels" v-if="rec.labels && rec.labels.length">
+            <span v-for="label in rec.labels" :key="label" class="label-chip">{{ label }}</span>
+          </div>
         </div>
         <div class="record-stats">
           <span class="stat-count">{{ rec.detection_count }}</span>
           <span class="stat-label">个目标</span>
         </div>
         <div class="record-time-s">{{ rec.inference_time_s }} s</div>
+        <button class="btn-delete-record" @click.stop="deleteRecord(rec.id)">删除</button>
       </div>
     </div>
 
@@ -104,7 +131,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, reactive, ref, onMounted } from 'vue'
 import ExportButtons from './ExportButtons.vue'
 
 const props = defineProps({
@@ -116,9 +143,42 @@ const loading = ref(false)
 const records = ref([])
 const detail = ref(null)
 
+const modelOptions = ['SFGA-YOLO26M', 'YOLO26M', 'YOLO11M']
+const filters = reactive({
+  model: '',
+  label: ''
+})
+
+const hasActiveFilters = computed(() => Boolean(filters.model || filters.label))
+
 const formatTime = (ts) => {
   if (!ts) return ''
   return ts.replace('T', ' ').substring(0, 19)
+}
+
+const buildHistoryQuery = () => {
+  const params = new URLSearchParams({ limit: '50' })
+  if (filters.model) params.set('model', filters.model)
+  if (filters.label) params.set('label', filters.label)
+  return params.toString()
+}
+
+const loadRecords = async () => {
+  loading.value = true
+  try {
+    const data = await props.safeFetch(`/api/history?${buildHistoryQuery()}`)
+    if (data.success) records.value = data.records
+  } catch (e) {
+    alert('加载历史记录失败: ' + e.message)
+  } finally {
+    loading.value = false
+  }
+}
+
+const resetFilters = () => {
+  filters.model = ''
+  filters.label = ''
+  loadRecords()
 }
 
 const openDetail = async (id) => {
@@ -130,23 +190,88 @@ const openDetail = async (id) => {
   }
 }
 
-onMounted(async () => {
-  loading.value = true
+const deleteRecord = async (id) => {
+  if (!confirm('确认删除这条检测历史记录？')) return
   try {
-    const data = await props.safeFetch('/api/history?limit=50')
-    if (data.success) records.value = data.records
+    const data = await props.safeFetch(`/api/history/${id}`, { method: 'DELETE' })
+    if (data.success) {
+      if (detail.value?.id === id) detail.value = null
+      records.value = records.value.filter((record) => record.id !== id)
+    }
   } catch (e) {
-    // silently fail, empty state shown
-  } finally {
-    loading.value = false
+    alert('删除失败: ' + e.message)
   }
-})
+}
+
+onMounted(loadRecords)
 </script>
 
 <style scoped>
 .history-container {
   height: 100%;
   overflow-y: auto;
+}
+
+.history-toolbar {
+  display: grid;
+  grid-template-columns: 260px minmax(280px, 1fr) auto;
+  gap: 18px;
+  align-items: end;
+  padding: 18px 22px;
+  margin-bottom: 14px;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-field label {
+  color: var(--text-dim);
+  font-size: 17px;
+  letter-spacing: 1px;
+}
+
+.filter-field select,
+.filter-field input {
+  height: 46px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 229, 255, 0.22);
+  background: rgba(2, 8, 23, 0.72);
+  color: var(--text-main);
+  padding: 0 14px;
+  font-size: 19px;
+  outline: none;
+}
+
+.filter-field select:focus,
+.filter-field input:focus {
+  border-color: var(--primary-cyan);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.18);
+}
+
+.filter-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-filter {
+  height: 46px;
+  min-width: 86px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 229, 255, 0.28);
+  background: rgba(0, 229, 255, 0.08);
+  color: var(--primary-cyan);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.btn-filter.primary {
+  background: var(--primary-cyan);
+  color: #001018;
+  border-color: var(--primary-cyan);
+  font-weight: 700;
 }
 
 .records-list {
@@ -193,6 +318,23 @@ onMounted(async () => {
 .record-meta {
   display: flex;
   gap: 9px;
+  flex-wrap: wrap;
+}
+
+.record-labels {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.label-chip {
+  font-size: 18px;
+  color: var(--accent-amber);
+  border: 1px solid rgba(255, 193, 7, 0.28);
+  background: rgba(255, 193, 7, 0.08);
+  padding: 4px 10px;
+  border-radius: 999px;
 }
 
 .meta-tag {
@@ -228,6 +370,21 @@ onMounted(async () => {
   font-family: monospace;
   min-width: 135px;
   text-align: right;
+}
+
+.btn-delete-record {
+  flex: 0 0 auto;
+  border: 1px solid rgba(239, 68, 68, 0.46);
+  background: rgba(239, 68, 68, 0.1);
+  color: #fecaca;
+  border-radius: 6px;
+  padding: 9px 14px;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.btn-delete-record:hover {
+  background: rgba(239, 68, 68, 0.22);
 }
 
 /* Modal — reused from ImageDetection */
