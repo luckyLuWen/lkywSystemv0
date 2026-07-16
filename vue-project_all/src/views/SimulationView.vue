@@ -19,7 +19,23 @@
       <button :class="{ active: currentCity === 'huanggang' }" @click="flyToCity('huanggang')">📍 黄冈市推演</button>
     </div>
 
-    <div id="simulationCesiumContainer" class="cesium-container" :style="{ visibility: (viewMode === '3d' || viewMode === 'physics') ? 'visible' : 'hidden', position: 'absolute', top: '20px', left: '20px', right: '20px', bottom: '20px', width: 'auto', height: 'auto', zIndex: 1 }"></div>
+    <div id="simulationCesiumContainer" class="cesium-container" :style="{ visibility: (viewMode === '3d') ? 'visible' : 'hidden', position: 'absolute', top: '20px', left: '20px', right: '20px', bottom: '20px', width: 'auto', height: 'auto', zIndex: 1 }"></div>
+
+    <!-- 物理仿真不需要加载 Cesium 地图，仅在独立高性能 2D Canvas 中进行极高兼容度的物理粒子级仿真 -->
+    <div v-if="viewMode === 'physics'" class="physics-simulation-container" style="position: absolute; top: 20px; left: 20px; right: 20px; bottom: 20px; z-index: 5; background: #070b19; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(0, 255, 180, 0.15);">
+      <canvas id="physicsSmokeCanvas" style="width: 100%; height: 100%; display: block;"></canvas>
+      
+      <!-- 物理仿真状态抬头指示器 (HUD) -->
+      <div class="physics-hud" style="position: absolute; top: 80px; right: 20px; color: #00ffd8; font-family: monospace; background: rgba(8,12,28,0.85); padding: 15px; border-radius: 6px; border: 1px solid rgba(0,255,180,0.3); font-size: 14px; pointer-events: none; line-height: 1.6; z-index: 10; box-shadow: 0 0 15px rgba(0,0,0,0.5);">
+        <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; border-bottom: 1px solid rgba(0,255,180,0.3); padding-bottom: 4px; color: #fff;">📡 物理粒子引擎监控</div>
+        <div>当前区域: <span style="color: #fff;">{{ currentCity === 'xiantao' ? '仙桃市' : '黄冈市' }}</span></div>
+        <div>当前场景: <span style="color: #fff;">{{ activeScene === 'truck_crash' ? '货车追尾现场' : '油罐车泄露现场' }}</span></div>
+        <div>当前阶段: <span style="color: #fff;">{{ activeAccidentPhases[activePhaseIndex]?.shortLabel || '未知' }}</span></div>
+        <div>环境风速: <span style="color: #ffb700; font-weight: bold;">{{ currentWindSpeed }} m/s</span></div>
+        <div>环境风向: <span style="color: #ffb700; font-weight: bold;">{{ currentWindDirection }}° ({{ getWindDirectionText(currentWindDirection) }})</span></div>
+        <div>活跃粒子: <span style="color: #00ffd8; font-weight: bold;">{{ activeParticleCount }} / 600</span></div>
+      </div>
+    </div>
     
     <div v-if="viewMode === '2d'" class="cesium-container iframe-container" style="position: absolute; top: 20px; left: 20px; right: 20px; bottom: 20px; z-index: 10; width: auto; height: auto;">
       <div v-if="isGenerating2D" class="loading-overlay">
@@ -63,15 +79,18 @@
 
         <!-- 阶段选择 -->
         <div class="section-title">📅 推演阶段选择</div>
-        <div class="phase-selector">
+        <div class="phase-selector" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
           <button 
-            v-for="phase in [3, 4, 5, 6]" 
-            :key="phase"
-            :class="{ active: selectedPhase === phase }"
-            @click="selectPhase(phase)"
+            v-for="(phase, index) in activeAccidentPhases" 
+            :key="phase.id"
+            v-show="index >= 2"
+            :class="{ active: activePhaseIndex === index }"
+            @click="selectPhase(index)"
             class="phase-btn"
+            style="padding: 8px 4px; font-size: 13px; min-height: 40px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+            :title="phase.shortLabel"
           >
-            {{ phase === 3 ? '事故发生' : phase === 4 ? '初期爆发' : phase === 5 ? '剧烈扩散' : '控制减弱' }}
+            {{ phase.shortLabel }}
           </button>
         </div>
 
@@ -149,27 +168,6 @@
               <span class="val-text">{{ smokeAdjust.maxLife }}s</span>
             </div>
           </div>
-          <div class="control-row">
-            <label>上升气流 (Gravity)</label>
-            <div class="slider-group">
-              <input type="range" v-model.number="smokeAdjust.gravity" min="0.0" max="6.0" step="0.1" />
-              <span class="val-text">{{ smokeAdjust.gravity }}</span>
-            </div>
-          </div>
-          <div class="control-row">
-            <label>环境风速 (Wind Speed)</label>
-            <div class="slider-group">
-              <input type="range" v-model.number="smokeAdjust.windSpeed" min="0.0" max="25.0" step="0.5" />
-              <span class="val-text">{{ smokeAdjust.windSpeed }}m/s</span>
-            </div>
-          </div>
-          <div class="control-row">
-            <label>环境风向 (Wind Direction)</label>
-            <div class="slider-group">
-              <input type="range" v-model.number="smokeAdjust.windDirection" min="0" max="360" step="5" />
-              <span class="val-text">{{ smokeAdjust.windDirection }}°</span>
-            </div>
-          </div>
         </div>
 
         <!-- 火焰粒子调节项 -->
@@ -214,27 +212,6 @@
             <div class="slider-group">
               <input type="range" v-model.number="fireAdjust.maxLife" min="0.5" max="8.0" step="0.1" />
               <span class="val-text">{{ fireAdjust.maxLife }}s</span>
-            </div>
-          </div>
-          <div class="control-row">
-            <label>上升气流 (Gravity)</label>
-            <div class="slider-group">
-              <input type="range" v-model.number="fireAdjust.gravity" min="0.0" max="10.0" step="0.1" />
-              <span class="val-text">{{ fireAdjust.gravity }}</span>
-            </div>
-          </div>
-          <div class="control-row">
-            <label>环境风速 (Wind Speed)</label>
-            <div class="slider-group">
-              <input type="range" v-model.number="fireAdjust.windSpeed" min="0.0" max="25.0" step="0.5" />
-              <span class="val-text">{{ fireAdjust.windSpeed }}m/s</span>
-            </div>
-          </div>
-          <div class="control-row">
-            <label>环境风向 (Wind Direction)</label>
-            <div class="slider-group">
-              <input type="range" v-model.number="fireAdjust.windDirection" min="0" max="360" step="5" />
-              <span class="val-text">{{ fireAdjust.windDirection }}°</span>
             </div>
           </div>
         </div>
@@ -283,25 +260,39 @@
               <span class="val-text">{{ diffusionAdjust.maxLife }}s</span>
             </div>
           </div>
-          <div class="control-row">
-            <label>空气阻力 (Drag)</label>
-            <div class="slider-group">
-              <input type="range" v-model.number="diffusionAdjust.drag" min="0.80" max="1.00" step="0.01" />
-              <span class="val-text">{{ diffusionAdjust.drag }}</span>
-            </div>
-          </div>
+        </div>
+
+        <!-- 🍃 物理环境与自然因素模拟 -->
+        <div class="section-title" style="margin-top: 15px; border-top: 1px solid rgba(0, 255, 180, 0.15); padding-top: 12px; display: flex; align-items: center; gap: 6px;">
+          <span>🍃 物理环境与自然因素</span>
+        </div>
+        <div class="tweak-controls environment-controls" style="background: rgba(0, 255, 180, 0.04); border: 1px solid rgba(0, 255, 180, 0.12);">
           <div class="control-row">
             <label>环境风速 (Wind Speed)</label>
             <div class="slider-group">
-              <input type="range" v-model.number="diffusionAdjust.windSpeed" min="0.0" max="25.0" step="0.5" />
-              <span class="val-text">{{ diffusionAdjust.windSpeed }}m/s</span>
+              <input type="range" v-model.number="globalWindSpeed" min="0.0" max="25.0" step="0.5" />
+              <span class="val-text">{{ globalWindSpeed }}m/s</span>
             </div>
           </div>
           <div class="control-row">
             <label>环境风向 (Wind Direction)</label>
             <div class="slider-group">
-              <input type="range" v-model.number="diffusionAdjust.windDirection" min="0" max="360" step="5" />
-              <span class="val-text">{{ diffusionAdjust.windDirection }}°</span>
+              <input type="range" v-model.number="globalWindDirection" min="0" max="360" step="5" />
+              <span class="val-text">{{ globalWindDirection }}° ({{ getWindDirectionText(globalWindDirection) }})</span>
+            </div>
+          </div>
+          <div class="control-row" v-if="currentCity === 'xiantao'">
+            <label>上升气流/浮力 (Gravity/Updraft)</label>
+            <div class="slider-group">
+              <input type="range" v-model.number="globalGravity" min="0.0" max="10.0" step="0.1" />
+              <span class="val-text">{{ globalGravity }}</span>
+            </div>
+          </div>
+          <div class="control-row" v-if="currentCity === 'huanggang'">
+            <label>环境阻力/阻尼 (Drag/Resistance)</label>
+            <div class="slider-group">
+              <input type="range" v-model.number="globalDrag" min="0.80" max="1.00" step="0.01" />
+              <span class="val-text">{{ globalDrag }}</span>
             </div>
           </div>
         </div>
@@ -318,7 +309,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref, reactive, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, reactive, watch, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -378,9 +369,121 @@ const scenePositions = {
 }
 
 // 物理仿真模式下粒子微调相关的响应式状态
+// 物理仿真模式下粒子微调相关的响应式状态
 const activePhysicsTab = ref('smoke')
-const selectedPhase = ref(5) // 默认推演第 5 阶段（剧烈扩散/燃烧）
+const activePhaseIndex = ref(5) // 默认推演第 5 阶段
+const selectedPhase = activePhaseIndex // 别名，确保向后兼容
+
+const accidentsList = [
+  { id: 'rear-end', title: '货车追尾现场' },
+  { id: 'leakage', title: '油罐车泄露现场' }
+]
+
+const accidentPoints = [
+  {
+    id: 'rear-end',
+    title: '货车追尾现场',
+    phases: [
+      { id: 't-start', time: '14:00', shortLabel: '仿真开始', title: '仿真推演开始' },
+      { id: 't-normal', time: '14:05', shortLabel: '正常行驶', title: '车辆正常行驶阶段' },
+      { id: 't-accident', time: '14:12', shortLabel: '事故发生', title: '货车追尾事故瞬间' },
+      { id: 't-smoke', time: '14:18', shortLabel: '次生灾害（烟雾）', title: '事故现场产生大量烟雾' },
+      { id: 't-fire', time: '14:26', shortLabel: '次生灾害（起火）', title: '事故车辆开始起火' },
+      { id: 't-spread', time: '14:40', shortLabel: '次生灾害（大火）', title: '火势进一步扩大蔓延' },
+      { id: 't-uav-start', time: '14:45', shortLabel: '无人装备出动', title: '无人装备协同出动' },
+      { id: 't-uav-deploy', time: '14:50', shortLabel: '无人感知部署', title: '无人感知节点部署' },
+      { id: 't-uav-exec', time: '14:55', shortLabel: '无人感知执行', title: '无人感知任务执行' },
+      { id: 't-rescue-start', time: '15:00', shortLabel: '救援装备出动', title: '专业救援装备协同出动' },
+    ]
+  },
+  {
+    id: 'leakage',
+    title: '油罐车泄露现场',
+    phases: [
+      { id: 'l-start', time: '15:00', shortLabel: '仿真开始', title: '油罐车仿真推演开始' },
+      { id: 'l-normal', time: '15:05', shortLabel: '正常行驶', title: '油罐车正常行驶阶段' },
+      { id: 'l-accident', time: '15:12', shortLabel: '事故发生（侧翻）', title: '油罐车发生侧翻事故' },
+      { id: 'l-leak', time: '15:20', shortLabel: '次生灾害（泄露）', title: '罐体受损开始发生化学品泄露' },
+      { id: 'l-fill', time: '15:35', shortLabel: '次生灾害（弥漫）', title: '泄露液体开始向四周大面积弥漫' },
+      { id: 'l-spread', time: '15:50', shortLabel: '次生灾害（扩散）', title: '挥发气体随风向周边区域扩散' },
+      { id: 'l-uav-start', time: '15:55', shortLabel: '无人装备出动', title: '无人装备协同出动' },
+      { id: 'l-uav-deploy', time: '16:00', shortLabel: '无人感知部署', title: '无人感知节点部署' },
+      { id: 'l-uav-exec', time: '16:05', shortLabel: '无人感知执行', title: '无人感知任务执行' },
+      { id: 'l-rescue-start', time: '16:10', shortLabel: '救援装备出动', title: '专业救援装备协同出动' },
+    ]
+  }
+]
+
+const activeAccidentIndex = computed({
+  get: () => activeScene.value === 'truck_crash' ? 0 : 1,
+  set: (val) => {
+    const sceneName = val === 0 ? 'truck_crash' : 'tanker_leak'
+    const city = val === 0 ? 'xiantao' : 'huanggang'
+    currentCity.value = city
+    activeScene.value = sceneName
+    activePhysicsTab.value = val === 0 ? 'smoke' : 'diffusion'
+    
+    // 即使 viewer 为 null，也要正常更新预设
+    selectPhase(activePhaseIndex.value)
+    
+    // 如果 viewer 不为空，触发相应动作
+    if (viewer) {
+      loadCityMask(city)
+      updateParticlesVisibility(city)
+      const coords = scenePositions[city][sceneName]
+      viewer.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(coords.lng, coords.lat, city === 'xiantao' ? 1500 : 2000),
+        orientation: {
+          heading: Cesium.Math.toRadians(0.0),
+          pitch: Cesium.Math.toRadians(-35.0),
+          roll: 0.0
+        },
+        duration: 2.0
+      })
+    }
+  }
+})
+
+const activeAccidentPhases = computed(() => {
+  return accidentPoints[activeAccidentIndex.value]?.phases || []
+})
+
+const phasesReadyList = computed(() => {
+  return Array(activeAccidentPhases.value.length).fill(true)
+})
+
+let simulationEntities = []
+
 const copiedMessage = ref('')
+
+const globalWindSpeed = ref(3.0)
+const globalWindDirection = ref(45.0)
+const globalGravity = ref(2.5)
+const globalDrag = ref(0.98)
+
+watch(globalWindSpeed, (newVal) => {
+  smokeAdjust.windSpeed = newVal
+  fireAdjust.windSpeed = newVal
+  diffusionAdjust.windSpeed = newVal
+})
+
+watch(globalWindDirection, (newVal) => {
+  smokeAdjust.windDirection = newVal
+  fireAdjust.windDirection = newVal
+  diffusionAdjust.windDirection = newVal
+})
+
+watch(globalGravity, (newVal) => {
+  smokeAdjust.gravity = newVal
+  fireAdjust.gravity = newVal
+  diffusionAdjust.gravity = newVal
+})
+
+watch(globalDrag, (newVal) => {
+  smokeAdjust.drag = newVal
+  fireAdjust.drag = newVal
+  diffusionAdjust.drag = newVal
+})
 
 const smokeAdjust = reactive({
   imageWidth: 25,
@@ -418,9 +521,10 @@ const diffusionAdjust = reactive({
   windDirection: 45.0
 })
 
-// 各个阶段的烟雾/火焰/扩散粒子预设配置，按照推演事故线(货车追尾、油罐车泄露)和风向风速来细化
+// 各个阶段的烟雾/火焰/扩散粒子预设配置
 function selectPhase(phaseIndex) {
-  selectedPhase.value = phaseIndex;
+  activePhaseIndex.value = phaseIndex;
+  return;
   
   if (activeScene.value === 'truck_crash') {
     // 事故线A：货车追尾现场
@@ -676,10 +780,14 @@ function selectPhase(phaseIndex) {
 
 const changeScene = (sceneName) => {
   activeScene.value = sceneName
-  const city = currentCity.value
-  const coords = scenePositions[city][sceneName]
+  const city = sceneName === 'truck_crash' ? 'xiantao' : 'huanggang'
+  currentCity.value = city
   
   if (viewer) {
+    loadCityMask(city)
+    updateParticlesVisibility(city)
+    const coords = scenePositions[city][sceneName]
+    
     if (city === 'xiantao') {
       if (smokeParticle) {
         adjustParticleHeight(smokeParticle, coords.lng, coords.lat, 2.0)
@@ -706,7 +814,7 @@ const changeScene = (sceneName) => {
   }
 
   // 刷新预设参数
-  selectPhase(selectedPhase.value)
+  selectPhase(activePhaseIndex.value)
 }
 
 const resetTweakParams = () => {
@@ -735,34 +843,309 @@ const copyTweakParams = () => {
   })
 }
 
-// 监听视图模式变化，在物理仿真模式下自动对焦至事故中心
-watch(viewMode, (newMode) => {
+// 重新计算并提供各阶段的动态粒子预设参数（针对全部 10 个阶段）
+function get2DParticleConfig(phaseIndex) {
+  const isTruck = activeScene.value === 'truck_crash'
+  const config = {
+    smoke: { imageWidth: 25, imageHeight: 25, emissionRate: 60, maxSpeed: 5.0, minLife: 2.0, maxLife: 4.5, gravity: 2.5, windSpeed: 3.0, windDirection: 45.0 },
+    fire: { imageWidth: 25, imageHeight: 25, emissionRate: 65, maxSpeed: 7.0, minLife: 1.0, maxLife: 2.5, gravity: 5.0, windSpeed: 3.0, windDirection: 45.0 },
+    diffusion: { imageWidth: 9, imageHeight: 9, emissionRate: 120, maxSpeed: 5.5, minLife: 4.0, maxLife: 6.5, drag: 0.96, windSpeed: 3.0, windDirection: 45.0 }
+  }
+  
+  if (isTruck) {
+    if (phaseIndex <= 1) { // 仿真开始/正常行驶
+      config.smoke.emissionRate = 0
+      config.fire.emissionRate = 0
+    } else if (phaseIndex === 2) { // 事故发生
+      config.smoke.emissionRate = 25
+      config.smoke.imageWidth = 12
+      config.smoke.imageHeight = 12
+      config.fire.emissionRate = 0
+    } else if (phaseIndex === 3) { // 次生灾害（烟雾）
+      config.smoke.emissionRate = 55
+      config.smoke.imageWidth = 20
+      config.smoke.imageHeight = 20
+      config.fire.emissionRate = 10
+      config.fire.imageWidth = 12
+      config.fire.imageHeight = 12
+    } else if (phaseIndex === 4) { // 次生灾害（起火）
+      config.smoke.emissionRate = 70
+      config.fire.emissionRate = 35
+    } else if (phaseIndex === 5) { // 次生灾害（大火）
+      config.smoke.emissionRate = 110
+      config.smoke.imageWidth = 32
+      config.smoke.imageHeight = 32
+      config.fire.emissionRate = 95
+      config.fire.imageWidth = 30
+      config.fire.imageHeight = 30
+    } else if (phaseIndex === 6) { // 无人装备出动
+      config.smoke.emissionRate = 90
+      config.fire.emissionRate = 80
+    } else if (phaseIndex === 7) { // 无人感知部署
+      config.smoke.emissionRate = 70
+      config.fire.emissionRate = 60
+    } else if (phaseIndex === 8) { // 无人感知执行
+      config.smoke.emissionRate = 50
+      config.fire.emissionRate = 45
+    } else if (phaseIndex === 9) { // 救援装备出动
+      config.smoke.emissionRate = 15
+      config.fire.emissionRate = 8
+      config.smoke.imageWidth = 10
+      config.smoke.imageHeight = 10
+      config.fire.imageWidth = 8
+      config.fire.imageHeight = 8
+    }
+  } else {
+    // 油罐车泄漏扩散
+    if (phaseIndex <= 1) {
+      config.diffusion.emissionRate = 0
+    } else if (phaseIndex === 2) { // 事故发生（侧翻）
+      config.diffusion.emissionRate = 15
+      config.diffusion.imageWidth = 6
+      config.diffusion.imageHeight = 6
+    } else if (phaseIndex === 3) { // 次生灾害（泄露）
+      config.diffusion.emissionRate = 45
+      config.diffusion.imageWidth = 8
+      config.diffusion.imageHeight = 8
+    } else if (phaseIndex === 4) { // 次生灾害（弥漫）
+      config.diffusion.emissionRate = 90
+      config.diffusion.imageWidth = 14
+      config.diffusion.imageHeight = 14
+    } else if (phaseIndex === 5) { // 次生灾害（扩散）
+      config.diffusion.emissionRate = 180
+      config.diffusion.imageWidth = 24
+      config.diffusion.imageHeight = 24
+    } else if (phaseIndex === 6) { // 无人装备出动
+      config.diffusion.emissionRate = 130
+      config.diffusion.imageWidth = 20
+      config.diffusion.imageHeight = 20
+    } else if (phaseIndex === 7) { // 无人感知部署
+      config.diffusion.emissionRate = 95
+      config.diffusion.imageWidth = 15
+      config.diffusion.imageHeight = 15
+    } else if (phaseIndex === 8) { // 无人感知执行
+      config.diffusion.emissionRate = 65
+      config.diffusion.imageWidth = 10
+      config.diffusion.imageHeight = 10
+    } else if (phaseIndex === 9) { // 救援装备出动
+      config.diffusion.emissionRate = 20
+      config.diffusion.imageWidth = 5
+      config.diffusion.imageHeight = 5
+    }
+  }
+  
+  return config
+}
+
+// 动态管理 3D 模型实体的可见性
+function update3DModelsVisibility() {
   if (!viewer) return
+  
+  const phase = activePhaseIndex.value
+  const scene = activeScene.value
+  
+  // 先把所有模型都隐藏
+  simulationEntities.forEach(e => {
+    e.show = false
+  })
+  
+  if (scene === 'truck_crash') {
+    // 货车现场基站展示
+    const jizhan = viewer.entities.getById('sim_jizhan')
+    if (jizhan) jizhan.show = true
+    
+    if (phase <= 1) {
+      const normal = viewer.entities.getById('sim_truck_normal')
+      if (normal) normal.show = true
+    } else {
+      const accident = viewer.entities.getById('sim_truck_accident')
+      if (accident) accident.show = true
+    }
+  } else {
+    // 油罐车现场
+    if (phase <= 1) {
+      const normal = viewer.entities.getById('sim_tanker_normal')
+      if (normal) normal.show = true
+    } else {
+      const accident = viewer.entities.getById('sim_tanker_accident')
+      if (accident) accident.show = true
+    }
+  }
+}
+
+// 载入 3D 事故模型实体
+function add3DModels() {
+  if (!viewer) return
+  
+  // 清理老 Entities
+  simulationEntities.forEach(e => viewer.entities.remove(e))
+  simulationEntities = []
+  
+  const xtCoords = scenePositions.xiantao.truck_crash
+  const hgCoords = scenePositions.huanggang.tanker_leak
+  
+  // 1. 货车正常行驶模型
+  const truckNormal = viewer.entities.add({
+    id: 'sim_truck_normal',
+    name: '货车行驶',
+    position: Cesium.Cartesian3.fromDegrees(xtCoords.lng, xtCoords.lat, 0),
+    model: {
+      uri: '/Dashboard/models/Normal_Drive.glb',
+      scale: 1.0,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+    },
+    show: false
+  })
+  simulationEntities.push(truckNormal)
+  
+  // 2. 货车事故模型
+  const truckAccident = viewer.entities.add({
+    id: 'sim_truck_accident',
+    name: '货车追尾',
+    position: Cesium.Cartesian3.fromDegrees(xtCoords.lng, xtCoords.lat, 0),
+    model: {
+      uri: '/Dashboard/models/Accident_Occur1.glb',
+      scale: 1.0,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+    },
+    show: false
+  })
+  simulationEntities.push(truckAccident)
+  
+  // 3. 油罐车正常行驶模型
+  const tankerNormal = viewer.entities.add({
+    id: 'sim_tanker_normal',
+    name: '油罐车行驶',
+    position: Cesium.Cartesian3.fromDegrees(hgCoords.lng, hgCoords.lat, 0),
+    model: {
+      uri: '/Dashboard/models/Normal_Drive_Tanker.glb',
+      scale: 1.0,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+    },
+    show: false
+  })
+  simulationEntities.push(tankerNormal)
+  
+  // 4. 油罐车事故模型
+  const tankerAccident = viewer.entities.add({
+    id: 'sim_tanker_accident',
+    name: '油罐车侧翻',
+    position: Cesium.Cartesian3.fromDegrees(hgCoords.lng, hgCoords.lat, 0),
+    model: {
+      uri: '/Dashboard/models/Side_roll_Tanker.glb',
+      scale: 1.0,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+    },
+    show: false
+  })
+  simulationEntities.push(tankerAccident)
+  
+  // 5. 5G基站模型 (货车现场)
+  const jizhan = viewer.entities.add({
+    id: 'sim_jizhan',
+    name: '5G基站',
+    position: Cesium.Cartesian3.fromDegrees(xtCoords.lng + 0.0001, xtCoords.lat + 0.0001, 0),
+    model: {
+      uri: '/Dashboard/models/jizhan.glb',
+      scale: 2.0,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+    },
+    show: false
+  })
+  simulationEntities.push(jizhan)
+  
+  update3DModelsVisibility()
+}
+
+// 监听事故阶段和事故场景的变化，动态更新各面板状态
+watch([activePhaseIndex, activeScene], ([phaseIdx, scene]) => {
+  const config = get2DParticleConfig(phaseIdx)
+  
+  // 1. 同步调节面板状态
+  if (scene === 'truck_crash') {
+    Object.keys(config.smoke).forEach(key => {
+      smokeAdjust[key] = config.smoke[key]
+    })
+    Object.keys(config.fire).forEach(key => {
+      fireAdjust[key] = config.fire[key]
+    })
+    globalWindSpeed.value = config.smoke.windSpeed || 3.0
+    globalWindDirection.value = config.smoke.windDirection || 45.0
+    globalGravity.value = config.smoke.gravity || 2.5
+    globalDrag.value = 0.98
+  } else {
+    Object.keys(config.diffusion).forEach(key => {
+      diffusionAdjust[key] = config.diffusion[key]
+    })
+    globalWindSpeed.value = config.diffusion.windSpeed || 3.0
+    globalWindDirection.value = config.diffusion.windDirection || 45.0
+    globalGravity.value = 2.5
+    globalDrag.value = config.diffusion.drag || 0.96
+  }
+  
+  // 2. 同步更新 3D 粒子和 3D 模型
+  if (viewer) {
+    update3DModelsVisibility()
+    // 同步更新 3D 粒子的可见性
+    if (smokeParticle) smokeParticle.show = (currentCity.value === 'xiantao' && phaseIdx >= 2)
+    if (fireParticle) fireParticle.show = (currentCity.value === 'xiantao' && phaseIdx >= 4)
+    if (diffusionParticle) diffusionParticle.show = (currentCity.value === 'huanggang' && phaseIdx >= 2)
+    
+    // 同步更新 CZML 实体可见性，如果是第6阶段（无人装备出动），场景中只需要有粒子效果，隐藏所有CZML模型和规划路线
+    if (currentCzmlDataSource) {
+      currentCzmlDataSource.entities.values.forEach(entity => {
+        entity.show = (Number(phaseIdx) !== 6);
+      });
+    }
+  }
+}, { immediate: true })
+
+// 监听视图模式变化，在物理仿真模式下自动对焦至事故中心，并切换 2D 渲染引擎
+watch(viewMode, (newMode) => {
   if (newMode === 'physics') {
     const city = currentCity.value
-    const coords = scenePositions[city][activeScene.value]
-    viewer.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(coords.lng, coords.lat, city === 'xiantao' ? 1500 : 2000),
-      orientation: {
-        heading: Cesium.Math.toRadians(0.0),
-        pitch: Cesium.Math.toRadians(-35.0),
-        roll: 0.0
-      },
-      duration: 2.0
-    });
+    if (viewer) {
+      const coords = scenePositions[city][activeScene.value]
+      viewer.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(coords.lng, coords.lat, city === 'xiantao' ? 1500 : 2000),
+        orientation: {
+          heading: Cesium.Math.toRadians(0.0),
+          pitch: Cesium.Math.toRadians(-35.0),
+          roll: 0.0
+        },
+        duration: 2.0
+      });
+      add3DModels()
+    }
     activePhysicsTab.value = (city === 'xiantao') ? 'smoke' : 'diffusion'
-    selectPhase(selectedPhase.value)
-  } else if (newMode === '3d') {
-    if (currentCity.value === 'xiantao') {
-      viewer.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(113.43, 30.29, 120000),
-        duration: 2.0
-      })
-    } else {
-      viewer.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(114.90, 30.70, 380000),
-        duration: 2.0
-      })
+    selectPhase(activePhaseIndex.value)
+    
+    // 异步启动 2D 物理粒子循环
+    nextTick(() => {
+      start2DPhysicsSimulation()
+    })
+  } else {
+    // 停止 2D 物理粒子循环
+    stop2DPhysicsSimulation()
+    
+    if (viewer) {
+      // 清理 3D 事故模型
+      simulationEntities.forEach(e => viewer.entities.remove(e))
+      simulationEntities = []
+      
+      if (newMode === '3d') {
+        if (currentCity.value === 'xiantao') {
+          viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(113.43, 30.29, 120000),
+            duration: 2.0
+          })
+        } else {
+          viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(114.90, 30.70, 380000),
+            duration: 2.0
+          })
+        }
+      }
     }
   }
 })
@@ -782,6 +1165,13 @@ const loadMission = async () => {
     const dataSource = await Cesium.CzmlDataSource.load(czmlUrl)
     if (!viewer) return
     currentCzmlDataSource = dataSource
+    
+    // Clear availability and hide in phase 6
+    dataSource.entities.values.forEach(entity => {
+      entity.availability = undefined;
+      entity.show = (Number(activePhaseIndex.value) !== 6);
+    });
+
     viewer.dataSources.add(dataSource)
 
     // 同步时间轴
@@ -1012,6 +1402,12 @@ const flyToCity = async (city) => {
   // 触发生成对应的二维推演
   generate2DDeduction(city);
 
+  // 即使 viewer 为 null，也要正常更新物理仿真的 Tab 和推演阶段以刷新 2D Canvas
+  if (viewMode.value === 'physics') {
+    activePhysicsTab.value = (city === 'xiantao') ? 'smoke' : 'diffusion'
+    selectPhase(selectedPhase.value)
+  }
+
   if (!viewer) return;
   
   await loadCityMask(city);
@@ -1028,8 +1424,6 @@ const flyToCity = async (city) => {
       },
       duration: 2.0
     });
-    activePhysicsTab.value = (city === 'xiantao') ? 'smoke' : 'diffusion'
-    selectPhase(selectedPhase.value)
   } else {
     if (city === 'xiantao') {
       viewer.camera.flyTo({
@@ -1057,11 +1451,6 @@ const initSimulationViewer = async () => {
 
   // 屏蔽 Cesium 默认的红色崩溃弹窗
   if (Cesium) {
-    if (typeof Cesium['showHtmlErrorPanel'] === 'function') {
-      Cesium['showHtmlErrorPanel'] = function(title, message, error) {
-        console.error('[Cesium Widget Error]', title, message, error);
-      };
-    }
     if (Cesium.CesiumWidget && Cesium.CesiumWidget.prototype) {
       Cesium.CesiumWidget.prototype.showErrorPanel = function(title, message, error) {
         console.error('[Cesium Widget Proto Error Blocked]', title, message, error);
@@ -1240,7 +1629,373 @@ const initSimulationViewer = async () => {
 
 onMounted(() => {
   initSimulationViewer()
+  if (viewMode.value === 'physics') {
+    start2DPhysicsSimulation()
+  }
 })
+
+// ==================== 2D 物理粒子仿真引擎 ====================
+let physicsCanvas = null
+let physicsCtx = null
+let physicsAnimationId = null
+let physicsParticles = []
+
+// 获取风向的中文文字描述
+function getWindDirectionText(dir) {
+  if (dir >= 337.5 || dir < 22.5) return '北风'
+  if (dir >= 22.5 && dir < 67.5) return '东北风'
+  if (dir >= 67.5 && dir < 112.5) return '东风'
+  if (dir >= 112.5 && dir < 157.5) return '东南风'
+  if (dir >= 157.5 && dir < 202.5) return '南风'
+  if (dir >= 202.5 && dir < 247.5) return '西南风'
+  if (dir >= 247.5 && dir < 292.5) return '西风'
+  return '西北风'
+}
+
+// 绑定风速，用于界面 HUD
+const currentWindSpeed = computed(() => globalWindSpeed.value)
+
+// 绑定风向，用于界面 HUD
+const currentWindDirection = computed(() => globalWindDirection.value)
+
+const activeParticleCount = ref(0)
+
+class Physics2DParticle {
+  constructor(x, y, type) {
+    this.x = x
+    this.y = y
+    this.type = type // 'smoke' | 'fire' | 'diffusion'
+    
+    // 获取当前粒子调节参数
+    const adjust = type === 'smoke' ? smokeAdjust : type === 'fire' ? fireAdjust : diffusionAdjust
+    
+    // 初始速度：向上喷射，加入一定的随机扇形展角
+    const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.4 // 垂直向上方向的随机偏角
+    const speed = adjust.maxSpeed * (0.35 + Math.random() * 0.65) // 随机速度大小
+    
+    this.vx = Math.cos(angle) * speed * 25 // 2D 像素尺度缩放
+    this.vy = Math.sin(angle) * speed * 25
+    
+    this.maxLife = adjust.minLife + Math.random() * (adjust.maxLife - adjust.minLife)
+    this.life = this.maxLife
+    
+    // 初始大小
+    this.initWidth = adjust.imageWidth * 1.5
+    this.initHeight = adjust.imageHeight * 1.5
+    this.width = this.initWidth
+    this.height = this.initHeight
+    
+    // 阻力
+    this.drag = type === 'diffusion' ? (diffusionAdjust.drag || 0.96) : 0.98
+    
+    // 重力/上升力系数
+    this.gravity = adjust.gravity || (type === 'fire' ? 5.0 : 2.5)
+  }
+  
+  update(dt, windX, windY) {
+    this.life -= dt
+    if (this.life <= 0) return false
+    
+    // 1. 上升力（上升力向上，故在 2D 坐标系中 y 减小）
+    const buoyancy = this.gravity * 35 * dt
+    this.vy -= buoyancy
+    
+    // 2. 环境风力影响
+    this.vx += windX * 15 * dt
+    this.vy += windY * 15 * dt
+    
+    // 3. 阻力/摩擦力
+    this.vx *= Math.pow(this.drag, dt * 60)
+    this.vy *= Math.pow(this.drag, dt * 60)
+    
+    // 4. 位移更新
+    this.x += this.vx * dt
+    this.y += this.vy * dt
+    
+    // 5. 随着寿命增加，粒子膨胀扩展
+    const ageRatio = 1.0 - (this.life / this.maxLife)
+    // 烟雾和扩散粒子在生命周期末期会急剧膨胀，火焰则保持或缩小
+    const scaleMultiplier = this.type === 'fire' ? (1.0 - ageRatio * 0.3) : (1.0 + ageRatio * 3.5)
+    this.width = this.initWidth * scaleMultiplier
+    this.height = this.initHeight * scaleMultiplier
+    
+    return true
+  }
+  
+  draw(ctx) {
+    const ageRatio = this.life / this.maxLife
+    ctx.save()
+    
+    // 使用径向渐变模拟真实的雾状/火焰发光粒子
+    const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, Math.max(this.width, this.height) / 2)
+    
+    if (this.type === 'fire') {
+      // 火焰粒子：亮黄/橙色中心，渐变为红色，末梢透明
+      grad.addColorStop(0, `rgba(255, 255, 200, ${ageRatio * 0.9})`)
+      grad.addColorStop(0.2, `rgba(255, 180, 0, ${ageRatio * 0.8})`)
+      grad.addColorStop(0.5, `rgba(240, 50, 0, ${ageRatio * 0.5})`)
+      grad.addColorStop(1, 'rgba(120, 0, 0, 0)')
+      ctx.globalCompositeOperation = 'lighter' // 叠加发光模式
+    } else if (this.type === 'smoke') {
+      // 烟雾粒子：中心灰黑色，边缘透明灰色
+      const darkness = 35 + (1.0 - ageRatio) * 45 // 随着衰老变灰淡
+      grad.addColorStop(0, `rgba(${darkness}, ${darkness}, ${darkness + 5}, ${ageRatio * 0.65})`)
+      grad.addColorStop(0.4, `rgba(${darkness - 10}, ${darkness - 10}, ${darkness - 5}, ${ageRatio * 0.4})`)
+      grad.addColorStop(1, 'rgba(20, 20, 20, 0)')
+    } else {
+      // 泄漏扩散粒子：亮霓虹绿/黄色中心，渐变为黄绿透明，模拟毒气
+      grad.addColorStop(0, `rgba(57, 255, 20, ${ageRatio * 0.7})`)
+      grad.addColorStop(0.3, `rgba(180, 255, 0, ${ageRatio * 0.4})`)
+      grad.addColorStop(0.6, `rgba(100, 220, 40, ${ageRatio * 0.15})`)
+      grad.addColorStop(1, 'rgba(0, 150, 0, 0)')
+    }
+    
+    ctx.fillStyle = grad
+    ctx.beginPath()
+    // 绘制椭圆来匹配 Width / Height
+    ctx.ellipse(this.x, this.y, this.width / 2, this.height / 2, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+  }
+}
+
+class WaterSuppressionParticle {
+  constructor(startX, startY, targetX, targetY) {
+    this.x = startX
+    this.y = startY
+    this.type = 'water'
+    
+    // 抛物线水流：朝向起火点/泄漏点发射
+    const dx = targetX - startX
+    const dy = targetY - startY
+    const dist = Math.sqrt(dx*dx + dy*dy)
+    
+    // 随机散射弧度
+    const angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.25
+    const speed = (dist / 1.1) * (0.85 + Math.random() * 0.3)
+    
+    this.vx = Math.cos(angle) * speed
+    this.vy = Math.sin(angle) * speed - 60 // 往上喷射抛物线
+    
+    this.life = 1.2 + Math.random() * 0.4
+    this.maxLife = this.life
+    this.size = 3 + Math.random() * 4
+  }
+  
+  update(dt) {
+    this.life -= dt
+    if (this.life <= 0) return false
+    
+    // 水滴受重力影响下坠
+    this.vy += 220 * dt
+    this.x += this.vx * dt
+    this.y += this.vy * dt
+    
+    return true
+  }
+  
+  draw(ctx) {
+    const ageRatio = this.life / this.maxLife
+    ctx.save()
+    ctx.fillStyle = `rgba(0, 229, 255, ${ageRatio * 0.85})`
+    ctx.shadowBlur = 6
+    ctx.shadowColor = '#00e5ff'
+    ctx.beginPath()
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+  }
+}
+
+// 绘制地面的事故车或设施的高科技线框图
+function drawAccidentBase(ctx, width, height) {
+  const baseX = width / 2
+  const baseY = height * 2 / 3
+  const phase = activePhaseIndex.value
+  
+  ctx.save()
+  // 1. 绘制带有科技感的发光底座
+  ctx.shadowColor = '#00ffd8'
+  ctx.shadowBlur = 10
+  ctx.strokeStyle = 'rgba(0, 255, 216, 0.4)'
+  ctx.lineWidth = 2
+  
+  // 地面横线
+  ctx.beginPath()
+  ctx.moveTo(baseX - 350, baseY + 60)
+  ctx.lineTo(baseX + 350, baseY + 60)
+  ctx.stroke()
+  
+  // 刻度网格线
+  for (let offset = -300; offset <= 300; offset += 50) {
+    ctx.beginPath()
+    ctx.moveTo(baseX + offset, baseY + 60)
+    ctx.lineTo(baseX + offset + (offset * 0.15), baseY + 85)
+    ctx.strokeStyle = 'rgba(0, 255, 216, 0.12)'
+    ctx.stroke()
+  }
+  ctx.shadowBlur = 0
+
+  if (activeScene.value === 'truck_crash') {
+    // ==================== 货车追尾现场 ====================
+    // 车辆模型已按需不绘制
+    
+    // 起火核心点警示标志
+    if (phase >= 2) {
+      ctx.fillStyle = 'rgba(255, 50, 0, 0.15)'
+      ctx.beginPath()
+      ctx.arc(baseX, baseY + 15, 35, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    
+  } else {
+    // ==================== 油罐车泄露现场 ====================
+    // 车辆模型已按需不绘制
+    
+    // 泄漏水渍 and 流淌效果
+    if (phase >= 3) {
+      ctx.fillStyle = 'rgba(0, 255, 180, 0.15)'
+      ctx.beginPath()
+      ctx.ellipse(baseX, baseY + 48, 65, 12, 0, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+  ctx.restore()
+}
+
+// 启动 2D 物理粒子循环
+function start2DPhysicsSimulation() {
+  stop2DPhysicsSimulation()
+  
+  physicsCanvas = document.getElementById('physicsSmokeCanvas')
+  if (!physicsCanvas) return
+  
+  physicsCtx = physicsCanvas.getContext('2d')
+  if (!physicsCtx) return
+  
+  // 自适应 Canvas 大小
+  const resizeCanvas = () => {
+    if (!physicsCanvas) return
+    const rect = physicsCanvas.parentElement.getBoundingClientRect()
+    physicsCanvas.width = rect.width
+    physicsCanvas.height = rect.height
+  }
+  resizeCanvas()
+  window.addEventListener('resize', resizeCanvas)
+  
+  physicsParticles = []
+  let lastTime = performance.now()
+  let spawnAccumulator = 0
+  
+  const loop = (now) => {
+    if (!physicsCanvas || !physicsCtx) return
+    
+    const dt = Math.min((now - lastTime) / 1000, 0.1) // 限制最大时间差
+    lastTime = now
+    
+    // 1. 清屏并填充暗夜网格背景
+    physicsCtx.fillStyle = '#070b19'
+    physicsCtx.fillRect(0, 0, physicsCanvas.width, physicsCanvas.height)
+    
+    // 绘制高科技感的星空背景网格
+    physicsCtx.save()
+    physicsCtx.strokeStyle = 'rgba(0, 255, 180, 0.03)'
+    physicsCtx.lineWidth = 1
+    const gridSize = 40
+    for (let x = 0; x < physicsCanvas.width; x += gridSize) {
+      physicsCtx.beginPath()
+      physicsCtx.moveTo(x, 0)
+      physicsCtx.lineTo(x, physicsCanvas.height)
+      physicsCtx.stroke()
+    }
+    for (let y = 0; y < physicsCanvas.height; y += gridSize) {
+      physicsCtx.beginPath()
+      physicsCtx.moveTo(0, y)
+      physicsCtx.lineTo(physicsCanvas.width, y)
+      physicsCtx.stroke()
+    }
+    physicsCtx.restore()
+    
+    // 2. 绘制事故模型底座
+    drawAccidentBase(physicsCtx, physicsCanvas.width, physicsCanvas.height)
+    
+    // 3. 计算当前的物理环境力 (风向风速)
+    const angleRad = (currentWindDirection.value + 180) * Math.PI / 180
+    const windSpeedVal = currentWindSpeed.value
+    // 风力的 X 和 Y 分量
+    const windX = Math.sin(angleRad) * windSpeedVal
+    const windY = -Math.cos(angleRad) * windSpeedVal // 向上为负
+    
+    // 4. 生成新粒子 (发射速率控制)
+    let rate = 0
+    let types = []
+    
+    if (activePhaseIndex.value >= 2 && activePhaseIndex.value <= 9) {
+      if (currentCity.value === 'xiantao') {
+        // 仙桃：烟雾和火焰
+        if (activePhaseIndex.value === 2 || activePhaseIndex.value === 3) {
+          rate = smokeAdjust.emissionRate
+          types = ['smoke']
+        } else {
+          rate = (smokeAdjust.emissionRate + fireAdjust.emissionRate)
+          const total = smokeAdjust.emissionRate + fireAdjust.emissionRate
+          const smokeRatio = total > 0 ? smokeAdjust.emissionRate / total : 0.5
+          types = Math.random() < smokeRatio ? ['smoke'] : ['fire']
+        }
+      } else {
+        // 黄冈：泄露扩散
+        rate = diffusionAdjust.emissionRate
+        types = ['diffusion']
+      }
+    }
+    
+    // 累积生成数
+    spawnAccumulator += rate * dt
+    const sourceX = physicsCanvas.width / 2
+    const sourceY = physicsCanvas.height * 2 / 3 + 15
+    
+    while (spawnAccumulator >= 1) {
+      types.forEach(t => {
+        physicsParticles.push(new Physics2DParticle(sourceX, sourceY, t))
+      })
+      spawnAccumulator -= 1
+    }
+    
+    // 5. 更新并渲染粒子
+    physicsParticles = physicsParticles.filter(p => {
+      let isAlive
+      if (p.type === 'water') {
+        isAlive = p.update(dt)
+      } else {
+        isAlive = p.update(dt, windX, windY)
+      }
+      if (isAlive) {
+        p.draw(physicsCtx)
+      }
+      return isAlive
+    })
+    
+    // 6. 更新仪表盘数据
+    activeParticleCount.value = physicsParticles.length
+    
+    physicsAnimationId = requestAnimationFrame(loop)
+  }
+  
+  physicsAnimationId = requestAnimationFrame(loop)
+}
+
+function stop2DPhysicsSimulation() {
+  if (physicsAnimationId) {
+    cancelAnimationFrame(physicsAnimationId)
+    physicsAnimationId = null
+  }
+  if (physicsCanvas) {
+    window.removeEventListener('resize', () => {})
+    physicsCanvas = null
+  }
+  physicsCtx = null
+  physicsParticles = []
+}
 
 // 创建烟雾系统
 function createSmokeSystem(lng, lat) {
@@ -1501,6 +2256,7 @@ function updateParticlesVisibility(city) {
 }
 
 onBeforeUnmount(() => {
+  stop2DPhysicsSimulation()
   if (initSimulationViewerTimeout) {
     clearTimeout(initSimulationViewerTimeout)
     initSimulationViewerTimeout = null
