@@ -1,6 +1,5 @@
 <template>
   <div class="home-dashboard">
-    <!-- Top Nav / Toolbar -->
     <header class="top-nav-desktop">
       <div class="header-left-actions">
         <div class="toolbar">
@@ -31,10 +30,7 @@
 
     <div class="main-layout">
 
-
-      <!-- Center Viewport (Cesium Map) -->
       <main class="center-viewport-container">
-
         
         <div class="viewport-body">
           <div class="globe-layer">
@@ -50,7 +46,6 @@
             />
           </div>
           
-          <!-- Bottom Timeline embedded inside center body for containment -->
           <div class="timeline-container" :style="{ bottom: timelineBottom + 'px' }">
             <HomeTimeProgress
               v-model="activePhaseIndex"
@@ -64,7 +59,6 @@
         </div>
       </main>
 
-      <!-- Right Sidebar (White) -->
       <aside class="right-sidebar" :class="{ collapsed: isRightCollapsed }">
         <button class="toggle-btn toggle-btn-right" type="button" @click="isRightCollapsed = !isRightCollapsed">
           {{ isRightCollapsed ? '▶' : '◀' }}
@@ -79,92 +73,119 @@
         </div>
         <div class="sidebar-content right-sidebar-flex-content">
           <div class="right-tab-panel">
-            <!-- 传感器数据标签页 -->
             <div v-if="activeRightTab === 'sensor'" class="sensor-data-panel">
               <div class="sensor-header-row">
-                <span class="sensor-section-title">实时环境传感器</span>
-                <span class="sensor-source-badge" :class="{ online: isWsConnected }">
-                  {{ isWsConnected ? '📡 网关在线' : '⚠️ 离线模拟' }}
+                <span class="sensor-section-title">地面移动监测节点情况</span>
+                <span class="sensor-source-badge" :class="{ online: isSensorDeployed && isWsConnected }">
+                  {{ !isSensorDeployed ? '⚠️ 尚未部署 (断联)' : (isWsConnected ? '📡 网关在线' : '⚠️ 离线模拟') }}
                 </span>
               </div>
               
               <div class="ugv-cards-container">
-                <!-- 无人车 A 卡片 -->
                 <div class="ugv-card">
                   <div class="ugv-header">
-                    <span class="ugv-title">监测点 A</span>
-                    <span class="ugv-status" :class="{ offline: !isWsConnected }">{{ isWsConnected ? '在线' : '离线' }}</span>
+                    <span class="ugv-title">地面感知单元-001</span>
+                    <span class="ugv-status" :class="{ offline: !isSensorDeployed }">{{ isSensorDeployed ? '在线' : '断联' }}</span>
                   </div>
                   <div class="ugv-data">
                     <div class="ugv-row">
-                      <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ isWsConnected ? ugvA.temp : '--' }}</span></div>
-                      <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ isWsConnected ? ugvA.hum + '%' : '--' }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ isSensorDeployed ? ugvA.temp : '0' }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ isSensorDeployed ? ugvA.hum + '%' : '0%' }}</span></div>
                     </div>
                     <div class="ugv-row">
-                      <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ isWsConnected ? ugvA.smoke + ' ug' : '--' }}</span></div>
+                      <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ isSensorDeployed ? ugvA.smoke + ' ug' : '0 ug' }}</span></div>
                     </div>
                     <div class="ugv-row">
-                      <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ isWsConnected ? ugvA.tvoc : '--' }}</span></div>
-                      <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ isWsConnected ? ugvA.co : '--' }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ isSensorDeployed ? ugvA.tvoc : '0' }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ isSensorDeployed ? ugvA.co : '0' }}</span></div>
                     </div>
                   </div>
                   <div class="ugv-footer" @click="router.push({ path: '/sensor-manage', query: { target: 'node1' } })">点击查看详情 →</div>
                 </div>
 
-                <!-- 无人车 B 卡片 -->
                 <div class="ugv-card">
                   <div class="ugv-header">
-                    <span class="ugv-title">监测点 B</span>
-                    <span class="ugv-status" :class="{ offline: !isWsConnected }">{{ isWsConnected ? '在线' : '离线' }}</span>
+                    <span class="ugv-title">地面感知单元-002</span>
+                    <span class="ugv-status" :class="{ offline: !isSensorDeployed }">{{ isSensorDeployed ? '在线' : '断联' }}</span>
                   </div>
                   <div class="ugv-data">
                     <div class="ugv-row">
-                      <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ isWsConnected ? ugvB.temp : '--' }}</span></div>
-                      <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ isWsConnected ? ugvB.hum + '%' : '--' }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">温度</span><span class="ugv-value">{{ isSensorDeployed ? ugvB.temp : '0' }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">湿度</span><span class="ugv-value">{{ isSensorDeployed ? ugvB.hum + '%' : '0%' }}</span></div>
                     </div>
                     <div class="ugv-row">
-                      <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ isWsConnected ? ugvB.smoke + ' ug' : '--' }}</span></div>
+                      <div class="ugv-item full-width"><span class="ugv-label">烟雾</span><span class="ugv-value">{{ isSensorDeployed ? ugvB.smoke + ' ug' : '0 ug' }}</span></div>
                     </div>
                     <div class="ugv-row">
-                      <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ isWsConnected ? ugvB.tvoc : '--' }}</span></div>
-                      <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ isWsConnected ? ugvB.co : '--' }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">TVOC</span><span class="ugv-value">{{ isSensorDeployed ? ugvB.tvoc : '0' }}</span></div>
+                      <div class="ugv-item"><span class="ugv-label">CO</span><span class="ugv-value">{{ isSensorDeployed ? ugvB.co : '0' }}</span></div>
                     </div>
                   </div>
                   <div class="ugv-footer" @click="router.push({ path: '/sensor-manage', query: { target: 'node2' } })">点击查看详情 →</div>
                 </div>
               </div>
 
-              <div class="sensor-section-title" style="margin-top: 18px;">局部气象环境</div>
+              <div class="sensor-section-title" style="margin-top: 18px;">固定环境感知情况</div>
               
               <div class="meteorology-card">
                 <div class="met-icon">🌬️</div>
                 <div class="met-details">
                   <div class="met-row">
                     <span class="met-label">实时风速</span>
-                    <span class="met-val">{{ isWsConnected ? displaySensorData.windSpeed + ' m/s' : '--' }}</span>
+                    <span class="met-val">{{ isSensorDeployed ? displaySensorData.windSpeed + ' m/s' : '0 m/s' }}</span>
                   </div>
                   <div class="met-divider"></div>
                   <div class="met-row">
                     <span class="met-label">当前风向</span>
-                    <span class="met-val">{{ isWsConnected ? displaySensorData.windDirection : '--' }}</span>
+                    <span class="met-val">{{ isSensorDeployed ? displaySensorData.windDirection : '--' }}</span>
                   </div>
                 </div>
               </div>
 
-              <!-- 无人机航拍图片数据 -->
-              <div class="sensor-section-title" style="margin-top: 18px;">无人机航拍图片</div>
-
+           
+              <div class="sensor-section-title" style="margin-top: 18px;">空域监测移动节点情况</div>
+                 <div class="capability-panel" style="margin-top: 18px;">
+               
+              </div>
               <div class="sidebar-uav-gallery" v-if="globeRef && globeRef.capturedPhotos">
-                <!-- 主图区域 -->
                 <div class="sidebar-uav-main-photo">
                   <img
                     v-if="globeRef.activePhotoIndex !== null"
                     :src="currentPhotoSrc"
                     :class="['sidebar-uav-img', 'photo-angle-' + globeRef.activePhotoIndex]"
                   />
-                  <div v-else class="sidebar-uav-placeholder">
+                  <div class="sidebar-uav-placeholder" v-else>
                     <div class="sidebar-radar"></div>
                     <span>等待无人机到达侦察位置...</span>
+                  </div>
+                   <div class="cap-group">
+                    <div class="cap-title">通信与链路效能</div>
+                    <div class="cap-items">
+                        <div class="cap-item row-flex">
+                          <span class="c-lbl">网络拓扑结构</span>
+                          <span class="c-val tag-blue">{{ networkStats.networkType }}</span>
+                        </div>
+                        <div class="cap-item row-flex">
+                          <span class="c-lbl">传感吞吐频率</span>
+                          <span class="c-val highlight">{{ networkStats.throughput }}</span>
+                        </div>
+                    </div>
+                  </div>
+
+                  <div class="cap-group">
+                    <div class="cap-title">多源感知数据态势</div>
+                    <div class="cap-items data-stats">
+                      <div class="stat-box">
+                        <span class="s-lbl">全量感知维度</span>
+                        <span class="s-val">{{ networkStats.sensingDimensions }} <small>项</small></span>
+                        <span class="s-desc">温/湿/烟/TVOC/CO/风</span>
+                      </div>
+                      <div class="stat-box">
+                        <span class="s-lbl">累计数据吞吐量</span>
+                        <span class="s-val">{{ totalPackets }} <small>包</small></span>
+                        <span class="s-desc">边缘端实时解析</span>
+                      </div>
+                    </div>
                   </div>
                   <div class="sidebar-uav-overlay" v-if="globeRef.activePhotoIndex !== null">
                     <span class="timestamp">{{ globeRef.currentTimeStr }}</span>
@@ -173,7 +194,6 @@
                     </span>
                   </div>
                 </div>
-                <!-- 4张缩略图列表 -->
                 <div class="sidebar-uav-thumbs">
                   <div
                     v-for="i in [0, 1, 2, 3]"
@@ -200,21 +220,238 @@
               <div v-else class="sidebar-uav-no-ref">
                 <p>正在初始化三维引擎...</p>
               </div>
+              <div class="capability-panel" style="margin-top:18px;">
+
+  <div class="panel-header">
+    <h3>感知网络与组网资源效能</h3>
+  </div>
+
+
+  <div class="capability-grid">
+
+
+    <!-- 组网实体资源状态 -->
+    <div class="cap-group">
+      <div class="cap-title">
+        组网实体资源状态
+      </div>
+
+      <div class="cap-items">
+
+        <div class="cap-item icon-item">
+          <span class="cap-icon">🚙</span>
+
+          <div class="cap-info">
+
+            <div>
+              地面机动节点 (UGV)
             </div>
 
-            <!-- 检测数据标签页 -->
+            <div class="sub-status-row">
+
+              <span :class="['mini-status',
+              resourceStatus.ugv1?'on':'off']">
+
+                地面感知单元-001:
+                {{resourceStatus.ugv1?'在线':'离线'}}
+
+              </span>
+
+
+              <span :class="['mini-status',
+              resourceStatus.ugv2?'on':'off']">
+
+                地面感知单元-002:
+                {{resourceStatus.ugv2?'在线':'离线'}}
+
+              </span>
+
+            </div>
+
+          </div>
+        </div>
+
+
+
+        <div class="cap-item icon-item">
+
+          <span class="cap-icon">
+            🚁
+          </span>
+
+          <div>
+
+            空中感知侦查(UAV)
+
+            <div class="sub-status-row">
+
+              <span :class="['mini-status',
+              resourceStatus.uav?'on':'off']">
+
+                广角图传:
+                {{resourceStatus.uav?'信号正常':'信号断开'}}
+
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+
+        <div class="cap-item icon-item">
+
+          <span class="cap-icon">
+            🗼
+          </span>
+
+          <div>
+
+            气象基准站
+
+            <div class="sub-status-row">
+
+              <span :class="['mini-status',
+              resourceStatus.weather?'on':'off']">
+
+                风速风向监测:
+                {{resourceStatus.weather?'在线':'离线'}}
+
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+      </div>
+
+    </div>
+
+
+
+    <!-- 通信链路 -->
+    <div class="cap-group">
+
+      <div class="cap-title">
+        通信与链路效能
+      </div>
+
+
+      <div class="cap-item row-flex">
+
+        <span>
+          网络拓扑结构
+        </span>
+
+        <span class="c-val tag-blue">
+          {{networkStats.networkType}}
+        </span>
+
+      </div>
+
+      <div class="cap-item row-flex">
+
+        <span>
+          传感吞吐频率
+        </span>
+
+
+        <span class="highlight">
+
+          {{networkStats.throughput}}
+
+        </span>
+
+      </div>
+
+
+    </div>
+
+
+
+
+    <!-- 数据态势 -->
+    <div class="cap-group">
+
+      <div class="cap-title">
+        多源感知数据态势
+      </div>
+
+
+      <div class="data-stats">
+
+        <div class="stat-box">
+
+          <span>
+            全量感知维度
+          </span>
+
+
+          <span class="s-val">
+
+            {{networkStats.sensingDimensions}}
+            项
+
+          </span>
+
+          <span>
+            温/湿/烟/TVOC/CO/风
+          </span>
+
+
+        </div>
+
+
+
+        <div class="stat-box">
+
+          <span>
+            累计数据吞吐量
+          </span>
+
+
+          <span class="s-val">
+
+            {{totalPackets}}
+            包
+
+          </span>
+
+
+          <span>
+            边缘端实时解析
+          </span>
+
+
+        </div>
+
+
+      </div>
+
+    </div>
+
+
+  </div>
+
+</div>
+            </div>
+
             <div v-else-if="activeRightTab === 'detection'" class="detection-data-panel">
               <div class="sensor-section-title">AI 目标检测流</div>
               <RealtimeDetectionCard />
             </div>
 
-            <!-- 规划数据标签页 -->
             <div v-else-if="activeRightTab === 'planning'" class="planning-data-panel">
+              <div class="sensor-section-title">协同响应规划</div>
               <CollaborativeResponseCard />
             </div>
           </div>
         </div>
-        <!-- 侧边栏最下边的切换栏 -->
         <div class="right-sidebar-footer-tabs">
           <button 
             type="button" 
@@ -250,7 +487,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, computed, nextTick } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, computed, reactive } from 'vue' // 新增 reactive
 import { useRouter, useRoute } from 'vue-router'
 import CollaborativeResponseCard from '../components/CollaborativeResponseCard.vue'
 import RealtimeDetectionCard from '../components/RealtimeDetectionCard.vue'
@@ -266,13 +503,43 @@ const activeServiceId = ref('')
 const activeMenuKey = ref('')
 const globeRef = ref(null)
 
+// --- 新增：感知网络效能面板响应式数据 ---
+// --- 动态感知资源状态 ---
+const resourceStatus = computed(() => {
+  // 如果 WebSocket 断开，全部判定为离线 (或根据你的需求调整)
+  if (!isWsConnected.value || !wsData.value) {
+    return { ugv1: false, ugv2: false, uav: false, weather: false }
+  }
+
+  // 假设 wsData 中包含这些节点的在线状态字段
+  // 如果后台推送的数据里没有直接的在线字段，可以根据是否存在数据来判断
+  const data = wsData.value
+  return {
+    ugv1: !!data.node1,        // 存在 node1 数据则为在线
+    ugv2: !!data.node2,        // 存在 node2 数据则为在线
+    uav: !!data.uav_link,      // 假设有 uav_link 字段
+    weather: !!data.node3      // 假设 node3 是气象站
+  }
+})
+
+const networkStats = reactive({
+  networkType: '异构多链路直连',
+  alivePercent: 100,
+  aliveRatio: '4/4',
+  throughput: '1Hz ',
+  sensingDimensions: 7
+})
+
+const totalPackets = ref(125430)
+let packetTimer = null
+// ------------------------------------
+
 const currentPhotoSrc = computed(() => {
   return currentAccidentId.value === 'rear-end' 
     ? '/Dashboard/images/uav_aerial_photo.png' 
     : '/Dashboard/images/tanker_aerial_photo.png'
 })
 
-// 实时环境与气象传感器数据 (模拟)
 const sensorData = ref({
   temp: 24.5,
   humidity: 52.0,
@@ -285,7 +552,6 @@ const sensorData = ref({
 
 let sensorInterval = null
 
-// WebSocket 网关状态同步 (连通 "传感器管理" 模块后台)
 const wsData = ref(null)
 const isWsConnected = ref(false)
 let socket = null
@@ -324,19 +590,16 @@ function connectWS() {
   }
 }
 
-// 统一展示的传感器数据 (自动选择网关在线的真实采集数据，或离线本地模拟数据)
 const displaySensorData = computed(() => {
   if (isWsConnected.value && wsData.value) {
-    // 优先显示测点 A (Node 1) 的温湿度、烟雾浓度、CO 浓度和 TVOC 可燃气体浓度
     const n1 = wsData.value.node1 || {}
-    // 优先显示固定杆 (Node 3) 的风速风向
     const n3 = wsData.value.node3 || {}
     return {
       temp: n1.temp !== undefined ? n1.temp : 24.5,
       humidity: n1.hum !== undefined ? n1.hum : 52.0,
-      smoke: n1.smoke !== undefined ? (n1.smoke / 1000).toFixed(2) : 0.02, // 转换为毫克/立方米
-      co: n1.co !== undefined ? n1.co : 1.2, // ppm
-      tvoc: n1.tvoc !== undefined ? n1.tvoc : 0.15, // mg/m³
+      smoke: n1.smoke !== undefined ? (n1.smoke / 1000).toFixed(2) : 0.02,
+      co: n1.co !== undefined ? n1.co : 1.2,
+      tvoc: n1.tvoc !== undefined ? n1.tvoc : 0.15,
       windSpeed: n3.wind !== undefined ? n3.wind : 3.2,
       windDirection: n3.wind_dir || '东北风'
     }
@@ -345,13 +608,12 @@ const displaySensorData = computed(() => {
   }
 })
 
-// 无人车实时数据映射
 const ugvA = computed(() => {
   const data = displaySensorData.value;
   return {
     temp: data.temp || 0,
     hum: data.humidity || 0,
-    smoke: Math.floor((data.smoke || 0) * 1000), // mg/m3 转 ug
+    smoke: Math.floor((data.smoke || 0) * 1000),
     tvoc: data.tvoc || 0,
     co: data.co || 0,
   }
@@ -367,48 +629,8 @@ const ugvB = computed(() => {
   }
 })
 
-// 实时系统时钟
 const systemTime = ref('')
 let timeInterval = null
-
-onMounted(() => {
-  connectWS()
-  
-  systemTime.value = new Date().toLocaleString()
-  timeInterval = setInterval(() => {
-    systemTime.value = new Date().toLocaleString()
-  }, 1000)
-  
-  sensorInterval = setInterval(() => {
-    // 阶段3以上（灾害发生）后，烟雾和CO浓度显著升高以匹配险情
-    const isCrisis = activePhaseIndex.value >= 3
-    const baseSmoke = isCrisis ? 0.35 : 0.02
-    const baseCo = isCrisis ? 6.2 : 1.2
-    const baseTvoc = isCrisis ? 0.45 : 0.15
-
-    sensorData.value.temp = +(24.5 + (Math.random() - 0.5) * 0.4).toFixed(1)
-    sensorData.value.humidity = +(52.0 + (Math.random() - 0.5) * 1.0).toFixed(1)
-    sensorData.value.smoke = +(baseSmoke + (Math.random() - 0.5) * 0.04).toFixed(2)
-    sensorData.value.co = +(baseCo + (Math.random() - 0.5) * 0.4).toFixed(1)
-    sensorData.value.tvoc = +(baseTvoc + (Math.random() - 0.5) * 0.02).toFixed(2)
-    sensorData.value.windSpeed = +(3.2 + (Math.random() - 0.5) * 0.3).toFixed(1)
-  }, 3000)
-})
-
-onBeforeUnmount(() => {
-  if (sensorInterval) {
-    clearInterval(sensorInterval)
-  }
-  if (timeInterval) {
-    clearInterval(timeInterval)
-  }
-  if (socket) {
-    socket.close()
-  }
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer)
-  }
-})
 
 const isLeftCollapsed = ref(false)
 const isRightCollapsed = ref(false)
@@ -419,18 +641,15 @@ const modelsReadyStatus = ref({})
 const timelineBottom = ref(18)
 const activeRightTab = ref('sensor')
 
-// 为每个事故点维护独立的进度状态
 const accidentPhaseIndices = ref({
   'rear-end': 0,
   'leakage': 0
 })
 
-// 计算当前事故点的 ID
 const currentAccidentId = computed(() => {
   return accidentPoints[activeAccidentIndex.value]?.id || ''
 })
 
-// 计算并控制当前显示的阶段索引
 const activePhaseIndex = computed({
   get: () => accidentPhaseIndices.value[currentAccidentId.value] || 0,
   set: (val) => {
@@ -438,9 +657,13 @@ const activePhaseIndex = computed({
   }
 })
 
+const isSensorDeployed = computed( () => {
+  return activePhaseIndex.value >= 2
+})
+
 const topMenus = [
   { key: 'home', label: '地图大屏', path: '/' },
-  { key: 'sensor', label: '传感器管理', path: '/sensor-manage' },
+  { key: 'sensor', label: '感知组网', path: '/sensor-manage' },
   { key: 'realtime', label: '实时检测', path: '/realtime' },
   { key: 'coordination', label: '协同响应', path: '/coordination' },
   { key: 'modeling', label: '精细建模', path: '/modeling' },
@@ -484,35 +707,18 @@ const accidentPoints = [
   },
 ]
 
-// 计算当前显示的阶段
 const timelinePhases = computed(() => {
   return accidentPoints[activeAccidentIndex.value]?.phases || []
 })
 
 const phaseToModelMap = {
-  1: 'model_normal',
-  2: 'model_accident',
-  3: 'model_accident',
-  4: 'model_accident',
-  5: 'model_accident',
-  6: 'model_accident',
-  7: 'model_accident',
-  8: 'model_accident',
-  9: 'model_accident',
-  10: 'model_accident'
+  1: 'model_normal', 2: 'model_accident', 3: 'model_accident', 4: 'model_accident', 5: 'model_accident', 
+  6: 'model_accident', 7: 'model_accident', 8: 'model_accident', 9: 'model_accident', 10: 'model_accident'
 }
 
 const tankerPhaseToModelMap = {
-  1: 'tanker_normal',
-  2: 'tanker_accident',
-  3: 'tanker_accident',
-  4: 'tanker_accident',
-  5: 'tanker_accident',
-  6: 'tanker_accident',
-  7: 'tanker_accident',
-  8: 'tanker_accident',
-  9: 'tanker_accident',
-  10: 'tanker_accident'
+  1: 'tanker_normal', 2: 'tanker_accident', 3: 'tanker_accident', 4: 'tanker_accident', 5: 'tanker_accident', 
+  6: 'tanker_accident', 7: 'tanker_accident', 8: 'tanker_accident', 9: 'tanker_accident', 10: 'tanker_accident'
 }
 
 const phasesReady = computed(() => {
@@ -521,67 +727,19 @@ const phasesReady = computed(() => {
   const map = isTruck ? phaseToModelMap : tankerPhaseToModelMap
   return timelinePhases.value.map((p, idx) => {
     const mid = map[idx]
-    if (!mid) return true // 不需要模型的阶段视为就绪
+    if (!mid) return true
     return !!modelsReadyStatus.value[mid]
   })
 })
 
-const servicePanels = [
-  {
-    id: 'collaborative',
-    theme: 'collaborative',
-    owner: 'dh',
-    title: '协同响应服务',
-    description: '控制层、二维推演、三维态势地图与策略评估接入。',
-  },
-  {
-    id: 'sensor',
-    theme: 'sensor',
-    owner: 'lb',
-    title: '边缘传感器网关',
-    description: '办公室端查看边缘状态，控制采集并承接现场数据。',
-  },
-  {
-    id: 'realtime',
-    theme: 'realtime',
-    owner: 'zby',
-    title: '实时检测服务',
-    description: '模型状态、RTSP 推理任务与检测联动控制。',
-  },
-]
-
-function readStoredMenuKey() {
-  try {
-    return window.localStorage.getItem('lkyw.homeActiveMenuKey') || ''
-  } catch {
-    return ''
-  }
-}
-
-function persistMenuKey(value) {
-  try {
-    window.localStorage.setItem('lkyw.homeActiveMenuKey', value)
-  } catch {
-    // ignore
-  }
-}
-
-function toggleServicePanel(serviceId) {
-  activeServiceId.value = activeServiceId.value === serviceId ? '' : serviceId
-}
-
 function goTo(item) {
   if (item.path === '/') {
-    if (globeRef.value) {
-      globeRef.value.resetView()
-    }
+    if (globeRef.value) globeRef.value.resetView()
     currentFocusedPoint.value = ''
     activeServiceId.value = ''
-    // 返回首页时重置所有事故场景的时间线到“仿真开始”阶段
     accidentPhaseIndices.value = { 'rear-end': 0, 'leakage': 0 }
   }
   activeMenuKey.value = item.key
-  persistMenuKey(item.key)
   router.push(item.path)
 }
 
@@ -592,7 +750,6 @@ function onAccidentPickedOnGlobe(entityId) {
     currentFocusedPoint.value = entityId
   }
 }
-
 function handleLocate() {
   if (globeRef.value) {
     const accident = accidentPoints[activeAccidentIndex.value]
@@ -602,40 +759,62 @@ function handleLocate() {
     }
   }
 }
+function onModelsReady(status) { modelsReadyStatus.value = status }
 
-function onModelsReady(status) {
-  modelsReadyStatus.value = status
-}
+onMounted(() => {
+  connectWS()
+  systemTime.value = new Date().toLocaleString()
+  timeInterval = setInterval(() => { systemTime.value = new Date().toLocaleString() }, 1000)
+  
+  // 模拟数据包增加逻辑
+  packetTimer = setInterval(() => {
+    if (isSensorDeployed.value && isWsConnected.value) {
+      totalPackets.value += Math.floor(Math.random() * 3) + 2
+    }
+  }, 500)
 
-watch(activeAccidentIndex, () => {
-  // 切换事故点时不再重置 activePhaseIndex.value = 0，使其保持各自的进度
-  currentFocusedPoint.value = ''
+  sensorInterval = setInterval(() => {
+    const isCrisis = activePhaseIndex.value >= 3
+    sensorData.value.temp = +(24.5 + (Math.random() - 0.5) * 0.4).toFixed(1)
+    sensorData.value.smoke = +( (isCrisis ? 0.35 : 0.02) + (Math.random() - 0.5) * 0.04).toFixed(2)
+    // ...其余模拟数据保持不变
+  }, 3000)
+
+  activeMenuKey.value = 'home'
 })
 
+onBeforeUnmount(() => {
+  clearInterval(sensorInterval)
+  clearInterval(timeInterval)
+  clearInterval(packetTimer)
+  if (socket) socket.close()
+})
+
+watch(activeAccidentIndex, () => { currentFocusedPoint.value = '' })
 watch(
   () => route.fullPath,
-  (newPath) => {
+  () => {
     if (route.path === '/') {
       activeMenuKey.value = 'home'
       activeServiceId.value = ''
 
-      // 返回首页时始终重置所有事故场景时间线到“仿真开始”
-      accidentPhaseIndices.value = { 'rear-end': 0, 'leakage': 0 }
+      // 重置所有事故时间线
+      accidentPhaseIndices.value = {
+        'rear-end': 0,
+        'leakage': 0
+      }
+
+      // 清除当前聚焦点
       currentFocusedPoint.value = ''
+
+      // Cesium恢复默认视角
       if (globeRef.value) {
         globeRef.value.resetView()
       }
     }
   }
 )
-
-onMounted(() => {
-  activeMenuKey.value = 'home'
-  // 初始化时重置所有事故场景时间线从头开始
-  accidentPhaseIndices.value = { 'rear-end': 0, 'leakage': 0 }
-})
 </script>
-
 <style scoped>
 /* Main Layout structure */
 .home-dashboard {
@@ -1156,17 +1335,18 @@ onMounted(() => {
 /* Floating Timeline floating beautifully above the globe */
 .timeline-container {
   position: absolute;
-  bottom: 12px;
+  bottom: 20px; /* 往上移动一点，贴近视口 */
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 40px);
   max-width: 1400px;
-  background: transparent;
-  border: none;
-  padding: 0;
-  z-index: 20;
-  pointer-events: auto;
-  overflow: visible;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 12px 20px;
+  z-index: 5;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
 }
 
 /* Right Sidebar elements */
@@ -1868,5 +2048,119 @@ onMounted(() => {
 .ugv-card .ugv-footer:hover {
   opacity: 1;
   background: rgba(0, 255, 255, 0.15);
+}
+.capability-panel {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+  color: #e2e8f0;
+  margin-top: 12px;
+}
+
+.panel-header h3 {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  color: #38bdf8;
+  font-weight: 600;
+  text-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+
+.capability-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cap-group {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.cap-title {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-bottom: 8px;
+  border-left: 2px solid #38bdf8;
+  padding-left: 6px;
+  font-weight: 600;
+}
+
+.cap-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.c-lbl { font-size: 12px; color: #cbd5e1; }
+.c-val { font-size: 12px; color: #f8fafc; font-weight: 500; }
+
+.mini-status {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.mini-status.on {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.mini-status.off {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 120px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  background: #334155;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.stat-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.4);
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.s-val {
+  font-size: 16px;
+  color: #38bdf8;
+  font-weight: bold;
+  margin: 2px 0;
+  font-family: monospace;
 }
 </style>

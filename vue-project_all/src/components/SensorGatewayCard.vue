@@ -66,7 +66,7 @@
         {{ actionPending ? '执行中...' : samplingRunning ? '停止采集' : '开始采集' }}
       </button>
       <button class="action-btn secondary" @click="refreshStatus">刷新状态</button>
-      <button class="action-btn ghost" @click="goToSensorManage">进入传感器管理</button>
+      <button class="action-btn ghost" @click="goToSensorManage">进入感知组网</button>
     </div>
 
     <p v-if="lastError" class="error-text">最近错误：{{ lastError }}</p>
