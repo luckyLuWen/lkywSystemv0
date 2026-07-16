@@ -30,7 +30,7 @@ const emit = defineEmits(['change-menu'])
 
 const navList = [
   { label: '首页', key: 'home' },
-  { label: '传感器管理', key: 'sensor' },
+  { label: '感知组网', key: 'sensor' },
   { label: '实时检测', key: 'realtime' },
   { label: '协同响应', key: 'coordination' },
   { label: '精细建模', key: 'modeling' },
