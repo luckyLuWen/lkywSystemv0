@@ -23,7 +23,7 @@ import json
 from pathlib import Path
 import warnings
 from rtsp_detector import RTSPDetector
-from database import save_detection
+from database import calculate_sha256, save_detection
 from history_routes import history_bp
 from stats_routes import stats_bp
 
@@ -441,6 +441,7 @@ def detect_image():
         unique_filename = f"{timestamp}_{filename}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
         file.save(filepath)
+        image_hash = calculate_sha256(filepath)
         
         # Load model and perform detection
         import time
@@ -505,7 +506,8 @@ def detect_image():
                 inference_time_s=round(inference_time, 3),
                 conf_threshold=conf_threshold,
                 iou_threshold=iou_threshold,
-                source_type='image'
+                source_type='image',
+                image_hash=image_hash
             )
         except Exception as e:
             print(f"Failed to save detection history: {e}")
@@ -559,6 +561,7 @@ def detect_batch():
                 unique_filename = f"{timestamp}_{filename}"
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
                 file.save(filepath)
+                image_hash = calculate_sha256(filepath)
 
                 file_start = time.time()
                 results = model.predict(
@@ -604,7 +607,8 @@ def detect_batch():
                         inference_time_s=round(file_inference, 3),
                         conf_threshold=conf_threshold,
                         iou_threshold=iou_threshold,
-                        source_type='batch'
+                        source_type='batch',
+                        image_hash=image_hash
                     )
                 except Exception as e:
                     print(f"Failed to save batch detection history: {e}")
@@ -659,6 +663,7 @@ def detect_video():
         iou_threshold = float(request.form.get('iou', 0.45))
         frame_interval = int(request.form.get('interval', 30))
         frame_interval = max(frame_interval, 1)
+        start_time_s = max(float(request.form.get('start_time', 0) or 0), 0)
         
         # Save uploaded file
         filename = build_safe_upload_name(file.filename)
@@ -679,12 +684,19 @@ def detect_video():
         if fps <= 0:
             fps = 30.0
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+        video_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+        video_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+        start_frame = int(start_time_s * fps)
+        if total_frames > 0:
+            start_frame = min(start_frame, max(total_frames - 1, 0))
+        if start_frame > 0:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
         
         # 用于计算平均处理时间
         import time
         total_inference_time = 0
         
-        frame_count = 0
+        frame_count = start_frame
         sampled_frames = []
         
         while cap.isOpened():
@@ -692,7 +704,7 @@ def detect_video():
             if not ret:
                 break
             
-            should_detect = frame_count % frame_interval == 0
+            should_detect = (frame_count - start_frame) % frame_interval == 0
             
             if should_detect:
                 # Perform detection
@@ -742,6 +754,7 @@ def detect_video():
                 sampled_frames.append({
                     'frame_number': frame_count,
                     'time': f"{frame_count / fps:.2f}s",
+                    'time_s': round(frame_count / fps, 3),
                     'detections': frame_detections,
                     'detection_count': len(frame_detections),
                     'image': f"data:image/jpeg;base64,{img_base64}",
@@ -764,6 +777,10 @@ def detect_video():
             'fps': round(fps, 3),
             'model': model_name,
             'interval': frame_interval,
+            'start_time': round(start_time_s, 3),
+            'start_frame': start_frame,
+            'video_width': video_width,
+            'video_height': video_height,
             'frames': sampled_frames
         })
         
