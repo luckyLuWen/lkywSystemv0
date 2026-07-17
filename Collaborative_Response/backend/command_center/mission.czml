@@ -1010,21 +1010,21 @@
       ]
     },
     "point": {
-      "pixelSize": 10,
+      "pixelSize": 8,
       "color": {
         "rgba": [
-          34,
-          197,
-          94,
-          220
+          120,
+          120,
+          120,
+          160
         ]
       },
       "outlineColor": {
         "rgba": [
-          255,
-          255,
-          255,
-          200
+          0,
+          0,
+          0,
+          0
         ]
       },
       "outlineWidth": 0
@@ -1044,53 +1044,13 @@
     "id": "AgentPOI_medical_团风县中医医",
     "position": {
       "cartographicDegrees": [
-        114.8735,
-        30.6423,
+        114.8732898,
+        30.6421515,
         0
       ]
     },
     "point": {
-      "pixelSize": 10,
-      "color": {
-        "rgba": [
-          34,
-          197,
-          94,
-          220
-        ]
-      },
-      "outlineColor": {
-        "rgba": [
-          255,
-          255,
-          255,
-          200
-        ]
-      },
-      "outlineWidth": 0
-    },
-    "label": {
-      "text": "医疗急救: 团风县中医医院",
-      "font": "11px Microsoft YaHei",
-      "pixelOffset": {
-        "cartesian2": [
-          0,
-          -14
-        ]
-      }
-    }
-  },
-  {
-    "id": "AgentPOI_medical_团风县妇幼保",
-    "position": {
-      "cartographicDegrees": [
-        114.8760444,
-        30.6396328,
-        0
-      ]
-    },
-    "point": {
-      "pixelSize": 10,
+      "pixelSize": 12,
       "color": {
         "rgba": [
           34,
@@ -1110,7 +1070,7 @@
       "outlineWidth": 2
     },
     "label": {
-      "text": "★ 医疗急救: 团风县妇幼保健院",
+      "text": "★ 医疗急救: 团风县中医医院",
       "font": "11px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
@@ -1121,11 +1081,11 @@
     }
   },
   {
-    "id": "AgentPOI_fire_团风县公安消",
+    "id": "AgentPOI_medical_团风县妇幼保",
     "position": {
       "cartographicDegrees": [
-        114.8751,
-        30.6426,
+        114.8760444,
+        30.6396328,
         0
       ]
     },
@@ -1147,10 +1107,50 @@
           0
         ]
       },
-      "outlineWidth": 0
+      "outlineWidth": 2
     },
     "label": {
-      "text": "消防灭火: 团风县公安消防大队",
+      "text": "★ 医疗急救: 团风县妇幼保健院",
+      "font": "11px Microsoft YaHei",
+      "pixelOffset": {
+        "cartesian2": [
+          0,
+          -14
+        ]
+      }
+    }
+  },
+  {
+    "id": "AgentPOI_fire_团风县公安消",
+    "position": {
+      "cartographicDegrees": [
+        114.8751645,
+        30.6422667,
+        0
+      ]
+    },
+    "point": {
+      "pixelSize": 8,
+      "color": {
+        "rgba": [
+          120,
+          120,
+          120,
+          160
+        ]
+      },
+      "outlineColor": {
+        "rgba": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "outlineWidth": 2
+    },
+    "label": {
+      "text": "★ 消防灭火: 团风县公安消防大队",
       "font": "11px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
@@ -1170,7 +1170,7 @@
       ]
     },
     "point": {
-      "pixelSize": 10,
+      "pixelSize": 8,
       "color": {
         "rgba": [
           59,
@@ -1181,10 +1181,10 @@
       },
       "outlineColor": {
         "rgba": [
-          255,
-          255,
-          255,
-          200
+          0,
+          0,
+          0,
+          0
         ]
       },
       "outlineWidth": 0
@@ -1213,18 +1213,18 @@
       "pixelSize": 12,
       "color": {
         "rgba": [
-          249,
-          115,
-          22,
-          220
+          120,
+          120,
+          120,
+          160
         ]
       },
       "outlineColor": {
         "rgba": [
-          255,
-          255,
-          255,
-          200
+          0,
+          0,
+          0,
+          0
         ]
       },
       "outlineWidth": 2
@@ -1250,7 +1250,7 @@
       ]
     },
     "point": {
-      "pixelSize": 10,
+      "pixelSize": 12,
       "color": {
         "rgba": [
           59,
@@ -1267,7 +1267,7 @@
           200
         ]
       },
-      "outlineWidth": 0
+      "outlineWidth": 2
     },
     "label": {
       "text": "★ 公安交警: 团风县公安局交警大队",
@@ -1290,7 +1290,7 @@
       ]
     },
     "point": {
-      "pixelSize": 10,
+      "pixelSize": 8,
       "color": {
         "rgba": [
           168,
@@ -1301,10 +1301,10 @@
       },
       "outlineColor": {
         "rgba": [
-          255,
-          255,
-          255,
-          200
+          0,
+          0,
+          0,
+          0
         ]
       },
       "outlineWidth": 0
@@ -1404,8 +1404,8 @@
     "id": "AgentPOI_hazmat_团风县应急管",
     "position": {
       "cartographicDegrees": [
-        114.8738,
-        30.6405,
+        114.8740661,
+        30.6407967,
         0
       ]
     },
@@ -1427,10 +1427,10 @@
           0
         ]
       },
-      "outlineWidth": 0
+      "outlineWidth": 2
     },
     "label": {
-      "text": "防化部队: 团风县应急管理局",
+      "text": "★ 防化部队: 团风县应急管理局",
       "font": "11px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
@@ -1450,21 +1450,21 @@
       ]
     },
     "point": {
-      "pixelSize": 10,
+      "pixelSize": 8,
       "color": {
         "rgba": [
-          168,
-          85,
-          247,
-          220
+          120,
+          120,
+          120,
+          160
         ]
       },
       "outlineColor": {
         "rgba": [
-          255,
-          255,
-          255,
-          200
+          0,
+          0,
+          0,
+          0
         ]
       },
       "outlineWidth": 0
@@ -1484,8 +1484,8 @@
     "id": "AgentPOI_road_团风县路政管",
     "position": {
       "cartographicDegrees": [
-        114.878,
-        30.6412,
+        114.8787669,
+        30.6408044,
         0
       ]
     },
@@ -1507,10 +1507,10 @@
           0
         ]
       },
-      "outlineWidth": 0
+      "outlineWidth": 2
     },
     "label": {
-      "text": "交通路政: 团风县路政管理大队",
+      "text": "★ 交通路政: 团风县路政管理大队",
       "font": "11px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
@@ -1573,18 +1573,18 @@
       "pixelSize": 12,
       "color": {
         "rgba": [
-          148,
-          163,
-          184,
-          220
+          120,
+          120,
+          120,
+          160
         ]
       },
       "outlineColor": {
         "rgba": [
-          255,
-          255,
-          255,
-          200
+          0,
+          0,
+          0,
+          0
         ]
       },
       "outlineWidth": 2
@@ -1957,7 +1957,7 @@
       "interpolationDegree": 1
     },
     "point": {
-      "pixelSize": 10,
+      "pixelSize": 8,
       "color": {
         "rgba": [
           34,
@@ -1968,10 +1968,10 @@
       },
       "outlineColor": {
         "rgba": [
-          255,
-          255,
-          255,
-          200
+          0,
+          0,
+          0,
+          0
         ]
       },
       "outlineWidth": 0

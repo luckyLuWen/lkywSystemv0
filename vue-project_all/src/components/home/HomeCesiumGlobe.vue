@@ -1982,6 +1982,81 @@
       </div>
     </div>
 
+    <!-- 🚨 救援装备出动操控面板 (故事线阶段10专属) -->
+    <transition name="rescue-panel-slide">
+      <div
+        v-if="props.activePhaseIndex === 9"
+        class="rescue-dispatch-panel"
+      >
+        <div class="rescue-panel-header">
+          <div class="rescue-panel-title-row">
+            <span class="rescue-panel-icon">🚨</span>
+            <span class="rescue-panel-title">救援装备出动</span>
+            <span class="rescue-panel-badge" :class="{ 'badge-active': rescueDispatchPending }">
+              {{ rescueDispatchPending ? '出动中...' : '指挥就绪' }}
+            </span>
+          </div>
+          <p class="rescue-panel-subtitle">专业救援队伍携带重型装备协同出动，进入最终处置阶段</p>
+        </div>
+
+        <div class="rescue-panel-body">
+          <!-- 场景选择 -->
+          <div class="rescue-field">
+            <span class="rescue-field-label">事故场景</span>
+            <div class="rescue-scene-tabs">
+              <button
+                :class="['rescue-scene-btn', { active: rescueDispatchScene === 'crash' }]"
+                @click="rescueDispatchScene = 'crash'"
+              >
+                🚚 货车追尾现场
+              </button>
+              <button
+                :class="['rescue-scene-btn', { active: rescueDispatchScene === 'leak' }]"
+                @click="rescueDispatchScene = 'leak'"
+              >
+                ⛽ 油罐车泄露现场
+              </button>
+            </div>
+          </div>
+
+          <!-- 协同策略 -->
+          <div class="rescue-field">
+            <span class="rescue-field-label">协同策略</span>
+            <div class="rescue-strategy-tags">
+              <span class="rescue-strategy-tag active">RCD 逆向推演</span>
+              <span class="rescue-strategy-info">Dijkstra + A* 协同路径优化</span>
+            </div>
+          </div>
+
+          <!-- 出动按钮 -->
+          <div class="rescue-btn-row">
+            <button
+              class="rescue-ugvuav-btn"
+              :disabled="rescueDispatchPending"
+              @click="triggerRescueUGVUAV"
+            >
+              <span class="btn-icon-small">🤖</span>
+              无人装备出动
+            </button>
+            <button
+              class="rescue-dispatch-btn"
+              :disabled="rescueDispatchPending"
+              @click="triggerRescueMultiAgent"
+            >
+              <span class="btn-icon-small">🚑</span>
+              救援装备出动
+            </button>
+          </div>
+
+          <!-- 状态反馈 -->
+          <div v-if="rescueDispatchStatus" class="rescue-status-bar" :class="{ 'status-error': rescueDispatchStatus.startsWith('失败') }">
+            <span class="status-dot-pulse"></span>
+            {{ rescueDispatchStatus }}
+          </div>
+        </div>
+      </div>
+    </transition>
+
   </div>
 </template>
 
@@ -8841,6 +8916,68 @@ onBeforeUnmount(() => {
     window.viewer = null
   }
 })
+
+// ================================================================
+// 🚨 救援装备出动操控面板 (对应故事线阶段 10 - activePhaseIndex === 9)
+// 功能与协同响应三维态势地图的"救援装备出动"面板完全一致
+// ================================================================
+const rescueDispatchScene = ref('crash')  // 'crash' | 'leak'
+const rescueDispatchPending = ref(false)
+const rescueDispatchStatus = ref('')
+
+// 自动根据当前故事线场景同步选择事故场景
+watch(
+  () => props.phases,
+  (phases) => {
+    if (!phases || phases.length === 0) return
+    const firstId = phases[0]?.id || ''
+    if (firstId.startsWith('t-')) {
+      rescueDispatchScene.value = 'crash'
+    } else if (firstId.startsWith('l-')) {
+      rescueDispatchScene.value = 'leak'
+    }
+  },
+  { immediate: true }
+)
+
+function buildCommandCenterApiUrl(path) {
+  const base = getCollaborativeCommandCenterBaseUrl().replace(/\/+$/, '')
+  return `${base}/${path.replace(/^\/+/, '')}`
+}
+
+// 无人装备出动 (镜像 triggerCesiumUGVUAV)
+async function triggerRescueUGVUAV() {
+  rescueDispatchPending.value = true
+  rescueDispatchStatus.value = '无人装备出动中...'
+  try {
+    const url = buildCommandCenterApiUrl(`api/run_3d_cesium?end_point=${rescueDispatchScene.value}`)
+    const r = await fetch(url)
+    if (!r.ok) throw new Error('HTTP ' + r.status)
+    rescueDispatchStatus.value = '✅ 无人装备已出动'
+  } catch (e) {
+    rescueDispatchStatus.value = '失败: ' + (e instanceof Error ? e.message : String(e))
+  } finally {
+    rescueDispatchPending.value = false
+    setTimeout(() => { rescueDispatchStatus.value = '' }, 4000)
+  }
+}
+
+// 救援装备出动 (镜像 triggerCesiumMultiAgent，strategy 固定为 rcd)
+async function triggerRescueMultiAgent() {
+  rescueDispatchPending.value = true
+  rescueDispatchStatus.value = '救援装备出动中...'
+  try {
+    const url = buildCommandCenterApiUrl(`api/run_multi_agent?end_point=${rescueDispatchScene.value}&strategy=rcd`)
+    const r = await fetch(url)
+    if (!r.ok) throw new Error('HTTP ' + r.status)
+    rescueDispatchStatus.value = '✅ 救援装备已出动'
+  } catch (e) {
+    rescueDispatchStatus.value = '失败: ' + (e instanceof Error ? e.message : String(e))
+  } finally {
+    rescueDispatchPending.value = false
+    setTimeout(() => { rescueDispatchStatus.value = '' }, 4000)
+  }
+}
 </script>
 
 <style scoped>
@@ -13077,5 +13214,276 @@ onBeforeUnmount(() => {
   background: rgba(0, 242, 254, 0.1);
   border-bottom-color: #00f2fe;
   text-shadow: 0 0 8px rgba(0, 242, 254, 0.5);
+}
+
+/* ================================================================
+   🚨 救援装备出动操控面板样式
+   ================================================================ */
+.rescue-dispatch-panel {
+  position: absolute;
+  right: 28px;
+  bottom: 200px;
+  width: 340px;
+  z-index: 700;
+  background: rgba(6, 12, 26, 0.94);
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 14px;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.75),
+    0 0 20px rgba(239, 68, 68, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Microsoft YaHei', sans-serif;
+  overflow: hidden;
+}
+
+.rescue-panel-header {
+  padding: 14px 16px 10px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(185, 28, 28, 0.08));
+  border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.rescue-panel-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.rescue-panel-icon {
+  font-size: 18px;
+  animation: rescue-pulse 2s ease-in-out infinite;
+}
+
+@keyframes rescue-pulse {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.6)); }
+  50% { filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.9)); }
+}
+
+.rescue-panel-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fca5a5;
+  letter-spacing: 0.5px;
+  flex: 1;
+}
+
+.rescue-panel-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: rgba(52, 211, 153, 0.15);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  color: #34d399;
+  letter-spacing: 0.3px;
+}
+
+.rescue-panel-badge.badge-active {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+  animation: badge-blink 1s step-start infinite;
+}
+
+@keyframes badge-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.rescue-panel-subtitle {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.rescue-panel-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rescue-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rescue-field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.rescue-scene-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.rescue-scene-btn {
+  flex: 1;
+  padding: 7px 6px;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: center;
+}
+
+.rescue-scene-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.rescue-scene-btn.active {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+}
+
+.rescue-strategy-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rescue-strategy-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  color: #a5b4fc;
+}
+
+.rescue-strategy-info {
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+}
+
+.rescue-btn-row {
+  display: flex;
+  gap: 8px;
+}
+
+.rescue-ugvuav-btn,
+.rescue-dispatch-btn {
+  flex: 1;
+  padding: 10px 8px;
+  border: none;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.rescue-ugvuav-btn {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(37, 99, 235, 0.2));
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  color: #93c5fd;
+}
+
+.rescue-ugvuav-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.4), rgba(37, 99, 235, 0.35));
+  border-color: #3b82f6;
+  color: #fff;
+  box-shadow: 0 0 14px rgba(59, 130, 246, 0.35);
+  transform: translateY(-1px);
+}
+
+.rescue-dispatch-btn {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(185, 28, 28, 0.25));
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+}
+
+.rescue-dispatch-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.5), rgba(185, 28, 28, 0.4));
+  border-color: #ef4444;
+  color: #fff;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.4);
+  transform: translateY(-1px);
+}
+
+.rescue-ugvuav-btn:disabled,
+.rescue-dispatch-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-icon-small {
+  font-size: 13px;
+}
+
+.rescue-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #34d399;
+  font-weight: 600;
+}
+
+.rescue-status-bar.status-error {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+}
+
+.status-dot-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #34d399;
+  flex-shrink: 0;
+  animation: rescue-status-pulse 1.2s ease-in-out infinite;
+}
+
+.rescue-status-bar.status-error .status-dot-pulse {
+  background: #ef4444;
+}
+
+@keyframes rescue-status-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* 救援装备出动面板 入场/退场过渡动画 */
+.rescue-panel-slide-enter-active,
+.rescue-panel-slide-leave-active {
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.rescue-panel-slide-enter-from {
+  opacity: 0;
+  transform: translateX(30px) scale(0.95);
+}
+
+.rescue-panel-slide-leave-to {
+  opacity: 0;
+  transform: translateX(30px) scale(0.95);
 }
 </style>
