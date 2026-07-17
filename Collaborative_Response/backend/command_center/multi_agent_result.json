@@ -6,10 +6,10 @@
       "color": "#22c55e",
       "icon": "plus",
       "poi": {
-        "name": "团风县中医医院",
-        "lat": 30.6423,
-        "lon": 114.8735,
-        "dist_km": 2.18
+        "name": "团风县妇幼保健院",
+        "lat": 30.64,
+        "lon": 114.876,
+        "dist_km": 1.84
       },
       "has_path": true
     },
@@ -18,10 +18,10 @@
       "color": "#f97316",
       "icon": "fire",
       "poi": {
-        "name": "团风县公安消防大队",
-        "lat": 30.6426,
-        "lon": 114.8751,
-        "dist_km": 2.07
+        "name": "团风大道消防执勤点",
+        "lat": 30.636,
+        "lon": 114.884,
+        "dist_km": 0.95
       },
       "has_path": true
     },
@@ -42,10 +42,10 @@
       "color": "#a855f7",
       "icon": "flash",
       "poi": {
-        "name": "团风县应急管理局",
-        "lat": 30.6405,
-        "lon": 114.8738,
-        "dist_km": 2.04
+        "name": "团风县城南应急站",
+        "lat": 30.635,
+        "lon": 114.88,
+        "dist_km": 1.24
       },
       "has_path": true
     },
@@ -54,10 +54,10 @@
       "color": "#94a3b8",
       "icon": "wrench",
       "poi": {
-        "name": "团风县路政管理大队",
-        "lat": 30.6412,
-        "lon": 114.878,
-        "dist_km": 1.76
+        "name": "团风大道公路管理站",
+        "lat": 30.633,
+        "lon": 114.882,
+        "dist_km": 0.99
       },
       "has_path": true
     }
