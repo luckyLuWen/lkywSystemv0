@@ -896,11 +896,11 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
     uav_line = []
     for _, r in uav_df.iterrows(): uav_line.extend([r['lon'], r['lat'], r['alt']])
     czml.append({"id": "UAV_Path", "polyline": {"positions": {"cartographicDegrees": uav_line}, "width": 3, "material": {"solidColor": {"color": {"rgba": [255, 0, 0, 150]}}}}})
-    czml.append({"id": "UAV_Path", "polyline": {"positions": {"cartographicDegrees": uav_line}, "width": 5, "material": {"solidColor": {"color": {"rgba": [255, 0, 0, 200]}}}}})
+    czml.append({"id": "UAV_Path_glow", "polyline": {"positions": {"cartographicDegrees": uav_line}, "width": 5, "material": {"solidColor": {"color": {"rgba": [255, 0, 0, 200]}}}}})
     car_line = []
     for _, r in car_df.iterrows(): car_line.extend([r['lon'], r['lat'], 2])
     czml.append({"id": "Car_Path", "polyline": {"positions": {"cartographicDegrees": car_line}, "width": 3, "material": {"solidColor": {"color": {"rgba": [0, 0, 255, 150]}}}}})
-    czml.append({"id": "Car_Path", "polyline": {"positions": {"cartographicDegrees": car_line}, "width": 5, "material": {"solidColor": {"color": {"rgba": [0, 0, 255, 200]}}}, "clampToGround": True}})
+    czml.append({"id": "Car_Path_glow", "polyline": {"positions": {"cartographicDegrees": car_line}, "width": 5, "material": {"solidColor": {"color": {"rgba": [0, 0, 255, 200]}}}, "clampToGround": True}})
 
     # 五类救援智能体 POI（始终渲染所有站点）
     agent_colors_czml = {
