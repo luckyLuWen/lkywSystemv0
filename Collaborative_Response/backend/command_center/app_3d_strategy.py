@@ -395,8 +395,8 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
         mask_file = 'xiantao.json'
         border_files = ['xiantao.json']
     else:
-        mask_file = 'huanggang_wuhan.json'
-        border_files = ['huanggang.json', 'wuhan.json']
+        mask_file = 'huanggang.json'
+        border_files = ['huanggang.json']
 
     base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'vue-project_all', 'public', 'Dashboard')
     mask_path = os.path.join(base_path, mask_file)
@@ -739,8 +739,26 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
                 background: rgba(10, 18, 32, 0.82); padding: 14px 16px; border-radius: 10px;
                 border: 1px solid rgba(96, 165, 250, 0.2); backdrop-filter: blur(12px);
                 box-shadow: 0 2px 20px rgba(0,0,0,0.4); font-family: 'Microsoft YaHei', sans-serif; color: #e2e8f0;">
-        <div style="font-size: 14px; font-weight: 700; color: #93c5fd; margin-bottom: 10px;
+        <div style="font-size: 14px; font-weight: 700; color: #93c5fd; margin-bottom: 4px;
                     letter-spacing: 1px; text-align: center;">协同效能评估</div>
+        <div id="eta-display" style="text-align:center;font-size:11px;color:#fbbf24;margin-bottom:6px;">预计到达 --:--</div>
+        <script>
+        (function(){{
+            var totalS = {int((max(car_interp['timestamp'].max(), uav_interp['timestamp'].max()) - START_TIME).total_seconds())};
+            var startTs = null;
+            setInterval(function(){{
+                var allBtns = document.querySelectorAll('*[class*=\"fa-play\"]');
+                var playing = false;
+                for(var i=0;i<allBtns.length;i++){{ if(allBtns[i].parentElement && allBtns[i].parentElement.classList.contains('active')){{playing=true;break;}} }}
+                if(playing && !startTs) startTs = Date.now();
+                if(!playing){{ startTs=null; document.getElementById('eta-display').textContent='预计到达 --:--'; return; }}
+                var elapsed = Math.floor((Date.now()-startTs)/1000);
+                var remain = Math.max(0, totalS-elapsed);
+                var m = Math.floor(remain/60); var s = remain%60;
+                document.getElementById('eta-display').textContent = '预计到达 ' + m + ':' + (s<10?'0':'') + s;
+            }}, 1000);
+        }})();
+        </script>
         <!-- 核心指标 -->
         <div style="font-size: 12px; line-height: 1.8;">
             <div style="display: flex; justify-content: space-between; padding: 2px 0;">
@@ -787,6 +805,20 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
     '''
     
     m.get_root().html.add_child(folium.Element(ui_html))
+
+    # 路径增强：无人机耗时节点 + UGV/UAV 速度标签（2D）
+    uav_coords = uav_interp[['lat', 'lon']].values.tolist()
+    uav_total_t = (uav_df['time_s'].iloc[-1] - delay) / 60 if len(uav_df) > 0 else 0
+    for pct in [0.33, 0.66]:
+        idx = int(len(uav_coords) * pct)
+        if idx < len(uav_coords):
+            t_val = (uav_interp.iloc[idx]['time_s'] - delay) / 60
+            alt_val = uav_interp.iloc[idx].get('alt', 0)
+            folium.CircleMarker(uav_coords[idx], radius=3, color='#ff00ff', fill=True, fill_opacity=0.8, tooltip=f'无人机 +{t_val:.1f}min alt={alt_val:.0f}m').add_to(uav_path_group)
+    car_coords = car_interp[['lat', 'lon']].values.tolist()
+    car_total = car_df['time_s'].iloc[-1] / 60 if len(car_df) > 0 else 0
+    folium.Marker(car_coords[len(car_coords)//2], icon=folium.DivIcon(html=f'<div style="font-size:9px;color:#1d4ed8;background:rgba(255,255,255,0.85);padding:1px 4px;border-radius:2px;white-space:nowrap;">{car_speed_kmh:.0f}km/h · {car_total:.1f}min</div>', icon_size=(100,14), icon_anchor=(50,7))).add_to(car_path_group)
+    folium.Marker(uav_coords[len(uav_coords)//2], icon=folium.DivIcon(html=f'<div style="font-size:9px;color:#a21caf;background:rgba(255,255,255,0.85);padding:1px 4px;border-radius:2px;white-space:nowrap;">{UAV_SPEED:.0f}m/s · {uav_total_t:.1f}min</div>', icon_size=(100,14), icon_anchor=(50,7))).add_to(uav_path_group)
 
     # 控制面板已移至 Vue 侧边栏，此处不再渲染
 
@@ -937,6 +969,23 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
                 "label": {"text": ainfo['label'], "font": "12px Microsoft YaHei",
                           "pixelOffset": {"cartesian2": [0, -20]}},
             })
+            # 3D 路径耗时检查点（billboard 标签 + 小圆点）
+            total_sec = (global_end_time - global_start_time).total_seconds()
+            for pct in [0.25, 0.5, 0.75]:
+                pi = int(path_len * pct)
+                if pi >= path_len: pi = path_len - 1
+                lat, lon = path[pi]
+                cp_time = global_start_time + pd.Timedelta(seconds=pct * total_sec)
+                czml.append({
+                    "id": f"AgentCP_{agent_key}_{pct}",
+                    "availability": avail,
+                    "position": {"cartographicDegrees": [lon, lat, 12]},
+                    "billboard": {"image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "show": True},
+                    "label": {"text": f"+{pct*100:.0f}%", "font": "10px Microsoft YaHei",
+                              "pixelOffset": {"cartesian2": [0, -10]},
+                              "fillColor": {"rgba": [0,0,0,180]}, "outlineColor": {"rgba": [255,255,255,200]},
+                              "style": "FILL_AND_OUTLINE"}
+                })
     
 
     # 动态对象（始终包含 UAV/Car）
@@ -946,7 +995,8 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
         "id": "UAV", "name": "无人机 (B-Spline)", "availability": avail,
         "position": {"epoch": start_str, "cartographicDegrees": uav_pos, "interpolationAlgorithm": "LINEAR", "interpolationDegree": 1},
         "point": {"pixelSize": 15, "color": {"rgba": [255, 0, 0, 255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 2},
-        "label": {"text": "无人机", "font": "14px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -25]}}
+        "label": {"text": "无人机", "font": "14px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -25]}},
+        "path": {"material": {"solidColor": {"color": {"rgba": [255,0,0,80]}}}, "width": 2, "leadTime": 0, "trailTime": 99999}
     })
 
     car_pos = []
@@ -955,8 +1005,71 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
         "id": "Car", "name": "无人车", "availability": avail,
         "position": {"epoch": start_str, "cartographicDegrees": car_pos, "interpolationAlgorithm": "LINEAR", "interpolationDegree": 1},
         "point": {"pixelSize": 15, "color": {"rgba": [0, 0, 255, 255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 2},
-        "label": {"text": "无人车", "font": "14px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -25]}}
+        "label": {"text": "无人车", "font": "14px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -25]}},
+        "path": {"material": {"solidColor": {"color": {"rgba": [0,0,255,80]}}}, "width": 2, "leadTime": 0, "trailTime": 99999}
     })
+
+    # 3D 路径进度检查点（大号圆点 + 清晰标签）
+    if not multi_agent_data:
+        car_total_dist = car_df['dist'].sum() / 1000 if 'dist' in car_df.columns else 0
+        car_eta_min = car_df['time_s'].iloc[-1] / 60 if len(car_df) > 0 else 0
+        uav_eta_min = (uav_df['time_s'].iloc[-1] - delay) / 60 if len(uav_df) > 0 else 0
+        total_sec_gl = (global_end_time - global_start_time).total_seconds()
+        # 无人车：大号蓝色圆点 + 耗时标签
+        for pct in [0.25, 0.5, 0.75]:
+            idx = int(len(car_df) * pct)
+            if idx >= len(car_df): idx = len(car_df) - 1
+            r = car_df.iloc[idx]
+            d = car_df['dist'].iloc[:idx+1].sum() / 1000 if 'dist' in car_df.columns else 0
+            t = global_start_time + pd.Timedelta(seconds=pct * total_sec_gl)
+            czml.append({
+                "id": f"CarCP_{pct}", "availability": avail,
+                "position": {"cartographicDegrees": [r['lon'], r['lat'], 8]},
+                "point": {"pixelSize": 8, "color": {"rgba": [59,130,246,255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 2},
+                "label": {"text": f"+{pct*100:.0f}%  {d:.1f}km  {car_eta_min*pct:.1f}min",
+                          "font": "13px Microsoft YaHei", "fillColor": {"rgba": [30,58,138,220]},
+                          "outlineColor": {"rgba": [255,255,255,220]}, "style": "FILL_AND_OUTLINE",
+                          "pixelOffset": {"cartesian2": [0, -16]}}
+            })
+        # 无人机：大号红色圆点 + 高度标签
+        for pct in [0.33, 0.66]:
+            idx = int(len(uav_df) * pct)
+            if idx >= len(uav_df): idx = len(uav_df) - 1
+            r = uav_df.iloc[idx]
+            alt_val = r.get('alt', 0)
+            t = global_start_time + pd.Timedelta(seconds=pct * total_sec_gl)
+            czml.append({
+                "id": f"UAVCP_{pct}", "availability": avail,
+                "position": {"cartographicDegrees": [r['lon'], r['lat'], alt_val+15]},
+                "point": {"pixelSize": 8, "color": {"rgba": [239,68,68,255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 2},
+                "label": {"text": f"+{pct*100:.0f}%  {alt_val:.0f}m  {uav_eta_min*pct:.1f}min",
+                          "font": "13px Microsoft YaHei", "fillColor": {"rgba": [153,27,27,220]},
+                          "outlineColor": {"rgba": [255,255,255,220]}, "style": "FILL_AND_OUTLINE",
+                          "pixelOffset": {"cartesian2": [0, -16]}}
+            })
+        # 速度摘要标签（路径中点，各一个）
+        car_mid_r = car_df.iloc[min(len(car_df)//2, len(car_df)-1)]
+        uav_mid_r = uav_df.iloc[min(len(uav_df)//2, len(uav_df)-1)]
+        car_speed_kph = CAR_SPEED * 3.6
+        czml.append({
+            "id": "CarInfo", "availability": avail,
+            "position": {"cartographicDegrees": [car_mid_r['lon'], car_mid_r['lat'], 10]},
+            "point": {"pixelSize": 10, "color": {"rgba": [59,130,246,255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 3},
+            "label": {"text": f'无人车  {car_speed_kph:.0f}km/h  {car_total_dist:.1f}km  {car_eta_min:.1f}min',
+                      "font": "14px Microsoft YaHei", "fillColor": {"rgba": [30,58,138,220]},
+                      "outlineColor": {"rgba": [255,255,255,220]}, "style": "FILL_AND_OUTLINE",
+                      "pixelOffset": {"cartesian2": [0, -20]}}
+        })
+        uav_alt_val = uav_mid_r.get('alt', 100)
+        czml.append({
+            "id": "UAVInfo", "availability": avail,
+            "position": {"cartographicDegrees": [uav_mid_r['lon'], uav_mid_r['lat'], uav_alt_val+20]},
+            "point": {"pixelSize": 10, "color": {"rgba": [239,68,68,255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 3},
+            "label": {"text": f'无人机  {UAV_SPEED:.0f}m/s  {uav_eta_min:.1f}min',
+                      "font": "14px Microsoft YaHei", "fillColor": {"rgba": [153,27,27,220]},
+                      "outlineColor": {"rgba": [255,255,255,220]}, "style": "FILL_AND_OUTLINE",
+                      "pixelOffset": {"cartesian2": [0, -20]}}
+        })
 
     # 障碍物
     for i, nfz in enumerate(NFZ_LIST + NEW_NFZ_LIST):
