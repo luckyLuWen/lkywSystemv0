@@ -319,7 +319,7 @@
     }
   },
   {
-    "id": "UAV_Path",
+    "id": "UAV_Path_glow",
     "polyline": {
       "positions": {
         "cartographicDegrees": [
@@ -783,7 +783,7 @@
     }
   },
   {
-    "id": "Car_Path",
+    "id": "Car_Path_glow",
     "polyline": {
       "positions": {
         "cartographicDegrees": [

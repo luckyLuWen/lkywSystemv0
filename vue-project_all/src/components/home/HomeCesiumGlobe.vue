@@ -4004,6 +4004,7 @@ const loadMission = async () => {
     // 让 CZML 的 UAV 和 Car 实体位置与自定义 3D 模型位置完全对齐，避免分叉
     const czmlCar = dataSource.entities.getById('Car');
     if (czmlCar) {
+      czmlCar.path = undefined; // 必须将 path 设为 undefined，否则 CallbackProperty 导致 Cesium PathVisualizer 在更新轨迹线时崩溃
       if (!czmlCar.originalPosition) {
         czmlCar.originalPosition = czmlCar.position;
       }
@@ -4019,6 +4020,7 @@ const loadMission = async () => {
     
     const czmlUav = dataSource.entities.getById('UAV');
     if (czmlUav) {
+      czmlUav.path = undefined; // 必须将 path 设为 undefined，否则 CallbackProperty 导致 Cesium PathVisualizer 在更新轨迹线时崩溃
       if (!czmlUav.originalPosition) {
         czmlUav.originalPosition = czmlUav.position;
       }
@@ -4062,35 +4064,37 @@ const loadMission = async () => {
     const carPath = dataSource.entities.getById('Car_Path');
     if (carPath) {
       carPath.show = true;
-      if (carPath.polyline) carPath.polyline.show = true;
-      
-      const positions = carPath.polyline.positions.getValue(getQueryTime()) ||
-                        carPath.polyline.positions.getValue(new Cesium.JulianDate());
-      if (positions && positions.length >= 2) {
-        const last200mPoints = [];
-        let accumDist = 0;
-        const targetDist = 200.0;
+      if (carPath.polyline) {
+        carPath.polyline.show = true;
         
-        last200mPoints.unshift(positions[positions.length - 1]);
-        
-        for (let i = positions.length - 1; i > 0; i--) {
-          const pCurrent = positions[i];
-          const pPrev = positions[i - 1];
-          const dist = Cesium.Cartesian3.distance(pCurrent, pPrev);
+        const positions = carPath.polyline.positions.getValue(getQueryTime()) ||
+                          carPath.polyline.positions.getValue(new Cesium.JulianDate());
+        if (positions && positions.length >= 2) {
+          const last200mPoints = [];
+          let accumDist = 0;
+          const targetDist = 200.0;
           
-          if (accumDist + dist >= targetDist) {
-            const remaining = targetDist - accumDist;
-            const fraction = dist > 0 ? (remaining / dist) : 0;
-            const lerpedCartesian = new Cesium.Cartesian3();
-            Cesium.Cartesian3.lerp(pCurrent, pPrev, fraction, lerpedCartesian);
-            last200mPoints.unshift(lerpedCartesian);
-            break;
-          } else {
-            accumDist += dist;
-            last200mPoints.unshift(pPrev);
+          last200mPoints.unshift(positions[positions.length - 1]);
+          
+          for (let i = positions.length - 1; i > 0; i--) {
+            const pCurrent = positions[i];
+            const pPrev = positions[i - 1];
+            const dist = Cesium.Cartesian3.distance(pCurrent, pPrev);
+            
+            if (accumDist + dist >= targetDist) {
+              const remaining = targetDist - accumDist;
+              const fraction = dist > 0 ? (remaining / dist) : 0;
+              const lerpedCartesian = new Cesium.Cartesian3();
+              Cesium.Cartesian3.lerp(pCurrent, pPrev, fraction, lerpedCartesian);
+              last200mPoints.unshift(lerpedCartesian);
+              break;
+            } else {
+              accumDist += dist;
+              last200mPoints.unshift(pPrev);
+            }
           }
+          updateHighlightPath(last200mPoints);
         }
-        updateHighlightPath(last200mPoints);
       }
     }
 
@@ -8431,10 +8435,21 @@ function updatePhaseScene(index, animate = false) {
               uavPath.show = true;
               if (uavPath.polyline) uavPath.polyline.show = true;
             }
+            const uavPathGlow = currentMissionDataSource.entities.getById('UAV_Path_glow');
+            if (uavPathGlow) {
+              uavPathGlow.show = true;
+              if (uavPathGlow.polyline) uavPathGlow.polyline.show = true;
+            }
+
             const carPath = currentMissionDataSource.entities.getById('Car_Path');
             if (carPath) {
               carPath.show = true;
               if (carPath.polyline) carPath.polyline.show = true;
+            }
+            const carPathGlow = currentMissionDataSource.entities.getById('Car_Path_glow');
+            if (carPathGlow) {
+              carPathGlow.show = true;
+              if (carPathGlow.polyline) carPathGlow.polyline.show = true;
             }
         }
       }
@@ -8455,6 +8470,9 @@ function updatePhaseScene(index, animate = false) {
           },
           duration: 1.8,
           complete: () => {
+            isFlying = false;
+          },
+          cancel: () => {
             isFlying = false;
           }
         });
