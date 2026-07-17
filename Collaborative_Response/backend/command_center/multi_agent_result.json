@@ -1,15 +1,15 @@
 {
-  "scenario": "crash",
+  "scenario": "leak",
   "agents": {
     "medical": {
       "label": "医疗急救",
       "color": "#22c55e",
       "icon": "plus",
       "poi": {
-        "name": "剅河镇卫生院",
-        "lat": 30.378,
-        "lon": 113.033,
-        "dist_km": 6.95
+        "name": "团风县妇幼保健院",
+        "lat": 30.64,
+        "lon": 114.876,
+        "dist_km": 1.84
       },
       "has_path": true
     },
@@ -18,10 +18,10 @@
       "color": "#f97316",
       "icon": "fire",
       "poi": {
-        "name": "剅河镇消防执勤点",
-        "lat": 30.378,
-        "lon": 113.031,
-        "dist_km": 7.14
+        "name": "团风大道消防执勤点",
+        "lat": 30.636,
+        "lon": 114.884,
+        "dist_km": 0.95
       },
       "has_path": true
     },
@@ -30,10 +30,10 @@
       "color": "#3b82f6",
       "icon": "flag",
       "poi": {
-        "name": "杨林尾镇派出所",
-        "lat": 30.311,
-        "lon": 113.098,
-        "dist_km": 8.28
+        "name": "团风县公安局交警大队",
+        "lat": 30.6391,
+        "lon": 114.8716,
+        "dist_km": 2.16
       },
       "has_path": true
     },
@@ -42,10 +42,10 @@
       "color": "#a855f7",
       "icon": "flash",
       "poi": {
-        "name": "剅河镇安监站",
-        "lat": 30.378,
-        "lon": 113.032,
-        "dist_km": 7.05
+        "name": "团风县城南应急站",
+        "lat": 30.635,
+        "lon": 114.88,
+        "dist_km": 1.24
       },
       "has_path": true
     },
@@ -54,10 +54,10 @@
       "color": "#94a3b8",
       "icon": "wrench",
       "poi": {
-        "name": "胡场镇交通管理站",
-        "lat": 30.3558,
-        "lon": 113.208,
-        "dist_km": 10.45
+        "name": "团风大道公路管理站",
+        "lat": 30.633,
+        "lon": 114.882,
+        "dist_km": 0.99
       },
       "has_path": true
     }
