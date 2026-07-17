@@ -337,26 +337,31 @@ onUnmounted(() => {
 .page-container {
   min-height: 100vh;
   padding: 24px 32px;
-  background: #f1f5f9; /* 更柔和的背景色 */
+  /* 统一深色科技背景 */
+  background: #050b14 radial-gradient(circle at 50% 0%, #0a192f 0%, #050b14 100%);
   overflow-y: auto;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: 'Rajdhani', system-ui, -apple-system, sans-serif;
+  color: #e2e8f0;
 }
 
 .section-title {
   margin: 28px 0 16px 4px;
   font-size: 1.25rem;
   font-weight: 700;
-  color: #334155;
+  color: #64ffda; /* 科技青色 */
   border-left: 4px solid #3b82f6;
   padding-left: 10px;
+  text-shadow: 0 0 8px rgba(100, 255, 218, 0.3);
+  letter-spacing: 1px;
 }
 
-/* 卡片通用样式 */
+/* 卡片通用样式 (深色玻璃拟态) */
 .header-bar, .query-bar, .metric-card, .chart-card, .reference-card {
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
-  border: 1px solid #e2e8f0;
+  background: rgba(10, 25, 47, 0.6);
+  border-radius: 8px;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+  border: 1px solid #1e3a8a;
+  backdrop-filter: blur(10px);
 }
 
 /* 顶部标题栏 */
@@ -378,31 +383,34 @@ onUnmounted(() => {
 
 .title-wrapper h2 {
   margin: 0;
-  color: #0f172a;
+  color: #64ffda;
   font-size: 1.6rem;
   font-weight: 800;
-  letter-spacing: 0.5px;
+  letter-spacing: 2px;
+  font-family: 'Orbitron', sans-serif;
+  text-shadow: 0 0 10px rgba(100, 255, 218, 0.4);
 }
 
 .status-badge {
-  padding: 6px 14px;
-  border-radius: 8px;
-  font-size: 0.95rem;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.85rem;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
+  border: 1px solid;
 }
 
 .status-badge.online {
-  color: #059669;
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  border-color: #10b981;
 }
 
 .status-badge.offline {
-  color: #dc2626;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
 }
 
 .header-actions {
@@ -410,36 +418,36 @@ onUnmounted(() => {
   gap: 12px;
 }
 
-/* 按钮样式 */
+/* 按钮样式 (幽灵科技风) */
 .action-btn {
-  border: none;
-  border-radius: 8px;
-  padding: 10px 18px;
+  border-radius: 4px;
+  padding: 8px 16px;
   cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 0.85rem;
+  font-weight: bold;
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  letter-spacing: 0.5px;
 }
 .action-btn:active { transform: scale(0.96); }
 
-.action-btn.primary { color: #fff; background: #6366f1; }
-.action-btn.primary:hover { background: #4f46e5; }
+.action-btn.primary { color: #60a5fa; background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; }
+.action-btn.primary:hover { background: rgba(59, 130, 246, 0.3); box-shadow: 0 0 10px rgba(59,130,246,0.3); }
 
-.action-btn.success { color: #fff; background: #10b981; }
-.action-btn.success:hover { background: #059669; }
+.action-btn.success { color: #10b981; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; }
+.action-btn.success:hover { background: rgba(16, 185, 129, 0.3); box-shadow: 0 0 10px rgba(16,185,129,0.3); }
 
-.action-btn.danger { color: #fff; background: #ef4444; }
-.action-btn.danger:hover { background: #dc2626; }
+.action-btn.danger { color: #ef4444; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; }
+.action-btn.danger:hover { background: rgba(239, 68, 68, 0.3); box-shadow: 0 0 10px rgba(239,68,68,0.3); }
 
-.action-btn.export { color: #fff; background: #0ea5e9; }
-.action-btn.export:hover { background: #0284c7; }
+.action-btn.export { color: #c084fc; background: rgba(192, 132, 252, 0.2); border: 1px solid #c084fc; }
+.action-btn.export:hover { background: rgba(192, 132, 252, 0.3); box-shadow: 0 0 10px rgba(192,132,252,0.3); }
 
-.action-btn.secondary { color: #475569; background: #f1f5f9; border: 1px solid #cbd5e1; }
-.action-btn.secondary:hover { background: #e2e8f0; }
-.action-btn.secondary.active { color: #fff; background: #3b82f6; border-color: #2563eb; }
+.action-btn.secondary { color: #cbd5e1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+.action-btn.secondary:hover { border-color: #64ffda; color: #64ffda; }
+.action-btn.secondary.active { color: #60a5fa; background: rgba(96, 165, 250, 0.2); border-color: #60a5fa; box-shadow: 0 0 10px rgba(96,165,250,0.2); }
 
 /* 查询栏 */
 .query-bar {
@@ -452,109 +460,109 @@ onUnmounted(() => {
   gap: 16px;
 }
 .query-left, .query-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.query-label { font-weight: 600; color: #334155; }
-.query-separator { color: #94a3b8; }
+.query-label { font-weight: 600; color: #94a3b8; font-size: 0.9rem; }
+.query-separator { color: #475569; }
 .date-input {
   padding: 8px 14px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  color: #1e293b;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #e2e8f0;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: 'Orbitron', monospace;
 }
-.date-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+.date-input:focus { border-color: #60a5fa; box-shadow: 0 0 8px rgba(96, 165, 250, 0.4); }
+/* 修复深色模式下 Webkit 浏览器原生日历图标颜色 */
+::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.6; cursor: pointer; }
 
 /* 数据卡片网格布局 */
-.realtime-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.env-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
-}
+.realtime-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
+.env-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 30px; }
 
 .metric-card {
-  padding: 24px 28px;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .metric-card:hover {
+  border-color: #60a5fa;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 0 15px rgba(96, 165, 250, 0.1);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  background: rgba(15, 30, 60, 0.8);
 }
 
-/* 核心指标专属放大样式 (温湿度) */
-.metric-card.warm { border-top: 5px solid #f97316; }
-.metric-card.cool { border-top: 5px solid #3b82f6; }
+/* 核心指标专属样式 */
+.metric-card.warm { border-top: 2px solid #f59e0b; }
+.metric-card.cool { border-top: 2px solid #3b82f6; }
 
 .huge-label {
-  font-size: 1.4rem !important; /* 放大标签字体 */
-  font-weight: 800;
-  color: #1e293b;
-  margin-bottom: 12px;
+  font-size: 1.1rem !important; 
+  font-weight: 700;
+  color: #cbd5e1;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
 }
-.metric-body {
-  display: flex;
-  align-items: baseline;
-  margin-top: 8px;
-}
+.metric-body { display: flex; align-items: baseline; margin-top: 8px; }
 .huge-value {
-  font-size: 3.5rem !important; /* 放大数值字体 */
-  font-weight: 900;
+  font-size: 3rem !important; 
+  font-weight: 700;
   line-height: 1;
+  font-family: 'Orbitron', monospace;
+  text-shadow: 0 0 10px rgba(255,255,255,0.1);
 }
-.metric-card.warm .huge-value { color: #ea580c; }
-.metric-card.cool .huge-value { color: #2563eb; }
+.metric-card.warm .huge-value { color: #f59e0b; text-shadow: 0 0 10px rgba(245, 158, 11, 0.3); }
+.metric-card.cool .huge-value { color: #60a5fa; text-shadow: 0 0 10px rgba(96, 165, 250, 0.3); }
 
 /* 环境质量卡片样式 */
-.env-card { border-top: 4px solid #10b981; }
-.env-card.abnormal { border-top-color: #ef4444; background: #fff1f2; }
+.env-card { border-top: 2px solid rgba(255, 255, 255, 0.1); }
+.env-card:hover { border-top-color: #64ffda; box-shadow: 0 0 15px rgba(100,255,218,0.15) inset; }
+.env-card.abnormal { border-color: #ef4444; background: rgba(239, 68, 68, 0.05); }
+.env-card.abnormal:hover { box-shadow: 0 0 15px rgba(239,68,68,0.2) inset; }
 
 .metric-head { display: flex; align-items: center; justify-content: space-between; }
-.env-label { font-size: 1.15rem; font-weight: 700; color: #334155; }
+.env-label { font-size: 1rem; font-weight: 700; color: #94a3b8; }
 
 .metric-tag {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: #f1f5f9;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.4);
   color: #64748b;
+  border: 1px solid rgba(255,255,255,0.05);
 }
-.metric-tag.abnormal { background: #ffe4e6; color: #e11d48; }
+.metric-tag.abnormal { background: rgba(239, 68, 68, 0.2); color: #ef4444; border-color: #ef4444; }
 
 .env-card .metric-value {
-  font-size: 2.6rem;
-  font-weight: 800;
-  color: #0f172a;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  font-family: 'Orbitron', monospace;
 }
-.env-card.abnormal .metric-value { color: #be123c; }
+.env-card.abnormal .metric-value { color: #ef4444; text-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
 
-.metric-unit { margin-left: 8px; color: #64748b; font-size: 1.05rem; font-weight: 600; }
+.metric-unit { margin-left: 8px; color: #64748b; font-size: 0.9rem; font-weight: 600; font-family: sans-serif; }
 
 /* 图表区 */
-.chart-grid { display: grid; gap: 20px; margin-bottom: 24px; }
+.chart-grid { display: grid; gap: 16px; margin-bottom: 24px; }
 .weather-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .env-charts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .chart-card { padding: 16px; }
 .chart-host { width: 100%; height: 340px; }
 
-/* 底部表格 */
-.reference-card { padding: 24px; margin-bottom: 40px;}
-.reference-card h3 { margin: 0 0 16px 0; color: #1e293b; font-size: 1.2rem; }
-table { width: 100%; border-collapse: collapse; }
-th, td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; text-align: left; font-size: 0.95rem; color: #334155; }
-thead th { color: #0f172a; background: #f8fafc; font-weight: 700; border-bottom: 2px solid #cbd5e1; }
-tbody tr:hover { background-color: #f8fafc; }
+/* 底部表格 (深色重构) */
+.reference-card { padding: 20px; margin-bottom: 40px;}
+.reference-card h3 { margin: 0 0 16px 0; color: #60a5fa; font-size: 1.1rem; letter-spacing: 1px; }
+table { width: 100%; border-collapse: collapse; background: rgba(0, 0, 0, 0.2); border-radius: 6px; overflow: hidden; }
+th, td { padding: 12px 16px; border-bottom: 1px dashed rgba(255, 255, 255, 0.05); text-align: left; font-size: 0.85rem; color: #cbd5e1; }
+thead th { color: #64ffda; background: rgba(10, 25, 47, 0.8); font-weight: 700; border-bottom: 1px solid #1e3a8a; letter-spacing: 0.5px; }
+tbody tr { transition: background 0.2s; }
+tbody tr:hover { background-color: rgba(96, 165, 250, 0.1); }
+tbody tr:last-child td { border-bottom: none; }
 
 /* 响应式调整 */
 @media (max-width: 1200px) {
@@ -563,6 +571,6 @@ tbody tr:hover { background-color: #f8fafc; }
 @media (max-width: 900px) {
   .realtime-grid, .weather-charts, .env-grid, .env-charts { grid-template-columns: 1fr; }
   .title-wrapper h2 { font-size: 1.3rem; }
-  .huge-value { font-size: 2.8rem !important; }
+  .huge-value { font-size: 2.5rem !important; }
 }
 </style>

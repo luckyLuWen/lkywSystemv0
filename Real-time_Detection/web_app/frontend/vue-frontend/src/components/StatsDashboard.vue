@@ -95,13 +95,12 @@ const error = ref(null)
 const stats = ref(null)
 
 const CLASS_COLORS_MAP = {
-  car_fire: '#FF1744',
-  car_normal: '#00E676',
-  lkyw_fire: '#D500F9',
-  lkyw_normal: '#FF9100',
-  lkywNofire: '#448AFF',
-  car_fire_smoke: '#FF6D00',
-  car_normal_smoke: '#69F0AE'
+  car_fire: '#E53935',
+  lkyw_fire: '#C2185B',
+  car_nofire: '#FDD835',
+  lkyw_nofire: '#FB8C00',
+  car_normal: '#FDD835',
+  lkyw_normal: '#FB8C00'
 }
 
 const FALLBACK_COLORS = [

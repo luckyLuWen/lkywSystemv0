@@ -31,7 +31,7 @@ const handleMenuChange = (key) => {
       router.push('/realtime') // 实时检测页面，显示系统大屏界面
       break
     case 'sensor':
-      router.push('/sensor-manage') // 跳转到传感器管理子系统
+      router.push('/sensor-manage') // 跳转到感知组网子系统
       break
     case 'response':
       router.push('/response') // 预留：协同响应

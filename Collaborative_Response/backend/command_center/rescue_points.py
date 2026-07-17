@@ -23,12 +23,21 @@ def get_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
+    
+    # 自动检测关键表是否存在，如果不存在则自动初始化数据库，防止 OperationalError
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='rescue_points'")
+        if not cursor.fetchone():
+            _initialize_db_with_connection(conn)
+    except sqlite3.Error:
+        pass
+        
     return conn
 
 
-def init_db() -> None:
-    """创建数据库和初始数据。"""
-    conn = get_connection()
+def _initialize_db_with_connection(conn: sqlite3.Connection) -> None:
+    """使用已有连接初始化表结构并填入种子数据"""
     conn.execute("""
         CREATE TABLE IF NOT EXISTS rescue_points (
             id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,8 +85,14 @@ def init_db() -> None:
         agent_seed,
     )
     conn.commit()
+    print(f"[救援点DB] 数据库已自动初始化，共 {len(seed_data)} 条救援点 + {len(agent_seed)} 条智能体POI记录")
+
+
+def init_db() -> None:
+    """手动创建/刷新数据库和初始数据。"""
+    conn = get_connection()
+    _initialize_db_with_connection(conn)
     conn.close()
-    print(f"[救援点DB] 数据库已初始化，共 {len(seed_data)} 条救援点 + {len(agent_seed)} 条智能体POI记录")
 
 
 def get_rescue_points(scenario: str) -> list[dict]:

@@ -1,5 +1,7 @@
 <template>
   <div class="image-detection-container">
+    <ModelMetricsPanel :settings="props.settings" :availableModels="props.availableModels" />
+
     <!-- Upload Area -->
     <div v-if="!result && !loading" class="upload-center">
       <div
@@ -67,7 +69,7 @@
           <div v-if="result.detections.length > 0" class="detection-results">
             <div class="section-title">识别详情</div>
             <div class="detection-grid">
-              <div v-for="(det, i) in result.detections" :key="i" class="detection-chip">
+              <div v-for="(det, i) in result.detections" :key="i" class="detection-chip" :style="getClassStyle(det.class)">
                 <span class="chip-class">{{ det.class }}</span>
                 <span class="chip-conf">{{ (det.confidence * 100).toFixed(1) }}%</span>
               </div>
@@ -139,7 +141,7 @@
           <div v-if="batchDetail.detections.length > 0" class="detection-results">
             <div class="section-title">识别详情</div>
             <div class="detection-grid">
-              <div v-for="(det, j) in batchDetail.detections" :key="j" class="detection-chip">
+              <div v-for="(det, j) in batchDetail.detections" :key="j" class="detection-chip" :style="getClassStyle(det.class)">
                 <span class="chip-class">{{ det.class }}</span>
                 <span class="chip-conf">{{ (det.confidence * 100).toFixed(1) }}%</span>
               </div>
@@ -161,9 +163,15 @@
 <script setup>
 import { ref, computed } from 'vue'
 import ExportButtons from './ExportButtons.vue'
+import ModelMetricsPanel from './ModelMetricsPanel.vue'
+import { getClassStyle } from '../utils/classColors'
 
 const props = defineProps({
   settings: Object,
+  availableModels: {
+    type: Array,
+    default: () => []
+  },
   safeFetch: Function
 })
 
@@ -358,8 +366,8 @@ const processFiles = async (files) => {
   border-radius: 8px; padding: 14px 24px;
   display: flex; align-items: center; gap: 14px;
 }
-.chip-class { color: var(--accent-amber); font-size: 22px; font-weight: 500; }
-.chip-conf { color: var(--text-dim); font-size: 19px; font-family: monospace; }
+.chip-class { color: inherit; font-size: 22px; font-weight: 700; }
+.chip-conf { color: inherit; opacity: 0.9; font-size: 19px; font-family: monospace; }
 .no-detection { text-align: center; color: var(--text-dim); padding: 36px; font-size: 22px; }
 .modal-footer {
   display: flex; justify-content: flex-end; align-items: center; gap: 18px;

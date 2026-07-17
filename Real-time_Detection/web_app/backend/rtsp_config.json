@@ -3,7 +3,7 @@
     {
       "id": "rtsp_cam_01",
       "name": "OBS模拟摄像头-01",
-      "url": "rtsp://localhost:8554/live",
+      "url": "rtmp://127.0.0.1:1935/live",
       "location": "测试区域A",
       "enabled": true
     }

@@ -91,3 +91,9 @@ web_app/frontend/old_version/
 *.zip
 *.tar.gz
 *.rar
+
+# Files that must be shared for reproducible local detection runtime
+!LKYWDataset_weights/
+!LKYWDataset_weights/**/
+!LKYWDataset_weights/**/*.pt
+!web_app/backend/detection_history.db

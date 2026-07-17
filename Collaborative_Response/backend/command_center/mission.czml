@@ -25,7 +25,7 @@
           0,
           255,
           0,
-          255
+          255c
         ]
       }
     },
@@ -1010,21 +1010,21 @@
       ]
     },
     "point": {
-      "pixelSize": 8,
+      "pixelSize": 10,
       "color": {
         "rgba": [
-          120,
-          120,
-          120,
-          160
+          34,
+          197,
+          94,
+          220
         ]
       },
       "outlineColor": {
         "rgba": [
-          0,
-          0,
-          0,
-          0
+          255,
+          255,
+          255,
+          200
         ]
       },
       "outlineWidth": 0
@@ -1050,21 +1050,21 @@
       ]
     },
     "point": {
-      "pixelSize": 8,
+      "pixelSize": 10,
       "color": {
         "rgba": [
-          120,
-          120,
-          120,
-          160
+          34,
+          197,
+          94,
+          220
         ]
       },
       "outlineColor": {
         "rgba": [
-          0,
-          0,
-          0,
-          0
+          255,
+          255,
+          255,
+          200
         ]
       },
       "outlineWidth": 0
@@ -1090,7 +1090,7 @@
       ]
     },
     "point": {
-      "pixelSize": 12,
+      "pixelSize": 10,
       "color": {
         "rgba": [
           34,
@@ -1170,21 +1170,21 @@
       ]
     },
     "point": {
-      "pixelSize": 8,
+      "pixelSize": 10,
       "color": {
         "rgba": [
-          120,
-          120,
-          120,
-          160
+          59,
+          130,
+          246,
+          220
         ]
       },
       "outlineColor": {
         "rgba": [
-          0,
-          0,
-          0,
-          0
+          255,
+          255,
+          255,
+          200
         ]
       },
       "outlineWidth": 0
@@ -1250,7 +1250,7 @@
       ]
     },
     "point": {
-      "pixelSize": 12,
+      "pixelSize": 10,
       "color": {
         "rgba": [
           59,
@@ -1267,7 +1267,7 @@
           200
         ]
       },
-      "outlineWidth": 2
+      "outlineWidth": 0
     },
     "label": {
       "text": "★ 公安交警: 团风县公安局交警大队",
@@ -1290,21 +1290,21 @@
       ]
     },
     "point": {
-      "pixelSize": 8,
+      "pixelSize": 10,
       "color": {
         "rgba": [
-          120,
-          120,
-          120,
-          160
+          168,
+          85,
+          247,
+          220
         ]
       },
       "outlineColor": {
         "rgba": [
-          0,
-          0,
-          0,
-          0
+          255,
+          255,
+          255,
+          200
         ]
       },
       "outlineWidth": 0
@@ -1450,7 +1450,7 @@
       ]
     },
     "point": {
-      "pixelSize": 12,
+      "pixelSize": 10,
       "color": {
         "rgba": [
           168,
@@ -1467,7 +1467,7 @@
           200
         ]
       },
-      "outlineWidth": 2
+      "outlineWidth": 0
     },
     "label": {
       "text": "★ 防化部队: 团风县城南应急站",
@@ -1957,7 +1957,7 @@
       "interpolationDegree": 1
     },
     "point": {
-      "pixelSize": 12,
+      "pixelSize": 10,
       "color": {
         "rgba": [
           34,
@@ -1971,10 +1971,10 @@
           255,
           255,
           255,
-          230
+          200
         ]
       },
-      "outlineWidth": 2
+      "outlineWidth": 0
     },
     "label": {
       "text": "医疗急救",
@@ -1982,7 +1982,7 @@
       "pixelOffset": {
         "cartesian2": [
           0,
-          -20
+          -14
         ]
       }
     }
@@ -2285,7 +2285,6 @@
     "name": "消防灭火",
     "availability": "2025-01-01T09:00:00.000Z/2025-01-01T09:02:32.484Z",
     "position": {
-      "epoch": "2025-01-01T09:00:00.000Z",
       "cartographicDegrees": [
         "2025-01-01T09:00:00.000Z",
         114.8844476,
@@ -2484,7 +2483,7 @@
       "interpolationDegree": 1
     },
     "point": {
-      "pixelSize": 12,
+      "pixelSize": 10,
       "color": {
         "rgba": [
           249,
@@ -2498,10 +2497,10 @@
           255,
           255,
           255,
-          230
+          200
         ]
       },
-      "outlineWidth": 2
+      "outlineWidth": 0
     },
     "label": {
       "text": "消防灭火",
@@ -2509,7 +2508,7 @@
       "pixelOffset": {
         "cartesian2": [
           0,
-          -20
+          -14
         ]
       }
     }
@@ -2824,7 +2823,6 @@
     "name": "公安交警",
     "availability": "2025-01-01T09:00:00.000Z/2025-01-01T09:02:32.484Z",
     "position": {
-      "epoch": "2025-01-01T09:00:00.000Z",
       "cartographicDegrees": [
         "2025-01-01T09:00:00.000Z",
         114.8723012,
@@ -3475,12 +3473,12 @@
       "interpolationDegree": 1
     },
     "point": {
-      "pixelSize": 12,
+      "pixelSize": 10,
       "color": {
         "rgba": [
-          168,
-          85,
-          247,
+          148,
+          163,
+          184,
           220
         ]
       },
@@ -3489,18 +3487,18 @@
           255,
           255,
           255,
-          230
+          200
         ]
       },
-      "outlineWidth": 2
+      "outlineWidth": 0
     },
     "label": {
-      "text": "防化部队",
-      "font": "12px Microsoft YaHei",
+      "text": "交通路政: 团风县交通运输局",
+      "font": "11px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
           0,
-          -20
+          -14
         ]
       }
     }
@@ -3734,7 +3732,6 @@
     "name": "交通路政",
     "availability": "2025-01-01T09:00:00.000Z/2025-01-01T09:02:32.484Z",
     "position": {
-      "epoch": "2025-01-01T09:00:00.000Z",
       "cartographicDegrees": [
         "2025-01-01T09:00:00.000Z",
         114.8814368,
@@ -3841,7 +3838,7 @@
       "interpolationDegree": 1
     },
     "point": {
-      "pixelSize": 12,
+      "pixelSize": 10,
       "color": {
         "rgba": [
           148,
@@ -3855,14 +3852,14 @@
           255,
           255,
           255,
-          230
+          200
         ]
       },
-      "outlineWidth": 2
+      "outlineWidth": 0
     },
     "label": {
-      "text": "交通路政",
-      "font": "12px Microsoft YaHei",
+      "text": "交通路政: 黄冈市公路管理局",
+      "font": "11px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
           0,
