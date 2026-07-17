@@ -2233,7 +2233,7 @@ watch(
 
 .ugv-card .ugv-title {
   font-weight: bold;
-  font-size: 18px;
+  font-size: 20px;
   color: #00ffff;
   letter-spacing: 1px;
 }
@@ -2271,30 +2271,40 @@ watch(
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
-  padding: 6px 8px;
+  /* 调整内边距让视觉更舒展 */
+  padding: 8px 12px; 
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  /* ★ 改为横向同行排列 */
+  flex-direction: row; 
+  /* ★ 两端对齐：左边标签，右边数值 */
+  justify-content: space-between; 
+  /* ★ 垂直居中 */
+  align-items: center; 
+  gap: 8px;
   transition: background 0.3s;
 }
 
 .ugv-card .ugv-item.full-width {
   flex: 100%;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
+  /* 基础 item 已经是 row 和 space-between 了，这里只需保持即可 */
 }
 
 .ugv-card .ugv-label {
-  font-size: 14.5px;
+  /* ★ 增大标签字体，原为 14.5px */
+  font-size: 16px; 
   color: #8fa3b0;
+  /* 略微加粗提升清晰度 */
+  font-weight: 500; 
 }
 
 .ugv-card .ugv-value {
-  font-size: 18px;
+  /* ★ 增大数值字体，原为 18px */
+  font-size: 22px; 
   font-weight: 700;
   color: #e0f2fe;
   text-shadow: 0 0 5px rgba(224, 242, 254, 0.4);
+  /* 使用等宽字体让跳动的数字更稳定且具科技感 */
+  font-family: "JetBrains Mono", monospace; 
 }
 
 .ugv-card .ugv-footer {
