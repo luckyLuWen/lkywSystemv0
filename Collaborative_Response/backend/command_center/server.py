@@ -21,6 +21,7 @@ from flask_cors import CORS
 BASE_DIR = Path(__file__).resolve().parent
 CESIUM_DIR = BASE_DIR / "Cesium"
 PATH_RESULT_PATH = BASE_DIR / "path_result.json"
+MULTI_AGENT_RESULT_PATH = BASE_DIR / "multi_agent_result.json"
 MISSION_PATH = BASE_DIR / "mission.czml"
 FOLIUM_PATH = BASE_DIR / "wuhan_rescue_optimized.html"
 RUNTIME_DIR = BASE_DIR / "runtime"
@@ -104,6 +105,12 @@ def load_strategy_metrics() -> dict[str, Any]:
         }
     with PATH_RESULT_PATH.open("r", encoding="utf-8") as file:
         payload = json.load(file)
+        
+    multi_agent_data = None
+    if MULTI_AGENT_RESULT_PATH.exists():
+        with MULTI_AGENT_RESULT_PATH.open("r", encoding="utf-8") as f:
+            multi_agent_data = json.load(f)
+
     return {
         "available": True,
         "message": "已读取当前策略评估结果",
@@ -117,6 +124,7 @@ def load_strategy_metrics() -> dict[str, Any]:
         "speeds": payload.get("speeds"),
         "candidate_points": payload.get("candidate_points", []),
         "obstacles": payload.get("obstacles", []),
+        "multi_agent": multi_agent_data,
         "updated_at": file_info(PATH_RESULT_PATH)["updated_at"],
     }
 
