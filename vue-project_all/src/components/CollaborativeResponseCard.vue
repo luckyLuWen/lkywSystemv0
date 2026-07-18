@@ -286,13 +286,13 @@ onBeforeUnmount(() => {
 .card-title {
   margin: 0;
   color: #93c5fd;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.2;
 }
 
 .card-subtitle {
   margin: 4px 0 0 0;
-  font-size: 13px;
+  font-size: 14.5px;
   color: rgba(255, 255, 255, 0.72);
 }
 
@@ -303,7 +303,7 @@ onBeforeUnmount(() => {
   min-height: 26px;
   padding: 0 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .status-badge.online {
@@ -354,14 +354,14 @@ onBeforeUnmount(() => {
 .bracket {
   color: #60a5fa;
   font-weight: bold;
-  font-size: 20px;
+  font-size: 18px;
   text-shadow: 0 0 6px rgba(96, 165, 250, 0.5);
 }
 
 .section-subtitle-text {
   margin: 0;
   color: #60a5fa;
-  font-size: 15px;
+  font-size: 17.5px;
   font-weight: bold;
   letter-spacing: 0.5px;
 }
@@ -385,12 +385,12 @@ onBeforeUnmount(() => {
 }
 
 .info-label {
-  font-size: 13px;
+  font-size: 14.5px;
   color: rgba(255, 255, 255, 0.6);
 }
 
 .info-val {
-  font-size: 13px;
+  font-size: 14.5px;
   color: #fff;
   font-weight: 600;
   text-align: right;
@@ -435,7 +435,7 @@ onBeforeUnmount(() => {
 }
 
 .metric-val {
-  font-size: 18px;
+  font-size: 26px;
   font-weight: bold;
   font-family: 'JetBrains Mono', Consolas, monospace;
   color: #e2e8f0;
@@ -452,10 +452,10 @@ onBeforeUnmount(() => {
 .metric-val.text-green { color: #34d399; }
 .metric-val.text-purple { color: #a78bfa; }
 .metric-val.text-pink { color: #f472b6; }
-.metric-val.dim { font-size: 14px; color: #cbd5e1; }
+.metric-val.dim { font-size: 16px; color: #cbd5e1; }
 
 .metric-lbl {
-  font-size: 11px;
+  font-size: 14.5px;
   color: rgba(255, 255, 255, 0.5);
   white-space: nowrap;
 }
@@ -502,12 +502,12 @@ onBeforeUnmount(() => {
 }
 
 .env-label {
-  font-size: 11px;
+  font-size: 14.5px;
   color: rgba(255, 255, 255, 0.6);
 }
 
 .env-state {
-  font-size: 12px;
+  font-size: 14.5px;
   font-weight: 600;
   color: #64748b;
 }
@@ -527,13 +527,13 @@ onBeforeUnmount(() => {
 }
 
 .congestion-name {
-  font-size: 12px;
+  font-size: 14.5px;
   font-weight: 600;
   color: #93c5fd;
 }
 
 .congestion-detail {
-  font-size: 11px;
+  font-size: 13px;
   color: rgba(147, 197, 253, 0.7);
 }
 
@@ -597,7 +597,7 @@ onBeforeUnmount(() => {
 }
 
 .metric-vs {
-  font-size: 9px;
+  font-size: 12px;
   color: #4ade80;
   margin-top: 2px;
   white-space: nowrap;
@@ -621,7 +621,7 @@ onBeforeUnmount(() => {
 
 .error-text {
   margin: 0;
-  font-size: 11px;
+  font-size: 13px;
   color: #ffb4b4;
   text-align: center;
 }

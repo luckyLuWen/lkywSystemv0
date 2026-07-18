@@ -1,6 +1,7 @@
 <template>
   <div class="card">
     <h3>📹 实时检测</h3>
+    <ModelMetricsPanel :settings="props.settings" :availableModels="props.availableModels" />
     
     <!-- Source Selection -->
     <div class="source-selector">
@@ -10,7 +11,7 @@
       </label>
       <label>
         <input type="radio" value="rtsp" v-model="source" @change="handleSourceChange">
-        📡 RTSP流（OBS推流）
+        📡 RTMP流（OBS推流）
       </label>
     </div>
     
@@ -31,7 +32,12 @@
       </div>
 
       <div class="detection-list">
-        <span v-for="(det, index) in webcamDetections" :key="index" class="detection-badge">
+        <span
+          v-for="(det, index) in webcamDetections"
+          :key="index"
+          class="detection-badge"
+          :style="getClassStyle(det.class)"
+        >
           {{ det.class }} ({{ (det.confidence * 100).toFixed(1) }}%)
         </span>
       </div>
@@ -40,26 +46,26 @@
     <!-- RTSP Section -->
     <div v-if="source === 'rtsp'" class="rtsp-section">
       <div class="info-box-blue">
-        <h4>💡 使用说明</h4>
+        <h4 style="font-size: 30px;">💡 使用说明</h4>
         <p>1. 确保OBS Studio已启动并开始推流</p>
-        <p>2. 默认RTSP地址: rtsp://localhost:8554/live</p>
-        <p>3. 点击"启动检测"开始实时检测</p>
+        <p>2. 默认推流地址: rtmp://127.0.0.1:1935/live</p>
+        <p>3. 点击"启动推流检测"开始实时检测</p>
       </div>
       
       <div class="input-group">
-        <label>RTSP流地址:</label>
-        <input type="text" v-model="rtspUrl" placeholder="rtsp://localhost:8554/live">
+        <label style="font-size: 30px;">推流地址:</label>
+        <input type="text" style="font-size: 25px;" v-model="rtspUrl" placeholder="rtmp://127.0.0.1:1935/live">
       </div>
       
       <div class="video-container">
         <img v-if="rtspStreaming" :src="rtspFeedUrl" alt="RTSP Stream" class="rtsp-stream">
         <div v-else class="placeholder">
-          <p>📡 等待启动RTSP流检测...</p>
+          <p style="font-size: 30px;">📡 等待启动推流检测...</p>
         </div>
       </div>
       
       <div class="button-group">
-        <button v-if="!rtspStreaming" class="btn btn-success" @click="startRTSP">▶️ 启动RTSP检测</button>
+        <button v-if="!rtspStreaming" class="btn btn-success" @click="startRTSP">▶️ 启动推流检测</button>
         <button v-else class="btn btn-danger" @click="stopRTSP">⏹️ 停止检测</button>
       </div>
       
@@ -88,7 +94,7 @@
           v-for="(det, index) in currentRtspDetections" 
           :key="index" 
           class="detection-badge"
-          :style="{ background: getBadgeColor(det.class) }"
+          :style="getClassStyle(det.class)"
         >
           {{ det.class }} ({{ (det.confidence * 100).toFixed(1) }}%)
         </span>
@@ -99,9 +105,15 @@
 
 <script setup>
 import { ref, onUnmounted, computed } from 'vue'
+import ModelMetricsPanel from './ModelMetricsPanel.vue'
+import { getClassStyle } from '../utils/classColors'
 
 const props = defineProps({
   settings: Object,
+  availableModels: {
+    type: Array,
+    default: () => []
+  },
   safeFetch: Function,
   apiUrl: String
 })
@@ -114,7 +126,10 @@ const webcamDetections = ref([])
 let webcamInterval = null
 let stream = null
 
-const rtspUrl = ref(localStorage.getItem('realtimeDetection.rtspUrl') || 'rtsp://localhost:8554/live')
+const DEFAULT_STREAM_URL = 'rtmp://127.0.0.1:1935/live'
+const savedStreamUrl = localStorage.getItem('realtimeDetection.rtspUrl')
+const legacyStreamUrls = ['rtsp://localhost:8554/live', 'rtmp://127.0.0.1:2003/live']
+const rtspUrl = ref(!savedStreamUrl || legacyStreamUrls.includes(savedStreamUrl) ? DEFAULT_STREAM_URL : savedStreamUrl)
 const rtspStreaming = ref(false)
 const rtspStats = ref(null)
 const currentRtspDetections = ref([])
@@ -196,7 +211,7 @@ const detectWebcamFrame = async () => {
 
 // RTSP logic
 const startRTSP = async () => {
-  if (!rtspUrl.value) return alert('请输入RTSP流地址')
+  if (!rtspUrl.value) return alert('请输入推流地址')
   localStorage.setItem('realtimeDetection.rtspUrl', rtspUrl.value)
 
   try {
@@ -248,12 +263,6 @@ const updateRTSPStatus = async () => {
   } catch (error) {
     console.error('Update RTSP status failed:', error)
   }
-}
-
-const getBadgeColor = (cls) => {
-  if (cls.includes('fire') || cls.includes('火')) return '#ef4444'
-  if (cls.includes('lkyw') || cls.includes('两客一危')) return '#f59e0b'
-  return '#10b981'
 }
 
 onUnmounted(() => {
@@ -344,7 +353,7 @@ video, .rtsp-stream {
 }
 
 .info-box h4 {
-  color: #667eea;
+  color: #0c0c0c;
   margin-bottom: 5px;
   font-size: 14px;
 }
@@ -352,6 +361,7 @@ video, .rtsp-stream {
 .info-box p {
   font-size: 20px;
   font-weight: bold;
+  color: #0c0c0c;
 }
 
 .detection-list {

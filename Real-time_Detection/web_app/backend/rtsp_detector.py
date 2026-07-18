@@ -9,6 +9,46 @@ from ultralytics import YOLO
 import numpy as np
 
 
+CLASS_COLORS = {
+    "car_fire": (53, 57, 229),
+    "lkyw_fire": (91, 24, 194),
+    "car_nofire": (53, 216, 253),
+    "lkyw_nofire": (0, 140, 251),
+    "car_normal": (53, 216, 253),
+    "lkyw_normal": (0, 140, 251),
+}
+
+
+def get_class_color(class_name):
+    raw_name = str(class_name or "").strip()
+    normalized_name = raw_name.lower().replace("-", "_").replace(" ", "_")
+
+    if raw_name in CLASS_COLORS:
+        return CLASS_COLORS[raw_name]
+    if normalized_name in CLASS_COLORS:
+        return CLASS_COLORS[normalized_name]
+
+    nofire_markers = ("nofire", "no_fire", "non_fire", "normal", "无火", "未起火", "正常")
+    fire_markers = ("fire", "起火", "火灾", "着火")
+
+    if any(marker in normalized_name for marker in nofire_markers):
+        return (53, 216, 253)
+    if any(marker in normalized_name for marker in fire_markers):
+        return (53, 57, 229)
+
+    return (160, 160, 160)
+
+
+def is_fire_class(class_name):
+    normalized_name = str(class_name or "").strip().lower().replace("-", "_").replace(" ", "_")
+    nofire_markers = ("nofire", "no_fire", "non_fire", "normal", "无火", "未起火", "正常")
+    fire_markers = ("fire", "起火", "火灾", "着火")
+
+    if any(marker in normalized_name for marker in nofire_markers):
+        return False
+    return any(marker in normalized_name for marker in fire_markers)
+
+
 class RTSPDetector:
     def __init__(self, model_path, rtsp_url, camera_id="RTSP-01", on_detection=None):
         """
@@ -105,7 +145,7 @@ class RTSPDetector:
                 results = self.model(frame, verbose=False)
                 
                 # 绘制检测结果
-                annotated_frame = results[0].plot()
+                annotated_frame = self._draw_detection_result(frame, results[0])
                 
                 # 提取检测信息
                 detection_info = self._extract_detection_info(results[0])
@@ -146,6 +186,33 @@ class RTSPDetector:
                 print(f"❌ 检测循环错误: {e}")
                 time.sleep(1)
     
+    def _draw_detection_result(self, frame, result):
+        annotated_frame = frame.copy()
+        if result.boxes is None or len(result.boxes) == 0:
+            return annotated_frame
+
+        for box in result.boxes:
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            conf = float(box.conf[0])
+            cls = int(box.cls[0])
+            class_name = result.names[cls]
+            color = get_class_color(class_name)
+
+            cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, 2)
+            label = f"{class_name} {conf:.2f}"
+            label_y = max(y1 - 10, 20)
+            cv2.putText(
+                annotated_frame,
+                label,
+                (x1, label_y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                color,
+                2,
+            )
+
+        return annotated_frame
+
     def _extract_detection_info(self, result):
         """提取检测信息"""
         info = {
@@ -170,7 +237,7 @@ class RTSPDetector:
                 info['detections'].append(detection)
                 
                 # 判断是否检测到火灾
-                if '火' in class_name or 'fire' in class_name.lower():
+                if is_fire_class(class_name):
                     info['has_fire'] = True
                 
                 # 判断车辆类型
