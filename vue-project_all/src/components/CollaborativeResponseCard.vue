@@ -168,6 +168,12 @@
       </div>
     </template>
 
+    <!-- 动态载入多智能体寻优面板 -->
+    <AgentSelectionPanel 
+      v-if="multiAgentData" 
+      :multiAgentData="multiAgentData" 
+    />
+
     <!-- 空状态 -->
     <div v-if="!strategyMetrics && !lastError" class="empty-state">
       <div class="empty-icon">📋</div>
@@ -181,6 +187,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import AgentSelectionPanel from './AgentSelectionPanel.vue'
 import {
   buildCollaborativeApiUrl,
   getCollaborativeControllerBaseUrl,
@@ -204,6 +211,7 @@ const comparison = computed(() => strategyMetrics.value?.comparison || null)
 const candidatePoints = computed(() => strategyMetrics.value?.candidate_points || [])
 const scenario = computed(() => strategyMetrics.value?.scenario || null)
 const speeds = computed(() => strategyMetrics.value?.speeds || { carKmh: 80, uavMs: 20 })
+const multiAgentData = computed(() => strategyMetrics.value?.multi_agent || null)
 
 const timeDiffVal = computed(() => {
   const v = parseFloat(strategyMetrics.value?.metrics?.timeDiff)
