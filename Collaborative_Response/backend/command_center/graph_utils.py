@@ -96,3 +96,30 @@ def load_drive_graph_bbox(
         pass
 
     return G
+
+
+# ==================== Monkey-patch to fallback nearest_nodes ====================
+def _fallback_nearest_nodes(G, X, Y, return_dist=False):
+    import numpy as np
+    nodes = list(G.nodes)
+    node_lons = np.array([G.nodes[n]['x'] for n in nodes])
+    node_lats = np.array([G.nodes[n]['y'] for n in nodes])
+    
+    single_x = not isinstance(X, (list, np.ndarray))
+    xs = [X] if single_x else X
+    ys = [Y] if single_x else Y
+    
+    results = []
+    for x, y in zip(xs, ys):
+        dists = (node_lons - x) ** 2 + (node_lats - y) ** 2
+        idx = np.argmin(dists)
+        n_node = nodes[idx]
+        if return_dist:
+            from geopy.distance import geodesic
+            d = geodesic((G.nodes[n_node]['y'], G.nodes[n_node]['x']), (y, x)).meters
+            results.append((n_node, d))
+        else:
+            results.append(n_node)
+    return results[0] if single_x else results
+
+ox.nearest_nodes = _fallback_nearest_nodes

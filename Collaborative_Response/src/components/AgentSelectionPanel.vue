@@ -74,14 +74,14 @@ const props = defineProps({
 
 <style scoped>
 .agent-selection-panel {
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(2, 12, 26, 0.8);
+  border: 1px solid rgba(0, 242, 254, 0.22);
   border-radius: 12px;
   width: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(0, 242, 254, 0.05);
   margin-top: 16px;
   animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -93,8 +93,8 @@ const props = defineProps({
 
 .panel-head {
   padding: 12px 14px;
-  background: rgba(30, 41, 59, 0.8);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(10, 25, 47, 0.4);
+  border-bottom: 1px solid rgba(0, 242, 254, 0.15);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -103,7 +103,7 @@ const props = defineProps({
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: #f1f5f9;
+  color: #ffffff;
   letter-spacing: 0.5px;
 }
 .panel-subtitle {
@@ -120,9 +120,10 @@ const props = defineProps({
   letter-spacing: 0.5px;
 }
 .status-badge.computing {
-  background: rgba(14, 165, 233, 0.15);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: rgba(0, 242, 254, 0.1);
+  color: #00f2fe;
+  border: 1px solid rgba(0, 242, 254, 0.3);
+  text-shadow: 0 0 5px rgba(0, 242, 254, 0.4);
 }
 .status-badge.ready {
   background: rgba(34, 197, 94, 0.15);
@@ -133,20 +134,22 @@ const props = defineProps({
   animation: pulse-border 1.5s infinite;
 }
 @keyframes pulse-border {
-  0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.4); }
-  70% { box-shadow: 0 0 0 4px rgba(56, 189, 248, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(0, 242, 254, 0.4); }
+  70% { box-shadow: 0 0 0 4px rgba(0, 242, 254, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 242, 254, 0); }
 }
 
 .terminal-logs {
   font-family: 'Courier New', Courier, monospace;
   font-size: 10px;
   color: #94a3b8;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.55);
   padding: 10px;
   margin: 10px 12px;
   border-radius: 6px;
-  border-left: 2px solid #38bdf8;
+  border: 1px solid rgba(0, 242, 254, 0.15);
+  border-left: 3px solid #00f2fe;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
 }
 .log-line {
   margin-bottom: 4px;
@@ -160,8 +163,8 @@ const props = defineProps({
 .log-line span {
   font-weight: bold;
 }
-.text-cyan { color: #38bdf8; }
-.text-cyan span { color: #0284c7; }
+.text-cyan { color: #00f2fe; }
+.text-cyan span { color: #008fa7; }
 .text-green { color: #4ade80; }
 .text-green span { color: #22c55e; }
 
@@ -176,8 +179,8 @@ const props = defineProps({
   padding: 0 12px 12px;
 }
 .agent-card {
-  background: rgba(30, 41, 59, 0.4);
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  background: rgba(10, 25, 47, 0.25);
+  border: 1px solid rgba(0, 242, 254, 0.1);
   border-left: 3px solid var(--agent-color);
   border-radius: 6px;
   padding: 10px;
@@ -186,6 +189,7 @@ const props = defineProps({
 .agent-card:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-color: rgba(0, 242, 254, 0.25);
 }
 .agent-header {
   display: flex;
@@ -223,11 +227,11 @@ const props = defineProps({
 .stat-row.highlight {
   font-weight: 600;
 }
-.text-cyan { color: #38bdf8; }
+.text-cyan { color: #00f2fe; }
 .text-gray { color: #cbd5e1; }
 
 .losers-section {
-  border-top: 1px dashed rgba(148, 163, 184, 0.15);
+  border-top: 1px dashed rgba(0, 242, 254, 0.15);
   padding-top: 6px;
 }
 .losers-title {
@@ -252,7 +256,7 @@ const props = defineProps({
 }
 .loser-reason {
   font-size: 9px;
-  color: #f87171;
+  color: #ef4444;
   margin-left: 12px;
   margin-top: 1px;
   line-height: 1.3;
