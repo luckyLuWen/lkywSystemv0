@@ -158,9 +158,20 @@
             missionDs = await Cesium.CzmlDataSource.load("/mission.czml?t=" + Date.now());
             viewer.dataSources.removeAll();
             viewer.dataSources.add(missionDs);
-            await viewer.flyTo(missionDs, { offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-30), 2000) });
-            // 默认跟踪无人机
-            setTimeout(() => trackEntity('UAV'), 1000);
+            // 默认飞行到一个宽广的俯瞰视角，刚好能同时看到起点和终点
+            await viewer.flyTo(missionDs, { 
+                offset: new Cesium.HeadingPitchRange(
+                    Cesium.Math.toRadians(0), 
+                    Cesium.Math.toRadians(-45), 
+                    18000
+                ) 
+            });
+            // 默认保持自由视角观测全局
+            setTimeout(() => {
+                viewer.trackedEntity = undefined;
+                document.querySelectorAll('.track-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.track-btn')[2].classList.add('active'); // 选中自由视角
+            }, 500);
         }
 
         // 跟踪模式

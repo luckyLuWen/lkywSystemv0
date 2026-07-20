@@ -448,8 +448,10 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
             try:
                 with open(b_path, 'r', encoding='utf-8') as f:
                     b_data = json.load(f)
+                name_val = "黄冈市区分界线" if "huanggang" in b_file else "仙桃市区分界线"
                 folium.GeoJson(
                     b_data,
+                    name=name_val,
                     style_function=lambda x: {'color': '#00e5ff', 'weight': 3, 'fillOpacity': 0, 'dashArray': '5, 5'}
                 ).add_to(m)
             except (json.JSONDecodeError, Exception):
@@ -740,11 +742,11 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
 
     ui_html = f'''
     <div style="position: fixed; top: 96px; left: 20px; z-index: 1000; width: 300px;
-                background: rgba(10, 18, 32, 0.82); padding: 14px 16px; border-radius: 10px;
-                border: 1px solid rgba(96, 165, 250, 0.2); backdrop-filter: blur(12px);
-                box-shadow: 0 2px 20px rgba(0,0,0,0.4); font-family: 'Microsoft YaHei', sans-serif; color: #e2e8f0;">
-        <div style="font-size: 14px; font-weight: 700; color: #93c5fd; margin-bottom: 4px;
-                    letter-spacing: 1px; text-align: center;">协同效能评估</div>
+                background: rgba(2, 12, 26, 0.88); padding: 14px 16px; border-radius: 10px;
+                border: 1px solid rgba(0, 242, 254, 0.25); backdrop-filter: blur(12px);
+                box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 0 15px rgba(0, 242, 254, 0.05); font-family: 'Microsoft YaHei', sans-serif; color: #cbd5e1;">
+        <div style="font-size: 14px; font-weight: 700; color: #00f2fe; margin-bottom: 4px;
+                    letter-spacing: 1px; text-align: center; text-shadow: 0 0 8px rgba(0, 242, 254, 0.3);">协同效能评估</div>
         <div id="eta-display" style="text-align:center;font-size:11px;color:#fbbf24;margin-bottom:6px;">预计到达 --:--</div>
         <script>
         (function(){{
@@ -767,15 +769,15 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
         <div style="font-size: 12px; line-height: 1.8;">
             <div style="display: flex; justify-content: space-between; padding: 2px 0;">
                 <span style="color: #94a3b8;">协同策略</span>
-                <b style="color: #60a5fa;">{strategy_name}</b>
+                <b style="color: #00f2fe;">{strategy_name}</b>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 2px 0;">
                 <span style="color: #94a3b8;">无人车行驶耗时</span>
-                <b style="color: #e2e8f0;">{car_df['time_s'].iloc[-1]/60:.1f} 分钟</b>
+                <b style="color: #ffffff;">{car_df['time_s'].iloc[-1]/60:.1f} 分钟</b>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 2px 0;">
                 <span style="color: #94a3b8;">无人机飞行耗时</span>
-                <b style="color: #e2e8f0;">{(uav_df['time_s'].iloc[-1]-delay)/60:.1f} 分钟</b>
+                <b style="color: #ffffff;">{(uav_df['time_s'].iloc[-1]-delay)/60:.1f} 分钟</b>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 2px 6px; margin: 3px 0;
                         background: rgba(245,158,11,0.1); border-radius: 4px;">
@@ -784,7 +786,7 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
             </div>
         </div>
         <!-- 路径参数 -->
-        <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(96,165,250,0.1); font-size: 11px; line-height: 1.7;">
+        <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(0, 242, 254, 0.15); font-size: 11px; line-height: 1.7;">
             <div style="display: flex; justify-content: space-between;">
                 <span style="color: #94a3b8;">无人车行驶距离</span><span style="color: #c4b5fd;">{car_dist:.1f} km</span>
             </div>
@@ -800,7 +802,7 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
             <div style="display: flex; justify-content: space-between;">
                 <span style="color: #94a3b8;">无人机能源消耗</span><span style="color: #f472b6;">{uav_energy:.1f} kWh</span>
             </div>
-            <div style="display: flex; justify-content: space-between; color: #f87171;">
+            <div style="display: flex; justify-content: space-between; color: #ef4444;">
                 <span>空地到达时间差</span><b>{time_diff:.1f} 秒</b>
             </div>
         </div>
