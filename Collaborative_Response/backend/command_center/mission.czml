@@ -13,8 +13,8 @@
     "id": "StartMarker",
     "position": {
       "cartographicDegrees": [
-        114.884,
-        30.636,
+        114.8724,
+        30.6435,
         0
       ]
     },
@@ -30,7 +30,7 @@
       }
     },
     "label": {
-      "text": "团风县团风大道消防站",
+      "text": "团风县消防救援大队",
       "font": "16px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
@@ -256,7 +256,7 @@
     }
   },
   {
-    "id": "UAV_Path",
+    "id": "UAV_Path_glow",
     "polyline": {
       "positions": {
         "cartographicDegrees": [
@@ -600,7 +600,7 @@
     }
   },
   {
-    "id": "Car_Path",
+    "id": "Car_Path_glow",
     "polyline": {
       "positions": {
         "cartographicDegrees": [
@@ -776,8 +776,8 @@
     "id": "AgentPOI_medical_团风县人民医",
     "position": {
       "cartographicDegrees": [
-        114.8705,
-        30.6472,
+        114.8698,
+        30.6461,
         0
       ]
     },
@@ -819,11 +819,11 @@
     }
   },
   {
-    "id": "AgentPOI_medical_淋山河镇中心",
+    "id": "AgentPOI_medical_团风县中医医",
     "position": {
       "cartographicDegrees": [
-        114.845,
-        30.675,
+        114.8735,
+        30.6423,
         0
       ]
     },
@@ -848,7 +848,7 @@
       "outlineWidth": 0
     },
     "label": {
-      "text": "医疗急救: 淋山河镇中心卫生院",
+      "text": "医疗急救: 团风县中医医院",
       "font": "11px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
@@ -865,11 +865,11 @@
     }
   },
   {
-    "id": "AgentPOI_medical_马曹庙镇卫生",
+    "id": "AgentPOI_medical_黄冈市黄州区",
     "position": {
       "cartographicDegrees": [
-        114.935,
-        30.655,
+        114.8768,
+        30.4512,
         0
       ]
     },
@@ -894,7 +894,7 @@
       "outlineWidth": 0
     },
     "label": {
-      "text": "医疗急救: 马曹庙镇卫生院",
+      "text": "医疗急救: 黄冈市黄州区人民医院",
       "font": "11px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
@@ -914,8 +914,8 @@
     "id": "AgentPOI_fire_团风县公安消",
     "position": {
       "cartographicDegrees": [
-        114.8732,
-        30.6435,
+        114.8751,
+        30.6426,
         0
       ]
     },
@@ -957,11 +957,11 @@
     }
   },
   {
-    "id": "AgentPOI_fire_江北工业园专",
+    "id": "AgentPOI_fire_黄冈市黄州区",
     "position": {
       "cartographicDegrees": [
-        114.8805,
-        30.608,
+        114.9238,
+        30.5158,
         0
       ]
     },
@@ -986,7 +986,7 @@
       "outlineWidth": 0
     },
     "label": {
-      "text": "消防灭火: 江北工业园专职消防队",
+      "text": "消防灭火: 黄冈市黄州区路口镇专职消防队",
       "font": "11px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
@@ -1003,11 +1003,11 @@
     }
   },
   {
-    "id": "AgentPOI_fire_回龙山镇消防",
+    "id": "AgentPOI_fire_黄冈市消防救",
     "position": {
       "cartographicDegrees": [
-        114.945,
-        30.625,
+        114.8785,
+        30.4536,
         0
       ]
     },
@@ -1032,7 +1032,7 @@
       "outlineWidth": 0
     },
     "label": {
-      "text": "消防灭火: 回龙山镇消防备勤点",
+      "text": "消防灭火: 黄冈市消防救援支队特勤站",
       "font": "11px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
@@ -1052,8 +1052,8 @@
     "id": "AgentPOI_police_团风县公安局",
     "position": {
       "cartographicDegrees": [
-        114.869,
-        30.6395,
+        114.8716,
+        30.6391,
         0
       ]
     },
@@ -1095,11 +1095,11 @@
     }
   },
   {
-    "id": "AgentPOI_police_方高坪镇派出",
+    "id": "AgentPOI_police_团风县团风水",
     "position": {
       "cartographicDegrees": [
-        114.885,
-        30.685,
+        114.8703,
+        30.6415,
         0
       ]
     },
@@ -1124,7 +1124,7 @@
       "outlineWidth": 0
     },
     "label": {
-      "text": "公安交警: 方高坪镇派出所",
+      "text": "公安交警: 团风县团风水陆派出所",
       "font": "11px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
@@ -1141,11 +1141,11 @@
     }
   },
   {
-    "id": "AgentPOI_police_总路咀镇交警",
+    "id": "AgentPOI_police_黄冈市公安局",
     "position": {
       "cartographicDegrees": [
-        114.92,
-        30.61,
+        114.8792,
+        30.4498,
         0
       ]
     },
@@ -1170,7 +1170,7 @@
       "outlineWidth": 0
     },
     "label": {
-      "text": "公安交警: 总路咀镇交警中队",
+      "text": "公安交警: 黄冈市公安局黄州分局",
       "font": "11px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
@@ -1190,8 +1190,8 @@
     "id": "AgentPOI_hazmat_团风县消防特",
     "position": {
       "cartographicDegrees": [
-        114.865,
-        30.651,
+        114.8689,
+        30.648,
         0
       ]
     },
@@ -1233,11 +1233,11 @@
     }
   },
   {
-    "id": "AgentPOI_hazmat_黄州区防化增",
+    "id": "AgentPOI_hazmat_团风县应急管",
     "position": {
       "cartographicDegrees": [
-        114.885,
-        30.585,
+        114.8738,
+        30.6405,
         0
       ]
     },
@@ -1262,7 +1262,7 @@
       "outlineWidth": 0
     },
     "label": {
-      "text": "防化部队: 黄州区防化增援大队",
+      "text": "防化部队: 团风县应急管理局",
       "font": "11px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
@@ -1279,11 +1279,11 @@
     }
   },
   {
-    "id": "AgentPOI_hazmat_团风港区危化",
+    "id": "AgentPOI_hazmat_黄冈市应急管",
     "position": {
       "cartographicDegrees": [
-        114.845,
-        30.635,
+        114.8761,
+        30.4523,
         0
       ]
     },
@@ -1308,7 +1308,7 @@
       "outlineWidth": 0
     },
     "label": {
-      "text": "防化部队: 团风港区危化应急站",
+      "text": "防化部队: 黄冈市应急管理局",
       "font": "11px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
@@ -1328,8 +1328,8 @@
     "id": "AgentPOI_road_团风县路政管",
     "position": {
       "cartographicDegrees": [
-        114.8785,
-        30.642,
+        114.878,
+        30.6412,
         0
       ]
     },
@@ -1371,11 +1371,11 @@
     }
   },
   {
-    "id": "AgentPOI_road_上巴河镇道班",
+    "id": "AgentPOI_road_团风县交通运",
     "position": {
       "cartographicDegrees": [
-        114.945,
-        30.665,
+        114.8745,
+        30.6389,
         0
       ]
     },
@@ -1400,7 +1400,7 @@
       "outlineWidth": 0
     },
     "label": {
-      "text": "交通路政: 上巴河镇道班",
+      "text": "交通路政: 团风县交通运输局",
       "font": "11px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
@@ -1417,11 +1417,11 @@
     }
   },
   {
-    "id": "AgentPOI_road_大桥收费站管",
+    "id": "AgentPOI_road_黄冈市公路管",
     "position": {
       "cartographicDegrees": [
-        114.835,
-        30.625,
+        114.8801,
+        30.4506,
         0
       ]
     },
@@ -1446,7 +1446,7 @@
       "outlineWidth": 0
     },
     "label": {
-      "text": "交通路政: 大桥收费站管理处",
+      "text": "交通路政: 黄冈市公路管理局",
       "font": "11px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
