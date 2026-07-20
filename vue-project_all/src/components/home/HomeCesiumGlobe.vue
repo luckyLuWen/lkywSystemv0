@@ -1183,7 +1183,44 @@
     </div>
     <div v-if="loading" class="globe-mask">三维地球加载中...</div>
     <div v-else-if="errorMessage" class="globe-mask is-error">{{ errorMessage }}</div>
+<!-- 🌟 多维异构传感网协同矩阵 面板 -->
+    <div class="sensor-fusion-panel" v-if="fusionPanelConfig.show">
+      <div class="fusion-header">
+        <span class="icon">🔗</span>
+        <span class="title">立体传感网智能协同矩阵</span>
+        <div class="pulse-indicator"></div>
+      </div>
+      
+      <ul class="fusion-list">
+        <li>
+          <span class="node-name">🚗 车载节点</span>
+          <span class="status-tag" :class="sensorFusionState.car.statusClass">{{ sensorFusionState.car.text }}</span>
+        </li>
+        <li>
+          <span class="node-name">💡 路侧节点</span>
+          <span class="status-tag" :class="sensorFusionState.light.statusClass">{{ sensorFusionState.light.text }}</span>
+        </li>
+        <li>
+          <span class="node-name">🚁 空基节点</span>
+          <span class="status-tag" :class="sensorFusionState.uav.statusClass">{{ sensorFusionState.uav.text }}</span>
+        </li>
+        <li>
+          <span class="node-name">🚙 地基节点</span>
+          <span class="status-tag" :class="sensorFusionState.ugv.statusClass">{{ sensorFusionState.ugv.text }}</span>
+        </li>
+      </ul>
 
+      <div class="fusion-footer">
+        <div class="footer-row">
+          <span>综合协同研判:</span>
+          <strong :class="{'text-red': props.activePhaseIndex >= 2}">{{ sensorFusionState.resultText }}</strong>
+        </div>
+        <div class="footer-row">
+          <span>多源融合置信度:</span>
+          <strong class="text-cyan">{{ sensorFusionState.confidence }}</strong>
+        </div>
+      </div>
+    </div>
     <!-- 事故现场三级视角：事故详情悬浮窗 -->
     <div 
       v-if="accidentDetailPopup.show && props.focusedPointId" 
@@ -1417,11 +1454,11 @@
           <button 
             :class="['ugv-sensor-tab', { active: activeUgvSensorTab === 'A' }]" 
             @click="activeUgvSensorTab = 'A'"
-          >无人车 A <span class="ugv-tab-status" :class="{ offline: !props.isWsConnected }">{{ props.isWsConnected ? '在线' : '离线' }}</span></button>
+          >地面感知单元-001 <span class="ugv-tab-status" :class="{ offline: !props.isWsConnected }">{{ props.isWsConnected ? '在线' : '离线' }}</span></button>
           <button 
             :class="['ugv-sensor-tab', { active: activeUgvSensorTab === 'B' }]" 
             @click="activeUgvSensorTab = 'B'"
-          >无人车 B <span class="ugv-tab-status" :class="{ offline: !props.isWsConnected }">{{ props.isWsConnected ? '在线' : '离线' }}</span></button>
+          >地面感知单元-002 <span class="ugv-tab-status" :class="{ offline: !props.isWsConnected }">{{ props.isWsConnected ? '在线' : '离线' }}</span></button>
         </div>
         <div class="ugv-sensor-body">
           <!-- 无人车 A 数据 -->
@@ -2064,6 +2101,46 @@
 const JIZHAN_TOP_OFFSET = 18.0;  
 const LIGHT_TOP_OFFSET = 7.5;    
 // ==========================================
+// 🌟 核心：多维异构传感网协同矩阵动态状态
+// ==========================================
+const fusionPanelConfig = reactive({
+  show: true // 控制面板是否显示
+});
+
+// 根据当前的推演阶段，动态计算 4 个传感器的协同状态
+const sensorFusionState = computed(() => {
+  const phase = Number(props.activePhaseIndex);
+  const isTanker = currentScene.value === 'tanker'; // 判断是不是油罐车场景
+
+  return {
+    // 1. 车端节点状态
+    car: {
+      text: phase >= 2 ? (isTanker ? '检测到侧翻倾角异常' : '检测到 9.8G 异常冲击') : '平稳运行，各项数据正常',
+      statusClass: phase >= 2 ? 'alert' : 'normal'
+    },
+    // 2. 路侧节点状态
+    light: {
+      text: phase >= 3 ? '视场唤醒，视觉特征提取完成' : '休眠中，低功耗待机',
+      statusClass: phase >= 3 ? 'active' : 'waiting'
+    },
+    // 3. 空基节点 (无人机) 状态
+    uav: {
+      text: phase >= 8 ? '已到达，红外全景推流中' : (phase >= 6 ? '飞行出动中...' : '基地待命'),
+      statusClass: phase >= 8 ? 'active' : (phase >= 6 ? 'moving' : 'waiting')
+    },
+    // 4. 地基节点 (无人车) 状态
+    ugv: {
+      text: phase >= 8 ? '已切入核心区，五合一嗅探中' : (phase >= 6 ? '地面行进中...' : '基地待命'),
+      statusClass: phase >= 8 ? 'active' : (phase >= 6 ? 'moving' : 'waiting')
+    },
+    // 5. 综合研判结果
+    resultText: phase >= 8 
+      ? (isTanker ? '油罐侧翻特大泄露 (空地协同确证)' : '货车追尾引发大火 (空地协同确证)') 
+      : (phase >= 2 ? '疑似交通事故 (单节点报警)' : '全域路网安全'),
+    confidence: phase >= 8 ? '98.5%' : (phase >= 3 ? '76.2%' : (phase >= 2 ? '45.0%' : '--'))
+  };
+});
+// ==========================================
 // 🌀 新增：多源数据动态传输流光材质
 // ==========================================
 // ==========================================
@@ -2500,7 +2577,7 @@ const coordCopiedMessage = ref('')
 
 const activeLightIndex = ref(0)
 const lights = reactive([
-  { id: 'light1', name: '灯光 1', show: true, lng: 113.105001, lat: 30.385353, height: 8.5, scale: 0.003, heading: 16, pitch: 0, roll: 0 },
+  { id: 'light1', name: '灯光 1', show: true, lng: 113.104364, lat: 30.385512, height: 8.5, scale: 0.003, heading: 16, pitch: 0, roll: 0 },
   { id: 'light2', name: '灯光 2', show: true, lng: 113.105781, lat: 30.385317, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
   { id: 'light3', name: '灯光 3', show: true, lng: 113.104482, lat: 30.385632, height: 8.5, scale: 0.003, heading: 198, pitch: 0, roll: 0 },
   { id: 'light4', name: '灯光 4', show: true, lng: 114.891139, lat: 30.630711, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
@@ -2510,8 +2587,8 @@ const lights = reactive([
  id: 'light7', 
  name: '灯光 7', 
  show: true,
- lng: 113.106713,
- lat: 30.385096,
+ lng: 113.106921,
+ lat: 30.385029,
  height: 8.5,
  scale: 0.003,
  heading: 201,
@@ -2523,8 +2600,8 @@ const lights = reactive([
  id: 'light8', 
  name: '灯光 8', 
  show: true,
- lng: 113.106053,
- lat: 30.385035,
+ lng: 113.105697,
+ lat:30.385135,
  height: 8.5,
  scale: 0.003,
  heading: 201,
@@ -2536,7 +2613,7 @@ const lights = reactive([
  id: 'light9', 
  name: '灯光 9', 
  show: true,
- lng: 113.106993,
+ lng: 113.106826,
  lat: 30.384839,
  height: 8.5,
  scale: 0.003,
@@ -2549,25 +2626,27 @@ const lights = reactive([
  id: 'light10', 
  name: '灯光 10', 
  show: true,
- lng: 113.104025,
- lat: 30.385567,
+ lng: 113.103274,
+ lat:30.385803,
  height: 8.5,
  scale: 0.003,
  heading: 201,
  pitch: 0,
  roll: 0
 },
-{ id: 'light11', name: '灯光 11', show: true, lng: 113.103713, lat: 30.385879, height: 8.5, scale: 0.003, heading: 16, pitch: 0, roll: 0 },
-  { id: 'light12', name: '灯光 12', show: true, lng: 113.102937, lat: 30.385845, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
+{ id: 'light11', name: '灯光 11', show: true, lng: 113.103434, lat: 30.385999, height: 8.5, scale: 0.003, heading: 16, pitch: 0, roll: 0 },
+  { id: 'light12', name: '灯光 12', show: true, lng: 113.101849, lat: 30.386164, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
   { id: 'light13', name: '灯光 13', show: true, lng: 113.102025, lat: 30.386324, height: 8.5, scale: 0.003, heading: 16, pitch: 0, roll: 0 },
-  { id: 'light14', name: '灯光 14', show: true, lng: 113.100805, lat: 30.386452, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
+  { id: 'light14', name: '灯光 14', show: true, lng: 113.099968, lat: 30.386693, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
   { id: 'light15', name: '灯光 15', show: true, lng: 113.100141, lat:30.386877, height: 8.5, scale: 0.003, heading: 16, pitch: 0, roll: 0 },
-  { id: 'light16', name: '灯光 16', show: true, lng:113.09881, lat: 30.387111, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
+  { id: 'light16', name: '灯光 16', show: true, lng:113.097772, lat: 30.387416, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
   { id: 'light17', name: '灯光 17', show: true, lng: 113.0977, lat:30.387665, height: 8.5, scale: 0.003, heading: 16, pitch: 0, roll: 0 },
   { id: 'light18', name: '灯光 18', show: true, lng:113.096165, lat: 30.38803, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
- { id: 'light19', name: '灯光 19', show: true, lng: 113.108476, lat: 30.384758, height: 8.5, scale: 0.003, heading: 16, pitch: 0, roll: 0 },
-  { id: 'light20', name: '灯光 20', show: true, lng:113.10978, lat:30.384221, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
+ { id: 'light19', name: '灯光 19', show: true, lng: 113.109018, lat: 30.384654, height: 8.5, scale: 0.003, heading: 16, pitch: 0, roll: 0 },
+  { id: 'light20', name: '灯光 20', show: true, lng:113.108726, lat:30.384424, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
   { id: 'light21', name: '灯光 21', show: true, lng: 113.110784, lat: 30.384221, height: 8.5, scale: 0.003, heading: 198, pitch: 0, roll: 0 },
+   { id: 'light22', name: '灯光 22', show: true, lng: 113.110784, lat:30.384051, height: 8.5, scale: 0.003, heading: 198, pitch: 0, roll: 0 },
+
 ])
 
 const lightAdjust = reactive({
@@ -6661,7 +6740,7 @@ function addEventEntities() {
     // =====================================
     // 1. 添加感知视场 (排除了 light6 自带路灯)
     // =====================================
-    if (['light1', 'light2', 'light3', 'light4', 'light5'].includes(l.id)) {
+    if (['light1', 'light2', 'light3', 'light4', 'light5','light8'].includes(l.id)) {
       const heightOffset = 8.0;
       const pitchAngle = -45;
 
@@ -6670,10 +6749,10 @@ function addEventEntities() {
       let maxRange = 100;
 
       // 货车现场
-      if (l.id === 'light1') { headingOffset = -150; fovAngle = 20; maxRange = 80; }
+      if (l.id === 'light1') { headingOffset = 0; fovAngle = 35; maxRange = 250; }
       if (l.id === 'light2') { headingOffset = 0; fovAngle = 35; maxRange = 250; }
-      if (l.id === 'light3') { headingOffset = 180; fovAngle = 35; maxRange = 200; }
-      
+      if (l.id === 'light3') { headingOffset = 180; fovAngle = 35; maxRange = 250; }
+      if (l.id === 'light8') { headingOffset = 0; fovAngle = 35; maxRange = 250; }
       // 油罐车现场
       if (l.id === 'light4') { headingOffset = -5; fovAngle = 30; maxRange = 300; }
       if (l.id === 'light5') { headingOffset = 165; fovAngle = 30; maxRange = 150; }
@@ -6713,7 +6792,7 @@ function addEventEntities() {
     // =====================================
     // 3. 路灯到对应基站的通信链路
     // =====================================
-    if (['light1', 'light2', 'light3', 'light4', 'light5'].includes(l.id)) {
+    if (['light1', 'light2', 'light3', 'light4', 'light5','light8'].includes(l.id)) {
       viewer.entities.add({
         id: `line-link-from-${l.id}-to-jizhan`,
         name: `数据传输链路:${l.id}->5G基站`,
@@ -7351,6 +7430,7 @@ const currentLng = circleCenterLng + radiusLng * Math.cos(angle);
         })
       }
     });
+    
     uavEntities.push(entity);
     if (config.id === 'uav_model') {
       sharedTruckUavPosition = uavPosition;
@@ -11202,7 +11282,100 @@ async function triggerRescueMultiAgent() {
   min-width: 0;
   flex: 1;
 }
+/* =========================================================
+   🌟 立体传感网协同矩阵 面板样式
+   ========================================================= */
+.sensor-fusion-panel {
+  position: absolute;
+  top: 80px;
+  left: 20px;
+  width: 340px;
+  background: rgba(6, 14, 28, 0.85);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 229, 255, 0.15);
+  backdrop-filter: blur(12px);
+  z-index: 900; /* 层级设置合理，避免遮挡最重要的弹窗 */
+  color: #fff;
+  font-family: -apple-system, sans-serif;
+  overflow: hidden;
+  pointer-events: auto;
+}
 
+.fusion-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  background: linear-gradient(90deg, rgba(0, 229, 255, 0.2), transparent);
+  border-bottom: 1px solid rgba(0, 229, 255, 0.2);
+}
+
+.fusion-header .icon { font-size: 16px; margin-right: 8px; }
+.fusion-header .title { font-size: 14px; font-weight: bold; color: #00ffff; text-shadow: 0 0 8px rgba(0, 255, 255, 0.5); }
+
+/* 右侧跳动的呼吸灯 */
+.pulse-indicator {
+  margin-left: auto;
+  width: 8px;
+  height: 8px;
+  background: #00ffaa;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #00ffaa;
+  animation: pulseAnim 1.5s infinite;
+}
+@keyframes pulseAnim {
+  0% { transform: scale(0.8); opacity: 0.5; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.8); opacity: 0.5; }
+}
+
+.fusion-list {
+  list-style: none;
+  padding: 12px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fusion-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.node-name { color: #cbd5e1; font-weight: bold; }
+
+/* 动态状态标签的颜色变化 */
+.status-tag {
+  font-family: monospace;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+.status-tag.normal { color: #94a3b8; }
+.status-tag.waiting { color: #64748b; background: rgba(255,255,255,0.05); }
+.status-tag.alert { color: #ff4d4f; background: rgba(255, 77, 79, 0.15); border: 1px solid rgba(255, 77, 79, 0.4); }
+.status-tag.moving { color: #faad14; background: rgba(250, 173, 20, 0.15); border: 1px solid rgba(250, 173, 20, 0.4); }
+.status-tag.active { color: #00ffaa; background: rgba(0, 255, 170, 0.15); border: 1px solid rgba(0, 255, 170, 0.4); }
+
+.fusion-footer {
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.4);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.footer-row { display: flex; justify-content: space-between; font-size: 12px; color: #a0aec0; }
+.text-red { color: #ff4d4f; font-weight: bold; }
+.text-cyan { color: #00ffff; font-weight: bold; font-family: monospace; font-size: 14px; }  
 .hud-title-icon {
   font-size: 14px;
   filter: drop-shadow(0 0 4px rgba(0, 229, 255, 0.8));
