@@ -273,25 +273,25 @@ onBeforeUnmount(() => stop())
 
 <style scoped>
 /* ==============================
-   极简无感布局 (消除白边与违和感)
+   极简无感布局 (全息科幻终端风格)
    ============================== */
 .pure-engineering-console {
-  /* 移除硬编码背景色，直接透明，继承父级页面颜色 */
+  /* 保持背景透明以融入页面，但字体栈升级为极客无衬线标准 */
   background-color: transparent; 
   width: 100%;
   height: 100%;
   box-sizing: border-box;
   display: flex;
   gap: 16px;
-  font-family: "SFMono-Regular", Consolas, monospace;
-  color: #d1d5db; /* 柔和文字色 */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: rgba(186, 230, 253, 0.88);
 }
 
 /* ==============================
    左侧：视频主视图 (占据绝大空间)
    ============================== */
 .video-main {
-  flex: 1; /* 自动撑满剩余空间 */
+  flex: 1; 
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -300,142 +300,177 @@ onBeforeUnmount(() => stop())
 
 .video-container {
   flex: 1;
-  background: rgba(0, 0, 0, 0.6); /* 仅视频底色使用半透明黑，避免突兀 */
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  /* 视频底色升级为极致深邃的科幻黑，外加发光边框 */
+  background: #000; 
+  border: 1px solid rgba(0, 242, 254, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 242, 254, 0.1);
   border-radius: 8px;
   position: relative;
   overflow: hidden;
   display: flex;
 }
 
-/* 使用 object-fit: cover 强制画面填满整个框，消灭上下左右黑边 */
 .video-stream {
   width: 100%;
   height: 100%;
   object-fit: cover; 
   opacity: 0;
-  transition: opacity 0.3s;
+  transition: opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 .video-stream.stream-active { opacity: 1; }
 
 .video-overlay {
   position: absolute; inset: 0; display: flex; justify-content: center; align-items: center;
-  background: rgba(0, 0, 0, 0.4); z-index: 2;
+  background: rgba(0, 0, 0, 0.6); z-index: 2;
+  backdrop-filter: blur(4px);
 }
-.overlay-content { text-align: center; color: #9ca3af; }
-.static-icon { font-size: 2rem; margin-bottom: 12px; }
-.spinner { width: 32px; height: 32px; margin: 0 auto 12px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
+.overlay-content { text-align: center; color: rgba(0, 242, 254, 0.6); font-family: "JetBrains Mono", monospace; font-size: 13px; }
+.static-icon { font-size: 32px; margin-bottom: 12px; filter: drop-shadow(0 0 8px rgba(0, 242, 254, 0.5)); color: #00f2fe; }
 
-/* 视频悬浮 OSD */
+/* 科幻风 Spinner */
+.spinner { 
+  width: 32px; height: 32px; margin: 0 auto 12px; 
+  border: 3px solid rgba(0, 242, 254, 0.1); 
+  border-top-color: #00f2fe; 
+  border-radius: 50%; 
+  animation: spin 1s linear infinite; 
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.3);
+}
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+/* 视频悬浮 OSD (极客军工感) */
 .osd-overlay { position: absolute; inset: 0; padding: 16px; pointer-events: none; z-index: 1; display: flex; justify-content: space-between; align-items: flex-start; }
-.osd-top-left { display: flex; align-items: center; gap: 10px; }
-.osd-live { background: rgba(239, 68, 68, 0.8); padding: 2px 8px; color: #fff; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
-.osd-signal { background: rgba(0,0,0,0.5); padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
-.osd-rec { color: #ef4444; font-weight: bold; animation: blink 2s infinite; text-shadow: 0 0 4px rgba(239,68,68,0.5); font-size: 0.9rem;}
+.osd-top-left { display: flex; align-items: center; gap: 10px; font-family: "JetBrains Mono", monospace; }
 
-/* 控制条 */
+.osd-live { 
+  background: rgba(239, 68, 68, 0.15); padding: 2px 8px; color: #ef4444; 
+  border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 4px; 
+  font-size: 11px; font-weight: bold; box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+.osd-signal { 
+  background: rgba(0, 242, 254, 0.15); padding: 2px 8px; color: #00f2fe;
+  border: 1px solid rgba(0, 242, 254, 0.4); border-radius: 4px; 
+  font-size: 11px; box-shadow: 0 0 8px rgba(0, 242, 254, 0.2);
+}
+.osd-rec { 
+  color: #ef4444; font-weight: bold; animation: pulse-rec 2s infinite; 
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.8); font-size: 13px; font-family: "JetBrains Mono", monospace;
+}
+@keyframes pulse-rec { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* 控制条 (幽灵霓虹按键) */
 .connection-bar { display: flex; align-items: center; gap: 16px; }
 .action-btn {
-  flex: 1; padding: 12px; font-size: 1rem; border: none; border-radius: 6px;
-  cursor: pointer; font-weight: bold; transition: 0.2s;
+  flex: 1; padding: 10px 12px; font-size: 13px; font-family: inherit;
+  border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  letter-spacing: 1px;
 }
-.btn-connect { background: rgba(59, 130, 246, 0.1); border: 1px solid #3b82f6; color: #3b82f6; }
-.btn-connect:hover { background: rgba(59, 130, 246, 0.2); }
-.btn-disconnect { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; }
-.btn-disconnect:hover { background: rgba(239, 68, 68, 0.2); }
-.status-indicator { font-size: 0.9rem; min-width: 120px; text-align: right; }
+.btn-connect { background: rgba(0, 242, 254, 0.15); border: 1px solid #00f2fe; color: #00f2fe; box-shadow: 0 0 8px rgba(0, 242, 254, 0.3); }
+.btn-connect:hover { background: rgba(0, 242, 254, 0.25); box-shadow: 0 0 15px rgba(0, 242, 254, 0.5); }
+
+.btn-disconnect { background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.3); }
+.btn-disconnect:hover { background: rgba(239, 68, 68, 0.25); box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); }
+
+.status-indicator { font-size: 11.5px; min-width: 120px; text-align: right; font-family: "JetBrains Mono", monospace; color: rgba(186, 230, 253, 0.7); }
 
 /* ==============================
-   右侧：控制面板与精简日志
-   ============================== */
-/* ==============================
-   右侧：控制面板 (独立黑色实体版块)
+   右侧：控制面板 (高级透视玻璃版块)
    ============================== */
 .side-panel {
-  width: 320px; /* 稍微加宽一点，给日志留点空间 */
+  width: 320px; 
   display: flex;
   flex-direction: column;
   gap: 16px;
-  /* 核心修改：赋予深色实体背景，不再透明 */
-  background: #141416; 
-  border: 1px solid #2d2d30;
-  border-radius: 8px;
+  /* 剔除纯黑死板背景，注入高浓度毛玻璃属性 */
+  background: rgba(6, 14, 28, 0.85); 
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  border-radius: 10px;
   padding: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); /* 增加悬浮质感 */
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7), inset 0 0 15px rgba(0, 242, 254, 0.05); 
 }
 
-/* 任务卡片背景稍微提亮，做出层级 */
+/* 任务卡片背景虚化层级 */
 .task-card {
-  background: #1e1e20; 
-  border: 1px solid #333;
+  background: rgba(0, 242, 254, 0.03); 
+  border: 1px solid rgba(0, 242, 254, 0.15);
   border-radius: 8px;
-  padding: 16px;
+  padding: 14px;
 }
 .card-title { 
-  font-size: 0.95rem; 
-  color: #f3f4f6; /* 高亮白 */
+  font-size: 13.5px; 
+  color: #00f2fe; 
   margin-bottom: 12px; 
-  border-bottom: 1px solid #333; 
+  border-bottom: 1px dashed rgba(0, 242, 254, 0.2); 
   padding-bottom: 8px; 
   font-weight: bold;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 8px rgba(0, 242, 254, 0.5);
 }
 
 .action-row { display: flex; justify-content: space-between; align-items: center; }
-.btn-tool { padding: 8px 12px; font-size: 0.85rem; border-radius: 4px; border: none; cursor: pointer; transition: 0.2s; }
-.btn-tool:disabled { opacity: 0.3; cursor: not-allowed; }
-.btn-blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
-.btn-blue:hover:not(:disabled) { background: rgba(59, 130, 246, 0.3); }
-.btn-block { width: 100%; padding: 12px; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; }
-.btn-dark { background: #2d2d30; color: #d1d5db; transition: 0.2s; }
-.btn-dark:hover:not(:disabled) { background: #3f3f46; color: #fff; }
-.btn-red-active { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid #ef4444; }
+.btn-tool { padding: 6px 12px; font-size: 11.5px; border-radius: 4px; font-family: inherit; font-weight: bold; border: none; cursor: pointer; transition: all 0.3s; }
+.btn-tool:disabled { opacity: 0.3; cursor: not-allowed; filter: grayscale(1); }
 
-.upload-status { margin-top: 12px; font-size: 0.85rem; text-align: center; }
+.btn-blue { background: rgba(0, 242, 254, 0.15); color: #00f2fe; border: 1px solid #00f2fe; box-shadow: 0 0 8px rgba(0, 242, 254, 0.3); }
+.btn-blue:hover:not(:disabled) { background: rgba(0, 242, 254, 0.25); box-shadow: 0 0 12px rgba(0, 242, 254, 0.5); }
 
-/* 自动抓拍的极简开关 */
-.toggle-group { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #d1d5db; }
-.switch { position: relative; width: 36px; height: 18px; }
+.btn-block { width: 100%; padding: 10px; font-size: 13px; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; transition: all 0.3s; font-family: inherit;}
+.btn-dark { background: transparent; color: rgba(186, 230, 253, 0.88); border: 1px solid rgba(0, 242, 254, 0.3); }
+.btn-dark:hover:not(:disabled) { background: rgba(0, 242, 254, 0.15); border-color: #00f2fe; color: #fff; box-shadow: 0 0 12px rgba(0, 242, 254, 0.4); }
+
+.btn-red-active { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444; box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); }
+
+.upload-status { margin-top: 12px; font-size: 11px; text-align: center; color: #10b981; font-family: "JetBrains Mono", monospace; text-shadow: 0 0 5px rgba(16, 185, 129, 0.5); }
+
+/* 自动抓拍的极简开关 (赛博蓝版) */
+.toggle-group { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: rgba(186, 230, 253, 0.88); font-weight: bold;}
+.switch { position: relative; width: 34px; height: 18px; }
 .switch input { opacity: 0; width: 0; height: 0; }
-.slider { position: absolute; cursor: pointer; inset: 0; background-color: #3f3f46; border-radius: 18px; transition: .3s; }
-.slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 2px; bottom: 2px; background-color: #9ca3af; border-radius: 50%; transition: .3s; }
-input:checked + .slider { background-color: rgba(59, 130, 246, 0.3); }
-input:checked + .slider:before { transform: translateX(18px); background-color: #3b82f6; }
+.slider { position: absolute; cursor: pointer; inset: 0; background-color: rgba(255,255,255,0.1); border: 1px solid rgba(0, 242, 254, 0.2); border-radius: 18px; transition: .3s; }
+.slider:before { position: absolute; content: ""; height: 12px; width: 12px; left: 2px; bottom: 2px; background-color: rgba(186, 230, 253, 0.7); border-radius: 50%; transition: .3s; }
+input:checked + .slider { background-color: rgba(0, 242, 254, 0.2); border-color: #00f2fe; box-shadow: 0 0 8px rgba(0, 242, 254, 0.4); }
+input:checked + .slider:before { transform: translateX(16px); background-color: #00f2fe; box-shadow: 0 0 6px #00f2fe; }
 
-/* 迷你终端 (纯黑底色，还原真实控制台质感) */
+/* 迷你终端 (极简黑底色 + 霓虹文字) */
 .mini-terminal {
   flex: 1; 
-  background: #000000; /* 极客纯黑 */
-  border: 1px solid #333;
+  background: rgba(0, 0, 0, 0.6); 
+  border: 1px solid rgba(0, 242, 254, 0.2);
   border-radius: 8px;
   display: flex; 
   flex-direction: column; 
   overflow: hidden;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
 }
 .log-header { 
   padding: 8px 12px; 
-  font-size: 0.8rem; 
-  color: #9ca3af; 
-  background: #141416; 
-  border-bottom: 1px solid #333; 
+  font-size: 11.5px; 
+  color: #00f2fe; 
+  font-weight: bold;
+  background: linear-gradient(90deg, rgba(0, 242, 254, 0.12), transparent);
+  border-bottom: 1px solid rgba(0, 242, 254, 0.2); 
 }
 .log-content { 
   flex: 1; 
   padding: 10px; 
   overflow-y: auto; 
-  font-size: 0.8rem; 
-  line-height: 1.6; 
+  font-size: 11px; 
+  line-height: 1.5; 
 }
-.log-content p { margin: 0 0 6px 0; font-family: "SFMono-Regular", Consolas, monospace;}
-.time { color: #6b7280; margin-right: 8px; }
-.text-success { color: #10b981; }
-.text-warning { color: #f59e0b; }
-.text-error { color: #ef4444; }
-.text-info { color: #d1d5db; }
-.text-muted { color: #6b7280; }
+.log-content p { margin: 0 0 6px 0; font-family: "JetBrains Mono", Consolas, monospace; word-break: break-all;}
+.time { color: rgba(0, 242, 254, 0.7); margin-right: 8px; }
 
-/* 滚动条暗黑化美化 */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #141416; }
-::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #52525b; }
+/* 终端霓虹色系 */
+.text-success { color: #10b981; text-shadow: 0 0 5px rgba(16, 185, 129, 0.4); }
+.text-warning { color: #f59e0b; text-shadow: 0 0 5px rgba(245, 158, 11, 0.4); }
+.text-error { color: #ef4444; text-shadow: 0 0 5px rgba(239, 68, 68, 0.4); }
+.text-info { color: rgba(186, 230, 253, 0.9); }
+.text-muted { color: rgba(148, 163, 184, 0.6); }
+
+/* 滚动条暗黑科幻美化 */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+::-webkit-scrollbar-thumb { background: rgba(0, 242, 254, 0.3); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 242, 254, 0.6); }
 </style>
