@@ -124,6 +124,13 @@
         </div>
         <p v-if="cesiumStatus" class="ctrl-status">{{ cesiumStatus }}</p>
       </div>
+
+      <!-- 多智能体决策分析面板 -->
+      <AgentSelectionPanel
+        v-if="(currentView === '2d' || currentView === '3d') && showMultiAgentPanel && multiAgentData"
+        :multiAgentData="multiAgentData"
+        :isComputing="deductionPending || cesiumPending"
+      />
     </aside>
 
     <main class="content">
@@ -297,7 +304,8 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import AgentSelectionPanel from './components/AgentSelectionPanel.vue'
 import {
   appendUrlParams,
   buildCollaborativeApiUrl,
@@ -343,10 +351,16 @@ const deductionObstacle = ref('1')
 const deductionStrategy = ref('rcd')
 const deductionPending = ref(false)
 const deductionStatus = ref('')
+const multiAgentData = ref(null)
+const showMultiAgentPanel = ref(false)
 
 const cesiumScene = ref('leak')
 const cesiumPending = ref(false)
 const cesiumStatus = ref('')
+
+watch([deductionScene, cesiumScene, deductionObstacle, deductionStrategy], () => {
+  showMultiAgentPanel.value = false
+})
 
 const streamlitMode = ref('medical')
 const streamlitSeverity = ref('中度')
@@ -495,10 +509,12 @@ async function refreshEvaluation() {
     evaluation.message = payload.message || '已读取策略评估结果'
     evaluation.metrics = payload.metrics || {}
     evaluation.updatedAt = payload.updated_at || ''
+    multiAgentData.value = payload.multi_agent || null
   } catch {
     evaluation.message = '暂未获取到策略评估结果'
     evaluation.metrics = {}
     evaluation.updatedAt = ''
+    multiAgentData.value = null
   }
 }
 
@@ -659,6 +675,7 @@ function refreshFrames() {
 
 function showHome() {
   currentView.value = 'home'
+  showMultiAgentPanel.value = false
 }
 
 async function openManagedView(viewId, serviceId, frameBuilder) {
@@ -695,6 +712,7 @@ async function showStreamlitView() {
     streamlitFrameSrc.value = buildStreamlitUrl()
     streamlitFrameKey.value += 1
   })
+  showMultiAgentPanel.value = false
 }
 
 async function show2DView() {
@@ -705,6 +723,7 @@ async function show2DView() {
     )
     strategyFrameKey.value += 1
   })
+  showMultiAgentPanel.value = false
 }
 
 async function show3DView() {
@@ -714,6 +733,7 @@ async function show3DView() {
     cesiumFrameSrc.value = buildCommandCenterUrl('cesium_viewer?end_point=' + cesiumScene.value, resolvedCommandCenterBaseUrl.value)
     cesiumFrameKey.value += 1
   })
+  showMultiAgentPanel.value = false
 }
 
 function retryCurrentView() {
@@ -745,6 +765,7 @@ function generateCesium() {
 }
 
 async function triggerReplan() {
+  showMultiAgentPanel.value = false
   deductionPending.value = true
   deductionStatus.value = '规划中...'
   try {
@@ -767,6 +788,7 @@ async function triggerReplan() {
 }
 
 async function triggerMultiAgent() {
+  showMultiAgentPanel.value = false
   deductionPending.value = true
   deductionStatus.value = '装备启动中...'
   try {
@@ -780,6 +802,9 @@ async function triggerMultiAgent() {
     if (!resp.ok) throw new Error('HTTP ' + resp.status)
     deductionStatus.value = '装备已启动'
     refreshFrames()
+    await refreshEvaluation()
+    // 计算完成后延迟展示决策日志，体现智能性
+    setTimeout(() => { showMultiAgentPanel.value = true }, 800)
   } catch (e) {
     deductionStatus.value = '启动失败: ' + e.message
   } finally {
@@ -788,6 +813,7 @@ async function triggerMultiAgent() {
 }
 
 async function triggerCesiumUGVUAV() {
+  showMultiAgentPanel.value = false
   cesiumPending.value = true; cesiumStatus.value = '无人装备出动中...'
   try {
     const r = await fetch(buildCommandCenterUrl(`api/run_3d_cesium?end_point=${cesiumScene.value}`, commandCenterBaseUrl.value))
@@ -798,12 +824,16 @@ async function triggerCesiumUGVUAV() {
 }
 
 async function triggerCesiumMultiAgent() {
+  showMultiAgentPanel.value = false
   cesiumPending.value = true; cesiumStatus.value = '救援装备出动中...'
   try {
     const r = await fetch(buildCommandCenterUrl(`api/run_multi_agent?end_point=${cesiumScene.value}&strategy=rcd`, commandCenterBaseUrl.value))
     if (!r.ok) throw new Error('HTTP ' + r.status)
     cesiumStatus.value = '已出动'
     cesiumFrameSrc.value = ''; setTimeout(() => refreshFrames(), 1000)
+    await refreshEvaluation()
+    // 计算完成后延迟展示决策日志，体现智能性
+    setTimeout(() => { showMultiAgentPanel.value = true }, 800)
   } catch (e) { cesiumStatus.value = '失败: ' + e.message } finally { cesiumPending.value = false }
 }
 
@@ -846,6 +876,7 @@ onUnmounted(() => {
   padding: 24px;
   background: linear-gradient(180deg, #10223f 0%, #17253a 100%);
   border-right: 1px solid rgba(148, 163, 184, 0.2);
+  overflow-y: auto;
 }
 
 .sidebar h2 {

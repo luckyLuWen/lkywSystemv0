@@ -337,76 +337,75 @@
           <div v-if="coordCopiedMessage" class="light-copied-msg">{{ coordCopiedMessage }}</div>
         </div>
       </div>
-
-      <!-- 📡 5G通信基站微调工具面板 -->
+     <!-- 📡 5G通信基站微调工具面板 -->
       <div v-if="isJizhanPanelExpanded" class="light-control-panel jizhan-control-panel">
         <div class="light-panel-header" @click="toggleJizhanPanel">
-          <span class="light-panel-title">5G通信基站微调工具 (jizhan.glb)</span>
+          <span class="light-panel-title">5G基站微调 ({{ currentScene === 'truck' ? '货车现场' : '油罐车现场' }})</span>
           <span class="light-panel-toggle">✕</span>
         </div>
         
         <div class="light-panel-body">
           <div class="light-control-row">
             <label class="light-control-label">显示基站模型</label>
-            <input type="checkbox" v-model="jizhanAdjust.show" class="light-checkbox" />
+            <input type="checkbox" v-model="currentJizhanAdjust.show" class="light-checkbox" />
           </div>
           
           <div class="light-control-row">
             <label class="light-control-label">经度 (Lng)</label>
-            <input type="number" v-model.number="jizhanAdjust.lng" step="0.000001" class="light-input-num" />
+            <input type="number" v-model.number="currentJizhanAdjust.lng" step="0.000001" class="light-input-num" />
           </div>
           
           <div class="light-control-row">
             <label class="light-control-label">纬度 (Lat)</label>
-            <input type="number" v-model.number="jizhanAdjust.lat" step="0.000001" class="light-input-num" />
+            <input type="number" v-model.number="currentJizhanAdjust.lat" step="0.000001" class="light-input-num" />
           </div>
 
           <div class="light-control-row">
             <label class="light-control-label">高度 (Height)</label>
             <div class="light-slider-container">
-              <input type="range" v-model.number="jizhanAdjust.height" min="-20" max="100" step="0.1" class="light-slider" />
-              <input type="number" v-model.number="jizhanAdjust.height" step="0.1" class="light-slider-input" />
+              <input type="range" v-model.number="currentJizhanAdjust.height" min="-20" max="100" step="0.1" class="light-slider" />
+              <input type="number" v-model.number="currentJizhanAdjust.height" step="0.1" class="light-slider-input" />
             </div>
           </div>
 
           <div class="light-control-row">
             <label class="light-control-label">缩放 (Scale)</label>
             <div class="light-slider-container">
-              <input type="range" v-model.number="jizhanAdjust.scale" min="0.01" max="50.0" step="0.1" class="light-slider" />
-              <input type="number" v-model.number="jizhanAdjust.scale" step="0.1" class="light-slider-input" />
+              <input type="range" v-model.number="currentJizhanAdjust.scale" min="0.01" max="50.0" step="0.1" class="light-slider" />
+              <input type="number" v-model.number="currentJizhanAdjust.scale" step="0.1" class="light-slider-input" />
             </div>
           </div>
 
           <div class="light-control-row">
             <label class="light-control-label">航向 (Heading)</label>
             <div class="light-slider-container">
-              <input type="range" v-model.number="jizhanAdjust.heading" min="0" max="360" step="1" class="light-slider" />
-              <input type="number" v-model.number="jizhanAdjust.heading" step="1" class="light-slider-input" />
+              <input type="range" v-model.number="currentJizhanAdjust.heading" min="0" max="360" step="1" class="light-slider" />
+              <input type="number" v-model.number="currentJizhanAdjust.heading" step="1" class="light-slider-input" />
             </div>
           </div>
 
           <div class="light-control-row">
             <label class="light-control-label">俯仰 (Pitch)</label>
             <div class="light-slider-container">
-              <input type="range" v-model.number="jizhanAdjust.pitch" min="-180" max="180" step="1" class="light-slider" />
-              <input type="number" v-model.number="jizhanAdjust.pitch" step="1" class="light-slider-input" />
+              <input type="range" v-model.number="currentJizhanAdjust.pitch" min="-180" max="180" step="1" class="light-slider" />
+              <input type="number" v-model.number="currentJizhanAdjust.pitch" step="1" class="light-slider-input" />
             </div>
           </div>
 
           <div class="light-control-row">
             <label class="light-control-label">翻滚 (Roll)</label>
             <div class="light-slider-container">
-              <input type="range" v-model.number="jizhanAdjust.roll" min="-180" max="180" step="1" class="light-slider" />
-              <input type="number" v-model.number="jizhanAdjust.roll" step="1" class="light-slider-input" />
+              <input type="range" v-model.number="currentJizhanAdjust.roll" min="-180" max="180" step="1" class="light-slider" />
+              <input type="number" v-model.number="currentJizhanAdjust.roll" step="1" class="light-slider-input" />
             </div>
           </div>
 
           <div class="light-panel-buttons">
-            <button @click="snapJizhanToTruck" class="light-btn">重置定位至货车追尾点</button>
+            <button @click="snapJizhanToDefault" class="light-btn">📍 重置为默认位置</button>
           </div>
 
           <div class="light-panel-buttons">
-            <button @click="copyJizhanCoords" class="light-btn btn-primary">复制基站配置参数</button>
+            <button @click="copyJizhanCoords" class="light-btn btn-primary">📋 复制基站配置参数</button>
           </div>
           
           <div v-if="jizhanCopiedMessage" class="light-copied-msg">{{ jizhanCopiedMessage }}</div>
@@ -2527,7 +2526,55 @@ const jizhanAdjust = reactive({
   pitch: 0,
   roll: 0
 })
+const tankerJizhanAdjust = reactive({
+  show: true,
+  lng: 114.894380, 
+  lat: 30.632350,
+  height: 1.5,
+  scale: 0.01,
+  heading: 45,
+  pitch: 0,
+  roll: 0
+})
+const currentJizhanAdjust = computed(() => {
+  return currentScene.value === 'truck' ? jizhanAdjust : tankerJizhanAdjust;
+})
+function snapJizhanToDefault() {
+  if (currentScene.value === 'truck') {
+    jizhanAdjust.lng = 113.105385;
+    jizhanAdjust.lat = 30.385795;
+    jizhanAdjust.height = -1.9;
+    jizhanAdjust.scale = 0.01;
+    jizhanAdjust.heading = 99;
+    jizhanAdjust.pitch = 0;
+    jizhanAdjust.roll = 0;
+  } else {
+    tankerJizhanAdjust.lng = 114.894463;
+    tankerJizhanAdjust.lat = 30.632121;
+    tankerJizhanAdjust.height = -1.9;
+    tankerJizhanAdjust.scale = 0.01;
+    tankerJizhanAdjust.heading = 45;
+    tankerJizhanAdjust.pitch = 0;
+    tankerJizhanAdjust.roll = 0;
+  }
+}
 
+function copyJizhanCoords() {
+  const obj = currentJizhanAdjust.value;
+  const text = `lng: ${obj.lng.toFixed(6)}, lat: ${obj.lat.toFixed(6)}, height: ${obj.height}, scale: ${obj.scale}, heading: ${obj.heading}, pitch: ${obj.pitch}, roll: ${obj.roll}`;
+  navigator.clipboard.writeText(text).then(() => {
+    jizhanCopiedMessage.value = '当前基站配置参数已成功复制到剪贴板！';
+    setTimeout(() => {
+      jizhanCopiedMessage.value = '';
+    }, 2000);
+  }).catch(err => {
+    console.error('复制失败:', err);
+    jizhanCopiedMessage.value = '复制失败，请手动记录';
+    setTimeout(() => {
+      jizhanCopiedMessage.value = '';
+    }, 2000);
+  });
+}
 function togglePanel(panelName) {
   if (panelName === 'label') {
     const nextVal = !labelConfig.show;
@@ -2594,31 +2641,8 @@ function toggleJizhanPanel() {
   togglePanel('jizhan');
 }
 
-function snapJizhanToTruck() {
-  jizhanAdjust.lng = 113.105385;
-  jizhanAdjust.lat = 30.385795;
-  jizhanAdjust.height = -1.9;
-  jizhanAdjust.scale = 0.01;
-  jizhanAdjust.heading = 99;
-  jizhanAdjust.pitch = 0;
-  jizhanAdjust.roll = 0;
-}
 
-function copyJizhanCoords() {
-  const text = `lng: ${jizhanAdjust.lng.toFixed(6)}, lat: ${jizhanAdjust.lat.toFixed(6)}, height: ${jizhanAdjust.height}, scale: ${jizhanAdjust.scale}, heading: ${jizhanAdjust.heading}, pitch: ${jizhanAdjust.pitch}, roll: ${jizhanAdjust.roll}`;
-  navigator.clipboard.writeText(text).then(() => {
-    jizhanCopiedMessage.value = '基站配置参数已成功复制到剪贴板！';
-    setTimeout(() => {
-      jizhanCopiedMessage.value = '';
-    }, 2000);
-  }).catch(err => {
-    console.error('复制失败:', err);
-    jizhanCopiedMessage.value = '复制失败，请手动记录';
-    setTimeout(() => {
-      jizhanCopiedMessage.value = '';
-    }, 2000);
-  });
-}
+
 
 function toggleLightPanel() {
   togglePanel('light');
@@ -2876,13 +2900,6 @@ watch(lateSmokeAdjust, (newVals) => {
 }, { deep: true });
 
 // 自动检测场景切换并联动灯光坐标
-watch(() => props.focusedPointId, (newId) => {
-  if (newId === 'accident_red') {
-    snapLightTo('tanker');
-  } else if (newId === 'accident_blue') {
-    snapLightTo('truck');
-  }
-}, { immediate: true });
 
 function goToSensorManage(target = '') {
   const query = target ? { target } : {}
@@ -6514,15 +6531,16 @@ function replayCurrentPhase() {
 
 function addEventEntities() {
   // 接入 6 个 light.glb 3D灯光模型
-  // 接入 6 个 light.glb 3D灯光模型
-  // 接入 6 个 light.glb 3D灯光模型
-  
-// 接入 6 个 light.glb 3D灯光模型及相关链路/视场
+
+  // 接入 6 个 light.glb 3D灯光模型及相关链路/视场
   lights.forEach((l) => {
+    // 🚨 动态判断：经度小于114的是货车现场，大于114的是油罐车现场
+    const isTruckLight = Number(l.lng) < 114.0;
+    
     // =====================================
-    // 1. light1 light2 light3 添加感知视场
+    // 1. 添加感知视场 (排除了 light6 自带路灯)
     // =====================================
-    if (['light1', 'light2', 'light3'].includes(l.id)) {
+    if (['light1', 'light2', 'light3', 'light4', 'light5'].includes(l.id)) {
       const heightOffset = 8.0;
       const pitchAngle = -45;
 
@@ -6530,38 +6548,23 @@ function addEventEntities() {
       let fovAngle = 22;
       let maxRange = 100;
 
-      if (l.id === 'light1') {
-        headingOffset = -150;
-        fovAngle = 20;
-        maxRange = 80;
-      }
-      if (l.id === 'light2') {
-        headingOffset = 0;
-        fovAngle = 35;
-        maxRange = 250;
-      }
-      if (l.id === 'light3') {
-        headingOffset = 180;
-        fovAngle = 35;
-        maxRange = 200;
-      }
+      // 货车现场
+      if (l.id === 'light1') { headingOffset = -150; fovAngle = 20; maxRange = 80; }
+      if (l.id === 'light2') { headingOffset = 0; fovAngle = 35; maxRange = 250; }
+      if (l.id === 'light3') { headingOffset = 180; fovAngle = 35; maxRange = 200; }
+      
+      // 油罐车现场
+      if (l.id === 'light4') { headingOffset = -5; fovAngle = 30; maxRange = 300; }
+      if (l.id === 'light5') { headingOffset = 165; fovAngle = 30; maxRange = 150; }
 
       createLightFOV(
-        viewer,
-        `${l.id}-fov`,
-        Number(l.lng),
-        Number(l.lat),
-        Number(l.height) + heightOffset,
-        Number(l.heading) + headingOffset,
-        pitchAngle,
-        fovAngle,
-        maxRange,
-        // 阶段截断控制逻辑
+        viewer, `${l.id}-fov`,
+        Number(l.lng), Number(l.lat), Number(l.height) + heightOffset,
+        Number(l.heading) + headingOffset, pitchAngle, fovAngle, maxRange,
         () => {
-          if (Number(props.activePhaseIndex) >= 2) {
-            return true; // 第 2 阶段及以后显示视场
-          }
-          return false;
+          // 只在对应的场景且阶段大于2时显示
+          const isCurrentScene = isTruckLight ? (currentScene.value === 'truck') : (currentScene.value === 'tanker');
+          return Number(props.activePhaseIndex) >= 2 && isCurrentScene;
         }
       );
     }
@@ -6569,61 +6572,43 @@ function addEventEntities() {
     // =====================================
     // 2. 加载路灯 3D 模型
     // =====================================
-    if (l.id === 'light6') return; // light6 使用原3D场景自带路灯模型，清除动态生成
+    if (l.id === 'light6') return;
 
     viewer.entities.add({
       id: `${l.id}-glb-entity`,
       name: `事故现场灯光模型-${l.id}`,
-      show: new Cesium.CallbackProperty(() => l.show, false),
-      position: new Cesium.CallbackProperty(() => {
-        return Cesium.Cartesian3.fromDegrees(Number(l.lng), Number(l.lat), Number(l.height));
+      show: new Cesium.CallbackProperty(() => {
+        const isCurrentScene = isTruckLight ? (currentScene.value === 'truck') : (currentScene.value === 'tanker');
+        return l.show && isCurrentScene;
       }, false),
+      position: new Cesium.CallbackProperty(() => Cesium.Cartesian3.fromDegrees(Number(l.lng), Number(l.lat), Number(l.height)), false),
       orientation: new Cesium.CallbackProperty(() => {
-        const position = Cesium.Cartesian3.fromDegrees(Number(l.lng), Number(l.lat), Number(l.height));
-        const hpr = new Cesium.HeadingPitchRoll(
-          Cesium.Math.toRadians(Number(l.heading)),
-          Cesium.Math.toRadians(Number(l.pitch)),
-          Cesium.Math.toRadians(Number(l.roll))
-        );
-        return Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
+        const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(Number(l.heading)), Cesium.Math.toRadians(Number(l.pitch)), Cesium.Math.toRadians(Number(l.roll)));
+        return Cesium.Transforms.headingPitchRollQuaternion(Cesium.Cartesian3.fromDegrees(Number(l.lng), Number(l.lat), Number(l.height)), hpr);
       }, false),
-      model: {
-        uri: '/Dashboard/models/light.glb',
-        scale: new Cesium.CallbackProperty(() => l.scale, false),
-        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
-      }
+      model: { uri: '/Dashboard/models/light.glb', scale: new Cesium.CallbackProperty(() => l.scale, false), heightReference: Cesium.HeightReference.CLAMP_TO_GROUND }
     });
 
     // =====================================
-    // 3. light1-3 到基站通信链路
+    // 3. 路灯到对应基站的通信链路
     // =====================================
-    if (['light1', 'light2', 'light3'].includes(l.id)) {
+    if (['light1', 'light2', 'light3', 'light4', 'light5'].includes(l.id)) {
       viewer.entities.add({
         id: `line-link-from-${l.id}-to-jizhan`,
         name: `数据传输链路:${l.id}->5G基站`,
         show: new Cesium.CallbackProperty(() => {
-          return (currentScene.value === 'truck' && jizhanAdjust.show && l.show);
+          if (isTruckLight) return currentScene.value === 'truck' && jizhanAdjust.show && l.show;
+          return currentScene.value === 'tanker' && tankerJizhanAdjust.show && l.show;
         }, false),
         polyline: {
           positions: new Cesium.CallbackProperty(() => {
-            const jizhanTop = getModelTopPosition(
-              jizhanAdjust.lng, jizhanAdjust.lat, jizhanAdjust.height,
-              jizhanAdjust.heading, jizhanAdjust.pitch, jizhanAdjust.roll,
-              JIZHAN_TOP_OFFSET
-            );
-            const lightTop = getModelTopPosition(
-              l.lng, l.lat, l.height,
-              l.heading, l.pitch, l.roll,
-              LIGHT_TOP_OFFSET
-            );
+            const targetJizhan = isTruckLight ? jizhanAdjust : tankerJizhanAdjust;
+            const jizhanTop = getModelTopPosition(targetJizhan.lng, targetJizhan.lat, targetJizhan.height, targetJizhan.heading, targetJizhan.pitch, targetJizhan.roll, JIZHAN_TOP_OFFSET);
+            const lightTop = getModelTopPosition(l.lng, l.lat, l.height, l.heading, l.pitch, l.roll, LIGHT_TOP_OFFSET);
             return [lightTop, jizhanTop];
           }, false),
           width: 3.0,
-          material: new DynamicFlowMaterialProperty({
-            color: Cesium.Color.CYAN,
-            speed: 3.5,
-            repeat: 8.0
-          })
+          material: new DynamicFlowMaterialProperty({ color: Cesium.Color.CYAN, speed: 3.5, repeat: 8.0 })
         }
       });
     }
@@ -6652,6 +6637,22 @@ function addEventEntities() {
       scale: new Cesium.CallbackProperty(() => jizhanAdjust.scale, false),
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
     }
+  });
+  viewer.entities.add({
+    id: 'tanker-jizhan-glb-entity',
+    name: '油罐车现场5G通信基站模型',
+    show: new Cesium.CallbackProperty(() => {
+      return currentScene.value === 'tanker' && tankerJizhanAdjust.show;
+    }, false),
+    position: new Cesium.CallbackProperty(() => {
+      return Cesium.Cartesian3.fromDegrees(Number(tankerJizhanAdjust.lng), Number(tankerJizhanAdjust.lat), Number(tankerJizhanAdjust.height));
+    }, false),
+    orientation: new Cesium.CallbackProperty(() => {
+      const position = Cesium.Cartesian3.fromDegrees(Number(tankerJizhanAdjust.lng), Number(tankerJizhanAdjust.lat), Number(tankerJizhanAdjust.height));
+      const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(Number(tankerJizhanAdjust.heading)), Cesium.Math.toRadians(Number(tankerJizhanAdjust.pitch)), Cesium.Math.toRadians(Number(tankerJizhanAdjust.roll)));
+      return Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
+    }, false),
+    model: { uri: '/Dashboard/models/jizhan.glb', scale: new Cesium.CallbackProperty(() => tankerJizhanAdjust.scale, false), heightReference: Cesium.HeightReference.CLAMP_TO_GROUND }
   });
 
   // 🗺️ 无人机绕飞盘旋轨迹 (货车追尾场景)
@@ -7702,6 +7703,33 @@ if (props.activePhaseIndex === 7) {
         silhouetteSize: 2.0
       }
     });
+    // 🚨 新增：油罐车无人机连接到专属基站
+    viewer.entities.add({
+      id: `line-link-tanker-uav-${config.id}-to-jizhan`,
+      name: `油罐车场景无人机数据链路`,
+      show: new Cesium.CallbackProperty(() => {
+        return Number(props.activePhaseIndex) >= 8 && entity.show && currentScene.value === 'tanker';
+      }, false),
+      polyline: {
+        positions: new Cesium.CallbackProperty((time) => {
+          if (Number(props.activePhaseIndex) < 8 || currentScene.value !== 'tanker') return [];
+          const pos = entity.position.getValue(time);
+          if (!pos) return [];
+
+          const jizhanTop = getModelTopPosition(
+            tankerJizhanAdjust.lng, tankerJizhanAdjust.lat, tankerJizhanAdjust.height,
+            tankerJizhanAdjust.heading, tankerJizhanAdjust.pitch, tankerJizhanAdjust.roll, JIZHAN_TOP_OFFSET
+          );
+          return [pos, jizhanTop];
+        }, false),
+        width: 3.5,
+        material: new DynamicFlowMaterialProperty({
+          color: Cesium.Color.ORANGE, 
+          speed: 5.5,
+          repeat: 5.0
+        })
+      }
+    });
     tankerUavEntities.push(entity);
     if (config.id === 'uav_model') {
       sharedTankerUavPosition = tankerUavPosition;
@@ -7905,6 +7933,7 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
 });
 
 // 2. 油罐车泄露现场 - 编队无人车链路
+// 2. 油罐车泄露现场 - 编队无人车链路 (连向 油罐车专属5G基站)
 tankerRescueCarEntities.forEach((carEntity, modelIndex) => {
   [0, 1].forEach((innerCarIndex) => {
     viewer.entities.add({
@@ -7920,12 +7949,12 @@ tankerRescueCarEntities.forEach((carEntity, modelIndex) => {
           const carOrientation = carEntity.orientation.getValue(time);
           if (!carCartesian || !carOrientation) return [];
 
-          const tankerTargetTop = getModelTopPosition(
-            tankerAdjust.lng, tankerAdjust.lat, tankerAdjust.height,
-            tankerAdjust.heading, 0, 0, LIGHT_TOP_OFFSET + 3.0
+          // 🚨 连向油罐车现场的新 5G 基站
+          const jizhanTop = getModelTopPosition(
+            tankerJizhanAdjust.lng, tankerJizhanAdjust.lat, tankerJizhanAdjust.height,
+            tankerJizhanAdjust.heading, tankerJizhanAdjust.pitch, tankerJizhanAdjust.roll, JIZHAN_TOP_OFFSET
           );
 
-          // 🚨 同样校准油罐车
           const offsetX = 0.0;
           const offsetY = (innerCarIndex === 0) ? 1.5 : -1.5;
           const offsetZ = 1.6;
@@ -7933,7 +7962,7 @@ tankerRescueCarEntities.forEach((carEntity, modelIndex) => {
           const localOffset = new Cesium.Cartesian3(offsetX, offsetY, offsetZ);
           const rotationMatrix = Cesium.Matrix3.fromQuaternion(carOrientation);
           const worldOffset = Cesium.Matrix3.multiplyByVector(rotationMatrix, localOffset, new Cesium.Cartesian3());
-          return [ Cesium.Cartesian3.add(carCartesian, worldOffset, new Cesium.Cartesian3()), tankerTargetTop ];
+          return [ Cesium.Cartesian3.add(carCartesian, worldOffset, new Cesium.Cartesian3()), jizhanTop ];
         }, false),
         width: 3.5,
         material: new DynamicFlowMaterialProperty({ color: Cesium.Color.CHARTREUSE, speed: 4.5, repeat: 6.0 })
