@@ -2506,7 +2506,8 @@ const lights = reactive([
   { id: 'light2', name: '灯光 2', show: true, lng: 113.105781, lat: 30.385317, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
   { id: 'light3', name: '灯光 3', show: true, lng: 113.104482, lat: 30.385632, height: 8.5, scale: 0.003, heading: 198, pitch: 0, roll: 0 },
   { id: 'light4', name: '灯光 4', show: true, lng: 114.891139, lat: 30.630711, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
-  { id: 'light5', name: '灯光 5', show: true, lng: 114.892429, lat: 30.631096, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light5', name: '灯光 5', show: true, lng: 114.892307, lat:30.631017, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  
   { id: 'light6', name: '灯光 6 (原3D自带)', show: true, lng: 114.893327, lat: 30.631683, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
   { 
  id: 'light7', 
@@ -2571,7 +2572,20 @@ const lights = reactive([
   { id: 'light20', name: '灯光 20', show: true, lng:113.108726, lat:30.384424, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
   { id: 'light21', name: '灯光 21', show: true, lng: 113.110784, lat: 30.384221, height: 8.5, scale: 0.003, heading: 198, pitch: 0, roll: 0 },
    { id: 'light22', name: '灯光 22', show: true, lng: 113.110784, lat:30.384051, height: 8.5, scale: 0.003, heading: 198, pitch: 0, roll: 0 },
-
+{ id: 'light23', name: '灯光 23', show: true, lng: 114.89137, lat: 30.630524, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light24', name: '灯光 24', show: true, lng: 114.892206, lat: 30.631211, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light25', name: '灯光 25', show: true, lng: 114.890568, lat: 30.630524, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light26', name: '灯光 26', show: true, lng: 114.893113, lat:30.631378, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+   { id: 'light27', name: '灯光 27', show: true, lng:114.890608, lat: 30.629945, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light28', name: '灯光 28', show: true, lng: 114.892978, lat:30.631556, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light29', name: '灯光 29', show: true, lng:114.890126, lat: 30.629685, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light30', name: '灯光 30', show: true, lng: 114.893848, lat:30.631709, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light31 ', name: '灯光 31', show: true, lng:114.890115, lat: 30.630225, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light32', name: '灯光 32', show: true, lng: 114.893781, lat:30.631934, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light33', name: '灯光 33', show: true, lng:114.890104, lat: 30.630925, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light34', name: '灯光 34', show: true, lng: 114.894522, lat:30.632024, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light35', name: '灯光 35', show: true, lng:114.890479, lat: 30.631868, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light36', name: '灯光 36', show: true, lng:114.894522, lat:30.632274, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
 ])
 
 const lightAdjust = reactive({
@@ -2655,8 +2669,8 @@ const jizhanAdjust = reactive({
 })
 const tankerJizhanAdjust = reactive({
   show: true,
-  lng: 114.894380, 
-  lat: 30.632350,
+  lng: 114.891890, 
+  lat: 30.631250,
   height: 1.5,
   scale: 0.01,
   heading: 45,
@@ -6661,7 +6675,8 @@ function addEventEntities() {
     // =====================================
     // 1. 添加感知视场 (排除了 light6 自带路灯)
     // =====================================
-    if (['light1', 'light2', 'light3', 'light4', 'light5','light8'].includes(l.id)) {
+    // 💡 新增了 'light23', 'light24'
+    if (['light1', 'light2', 'light3', 'light4', 'light5', 'light8', 'light23', 'light24'].includes(l.id)) {
       const heightOffset = 8.0;
       const pitchAngle = -45;
 
@@ -6674,8 +6689,13 @@ function addEventEntities() {
       if (l.id === 'light2') { headingOffset = 0; fovAngle = 35; maxRange = 250; }
       if (l.id === 'light3') { headingOffset = 180; fovAngle = 35; maxRange = 250; }
       if (l.id === 'light8') { headingOffset = 0; fovAngle = 35; maxRange = 250; }
+      
+      // 💡 为新增的 23 和 24 号灯光配置参数（可根据实际场景需要微调 headingOffset）
+      if (l.id === 'light23') { headingOffset = -45; fovAngle = 35; maxRange = 250; }
+      if (l.id === 'light24') { headingOffset = -225; fovAngle = 35; maxRange = 250; }
+
       // 油罐车现场
-      if (l.id === 'light4') { headingOffset = -5; fovAngle = 30; maxRange = 300; }
+      if (l.id === 'light4') { headingOffset = -25; fovAngle = 30; maxRange = 300; }
       if (l.id === 'light5') { headingOffset = 165; fovAngle = 30; maxRange = 150; }
 
       createLightFOV(
@@ -6713,7 +6733,8 @@ function addEventEntities() {
     // =====================================
     // 3. 路灯到对应基站的通信链路
     // =====================================
-    if (['light1', 'light2', 'light3', 'light4', 'light5','light8'].includes(l.id)) {
+    // 💡 新增了 'light23', 'light24'
+    if (['light1', 'light2', 'light3', 'light4', 'light5', 'light8', 'light23', 'light24'].includes(l.id)) {
       viewer.entities.add({
         id: `line-link-from-${l.id}-to-jizhan`,
         name: `数据传输链路:${l.id}->5G基站`,
@@ -8002,7 +8023,48 @@ if (props.activePhaseIndex === 7) {
 // =========================================================
 
 // 1. 货车追尾现场 - 编队无人车链路 (连向 5G 基站)
+// 🚨 设定移动参数（可根据现场视觉效果微调）
+const roadAngleDeg = 45; // 道路走向角度，0为东西，90为南北（控制移动方向避免下田地）
+const roadAngleRad = Cesium.Math.toRadians(roadAngleDeg);
+const patrolDistance = 0.00005; // 往复移动范围，大概 5 米
+const patrolSpeed = 0.5; // 移动速度
+
 rescueCarEntities.forEach((carEntity, modelIndex) => {
+  
+  // 1. 备份原本的位置属性，确保阶段 8 之前的进场动画不被破坏
+  const originalPosition = carEntity.position;
+
+  // 2. 注入动态移动逻辑
+  carEntity.position = new Cesium.CallbackProperty((time) => {
+    // 如果已经到达事故现场展开救援（阶段 >= 8）
+    if (Number(props.activePhaseIndex) >= 8) {
+      // 获取车辆当前（即停车时）的基准原点
+      const basePos = originalPosition ? originalPosition.getValue(time) : undefined;
+      if (!basePos) return undefined;
+
+      const carto = Cesium.Cartographic.fromCartesian(basePos);
+      const baseLng = Cesium.Math.toDegrees(carto.longitude);
+      const baseLat = Cesium.Math.toDegrees(carto.latitude);
+      const baseHeight = carto.height;
+
+      // 使用真实时间戳生成平滑的正弦波 (-1 到 1)
+      const now = Date.now() / 1000.0;
+      // modelIndex * Math.PI 让两台车的移动节奏错开，显得更真实
+      const wave = Math.sin(now * patrolSpeed + (modelIndex * Math.PI));
+      
+      // 顺着设定的道路角度，在基准点前后搓动
+      const currentLng = baseLng + wave * patrolDistance * Math.cos(roadAngleRad);
+      const currentLat = baseLat + wave * patrolDistance * Math.sin(roadAngleRad);
+
+      return Cesium.Cartesian3.fromDegrees(currentLng, currentLat, baseHeight);
+    } 
+    // 如果阶段还没到 8，继续使用系统原生的进场动画坐标
+    else {
+      return originalPosition ? originalPosition.getValue(time) : undefined;
+    }
+  }, false);
+
+  // 3. 以下完全是你原版的数据链路代码，一字未改！
   [0, 1].forEach((innerCarIndex) => {
     viewer.entities.add({
       id: `line-link-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-real`,
@@ -8013,6 +8075,8 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       polyline: {
         positions: new Cesium.CallbackProperty((time) => {
           if (Number(props.activePhaseIndex) < 8 || currentScene.value !== 'truck') return [];
+          
+          // 💡 这里 getValue 拿到的就是上方刚注入的、正在平滑移动的坐标
           const carCartesian = carEntity.position.getValue(time);
           const carOrientation = carEntity.orientation.getValue(time);
           if (!carCartesian || !carOrientation) return [];
@@ -8023,9 +8087,6 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
           );
 
           // 🚨 空间几何重新校准：
-          // X = 0 (取消前后偏移)
-          // Y = 左右偏移 (±1.5米左右，这是导致你线飘到路边的罪魁祸首)
-          // Z = 1.6 (车顶高度)
           const offsetX = 0.0; 
           const offsetY = (innerCarIndex === 0) ? 1.5 : -1.5; 
           const offsetZ = 1.6;
@@ -8041,10 +8102,50 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
     });
   });
 });
-
 // 2. 油罐车泄露现场 - 编队无人车链路
 // 2. 油罐车泄露现场 - 编队无人车链路 (连向 油罐车专属5G基站)
+// 🚨 针对油罐车场景的专属移动参数（加了 tanker 前缀防冲突）
+const tankerRoadAngleDeg = 90; // 油罐车路段的走向角度（需要根据实景公路走向微调，0为东西，90为南北）
+const tankerRoadAngleRad = Cesium.Math.toRadians(tankerRoadAngleDeg);
+const tankerPatrolDistance = 0.00005; // 移动范围，大概 5 米
+const tankerPatrolSpeed = 0.5; // 移动速度
+
 tankerRescueCarEntities.forEach((carEntity, modelIndex) => {
+  
+  // 1. 备份原本的位置属性，确保阶段 8 之前的进场动画不被破坏
+  const originalPosition = carEntity.position;
+
+  // 2. 注入动态移动逻辑
+  carEntity.position = new Cesium.CallbackProperty((time) => {
+    // 如果已经到达事故现场展开救援（阶段 >= 8）
+    if (Number(props.activePhaseIndex) >= 8) {
+      // 获取车辆当前（即停车时）的基准原点
+      const basePos = originalPosition ? originalPosition.getValue(time) : undefined;
+      if (!basePos) return undefined;
+
+      const carto = Cesium.Cartographic.fromCartesian(basePos);
+      const baseLng = Cesium.Math.toDegrees(carto.longitude);
+      const baseLat = Cesium.Math.toDegrees(carto.latitude);
+      const baseHeight = carto.height;
+
+      // 使用真实时间戳生成平滑的正弦波 (-1 到 1)
+      const now = Date.now() / 1000.0;
+      // modelIndex * Math.PI 让两台车的移动节奏错开
+      const wave = Math.sin(now * tankerPatrolSpeed + (modelIndex * Math.PI));
+      
+      // 顺着设定的道路角度，在基准点前后搓动
+      const currentLng = baseLng + wave * tankerPatrolDistance * Math.cos(tankerRoadAngleRad);
+      const currentLat = baseLat + wave * tankerPatrolDistance * Math.sin(tankerRoadAngleRad);
+
+      return Cesium.Cartesian3.fromDegrees(currentLng, currentLat, baseHeight);
+    } 
+    // 如果阶段还没到 8，继续使用系统原生的进场动画坐标
+    else {
+      return originalPosition ? originalPosition.getValue(time) : undefined;
+    }
+  }, false);
+
+  // 3. 以下完全是你原版的数据链路代码，一字未改！
   [0, 1].forEach((innerCarIndex) => {
     viewer.entities.add({
       id: `line-link-tanker-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-real`,
@@ -8055,6 +8156,8 @@ tankerRescueCarEntities.forEach((carEntity, modelIndex) => {
       polyline: {
         positions: new Cesium.CallbackProperty((time) => {
           if (Number(props.activePhaseIndex) < 8 || currentScene.value !== 'tanker') return [];
+          
+          // 💡 这里 getValue 拿到的就是上方刚注入的、正在平滑移动的坐标
           const carCartesian = carEntity.position.getValue(time);
           const carOrientation = carEntity.orientation.getValue(time);
           if (!carCartesian || !carOrientation) return [];
