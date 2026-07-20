@@ -64,8 +64,8 @@
             <div class="progress-fill" :style="{ width: fillWidth }"></div>
           </div>
           
-          <!-- 游标指示器 -->
-          <div class="timeline-cursor" :style="{ left: cursorOffset }">
+          <!-- 游标指示器（仅在点击激活有效阶段 modelValue >= 0 时出现，未点击/未开始时不出现） -->
+          <div v-if="modelValue >= 0" class="timeline-cursor" :style="{ left: cursorOffset }">
             <div class="cursor-arrow">
               <svg viewBox="0 0 24 24" width="24" height="24" fill="#8cf7c5">
                 <path d="M7 10l5 5 5-5z" />
@@ -118,7 +118,7 @@ const TRUCK_PHASE_DESC = [
   { shortLabel: '仿真推演开始', time: '14:00', description: '系统完成初始化，开始对货车追尾事故场景进行数字孪生仿真推演，全域感知网络进入就绪状态。' },
   { shortLabel: '车辆正常行驶', time: '14:05', description: '事故发生前，两辆货车在高速公路上正常行驶，车载边缘网关实时采集并上传行驶状态数据。' },
   { shortLabel: '事故发生', time: '14:12', description: '后车未保持安全距离，发生追尾碰撞。传感网络检测到异常冲击振动，自动触发事故告警并上报指挥中心。' },
-  { shortLabel: '次生灾害·烟雾', time: '14:18', description: '碰撞导致货物起火，现场产生大量浓烟。烟雾传感器浓度超过预警阈值，系统自动推送疏散建议。' },
+  { shortLabel: '次生灾害·烟雾', time: '14:18', description: '碰撞导致货物起火，现场产生大量浓烟。烟雾传感器浓度超过预警阈值，系统推送疏散建议。' },
   { shortLabel: '次生灾害·起火', time: '14:26', description: '发动机舱引燃，车辆开始明显燃烧。温度传感器数据急剧上升，协同响应系统推送消防出警指令。' },
   { shortLabel: '次生灾害·大火', time: '14:40', description: '火势向周边蔓延，已波及多辆车辆。系统评估扩散模型，向救援指挥中心同步实时火情态势图。' },
   { shortLabel: '无人装备出动', time: '14:45', description: '无人车与无人机从消防站协同出发。无人车沿蓝线地面路径先行，无人机走到一半时起飞，两者同时抵达救援点。' },
@@ -173,21 +173,21 @@ const cursorOffset = computed(() => {
 
 // 计算已播放部分的进度条宽度
 const fillWidth = computed(() => {
-  if (!props.phases.length) return '0%'
+  if (!props.phases.length || props.modelValue < 0) return '0%'
   if (props.phases.length === 1) return '0%'
   const percent = (props.modelValue / (props.phases.length - 1)) * 100
   return `${percent}%`
 })
 
 function getPhaseOffset(index) {
-  if (!props.phases.length) return '40px'
+  if (!props.phases.length || index < 0) return '40px'
   if (props.phases.length === 1) return '50%'
   const percent = (index / (props.phases.length - 1)) * 100
   return `calc(40px + (100% - 80px) * ${percent / 100})`
 }
 
 function selectPhase(index) {
-  isPlaying.value = false // 手动切换时停止自动播放
+  isPlaying.value = false // 点击任意阶段节点（含【仿真开始】）均为手动切换该节点，不自动推进时间轴
   emit('update:modelValue', index)
 }
 

@@ -128,6 +128,130 @@
         </div>
       </div>
 
+      <!-- 🚚 仿真初始车流 (0-1~0-4.glb) 动态微调工具 弹窗面板 -->
+      <div v-if="startStageVehicleAdjust.show" class="camera-adjust-modal traffic-adjust-modal">
+        <div class="camera-modal-header">
+          <div class="header-title cyan-title">
+            <span class="icon">🚚</span>
+            <span>初始车流微调 (0-1~0-4.glb)</span>
+          </div>
+          <button class="close-btn" @click="startStageVehicleAdjust.show = false">✕</button>
+        </div>
+
+        <div class="camera-modal-body">
+          <!-- Tab 选项卡标签页导航（包含 0-1 ~ 0-4 4辆车的独立通道） -->
+          <div class="vehicle-tab-container" style="display: flex; gap: 4px; margin-bottom: 14px; background: rgba(0, 242, 254, 0.08); padding: 4px; border-radius: 6px; border: 1px solid rgba(0, 242, 254, 0.2);">
+            <button 
+              v-for="(car, idx) in startStageVehicleAdjust.cars" 
+              :key="idx"
+              class="v-tab-btn" 
+              :style="startStageVehicleAdjust.activeTab === 'car' + (idx + 1) ? 'flex: 1; padding: 6px 0; font-size: 12px; border: 1px solid #00f2fe; background: rgba(0, 242, 254, 0.25); color: #00f2fe; font-weight: bold; border-radius: 4px; cursor: pointer;' : 'flex: 1; padding: 6px 0; font-size: 12px; border: 1px solid transparent; background: transparent; color: #a0aec0; cursor: pointer; border-radius: 4px;'"
+              @click="startStageVehicleAdjust.activeTab = 'car' + (idx + 1)"
+            >
+              🚗 0-{{ idx + 1 }}
+            </button>
+          </div>
+
+          <!-- 🚗 0-1.glb ~ 0-4.glb 4辆车各自独立的控制参数块 -->
+          <template v-for="(car, idx) in startStageVehicleAdjust.cars" :key="idx">
+            <div v-if="startStageVehicleAdjust.activeTab === 'car' + (idx + 1)">
+              <div style="font-size: 13px; color: #00f2fe; margin-bottom: 12px; font-weight: bold; display: flex; align-items: center; gap: 6px;">
+                <span>🚘</span>
+                <span>{{ car.name }} 独立参数调整：</span>
+              </div>
+
+              <!-- 模型缩放倍率 -->
+              <div class="slider-row">
+                <div class="slider-header">
+                  <span class="slider-label">模型缩放 (Scale)</span>
+                  <span class="val-tag cyan-tag">{{ car.scale.toFixed(2) }}x</span>
+                </div>
+                <div class="slider-control">
+                  <input type="range" v-model.number="car.scale" min="0.1" max="5.0" step="0.05" class="cyber-range-slider cyan-slider" />
+                  <input type="number" v-model.number="car.scale" min="0.1" max="5.0" step="0.05" class="cyber-num-input cyan-input" />
+                </div>
+              </div>
+
+              <!-- 航向偏角微调 -->
+              <div class="slider-row">
+                <div class="slider-header">
+                  <span class="slider-label">航向偏角 Heading (°)</span>
+                  <span class="val-tag cyan-tag">{{ car.heading }}°</span>
+                </div>
+                <div class="slider-control">
+                  <input type="range" v-model.number="car.heading" min="-180" max="180" step="1" class="cyber-range-slider cyan-slider" />
+                  <input type="number" v-model.number="car.heading" min="-180" max="180" step="1" class="cyber-num-input cyan-input" />
+                </div>
+              </div>
+
+              <!-- 经度偏移 (Lng) -->
+              <div class="slider-row">
+                <div class="slider-header">
+                  <span class="slider-label">经度位置偏移 (Lng)</span>
+                  <span class="val-tag cyan-tag">{{ car.lngOffset.toFixed(5) }}</span>
+                </div>
+                <div class="slider-control">
+                  <input type="range" v-model.number="car.lngOffset" min="-0.01" max="0.01" step="0.00005" class="cyber-range-slider cyan-slider" />
+                  <input type="number" v-model.number="car.lngOffset" min="-0.01" max="0.01" step="0.00005" class="cyber-num-input cyan-input" />
+                </div>
+              </div>
+
+              <!-- 纬度偏移 (Lat) -->
+              <div class="slider-row">
+                <div class="slider-header">
+                  <span class="slider-label">纬度位置偏移 (Lat)</span>
+                  <span class="val-tag cyan-tag">{{ car.latOffset.toFixed(5) }}</span>
+                </div>
+                <div class="slider-control">
+                  <input type="range" v-model.number="car.latOffset" min="-0.01" max="0.01" step="0.00005" class="cyber-range-slider cyan-slider" />
+                  <input type="number" v-model.number="car.latOffset" min="-0.01" max="0.01" step="0.00005" class="cyber-num-input cyan-input" />
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <div style="height: 1px; background: rgba(0, 242, 254, 0.2); margin: 12px 0;"></div>
+
+          <!-- 行驶单圈时长 -->
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label">车流行驶单圈时长 (s)</span>
+              <span class="val-tag cyan-tag">{{ startStageVehicleAdjust.loopDurationSec }}s</span>
+            </div>
+            <div class="slider-control">
+              <input type="range" v-model.number="startStageVehicleAdjust.loopDurationSec" min="5" max="60" step="1" class="cyber-range-slider cyan-slider" />
+              <input type="number" v-model.number="startStageVehicleAdjust.loopDurationSec" min="5" max="60" step="1" class="cyber-num-input cyan-input" />
+            </div>
+          </div>
+
+          <!-- 底部控制按钮组 -->
+          <div class="btn-group" style="display: flex; gap: 8px; margin-top: 12px;">
+            <button 
+              class="action-btn-reset cyan-btn" 
+              :style="startStageVehicleAdjust.isPaused ? 'flex: 1.2; background: rgba(0, 242, 254, 0.25); border-color: #00f2fe; color: #00f2fe; font-weight: bold;' : 'flex: 1.2; background: rgba(255, 170, 0, 0.2); border-color: #ffaa00; color: #ffaa00;'"
+              @click="startStageVehicleAdjust.isPaused = !startStageVehicleAdjust.isPaused"
+            >
+              <span class="icon">{{ startStageVehicleAdjust.isPaused ? '▶️' : '⏸️' }}</span>
+              <span>{{ startStageVehicleAdjust.isPaused ? '开始行驶' : '暂停车流' }}</span>
+            </button>
+
+            <button class="action-btn-reset cyan-btn" style="flex: 1;" @click="resetStartStageVehicleAdjust">
+              🔄 重置
+            </button>
+            <button v-if="startStageVehicleAdjust.activeTab === 'road'" class="action-btn-reset cyan-btn" style="flex: 1.2;" @click="copyRoadWaypointsConfig">
+              📋 复制路线
+            </button>
+            <button v-else class="action-btn-reset cyan-btn" style="flex: 1;" @click="copyStartStageVehicleConfig">
+              📋 复制车辆
+            </button>
+          </div>
+
+          <div v-if="startStageVehicleAdjust.copiedMsg" style="text-align: center; color: #00f2fe; margin-top: 8px; font-size: 13px;">
+            {{ startStageVehicleAdjust.copiedMsg }}
+          </div>
+        </div>
+      </div>
+
       <!-- 📹 全阶段相机视角微调工具 弹窗面板 -->
       <div v-if="cameraAdjust.show" class="camera-adjust-modal">
         <div class="camera-modal-header">
@@ -1093,6 +1217,13 @@
         @click="togglePanel('traffic')"
       >
         车流动态微调
+      </button>
+      <button 
+        class="dock-tool-btn start-car-btn" 
+        :class="{ active: startStageVehicleAdjust.show }" 
+        @click="togglePanel('startCar')"
+      >
+        初始车流微调
       </button>
       <button 
         class="dock-tool-btn light-btn" 
@@ -2250,9 +2381,9 @@ const cameraAdjust = reactive({
   show: false,
   scene: 'truck',
   phaseIndex: 1,
-  range: 1440,
-  pitch: -39,
-  heading: -5,
+  range: 800,
+  pitch: -11,
+  heading: -39,
   copiedMsg: ''
 })
 
@@ -2310,7 +2441,7 @@ function setVehicleCategoryFilter(cat) {
 
 const initialPhaseCameraConfigs = {
   truck: {
-    1: { range: 1440, pitch: -39, heading: -5 },
+    1: { range: 600, pitch: -10, heading: -74 },
     2: { range: 480, pitch: -25, heading: 33 },
     3: { range: 480, pitch: -25, heading: 33 },
     4: { range: 480, pitch: -25, heading: 33 },
@@ -2667,6 +2798,10 @@ function togglePanel(panelName) {
     const nextVal = !trafficConfig.show;
     closeAllPanelsExcept(panelName);
     trafficConfig.show = nextVal;
+  } else if (panelName === 'startCar') {
+    const nextVal = !startStageVehicleAdjust.show;
+    closeAllPanelsExcept(panelName);
+    startStageVehicleAdjust.show = nextVal;
   } else if (panelName === 'light') {
     const nextVal = !isLightPanelExpanded.value;
     closeAllPanelsExcept(panelName);
@@ -2706,6 +2841,7 @@ function closeAllPanelsExcept(exceptPanel) {
   if (exceptPanel !== 'label') labelConfig.show = false;
   if (exceptPanel !== 'camera') cameraAdjust.show = false;
   if (exceptPanel !== 'traffic') trafficConfig.show = false;
+  if (exceptPanel !== 'startCar') startStageVehicleAdjust.show = false;
   if (exceptPanel !== 'light') isLightPanelExpanded.value = false;
   if (exceptPanel !== 'jizhan') isJizhanPanelExpanded.value = false;
   if (exceptPanel !== 'tanker') isTankerPanelExpanded.value = false;
@@ -2997,6 +3133,36 @@ const updateTime = () => {
 }
 let timeInterval = null
 
+// 阶段索引到模型id的映射
+const phaseToModelMap = {
+  0: null,
+  1: 'model_normal',
+  2: 'model_accident',
+  3: 'model_accident',
+  4: 'model_accident',
+  5: 'model_accident',
+  6: 'model_accident',
+  7: 'model_accident',
+  8: 'model_accident',
+  9: 'model_accident',
+  10: 'model_accident'
+}
+
+// 油罐车阶段索引到模型id的映射
+const tankerPhaseToModelMap = {
+  0: null,
+  1: 'tanker_normal',
+  2: 'tanker_accident',
+  3: 'tanker_accident',
+  4: 'tanker_accident',
+  5: 'tanker_accident',
+  6: 'tanker_accident',
+  7: 'tanker_accident',
+  8: 'tanker_accident',
+  9: 'tanker_accident',
+  10: 'tanker_accident'
+}
+
 // 无人机多角度照片拍摄状态
 const capturedPhotos = ref([false, false, false, false])
 const activePhotoIndex = ref(null)
@@ -3065,8 +3231,6 @@ function triggerPhotoAnimation(index, cartesianPos) {
     }
   }, 900);
 }
-
-
 
 // 无人机出动状态与坐标
 const rescueCoords = reactive({ lng: 113.10725, lat: 30.38491, height: 24.0 });
@@ -3289,36 +3453,6 @@ const tankerModelConfigs = [
   { id: 'tanker_accident', uri: '/Dashboard/models/Side_roll_Tanker.glb', label: '事故阶段' }
 ]
 
-// 阶段索引到模型ID的映射
-const phaseToModelMap = {
-  0: 'model_normal',
-  1: 'model_normal',
-  2: 'model_accident',
-  3: 'model_accident',
-  4: 'model_accident',
-  5: 'model_accident',
-  6: 'model_accident',
-  7: 'model_accident',
-  8: 'model_accident',
-  9: 'model_accident',
-  10: 'model_accident'
-}
-
-// 油罐车阶段索引到模型ID的映射
-const tankerPhaseToModelMap = {
-  0: 'tanker_normal',
-  1: 'tanker_normal',
-  2: 'tanker_accident',
-  3: 'tanker_accident',
-  4: 'tanker_accident',
-  5: 'tanker_accident',
-  6: 'tanker_accident',
-  7: 'tanker_accident',
-  8: 'tanker_accident',
-  9: 'tanker_accident',
-  10: 'tanker_accident'
-}
-
 let currentActiveModelId = null 
 let currentActiveTankerModelId = null
 let lastPhaseIndex = -1
@@ -3377,6 +3511,199 @@ const tankerRescueCarModelConfigs = [
   { id: 'tanker_rescue_car_model_1', uri: '/Dashboard/models/recure%20car_2.glb', label: '1号油罐救援(前)', stopFactor: 0.40 },
   { id: 'tanker_rescue_car_model_2', uri: '/Dashboard/models/recure%20car_2.glb', label: '2号油罐救援(后)', stopFactor: 0.34 }
 ]
+
+// 货车追尾现场 - 仿真开始节点贴地行驶车流配置 (0-1.glb, 0-2.glb, 0-3.glb, 0-4.glb)
+// 固化用户调试确认的 P1 ~ P8 8 个核心沥青公路中线航点
+const startStageRoadWaypoints = reactive([
+  [113.108860, 30.384539], // P1
+  [113.106710, 30.385000], // P2
+  [113.104870, 30.385469], // P3 (事故现场中心)
+  [113.103030, 30.385937], // P4
+  [113.101490, 30.386398], // P5
+  [113.099960, 30.386858], // P6
+  [113.098420, 30.387319], // P7
+  [113.097190, 30.387779]  // P8
+])
+
+const startStageVehicleConfigs = [
+  { id: 'start_stage_car_01', uri: '/Dashboard/models/0-1.glb', label: '仿真初始车辆01(大客车)', offsetRatio: 0.05, speedFactor: 0.85, laneOffset: 0.000025, scale: 0.82 },
+  { id: 'start_stage_car_02', uri: '/Dashboard/models/0-2.glb', label: '仿真初始车辆02(跑车)', offsetRatio: 0.30, speedFactor: 1.20, laneOffset: -0.000025, scale: 0.82 },
+  { id: 'start_stage_car_03', uri: '/Dashboard/models/0-3.glb', label: '仿真初始车辆03(轿车)', offsetRatio: 0.55, speedFactor: 1.05, laneOffset: -0.000020, scale: 0.82 },
+  { id: 'start_stage_car_04', uri: '/Dashboard/models/0-4.glb', label: '仿真初始车辆04(轿跑)', offsetRatio: 0.80, speedFactor: 0.95, laneOffset: 0.000020, scale: 0.82 }
+]
+
+let startStageVehicleEntities = []
+
+// 🚚 仿真初始车流 (0-1~0-4.glb) 动态微调面板状态
+const startStageVehicleAdjust = reactive({
+  show: false,
+  isPaused: false,         // 默认【开始行驶】状态（点击仿真开始即可播放车流行驶动画）
+  showRoadLine: false,     // 路线与航点 Marker 隐藏/显示开关（默认隐藏，保持画面干净）
+  activeTab: 'car1',       // 默认激活 0-1.glb (车辆01) 独立控制面板
+  selectedWaypointIndex: 2, // 默认选中 P3 (事故点) 道路航点索引 (0~7)
+  loopDurationSec: 18,     // 单圈时长(s)
+  
+  // 4 辆车的独立缩放、航向及经纬度参数（默认沿着真实沥青公路中线行驶）
+  cars: [
+    { name: '0-1.glb (车辆01)', scale: 0.40, lngOffset: 0.0, latOffset: 0.0, heading: -161 },
+    { name: '0-2.glb (车辆02)', scale: 1.00, lngOffset: 0.0, latOffset: 0.0, heading: -92 },
+    { name: '0-3.glb (车辆03)', scale: 3.50, lngOffset: 0.0, latOffset: 0.0, heading: -92 },
+    { name: '0-4.glb (车辆04)', scale: 2.35, lngOffset: 0.0, latOffset: 0.0, heading: -88 }
+  ],
+  
+  copiedMsg: ''
+})
+
+// 🛣️ 整体向东/西/南/北快捷平移整条道路航点轨迹 (米)
+function shiftAllRoadWaypoints(metersX, metersY) {
+  const deltaLng = metersX / (111000 * Math.cos(Cesium.Math.toRadians(30.385)));
+  const deltaLat = metersY / 111000;
+  for (let i = 0; i < startStageRoadWaypoints.length; i++) {
+    startStageRoadWaypoints[i][0] = Number((startStageRoadWaypoints[i][0] + deltaLng).toFixed(6));
+    startStageRoadWaypoints[i][1] = Number((startStageRoadWaypoints[i][1] + deltaLat).toFixed(6));
+  }
+}
+
+// 📋 复制最新调整好的道路航点 Coordinates 代码
+function copyRoadWaypointsConfig() {
+  const code = `const startStageRoadWaypoints = reactive([\n` +
+    startStageRoadWaypoints.map(pt => `  [${pt[0].toFixed(6)}, ${pt[1].toFixed(6)}]`).join(',\n') +
+    `\n]);`;
+  navigator.clipboard.writeText(code).then(() => {
+    startStageVehicleAdjust.copiedMsg = '路线代码复制成功！';
+    setTimeout(() => { startStageVehicleAdjust.copiedMsg = ''; }, 2000);
+  }).catch(() => {
+    startStageVehicleAdjust.copiedMsg = '复制失败';
+    setTimeout(() => { startStageVehicleAdjust.copiedMsg = ''; }, 2000);
+  });
+}
+
+function resetStartStageVehicleAdjust() {
+  startStageVehicleAdjust.isPaused = true;
+  startStageVehicleAdjust.loopDurationSec = 18;
+  if (startStageVehicleAdjust.cars) {
+    startStageVehicleAdjust.cars[0].scale = 0.40; startStageVehicleAdjust.cars[0].lngOffset = 0.0; startStageVehicleAdjust.cars[0].latOffset = 0.0; startStageVehicleAdjust.cars[0].heading = -161;
+    startStageVehicleAdjust.cars[1].scale = 1.00; startStageVehicleAdjust.cars[1].lngOffset = 0.0; startStageVehicleAdjust.cars[1].latOffset = 0.0; startStageVehicleAdjust.cars[1].heading = -92;
+    startStageVehicleAdjust.cars[2].scale = 3.50; startStageVehicleAdjust.cars[2].lngOffset = 0.0; startStageVehicleAdjust.cars[2].latOffset = 0.0; startStageVehicleAdjust.cars[2].heading = -92;
+    startStageVehicleAdjust.cars[3].scale = 2.35; startStageVehicleAdjust.cars[3].lngOffset = 0.0; startStageVehicleAdjust.cars[3].latOffset = 0.0; startStageVehicleAdjust.cars[3].heading = -88;
+  }
+}
+
+function copyStartStageVehicleConfig() {
+  const code = `// 仿真初始车流 (0-1~0-4.glb) 各车独立微调参数
+startStageVehicleAdjust.loopDurationSec = ${startStageVehicleAdjust.loopDurationSec};
+startStageVehicleAdjust.cars = ${JSON.stringify(startStageVehicleAdjust.cars, null, 2)};`;
+
+  navigator.clipboard.writeText(code).then(() => {
+    startStageVehicleAdjust.copiedMsg = '复制成功！';
+    setTimeout(() => { startStageVehicleAdjust.copiedMsg = ''; }, 2000);
+  }).catch(() => {
+    startStageVehicleAdjust.copiedMsg = '复制失败';
+    setTimeout(() => { startStageVehicleAdjust.copiedMsg = ''; }, 2000);
+  });
+}
+
+let startStageVehicleLastFrameTime = Date.now()
+let startStageVehicleRunningTimeMs = 0
+
+// Catmull-Rom 样条平滑轨迹插值计算器（支持车辆沿真实 Cesium 弧形公路自然转弯）
+function getCatmullRomSplinePoint(pts, globalT) {
+  const n = pts.length;
+  if (n < 2) return { lng: pts[0][0], lat: pts[0][1], baseHeadingRad: 0 };
+  
+  let t = globalT % 1.0;
+  if (t < 0) t += 1.0;
+
+  const totalSegments = n - 1;
+  const scaledT = t * totalSegments;
+  const idx = Math.min(Math.floor(scaledT), totalSegments - 1);
+  const u = scaledT - idx;
+
+  const p0 = pts[Math.max(0, idx - 1)];
+  const p1 = pts[idx];
+  const p2 = pts[Math.min(n - 1, idx + 1)];
+  const p3 = pts[Math.min(n - 1, idx + 2)];
+
+  const u2 = u * u;
+  const u3 = u2 * u;
+
+  // Catmull-Rom 位置基函数
+  const f0 = -0.5 * u3 + u2 - 0.5 * u;
+  const f1 = 1.5 * u3 - 2.5 * u2 + 1.0;
+  const f2 = -1.5 * u3 + 2.0 * u2 + 0.5 * u;
+  const f3 = 0.5 * u3 - 0.5 * u2;
+
+  const lng = p0[0] * f0 + p1[0] * f1 + p2[0] * f2 + p3[0] * f3;
+  const lat = p0[1] * f0 + p1[1] * f1 + p2[1] * f2 + p3[1] * f3;
+
+  // 一阶导数（用于导出现在时刻平滑的切线行驶方向 Heading）
+  const df0 = -1.5 * u2 + 2.0 * u - 0.5;
+  const df1 = 4.5 * u2 - 5.0 * u;
+  const df2 = -4.5 * u2 + 4.0 * u + 0.5;
+  const df3 = 1.5 * u2 - 1.0 * u;
+
+  const dLngdt = p0[0] * df0 + p1[0] * df1 + p2[0] * df2 + p3[0] * df3;
+  const dLatdt = p0[1] * df0 + p1[1] * df1 + p2[1] * df2 + p3[1] * df3;
+
+  const cosLat = Math.cos(Cesium.Math.toRadians(lat));
+  const dX = dLngdt * cosLat;
+  const dY = dLatdt;
+  const baseHeadingRad = Math.atan2(dX, dY);
+
+  return { lng, lat, baseHeadingRad };
+}
+
+function getStartStageVehiclePosAndOrient(index, offsetRatio) {
+  const now = Date.now()
+  const delta = now - startStageVehicleLastFrameTime
+  startStageVehicleLastFrameTime = now
+
+  if (!startStageVehicleAdjust.isPaused) {
+    startStageVehicleRunningTimeMs += delta
+  }
+
+  const carParam = (startStageVehicleAdjust.cars && startStageVehicleAdjust.cars[index])
+    ? startStageVehicleAdjust.cars[index]
+    : { scale: 1.0, lngOffset: 0, latOffset: 0, heading: 0 }
+
+  const totalLngOffset = carParam.lngOffset || 0
+  const totalLatOffset = carParam.latOffset || 0
+  const totalHeadingOffset = carParam.heading || 0
+
+  if (!startStageRoadWaypoints || startStageRoadWaypoints.length < 2) {
+    const pos = Cesium.Cartesian3.fromDegrees(113.104833 + totalLngOffset, 30.385469 + totalLatOffset, 0)
+    const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(17 + totalHeadingOffset), 0, 0)
+    const orient = Cesium.Transforms.headingPitchRollQuaternion(pos, hpr)
+    return { position: pos, orientation: orient }
+  }
+
+  const config = startStageVehicleConfigs[index] || { offsetRatio: 0, speedFactor: 1.0, laneOffset: 0 }
+
+  const durationMs = (startStageVehicleAdjust.loopDurationSec || 18) * 1000
+  const speedFactor = config.speedFactor || 1.0
+  const t = ((startStageVehicleRunningTimeMs / durationMs * speedFactor) + (offsetRatio !== undefined ? offsetRatio : config.offsetRatio)) % 1.0
+
+  // 采用 Catmull-Rom 样条算法进行道路平滑弧线插值与动态切线姿态推算
+  const spline = getCatmullRomSplinePoint(startStageRoadWaypoints, t);
+
+  // 根据道路切线方向求出垂直法线，进行车道横向偏移 (快车走左侧超车道, 慢车走右侧行车道)
+  const laneOffset = config.laneOffset || 0
+  const normalLng = -Math.sin(spline.baseHeadingRad) * laneOffset
+  const normalLat = Math.cos(spline.baseHeadingRad) * laneOffset
+
+  const finalLng = spline.lng + totalLngOffset + normalLng;
+  const finalLat = spline.lat + totalLatOffset + normalLat;
+  const position = Cesium.Cartesian3.fromDegrees(finalLng, finalLat, 0);
+
+  // 车辆沿着真实的公路弧线切线自然转弯 + 附加用户独立的 Heading 微调值
+  const headingRad = spline.baseHeadingRad + Cesium.Math.toRadians(totalHeadingOffset);
+  const orientation = Cesium.Transforms.headingPitchRollQuaternion(
+    position,
+    new Cesium.HeadingPitchRoll(headingRad, 0, 0)
+  );
+
+  return { position, orientation }
+}
 
 // 无人机位置调整（起始点：仙桃市三伏潭镇专职消防队）
 const uavAdjust = reactive({
@@ -4244,19 +4571,15 @@ function applyOrbitView(animate = false) {
         range = 120000
         pitch = Cesium.Math.toRadians(-60)
         finalHeading = (props.focusedPointId === 'accident_red' ? tankerOrbitHeading : truckOrbitHeading)
-      } else if (accidentViewLevel.value === 'medium') {
-        range = 2500
-        pitch = Cesium.Math.toRadians(-45)
-        finalHeading = (props.focusedPointId === 'accident_red' ? tankerOrbitHeading : truckOrbitHeading)
       } else if (accidentViewLevel.value === 'close') {
         range = props.focusedPointId === 'accident_red' ? 100 : 75
         pitch = Cesium.Math.toRadians(-20)
         finalHeading = Cesium.Math.toRadians(8)
       } else {
-        // Read from defaultPhaseCameraConfigs
-        const pIdx = props.activePhaseIndex + 1
+        // 'medium' 现场视角或常规推演视角：统一使用当前推演阶段（如仿真开始）的相机配置，实现第三视角与推演视角100%同步
+        const pIdx = (props.activePhaseIndex !== undefined && props.activePhaseIndex !== null) ? (props.activePhaseIndex + 1) : 1
         const scene = props.focusedPointId === 'accident_red' ? 'tanker' : 'truck'
-        const cfg = (defaultPhaseCameraConfigs[scene] && defaultPhaseCameraConfigs[scene][pIdx]) || { range: 1440, pitch: -39, heading: -5 }
+        const cfg = (defaultPhaseCameraConfigs[scene] && defaultPhaseCameraConfigs[scene][pIdx]) || { range: 600, pitch: -11, heading: -39 }
         
         range = cfg.range
         pitch = Cesium.Math.toRadians(cfg.pitch)
@@ -6215,6 +6538,11 @@ function updateTruckSequence(phaseIndex, pointId = '') {
   const isModelChanged = targetModelId !== currentActiveModelId
   const isInitialSwitch = (phaseIndex <= 1 && lastPhaseIndex <= 1 && phaseIndex !== lastPhaseIndex)
   
+  // 仿真初始车流 (0-1~0-4.glb) 严格仅在仿真开始节点 (phaseIndex === 0) 显示
+  startStageVehicleEntities.forEach(entity => {
+    entity.show = (currentScene.value === 'truck' && phaseIndex === 0)
+  })
+
   if (targetModelId) {
     truckEntities.forEach(entity => {
       const isTarget = entity.id === targetModelId
@@ -6234,6 +6562,10 @@ function updateTruckSequence(phaseIndex, pointId = '') {
         playEntityAnimation(entity, false, duration)
       }
     }
+  } else {
+    // 阶段0（仿真开始）：对于未加载就绪的模型，保持 show = true 允许 Cesium 静默预加载 GLB；
+    // 由于阶段0下 scale 回调已经强制返回 0，所以画面上完全隐形，同时又能迅速触发 p.ready 变为“模型已就绪”！
+    truckEntities.forEach(entity => { entity.show = !modelsReadyStatus[entity.id] })
   }
   
   currentActiveModelId = targetModelId
@@ -6368,6 +6700,9 @@ function updateTankerSequence(phaseIndex, pointId = '') {
       const duration = durationMap[phaseIndex] || 3
       playEntityAnimation(entity, false, duration)
     }
+  } else if (!targetModelId) {
+    // 阶段0（仿真开始）：对于未加载就绪的模型，保持 show = true 允许 Cesium 静默预加载 GLB
+    tankerEntities.forEach(entity => { entity.show = !modelsReadyStatus[entity.id] })
   }
   
   currentActiveTankerModelId = targetModelId
@@ -7006,6 +7341,41 @@ function addEventEntities() {
     })
     entity.show = true
     tankerEntities.push(entity)
+  })
+
+  // 初始化 0-1.glb, 0-2.glb, 0-3.glb, 0-4.glb 仿真初始节点贴地行驶车辆
+  startStageVehicleConfigs.forEach((config, index) => {
+    const entity = viewer.entities.add({
+      id: config.id,
+      name: config.label,
+      show: new Cesium.CallbackProperty(() => {
+        // 在货车追尾现场且处于仿真开始节点 (activePhaseIndex === 0) 时显示并贴地行驶
+        return currentScene.value === 'truck' && props.activePhaseIndex === 0
+      }, false),
+      position: new Cesium.CallbackProperty(() => {
+        return getStartStageVehiclePosAndOrient(index, config.offsetRatio).position
+      }, false),
+      orientation: new Cesium.CallbackProperty(() => {
+        return getStartStageVehiclePosAndOrient(index, config.offsetRatio).orientation
+      }, false),
+      model: {
+        uri: config.uri,
+        scale: new Cesium.CallbackProperty(() => {
+          // 仅在货车追尾场景且处于仿真开始节点 (activePhaseIndex === 0) 时渲染几何大小
+          if (currentScene.value !== 'truck' || props.activePhaseIndex !== 0) {
+            return 0;
+          }
+          const carParam = (startStageVehicleAdjust.cars && startStageVehicleAdjust.cars[index])
+            ? startStageVehicleAdjust.cars[index]
+            : { scale: 1.0 }
+          return carParam.scale || 1.0
+        }, false),
+        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, // 使用 Cesium 原生贴地
+        silhouetteColor: Cesium.Color.fromCssColorString('#00f2fe'),
+        silhouetteSize: 1.0
+      }
+    })
+    startStageVehicleEntities.push(entity)
   })
 
   // 初始化无人机模型（用于货车追尾现场的无人装备出动阶段）
@@ -8099,6 +8469,10 @@ tankerRescueCarEntities.forEach((carEntity, modelIndex) => {
 function updatePhaseScene(index, animate = false) {
   if (!viewer || !props.phases.length || !focusAreaEntity) return
 
+  if (index === 1) {
+    startStageVehicleAdjust.isPaused = false;
+  }
+
   if (animate && isFlying) {
     try {
       viewer.camera.cancelFlight();
@@ -8657,14 +9031,34 @@ function goToMediumView() {
   try {
     viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY)
   } catch (e) {}
-  
-  viewer.camera.flyTo({
-    destination: Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude, 2000),
-    orientation: { heading: 0, pitch: Cesium.Math.toRadians(-45), roll: 0.0 },
+
+  let lng = point.longitude
+  let lat = point.latitude
+  if (pointId === 'accident_blue') {
+    lng = truckAdjust.lng; lat = truckAdjust.lat;
+  } else if (pointId === 'accident_red') {
+    lng = tankerPointAdjust.lng; lat = tankerPointAdjust.lat;
+  }
+
+  const target = Cesium.Cartesian3.fromDegrees(lng, lat, 0)
+  const pIdx = (props.activePhaseIndex !== undefined && props.activePhaseIndex !== null) ? (props.activePhaseIndex + 1) : 1
+  const scene = pointId === 'accident_red' ? 'tanker' : 'truck'
+  const cfg = (defaultPhaseCameraConfigs[scene] && defaultPhaseCameraConfigs[scene][pIdx]) || { range: 600, pitch: -11, heading: -39 }
+
+  const range = cfg.range
+  const pitch = Cesium.Math.toRadians(cfg.pitch)
+  const finalHeading = Cesium.Math.toRadians(cfg.heading)
+
+  viewer.camera.flyToBoundingSphere(new Cesium.BoundingSphere(target, 0), {
+    offset: new Cesium.HeadingPitchRange(finalHeading, pitch, range),
     duration: 1.5,
     complete: () => {
       isFlying = false
-      applyOrbitView()
+      try {
+        if (viewer && !spinCallback) {
+          viewer.camera.lookAt(target, new Cesium.HeadingPitchRange(finalHeading, pitch, range));
+        }
+      } catch (e) {}
       if (pointId === 'accident_blue') {
         updateTruckSequence(props.activePhaseIndex)
       } else if (pointId === 'accident_red') {

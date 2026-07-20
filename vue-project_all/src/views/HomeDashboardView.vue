@@ -641,8 +641,8 @@ const timelineBottom = ref(18)
 const activeRightTab = ref('sensor')
 
 const accidentPhaseIndices = ref({
-  'rear-end': 0,
-  'leakage': 0
+  'rear-end': -1,
+  'leakage': -1
 })
 
 const currentAccidentId = computed(() => {
@@ -736,7 +736,7 @@ function goTo(item) {
     if (globeRef.value) globeRef.value.resetView()
     currentFocusedPoint.value = ''
     activeServiceId.value = ''
-    accidentPhaseIndices.value = { 'rear-end': 0, 'leakage': 0 }
+    accidentPhaseIndices.value = { 'rear-end': -1, 'leakage': -1 }
   }
   activeMenuKey.value = item.key
   router.push(item.path)
@@ -1024,7 +1024,7 @@ watch(
 /* Left & Right Sidebars Overhaul */
 .left-sidebar,
 .right-sidebar {
-  width: 420px;
+  width: 500px;
   height: calc(100% - 32px);
   background: rgba(10, 19, 35, 0.82);
   backdrop-filter: blur(20px) saturate(140%);
