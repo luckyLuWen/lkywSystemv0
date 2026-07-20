@@ -1915,72 +1915,7 @@
     </div>
 
 
-    <!-- 📋 推演阶段说明悬浮卡片 -->
-    <transition name="phase-card-fade">
-      <div v-if="phaseDescVisible && currentPhaseDesc" class="phase-desc-card"
-        :style="{ left: phaseCardConfig.left + 'px', bottom: phaseCardConfig.bottom + 'px', width: phaseCardConfig.width + 'px', fontSize: phaseCardConfig.fontSize + 'px' }"
-      >
-        <!-- 切换事件场景 Tabs -->
-        <div class="phase-card-scene-tabs">
-          <button 
-            :class="{ active: isTruckScene }" 
-            @click="switchCameraScene('truck')"
-          >
-            🚚 货车追尾
-          </button>
-          <button 
-            :class="{ active: !isTruckScene }" 
-            @click="switchCameraScene('tanker')"
-          >
-            ⛽ 油罐车泄露
-          </button>
-        </div>
 
-        <div class="phase-desc-card-header">
-          <span class="phase-desc-card-icon">{{ isTruckScene ? '🚚' : '⛽' }}</span>
-          <span class="phase-desc-card-step">阶段 {{ String(props.activePhaseIndex + 1).padStart(2, '0') }}</span>
-          <span class="phase-desc-card-label">{{ currentPhaseDesc.shortLabel }}</span>
-          <span class="phase-desc-card-time">{{ currentPhaseDesc.time }}</span>
-          <button class="phase-desc-card-tune-btn" @click.stop="phaseCardConfig.showTweak = !phaseCardConfig.showTweak" title="微调卡片位置">⚙️</button>
-          <button class="phase-desc-card-close" @click="phaseDescVisible = false">✕</button>
-        </div>
-        <div class="phase-desc-card-body" :style="{ fontSize: phaseCardConfig.fontSize + 'px' }">{{ currentPhaseDesc.description }}</div>
-      </div>
-    </transition>
-
-    <!-- 📋 阶段卡片位置大小微调面板 -->
-    <div v-if="phaseCardConfig.showTweak" class="phase-card-tweak-panel">
-      <div class="phase-card-tweak-header">
-        <span>📋 阶段卡片微调</span>
-        <button class="phase-card-tweak-close" @click="phaseCardConfig.showTweak = false">✕</button>
-      </div>
-      <div class="phase-card-tweak-body">
-        <div class="phase-card-tweak-row">
-          <label>左边距离 (px)</label>
-          <input type="range" v-model.number="phaseCardConfig.left" min="0" max="800" step="1" class="pct-slider" />
-          <input type="number" v-model.number="phaseCardConfig.left" min="0" max="800" class="pct-num" />
-        </div>
-        <div class="phase-card-tweak-row">
-          <label>底边距离 (px)</label>
-          <input type="range" v-model.number="phaseCardConfig.bottom" min="0" max="800" step="1" class="pct-slider" />
-          <input type="number" v-model.number="phaseCardConfig.bottom" min="0" max="800" class="pct-num" />
-        </div>
-        <div class="phase-card-tweak-row">
-          <label>卡片宽度 (px)</label>
-          <input type="range" v-model.number="phaseCardConfig.width" min="160" max="600" step="4" class="pct-slider" />
-          <input type="number" v-model.number="phaseCardConfig.width" min="160" max="600" class="pct-num" />
-        </div>
-        <div class="phase-card-tweak-row">
-          <label>正文字号 (px)</label>
-          <input type="range" v-model.number="phaseCardConfig.fontSize" min="9" max="20" step="0.5" class="pct-slider" />
-          <input type="number" v-model.number="phaseCardConfig.fontSize" min="9" max="20" step="0.5" class="pct-num" />
-        </div>
-        <div class="phase-card-tweak-btn-row">
-          <button class="phase-card-tweak-reset" @click="resetPhaseCardConfig">↩ 重置默认</button>
-          <button class="phase-card-tweak-save" @click="savePhaseCardDefaults">📌 设为默认</button>
-        </div>
-      </div>
-    </div>
 
     <!-- 🚨 救援装备出动操控面板 (故事线阶段10专属) -->
     <transition name="rescue-panel-slide">
@@ -2147,65 +2082,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['accident-picked', 'models-ready', 'update:activePhaseIndex'])
-const TRUCK_PHASE_DESC = [
-  { shortLabel: '仿真推演开始', time: '14:00', description: '系统完成初始化，开始对货车追尾事故场景进行数字孪生仿真推演，全域感知网络进入就绪状态。' },
-  { shortLabel: '车辆正常行驶', time: '14:05', description: '事故发生前，两辆货车在高速公路上正常行驶，车载边缘网关实时采集并上传行驶状态数据。' },
-  { shortLabel: '事故发生', time: '14:12', description: '后车未保持安全距离，发生追尾碰撞。传感网络检测到异常冲击振动，自动触发事故告警并上报指挥中心。' },
-  { shortLabel: '次生灾害·烟雾', time: '14:18', description: '碰撞导致货物起火，现场产生大量浓烟。烟雾传感器浓度超过预警阈值，系统自动推送疏散建议。' },
-  { shortLabel: '次生灾害·起火', time: '14:26', description: '发动机舱引燃，车辆开始明显燃烧。温度传感器数据急剧上升，协同响应系统推送消防出警指令。' },
-  { shortLabel: '次生灾害·大火', time: '14:40', description: '火势向周边蔓延，已波及多辆车辆。系统评估扩散模型，向救援指挥中心同步实时火情态势图。' },
-  { shortLabel: '无人装备出动', time: '14:45', description: '无人车与无人机从消防站协同出发。无人车沿蓝线地面路径先行，无人机走到一半时起飞，两者同时抵达救援点。' },
-  { shortLabel: '无人感知部署', time: '14:50', description: '无人装备到达事故现场，按预规划坐标完成传感节点的自动布设，形成现场多维感知覆盖网络。' },
-  { shortLabel: '无人感知执行', time: '14:55', description: '无人机开始绕现场执行低空侦察任务，实时回传高清图像；无人车同步采集地面化学环境数据。' },
-  { shortLabel: '救援装备出动', time: '15:00', description: '指挥中心根据感知数据研判灾情，专业救援队伍携带重型装备出动，进入最终处置阶段。' },
-]
 
-const TANKER_PHASE_DESC = [
-  { shortLabel: '仿真推演开始', time: '15:00', description: '系统完成初始化，开始对油罐车侧翻泄露事故场景进行数字孪生仿真推演，全域感知网络进入就绪状态。' },
-  { shortLabel: '车辆正常行驶', time: '15:05', description: '油罐车在省道上满载运输危化品，车载传感器实时监测罐体压力、温度及行驶姿态，一切正常。' },
-  { shortLabel: '事故发生·侧翻', time: '15:12', description: '车辆在弯道处发生侧翻，冲击传感器触发一级告警，指挥中心立即启动危化品事故应急响应流程。' },
-  { shortLabel: '次生灾害·泄露', time: '15:20', description: '罐体受碰撞损坏，化学品开始向外泄露。TVOC传感器浓度迅速攀升，系统推送危险区域隔离指令。' },
-  { shortLabel: '次生灾害·弥漫', time: '15:35', description: '泄露液体扩散至路面并开始挥发，大面积有毒气体向四周弥漫，系统推送周边1公里疏散建议。' },
-  { shortLabel: '次生灾害·扩散', time: '15:50', description: '挥发气体随风向继续扩散，系统结合实时风速风向数据生成动态扩散预测模型，划定动态禁区。' },
-  { shortLabel: '无人装备出动', time: '15:55', description: '无人车与无人机从黄州区路口镇消防站协同出发。无人车先行，无人机在其走到一半时起飞追赶，同时到达现场。' },
-  { shortLabel: '无人感知部署', time: '16:00', description: '无人装备抵达现场，自动规避高浓度危险区域，在安全边界内完成TVOC、CO等传感节点的精准布设。' },
-  { shortLabel: '无人感知执行', time: '16:05', description: '无人机在安全高度执行现场侦察，实时回传画面；无人车持续采集地面气体数据，辅助研判扩散态势。' },
-  { shortLabel: '救援装备出动', time: '16:10', description: '指挥中心根据感知数据确认现场态势，专业危化品处置队伍携带防护装备出动，进行最终封堵处置。' },
-]
-
-const isTruckScene = computed(() => props.phases?.[0]?.id?.startsWith('t-') ?? true)
-const phaseDescAllData = computed(() => isTruckScene.value ? TRUCK_PHASE_DESC : TANKER_PHASE_DESC)
-
-const phaseCardConfig = reactive({
-  left: 255,
-  bottom: 725,
-  width: 328,
-  fontSize: 20,
-  showTweak: false
-})
-
-const phaseCardDefaults = reactive({ left: 255, bottom: 725, width: 328, fontSize: 20 })
-
-function savePhaseCardDefaults() {
-  phaseCardDefaults.left = phaseCardConfig.left
-  phaseCardDefaults.bottom = phaseCardConfig.bottom
-  phaseCardDefaults.width = phaseCardConfig.width
-  phaseCardDefaults.fontSize = phaseCardConfig.fontSize
-}
-
-function resetPhaseCardConfig() {
-  phaseCardConfig.left = phaseCardDefaults.left
-  phaseCardConfig.bottom = phaseCardDefaults.bottom
-  phaseCardConfig.width = phaseCardDefaults.width
-  phaseCardConfig.fontSize = phaseCardDefaults.fontSize
-}
-
-const phaseDescVisible = ref(false)
-const currentPhaseDesc = computed(() => phaseDescAllData.value[props.activePhaseIndex] || null)
-
-watch(() => props.activePhaseIndex, () => {
-  phaseDescVisible.value = true
-})
 
 const router = useRouter()
 
@@ -3318,6 +3195,7 @@ const tankerModelConfigs = [
 
 // 阶段索引到模型ID的映射
 const phaseToModelMap = {
+  0: 'model_normal',
   1: 'model_normal',
   2: 'model_accident',
   3: 'model_accident',
@@ -3332,6 +3210,7 @@ const phaseToModelMap = {
 
 // 油罐车阶段索引到模型ID的映射
 const tankerPhaseToModelMap = {
+  0: 'tanker_normal',
   1: 'tanker_normal',
   2: 'tanker_accident',
   3: 'tanker_accident',
@@ -6995,12 +6874,18 @@ function addEventEntities() {
           if (config.id === targetModelId) return truckAdjust.scale
           return 0.001
         }, false),
-        minimumPixelSize: 1, // 关键：强制 Cesium 始终渲染该模型，从而触发加载
+        minimumPixelSize: new Cesium.CallbackProperty(() => {
+          const targetModelId = phaseToModelMap[props.activePhaseIndex]
+          return config.id === targetModelId ? 1 : 0
+        }, false), // 关键：仅在激活时强制渲染，未激活时允许消失以避免亮点
         heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, // 使用 Cesium 原生贴地
         // 关闭原生动画循环，交由 updateTruckSequence 和 playEntityAnimation 手动控制只播一次并定格
         runAnimations: false,
         silhouetteColor: Cesium.Color.fromCssColorString('#00f2fe'),
-        silhouetteSize: 2.0
+        silhouetteSize: new Cesium.CallbackProperty(() => {
+          const targetModelId = phaseToModelMap[props.activePhaseIndex]
+          return config.id === targetModelId ? 2.0 : 0.0
+        }, false)
       }
     })
     entity.show = true // 强制开启显示以触发加载
@@ -7025,12 +6910,18 @@ function addEventEntities() {
           if (config.id === targetModelId) return tankerAdjust.scale
           return 0.001
         }, false),
-        minimumPixelSize: 1, // 关键：强制加载
+        minimumPixelSize: new Cesium.CallbackProperty(() => {
+          const targetModelId = tankerPhaseToModelMap[props.activePhaseIndex]
+          return config.id === targetModelId ? 1 : 0
+        }, false), // 关键：强制加载但未激活时不显示亮点
         heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, // 使用 Cesium 原生贴地
         // 关闭原生动画循环，手动控制
         runAnimations: false,
         silhouetteColor: Cesium.Color.fromCssColorString('#ffea00'),
-        silhouetteSize: 2.0
+        silhouetteSize: new Cesium.CallbackProperty(() => {
+          const targetModelId = tankerPhaseToModelMap[props.activePhaseIndex]
+          return config.id === targetModelId ? 2.0 : 0.0
+        }, false)
       }
     })
     entity.show = true
@@ -13009,229 +12900,6 @@ async function triggerRescueMultiAgent() {
   box-shadow: 0 0 15px rgba(0, 229, 255, 0.8);
   transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
   pointer-events: none;
-}
-
-/* ========================================
-   📋 推演阶段说明悬浮卡片
-   ======================================== */
-.phase-desc-card {
-  position: absolute;
-  left: 18px;
-  bottom: 120px;
-  width: 300px;
-  z-index: 600;
-  background: rgba(6, 14, 28, 0.92);
-  backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid rgba(0, 242, 254, 0.3);
-  border-radius: 12px;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 242, 254, 0.1);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Microsoft YaHei', sans-serif;
-  overflow: hidden;
-}
-.phase-desc-card-header {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 10px 12px;
-  background: linear-gradient(135deg, rgba(0, 242, 254, 0.14), rgba(0, 114, 255, 0.08));
-  border-bottom: 1px solid rgba(0, 242, 254, 0.18);
-  flex-wrap: nowrap;
-}
-.phase-desc-card-icon { font-size: 15px; flex-shrink: 0; }
-.phase-desc-card-step {
-  font-size: 10px;
-  font-family: monospace;
-  color: rgba(0, 242, 254, 0.6);
-  flex-shrink: 0;
-  background: rgba(0, 242, 254, 0.1);
-  padding: 1px 5px;
-  border-radius: 4px;
-}
-.phase-desc-card-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: #ffffff;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.phase-desc-card-time {
-  font-size: 10px;
-  font-family: monospace;
-  color: rgba(0, 242, 254, 0.55);
-  flex-shrink: 0;
-}
-.phase-desc-card-close {
-  background: none;
-  border: none;
-  color: rgba(148, 163, 184, 0.6);
-  font-size: 12px;
-  cursor: pointer;
-  padding: 0 2px;
-  flex-shrink: 0;
-  line-height: 1;
-  transition: color 0.2s;
-}
-.phase-desc-card-close:hover { color: #ffffff; }
-.phase-desc-card-body {
-  padding: 12px 14px;
-  font-size: 12px;
-  line-height: 1.7;
-  color: rgba(186, 230, 253, 0.88);
-  word-break: break-all;
-}
-
-/* 过渡动画 */
-.phase-card-fade-enter-active { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.phase-card-fade-leave-active { transition: all 0.25s ease-in; }
-.phase-card-fade-enter-from { opacity: 0; transform: translateX(-16px); }
-.phase-card-fade-leave-to  { opacity: 0; transform: translateX(-8px); }
-
-.phase-desc-card-tune-btn {
-  background: none;
-  border: none;
-  font-size: 13px;
-  cursor: pointer;
-  padding: 0 2px;
-  flex-shrink: 0;
-  line-height: 1;
-  opacity: 0.6;
-  transition: opacity 0.2s;
-}
-.phase-desc-card-tune-btn:hover { opacity: 1; }
-
-/* 微调面板 */
-.phase-card-tweak-panel {
-  position: absolute;
-  left: 18px;
-  bottom: 280px;
-  width: 280px;
-  z-index: 700;
-  background: rgba(6, 14, 28, 0.95);
-  backdrop-filter: blur(18px);
-  border: 1px solid rgba(0, 242, 254, 0.3);
-  border-radius: 10px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 16px rgba(0,242,254,0.08);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Microsoft YaHei', sans-serif;
-  overflow: hidden;
-}
-.phase-card-tweak-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 9px 12px;
-  background: linear-gradient(135deg, rgba(0,242,254,0.12), rgba(0,114,255,0.07));
-  border-bottom: 1px solid rgba(0,242,254,0.18);
-  font-size: 12px;
-  font-weight: 700;
-  color: #00f2fe;
-}
-.phase-card-tweak-close {
-  background: none;
-  border: none;
-  color: rgba(148,163,184,0.7);
-  font-size: 13px;
-  cursor: pointer;
-  padding: 0;
-  transition: color 0.2s;
-}
-.phase-card-tweak-close:hover { color: #fff; }
-.phase-card-tweak-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
-.phase-card-tweak-row { display: flex; align-items: center; gap: 6px; }
-.phase-card-tweak-row label {
-  font-size: 10.5px;
-  color: rgba(148,163,184,0.9);
-  width: 88px;
-  flex-shrink: 0;
-}
-.pct-slider {
-  flex: 1;
-  height: 3px;
-  accent-color: #00f2fe;
-  cursor: pointer;
-}
-.pct-num {
-  width: 48px;
-  background: rgba(0,242,254,0.08);
-  border: 1px solid rgba(0,242,254,0.25);
-  border-radius: 4px;
-  color: #e2e8f0;
-  font-size: 11px;
-  padding: 2px 4px;
-  text-align: center;
-  flex-shrink: 0;
-}
-.pct-num:focus { outline: none; border-color: #00f2fe; }
-.phase-card-tweak-reset {
-  width: 100%;
-  margin-top: 4px;
-  padding: 6px 0;
-  background: rgba(0,242,254,0.08);
-  border: 1px solid rgba(0,242,254,0.25);
-  border-radius: 6px;
-  color: #00f2fe;
-  font-size: 11px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.phase-card-tweak-reset:hover {
-  background: rgba(0,242,254,0.18);
-  border-color: #00f2fe;
-}
-.phase-card-tweak-btn-row {
-  display: flex;
-  gap: 6px;
-  margin-top: 4px;
-}
-.phase-card-tweak-btn-row .phase-card-tweak-reset {
-  flex: 1;
-  margin-top: 0;
-}
-.phase-card-tweak-save {
-  flex: 1;
-  padding: 6px 0;
-  background: rgba(16,185,129,0.1);
-  border: 1px solid rgba(16,185,129,0.4);
-  border-radius: 6px;
-  color: #10b981;
-  font-size: 11px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.phase-card-tweak-save:hover {
-  background: rgba(16,185,129,0.22);
-  border-color: #10b981;
-}
-
-/* 场景切换标签样式 */
-.phase-card-scene-tabs {
-  display: flex;
-  background: rgba(0, 0, 0, 0.4);
-  border-bottom: 1px solid rgba(0, 242, 254, 0.15);
-}
-.phase-card-scene-tabs button {
-  flex: 1;
-  padding: 8px 12px;
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 11px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-align: center;
-  border-bottom: 2px solid transparent;
-}
-.phase-card-scene-tabs button:hover {
-  color: rgba(0, 242, 254, 0.9);
-  background: rgba(0, 242, 254, 0.05);
-}
-.phase-card-scene-tabs button.active {
-  color: #00f2fe;
-  background: rgba(0, 242, 254, 0.1);
-  border-bottom-color: #00f2fe;
-  text-shadow: 0 0 8px rgba(0, 242, 254, 0.5);
 }
 
 /* ================================================================
