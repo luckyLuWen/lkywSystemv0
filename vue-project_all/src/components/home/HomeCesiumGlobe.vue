@@ -8010,17 +8010,6 @@ if (props.activePhaseIndex === 7) {
     tankerRescueCarEntities.push(entity);
   });
 // =========================================================
-  // 🛰️ 新增：绑定真实数据的 无人机 & 2辆无人车 动态回传链路
-  // =========================================================
-  // 1. 货车追尾现场 - 编队无人车链路 (连向 5G 基站)
-  // =========================================================
-  // 🛰️ 终极对准版：加大 X 轴偏移量，精准对齐双车车顶
-  // =========================================================
-
-  // 1. 货车追尾现场 - 编队无人车链路 (连向 5G 基站)
-  // =========================================================
-// 🛰️ 精准定位版：关闭 X 轴(前后)，使用 Y 轴(左右)精准对齐双车
-// =========================================================
 
 // 1. 货车追尾现场 - 编队无人车链路 (连向 5G 基站)
 // 🚨 设定移动参数（可根据现场视觉效果微调）
@@ -8028,161 +8017,241 @@ const roadAngleDeg = 45; // 道路走向角度，0为东西，90为南北（控�
 const roadAngleRad = Cesium.Math.toRadians(roadAngleDeg);
 const patrolDistance = 0.00005; // 往复移动范围，大概 5 米
 const patrolSpeed = 0.5; // 移动速度
+// 🚨 全局时间轴锚点，控制组网生命周期
+// ==========================================
+// 还原版：无人车端（阶段 8 开始游走 + 绿色连线）
+// ==========================================
+// ==========================================
+// 还原版：无人车端（阶段 8 开始游走 + 绿色连线）
+// ==========================================
+// ==========================================
+// 1. 基站端：新增组网雷达波与调度面板 (严格锁定阶段 8)
+// ==========================================
+// (1) 基站向外发送的 5G 探测波纹
+// ==========================================
+// 🚨 终极核武器：全局强制校验器
+// 彻底屏蔽 NaN、undefined 导致的幽灵渲染
+// ==========================================
+// 🚨 终极核武器：全局强制校验器
+// 彻底屏蔽 NaN、undefined 导致的幽灵渲染
+const isPhase8Ready = () => {
+  const phase = Number(props.activePhaseIndex);
+  return !isNaN(phase) && phase >= 8 && currentScene.value === 'truck';
+};
+
+// ==========================================
+// 1. 基站端：组网雷达波与调度面板
+// ==========================================
+// 🧹 清理历史残留 (防止 Vite 热更新产生幽灵)
+['jizhan-broadcast-wave-truck', 'jizhan-network-panel-truck', 'jizhan-broadcast-wave-truck-safe', 'jizhan-network-panel-truck-safe'].forEach(id => viewer.entities.removeById(id));
+
+// (1) 基站向外发送的 5G 探测波纹
+viewer.entities.add({
+  id: 'jizhan-broadcast-wave-truck',
+  name: '基站广播信号',
+  position: Cesium.Cartesian3.fromDegrees(jizhanAdjust.lng, jizhanAdjust.lat, jizhanAdjust.height),
+  show: new Cesium.CallbackProperty(() => {
+    if (!isPhase8Ready()) {
+      jizhanAdjust._netTime = null; // 不达标，立刻清空计时器并隐藏
+      return false;
+    }
+    return true;
+  }, false),
+  ellipse: {
+    semiMinorAxis: new Cesium.CallbackProperty(() => {
+      if (Number(props.activePhaseIndex) < 8) return 0.1;
+      if (!jizhanAdjust._netTime) jizhanAdjust._netTime = Date.now();
+      return Math.max(0.1, (((Date.now() - jizhanAdjust._netTime) / 1000.0) % 2.0) * 40.0);
+    }, false),
+    semiMajorAxis: new Cesium.CallbackProperty(() => {
+      if (Number(props.activePhaseIndex) < 8) return 0.1;
+      if (!jizhanAdjust._netTime) jizhanAdjust._netTime = Date.now();
+      return Math.max(0.1, (((Date.now() - jizhanAdjust._netTime) / 1000.0) % 2.0) * 40.0);
+    }, false),
+    material: new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty(() => {
+      if (Number(props.activePhaseIndex) < 8 || !jizhanAdjust._netTime) return Cesium.Color.TRANSPARENT;
+      const alpha = Math.max(0, 1.0 - ((((Date.now() - jizhanAdjust._netTime) / 1000.0) % 2.0) / 2.0));
+      return Cesium.Color.CYAN.withAlpha(alpha * 0.6);
+    }, false)),
+    height: jizhanAdjust.height + 0.1,
+  }
+});
+
+// (2) 基站头顶的主控面板
+viewer.entities.add({
+  id: 'jizhan-network-panel-truck',
+  position: Cesium.Cartesian3.fromDegrees(jizhanAdjust.lng, jizhanAdjust.lat, jizhanAdjust.height + 6.5),
+  show: new Cesium.CallbackProperty(() => {
+    if (!isPhase8Ready() || !jizhanAdjust.show) {
+       jizhanAdjust._netTime = null; 
+       return false;
+    }
+    return true;
+  }, false),
+  label: {
+    text: new Cesium.CallbackProperty(() => {
+      if (Number(props.activePhaseIndex) < 8 || !jizhanAdjust._netTime) return '';
+      const elapsed = (Date.now() - jizhanAdjust._netTime) / 1000.0;
+      if (elapsed < 1.5) return `[CORE] 5G 核心网激活\n广播探测波纹...`;
+      if (elapsed < 3.5) return `[CORE] 捕获设备握手请求\n分配密钥并开通专线...`;
+      return `[CORE] 星型网络组网完毕\n▶ 主控链路: 稳定\n▶ 上行吞吐: 1.2 Gbps`;
+    }, false),
+    font: '14px monospace',
+    style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+    fillColor: Cesium.Color.CYAN,
+    outlineColor: Cesium.Color.BLACK,
+    outlineWidth: 2,
+    showBackground: true,
+    backgroundColor: new Cesium.Color(0.05, 0.1, 0.2, 0.8),
+    backgroundPadding: new Cesium.Cartesian2(12, 12),
+    pixelOffset: new Cesium.Cartesian2(0, -30),
+    horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+    disableDepthTestDistance: Number.POSITIVE_INFINITY
+  }
+});
+
+// ==========================================
+// 2. 无人车端：游走 + 终端面板 + 链路
+// ==========================================
+const truckRoadAngleRad = Cesium.Math.toRadians(45); 
+const truckPatrolDistance = 0.00005;
+const truckPatrolSpeed = 0.5;
 
 rescueCarEntities.forEach((carEntity, modelIndex) => {
   
-  // 1. 备份原本的位置属性，确保阶段 8 之前的进场动画不被破坏
+  // 🧹 每次热更新时，先铲除这台车之前绑定的旧实体，彻底消灭幽灵！
+  [
+    `network-label-car${modelIndex + 1}`, `network-label-car-safe${modelIndex + 1}`,
+    `line-handshake-car${modelIndex + 1}-1`, `line-handshake-car-safe${modelIndex + 1}-1`,
+    `line-handshake-car${modelIndex + 1}-2`, `line-handshake-car-safe${modelIndex + 1}-2`,
+    `line-link-car${modelIndex + 1}-1-to-jizhan-real`, `line-link-car${modelIndex + 1}-2-to-jizhan-real`
+  ].forEach(id => viewer.entities.removeById(id));
+
   const originalPosition = carEntity.position;
+  let lastValidPos = undefined;
 
-  // 2. 注入动态移动逻辑
+  // (1) 车辆游走
   carEntity.position = new Cesium.CallbackProperty((time) => {
-    // 如果已经到达事故现场展开救援（阶段 >= 8）
-    if (Number(props.activePhaseIndex) >= 8) {
-      // 获取车辆当前（即停车时）的基准原点
+    if (isPhase8Ready()) {
       const basePos = originalPosition ? originalPosition.getValue(time) : undefined;
-      if (!basePos) return undefined;
+      if (basePos) lastValidPos = basePos;
+      const targetPos = basePos || lastValidPos;
+      if (!targetPos) return undefined;
 
-      const carto = Cesium.Cartographic.fromCartesian(basePos);
-      const baseLng = Cesium.Math.toDegrees(carto.longitude);
-      const baseLat = Cesium.Math.toDegrees(carto.latitude);
-      const baseHeight = carto.height;
+      const carto = Cesium.Cartographic.fromCartesian(targetPos);
+      const wave = Math.sin((Date.now() / 1000.0) * truckPatrolSpeed + (modelIndex * Math.PI));
+      const curLng = Cesium.Math.toDegrees(carto.longitude) + wave * truckPatrolDistance * Math.cos(truckRoadAngleRad);
+      const curLat = Cesium.Math.toDegrees(carto.latitude) + wave * truckPatrolDistance * Math.sin(truckRoadAngleRad);
 
-      // 使用真实时间戳生成平滑的正弦波 (-1 到 1)
-      const now = Date.now() / 1000.0;
-      // modelIndex * Math.PI 让两台车的移动节奏错开，显得更真实
-      const wave = Math.sin(now * patrolSpeed + (modelIndex * Math.PI));
-      
-      // 顺着设定的道路角度，在基准点前后搓动
-      const currentLng = baseLng + wave * patrolDistance * Math.cos(roadAngleRad);
-      const currentLat = baseLat + wave * patrolDistance * Math.sin(roadAngleRad);
-
-      return Cesium.Cartesian3.fromDegrees(currentLng, currentLat, baseHeight);
-    } 
-    // 如果阶段还没到 8，继续使用系统原生的进场动画坐标
-    else {
-      return originalPosition ? originalPosition.getValue(time) : undefined;
+      return Cesium.Cartesian3.fromDegrees(curLng, curLat, carto.height);
     }
+    return originalPosition ? originalPosition.getValue(time) : undefined;
   }, false);
 
-  // 3. 以下完全是你原版的数据链路代码，一字未改！
+  // 辅助函数：解析实体自身显隐状态
+  const isCarVisible = (time) => {
+    let visible = carEntity.show;
+    if (visible && typeof visible.getValue === 'function') visible = visible.getValue(time);
+    return !!visible;
+  };
+
+  // (2) 车辆终端状态面板
+  viewer.entities.add({
+    id: `network-label-car${modelIndex + 1}`,
+    position: new Cesium.CallbackProperty((time) => {
+      const carPos = carEntity.position.getValue(time);
+      if (!carPos) return undefined;
+      const carto = Cesium.Cartographic.fromCartesian(carPos);
+      return Cesium.Cartesian3.fromDegrees(Cesium.Math.toDegrees(carto.longitude), Cesium.Math.toDegrees(carto.latitude), carto.height + 3.5);
+    }, false),
+    show: new Cesium.CallbackProperty((time) => {
+      if (isPhase8Ready() && isCarVisible(time)) {
+        return true;
+      }
+      carEntity._netTime = null; 
+      return false;
+    }, false),
+    label: {
+      text: new Cesium.CallbackProperty(() => {
+        if (Number(props.activePhaseIndex) < 8) return '';
+        if (!carEntity._netTime) carEntity._netTime = Date.now();
+        const elapsed = (Date.now() - carEntity._netTime) / 1000.0;
+        if (elapsed < 1.5) return `[SYS] 扫描 5G 信号...`;
+        if (elapsed < 3.5) return `[NET] 建立 WebSocket 专线...`;
+        return `▶ 环境数据流: ACTIVE\n▶ 延迟: 12ms`;
+      }, false),
+      font: '14px monospace',
+      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      fillColor: Cesium.Color.LIME,
+      outlineColor: Cesium.Color.BLACK,
+      outlineWidth: 2,
+      showBackground: true,
+      backgroundColor: new Cesium.Color(0.1, 0.1, 0.1, 0.8),
+      backgroundPadding: new Cesium.Cartesian2(10, 10),
+      pixelOffset: new Cesium.Cartesian2(0, -30),
+      horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY
+    }
+  });
+
+  // (3) 链路绘制
   [0, 1].forEach((innerCarIndex) => {
+    const getLinePositions = (time) => {
+      if (!isPhase8Ready()) return [];
+      const carCartesian = carEntity.position.getValue(time);
+      const carOrientation = carEntity.orientation.getValue(time);
+      if (!carCartesian || !carOrientation) return [];
+
+      const jizhanTop = getModelTopPosition(
+        jizhanAdjust.lng, jizhanAdjust.lat, jizhanAdjust.height,
+        jizhanAdjust.heading, jizhanAdjust.pitch, jizhanAdjust.roll, JIZHAN_TOP_OFFSET
+      );
+
+      const localOffset = new Cesium.Cartesian3(0.0, (innerCarIndex === 0) ? 1.5 : -1.5, 1.6);
+      const rotationMatrix = Cesium.Matrix3.fromQuaternion(carOrientation);
+      const worldOffset = Cesium.Matrix3.multiplyByVector(rotationMatrix, localOffset, new Cesium.Cartesian3());
+      return [ Cesium.Cartesian3.add(carCartesian, worldOffset, new Cesium.Cartesian3()), jizhanTop ];
+    };
+
+    // (新增) 握手阶段的橙色虚线
+    viewer.entities.add({
+      id: `line-handshake-car${modelIndex + 1}-${innerCarIndex + 1}`,
+      name: `握手链路`,
+      show: new Cesium.CallbackProperty((time) => {
+        if (isPhase8Ready() && isCarVisible(time) && carEntity._netTime) {
+           return ((Date.now() - carEntity._netTime) / 1000.0) < 3.5; 
+        }
+        return false; 
+      }, false),
+      polyline: {
+        positions: new Cesium.CallbackProperty((time) => getLinePositions(time), false),
+        width: 3.0,
+        material: new Cesium.PolylineDashMaterialProperty({ color: Cesium.Color.ORANGE, dashLength: 20.0 })
+      }
+    });
+
+    // (原版) 稳定阶段的绿色实线
     viewer.entities.add({
       id: `line-link-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-real`,
-      name: `链路`,
-      show: new Cesium.CallbackProperty(() => {
-        return Number(props.activePhaseIndex) >= 8 && carEntity.show && currentScene.value === 'truck';
+      name: `稳定链路`,
+      show: new Cesium.CallbackProperty((time) => {
+        if (isPhase8Ready() && isCarVisible(time) && carEntity._netTime) {
+           return ((Date.now() - carEntity._netTime) / 1000.0) >= 3.5; 
+        }
+        return false; 
       }, false),
       polyline: {
-        positions: new Cesium.CallbackProperty((time) => {
-          if (Number(props.activePhaseIndex) < 8 || currentScene.value !== 'truck') return [];
-          
-          // 💡 这里 getValue 拿到的就是上方刚注入的、正在平滑移动的坐标
-          const carCartesian = carEntity.position.getValue(time);
-          const carOrientation = carEntity.orientation.getValue(time);
-          if (!carCartesian || !carOrientation) return [];
-
-          const jizhanTop = getModelTopPosition(
-            jizhanAdjust.lng, jizhanAdjust.lat, jizhanAdjust.height,
-            jizhanAdjust.heading, jizhanAdjust.pitch, jizhanAdjust.roll, JIZHAN_TOP_OFFSET
-          );
-
-          // 🚨 空间几何重新校准：
-          const offsetX = 0.0; 
-          const offsetY = (innerCarIndex === 0) ? 1.5 : -1.5; 
-          const offsetZ = 1.6;
-
-          const localOffset = new Cesium.Cartesian3(offsetX, offsetY, offsetZ);
-          const rotationMatrix = Cesium.Matrix3.fromQuaternion(carOrientation);
-          const worldOffset = Cesium.Matrix3.multiplyByVector(rotationMatrix, localOffset, new Cesium.Cartesian3());
-          return [ Cesium.Cartesian3.add(carCartesian, worldOffset, new Cesium.Cartesian3()), jizhanTop ];
-        }, false),
+        positions: new Cesium.CallbackProperty((time) => getLinePositions(time), false),
         width: 3.5,
         material: new DynamicFlowMaterialProperty({ color: Cesium.Color.CHARTREUSE, speed: 4.5, repeat: 6.0 })
       }
     });
   });
 });
-// 2. 油罐车泄露现场 - 编队无人车链路
-// 2. 油罐车泄露现场 - 编队无人车链路 (连向 油罐车专属5G基站)
-// 🚨 针对油罐车场景的专属移动参数（加了 tanker 前缀防冲突）
-const tankerRoadAngleDeg = 90; // 油罐车路段的走向角度（需要根据实景公路走向微调，0为东西，90为南北）
-const tankerRoadAngleRad = Cesium.Math.toRadians(tankerRoadAngleDeg);
-const tankerPatrolDistance = 0.00005; // 移动范围，大概 5 米
-const tankerPatrolSpeed = 0.5; // 移动速度
+// ==========================================
 
-tankerRescueCarEntities.forEach((carEntity, modelIndex) => {
-  
-  // 1. 备份原本的位置属性，确保阶段 8 之前的进场动画不被破坏
-  const originalPosition = carEntity.position;
-
-  // 2. 注入动态移动逻辑
-  carEntity.position = new Cesium.CallbackProperty((time) => {
-    // 如果已经到达事故现场展开救援（阶段 >= 8）
-    if (Number(props.activePhaseIndex) >= 8) {
-      // 获取车辆当前（即停车时）的基准原点
-      const basePos = originalPosition ? originalPosition.getValue(time) : undefined;
-      if (!basePos) return undefined;
-
-      const carto = Cesium.Cartographic.fromCartesian(basePos);
-      const baseLng = Cesium.Math.toDegrees(carto.longitude);
-      const baseLat = Cesium.Math.toDegrees(carto.latitude);
-      const baseHeight = carto.height;
-
-      // 使用真实时间戳生成平滑的正弦波 (-1 到 1)
-      const now = Date.now() / 1000.0;
-      // modelIndex * Math.PI 让两台车的移动节奏错开
-      const wave = Math.sin(now * tankerPatrolSpeed + (modelIndex * Math.PI));
-      
-      // 顺着设定的道路角度，在基准点前后搓动
-      const currentLng = baseLng + wave * tankerPatrolDistance * Math.cos(tankerRoadAngleRad);
-      const currentLat = baseLat + wave * tankerPatrolDistance * Math.sin(tankerRoadAngleRad);
-
-      return Cesium.Cartesian3.fromDegrees(currentLng, currentLat, baseHeight);
-    } 
-    // 如果阶段还没到 8，继续使用系统原生的进场动画坐标
-    else {
-      return originalPosition ? originalPosition.getValue(time) : undefined;
-    }
-  }, false);
-
-  // 3. 以下完全是你原版的数据链路代码，一字未改！
-  [0, 1].forEach((innerCarIndex) => {
-    viewer.entities.add({
-      id: `line-link-tanker-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-real`,
-      name: `油罐现场链路`,
-      show: new Cesium.CallbackProperty(() => {
-        return Number(props.activePhaseIndex) >= 8 && carEntity.show && currentScene.value === 'tanker';
-      }, false),
-      polyline: {
-        positions: new Cesium.CallbackProperty((time) => {
-          if (Number(props.activePhaseIndex) < 8 || currentScene.value !== 'tanker') return [];
-          
-          // 💡 这里 getValue 拿到的就是上方刚注入的、正在平滑移动的坐标
-          const carCartesian = carEntity.position.getValue(time);
-          const carOrientation = carEntity.orientation.getValue(time);
-          if (!carCartesian || !carOrientation) return [];
-
-          // 🚨 连向油罐车现场的新 5G 基站
-          const jizhanTop = getModelTopPosition(
-            tankerJizhanAdjust.lng, tankerJizhanAdjust.lat, tankerJizhanAdjust.height,
-            tankerJizhanAdjust.heading, tankerJizhanAdjust.pitch, tankerJizhanAdjust.roll, JIZHAN_TOP_OFFSET
-          );
-
-          const offsetX = 0.0;
-          const offsetY = (innerCarIndex === 0) ? 1.5 : -1.5;
-          const offsetZ = 1.6;
-
-          const localOffset = new Cesium.Cartesian3(offsetX, offsetY, offsetZ);
-          const rotationMatrix = Cesium.Matrix3.fromQuaternion(carOrientation);
-          const worldOffset = Cesium.Matrix3.multiplyByVector(rotationMatrix, localOffset, new Cesium.Cartesian3());
-          return [ Cesium.Cartesian3.add(carCartesian, worldOffset, new Cesium.Cartesian3()), jizhanTop ];
-        }, false),
-        width: 3.5,
-        material: new DynamicFlowMaterialProperty({ color: Cesium.Color.CHARTREUSE, speed: 4.5, repeat: 6.0 })
-      }
-    });
-  });
-});
   viewer.screenSpaceEventHandler.setInputAction((movement) => {
     const pickedObject = viewer.scene.pick(movement.position);
     if (Cesium.defined(pickedObject)) {
