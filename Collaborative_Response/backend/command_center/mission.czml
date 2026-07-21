@@ -14,12 +14,17 @@
     "position": {
       "cartographicDegrees": [
 <<<<<<< HEAD
+<<<<<<< HEAD
         113.202,
         30.3268,
 =======
         113.0425,
         30.3752,
 >>>>>>> origin/develop
+=======
+        113.202,
+        30.3268,
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
         0
       ]
     },
@@ -36,10 +41,14 @@
     },
     "label": {
 <<<<<<< HEAD
+<<<<<<< HEAD
       "text": "仙桃市三伏潭镇专职消防队",
 =======
       "text": "仙桃市剅河镇专职消防队",
 >>>>>>> origin/develop
+=======
+      "text": "仙桃市三伏潭镇专职消防队",
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
       "font": "16px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
@@ -94,6 +103,9 @@
   },
   {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
     "id": "UAV_Path",
     "polyline": {
       "positions": {
@@ -3716,6 +3728,7 @@
       "cartographicDegrees": [
         113.1118,
         30.3826,
+<<<<<<< HEAD
 =======
     "id": "AgentPOI_medical_剅河镇卫生院",
     "position": {
@@ -3723,10 +3736,13 @@
         113.041,
         30.3745,
 >>>>>>> origin/develop
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
         0
       ]
     },
     "point": {
+<<<<<<< HEAD
 <<<<<<< HEAD
       "pixelSize": 10,
 =======
@@ -3893,53 +3909,15 @@
           249,
           115,
           22,
-          220
-        ]
-      },
-      "outlineColor": {
-        "rgba": [
-          255,
-          255,
-          255,
-          200
-        ]
-      },
-      "outlineWidth": 2
-    },
-    "label": {
-      "text": "★ 消防灭火: 剅河镇应急消防救援站",
-      "font": "11px Microsoft YaHei",
-      "pixelOffset": {
-        "cartesian2": [
-          0,
-          -14
-        ]
-      },
-      "distanceDisplayCondition": {
-        "distanceDisplayCondition": [
-          0.0,
-          8000.0
-        ]
-      }
-    }
-  },
-  {
-    "id": "AgentPOI_fire_三伏潭镇专职",
-    "position": {
-      "cartographicDegrees": [
-        113.203,
-        30.3265,
-        0
-      ]
-    },
-    "point": {
-      "pixelSize": 8,
+=======
+      "pixelSize": 10,
       "color": {
         "rgba": [
-          120,
-          120,
-          120,
-          160
+          34,
+          197,
+          94,
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
+          220
         ]
       },
       "outlineColor": {
@@ -3953,7 +3931,7 @@
       "outlineWidth": 0
     },
     "label": {
-      "text": "消防灭火: 三伏潭镇专职消防队",
+      "text": "医疗急救: 仙桃西高速急救站",
       "font": "11px Microsoft YaHei",
       "pixelOffset": {
         "cartesian2": [
@@ -3970,15 +3948,16 @@
     }
   },
   {
-    "id": "AgentPOI_fire_胡场镇消防支",
+    "id": "AgentPOI_medical_三伏潭镇卫生",
     "position": {
       "cartographicDegrees": [
-        113.2135,
-        30.3496,
+        113.2018,
+        30.3272,
         0
       ]
     },
     "point": {
+<<<<<<< HEAD
       "pixelSize": 8,
       "color": {
         "rgba": [
@@ -5306,6 +5285,9 @@
     "point": {
       "pixelSize": 12,
 >>>>>>> origin/develop
+=======
+      "pixelSize": 10,
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
       "color": {
         "rgba": [
           34,
@@ -5343,12 +5325,16 @@
   },
   {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
     "id": "AgentPOI_medical_胡场镇卫生院",
     "position": {
       "cartographicDegrees": [
         113.2103,
         30.3581,
         0
+<<<<<<< HEAD
 =======
     "id": "AgentCP_medical_0.25",
     "availability": "2025-01-01T09:00:00.000Z/2025-01-01T09:24:11.033Z",
@@ -5358,6 +5344,8 @@
         30.3857113,
         12
 >>>>>>> origin/develop
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
       ]
     },
     "point": {
@@ -5372,10 +5360,10 @@
       },
       "outlineColor": {
         "rgba": [
-          255,
-          255,
-          255,
-          200
+          0,
+          0,
+          0,
+          0
         ]
       },
       "outlineWidth": 0
@@ -5399,6 +5387,9 @@
   },
   {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
     "id": "AgentPOI_fire_仙桃西高速消",
     "position": {
       "cartographicDegrees": [
@@ -5409,6 +5400,7 @@
     },
     "point": {
       "pixelSize": 10,
+<<<<<<< HEAD
 =======
     "id": "AgentCP_medical_0.5",
     "availability": "2025-01-01T09:00:00.000Z/2025-01-01T09:24:11.033Z",
@@ -6333,6 +6325,8 @@
     "point": {
       "pixelSize": 12,
 >>>>>>> origin/develop
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
       "color": {
         "rgba": [
           249,
@@ -6370,12 +6364,16 @@
   },
   {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
     "id": "AgentPOI_fire_胡场镇消防执",
     "position": {
       "cartographicDegrees": [
         113.212,
         30.3558,
         0
+<<<<<<< HEAD
 =======
     "id": "AgentCP_fire_0.25",
     "availability": "2025-01-01T09:00:00.000Z/2025-01-01T09:24:11.033Z",
@@ -6385,6 +6383,8 @@
         30.3719403,
         12
 >>>>>>> origin/develop
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
       ]
     },
     "point": {
@@ -6402,6 +6402,7 @@
           255,
           255,
           255,
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
           230
@@ -6433,10 +6434,12 @@
           23,
           42,
 >>>>>>> origin/develop
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
           200
         ]
       },
-      "outlineWidth": 0
+      "outlineWidth": 2
     },
     "label": {
       "text": "消防灭火: 胡场镇消防执勤点",
@@ -6457,12 +6460,16 @@
   },
   {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
     "id": "AgentPOI_fire_三伏潭镇专职",
     "position": {
       "cartographicDegrees": [
         113.2041,
         30.3263,
         0
+<<<<<<< HEAD
 =======
     "id": "AgentCP_fire_0.5",
     "availability": "2025-01-01T09:00:00.000Z/2025-01-01T09:24:11.033Z",
@@ -6472,6 +6479,8 @@
         30.4021243,
         12
 >>>>>>> origin/develop
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
       ]
     },
     "point": {
@@ -6513,6 +6522,9 @@
   },
   {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
     "id": "AgentPOI_police_仙桃高速交警",
     "position": {
       "cartographicDegrees": [
@@ -6523,6 +6535,7 @@
     },
     "point": {
       "pixelSize": 10,
+<<<<<<< HEAD
 =======
     "id": "AgentCP_fire_0.75",
     "availability": "2025-01-01T09:00:00.000Z/2025-01-01T09:24:11.033Z",
@@ -7476,6 +7489,8 @@
     "point": {
       "pixelSize": 12,
 >>>>>>> origin/develop
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
       "color": {
         "rgba": [
           59,
@@ -7513,12 +7528,16 @@
   },
   {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
     "id": "AgentPOI_police_仙桃市交警高",
     "position": {
       "cartographicDegrees": [
         113.1984,
         30.3582,
         0
+<<<<<<< HEAD
 =======
     "id": "AgentCP_police_0.25",
     "availability": "2025-01-01T09:00:00.000Z/2025-01-01T09:24:11.033Z",
@@ -7528,6 +7547,8 @@
         30.3857113,
         12
 >>>>>>> origin/develop
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
       ]
     },
     "point": {
@@ -7569,12 +7590,16 @@
   },
   {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
     "id": "AgentPOI_police_仙桃市胡场派",
     "position": {
       "cartographicDegrees": [
         113.2082,
         30.3556,
         0
+<<<<<<< HEAD
 =======
     "id": "AgentCP_police_0.5",
     "availability": "2025-01-01T09:00:00.000Z/2025-01-01T09:24:11.033Z",
@@ -7584,6 +7609,8 @@
         30.4113158,
         12
 >>>>>>> origin/develop
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
       ]
     },
     "point": {
@@ -7625,6 +7652,9 @@
   },
   {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
     "id": "AgentPOI_hazmat_仙桃西应急物",
     "position": {
       "cartographicDegrees": [
@@ -7635,6 +7665,7 @@
     },
     "point": {
       "pixelSize": 10,
+<<<<<<< HEAD
 =======
     "id": "AgentCP_police_0.75",
     "availability": "2025-01-01T09:00:00.000Z/2025-01-01T09:24:11.033Z",
@@ -7909,6 +7940,8 @@
     "point": {
       "pixelSize": 12,
 >>>>>>> origin/develop
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
       "color": {
         "rgba": [
           168,
@@ -7946,12 +7979,16 @@
   },
   {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
     "id": "AgentPOI_hazmat_胡场镇安全生",
     "position": {
       "cartographicDegrees": [
         113.2091,
         30.3568,
         0
+<<<<<<< HEAD
 =======
     "id": "AgentCP_hazmat_0.25",
     "availability": "2025-01-01T09:00:00.000Z/2025-01-01T09:24:11.033Z",
@@ -7961,6 +7998,8 @@
         30.39304,
         12
 >>>>>>> origin/develop
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
       ]
     },
     "point": {
@@ -7995,19 +8034,23 @@
       "distanceDisplayCondition": {
         "distanceDisplayCondition": [
           0.0,
-          4500.0
+          8000.0
         ]
       }
     }
   },
   {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
     "id": "AgentPOI_hazmat_三伏潭镇应急",
     "position": {
       "cartographicDegrees": [
         113.2012,
         30.3281,
         0
+<<<<<<< HEAD
 =======
     "id": "AgentCP_hazmat_0.5",
     "availability": "2025-01-01T09:00:00.000Z/2025-01-01T09:24:11.033Z",
@@ -8017,6 +8060,8 @@
         30.3957918,
         12
 >>>>>>> origin/develop
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
       ]
     },
     "point": {
@@ -8058,6 +8103,9 @@
   },
   {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
     "id": "AgentPOI_road_沪渝高速仙桃",
     "position": {
       "cartographicDegrees": [
@@ -8068,6 +8116,7 @@
     },
     "point": {
       "pixelSize": 10,
+<<<<<<< HEAD
 =======
     "id": "AgentCP_hazmat_0.75",
     "availability": "2025-01-01T09:00:00.000Z/2025-01-01T09:24:11.033Z",
@@ -9014,6 +9063,8 @@
     "point": {
       "pixelSize": 12,
 >>>>>>> origin/develop
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
       "color": {
         "rgba": [
           148,
@@ -9051,12 +9102,16 @@
   },
   {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
     "id": "AgentPOI_road_湖北高速路政",
     "position": {
       "cartographicDegrees": [
         113.1952,
         30.3563,
         0
+<<<<<<< HEAD
 =======
     "id": "AgentCP_road_0.25",
     "availability": "2025-01-01T09:00:00.000Z/2025-01-01T09:24:11.033Z",
@@ -9066,6 +9121,8 @@
         30.3857113,
         12
 >>>>>>> origin/develop
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
       ]
     },
     "point": {
@@ -9107,12 +9164,16 @@
   },
   {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
     "id": "AgentPOI_road_仙桃市公路局",
     "position": {
       "cartographicDegrees": [
         113.1988,
         30.3254,
         0
+<<<<<<< HEAD
 =======
     "id": "AgentCP_road_0.5",
     "availability": "2025-01-01T09:00:00.000Z/2025-01-01T09:24:11.033Z",
@@ -9122,6 +9183,8 @@
         30.4113158,
         12
 >>>>>>> origin/develop
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
       ]
     },
     "point": {
@@ -9142,6 +9205,7 @@
           200
         ]
       },
+<<<<<<< HEAD
 <<<<<<< HEAD
       "outlineWidth": 0
 =======
@@ -9201,6 +9265,9 @@
         ]
       }
 >>>>>>> origin/develop
+=======
+      "outlineWidth": 0
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
     },
     "label": {
       "text": "交通路政: 仙桃市公路局三伏潭道班",
@@ -9219,6 +9286,9 @@
       }
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
   },
   {
     "id": "UAV",
@@ -12337,7 +12407,10 @@
         }
       }
     }
+<<<<<<< HEAD
 =======
 >>>>>>> origin/develop
+=======
+>>>>>>> ce1284e963807b4ad076e9df22f5c9d0ffba0f8a
   }
 ]
