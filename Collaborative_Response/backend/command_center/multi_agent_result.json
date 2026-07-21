@@ -6,25 +6,25 @@
       "color": "#22c55e",
       "icon": "plus",
       "poi": {
-        "name": "团风县人民医院",
-        "lat": 30.6472,
-        "lon": 114.8705,
-        "dist_km": 2.74,
-        "net_dist_km": 3.56
+        "name": "团风县中医医院",
+        "lat": 30.6423,
+        "lon": 114.8735,
+        "dist_km": 2.18,
+        "net_dist_km": 3.47
       },
       "has_path": true,
       "losers": [
         {
-          "name": "淋山河镇中心卫生院",
-          "euclidean_km": 6.64,
-          "net_dist_km": 8.65,
-          "reason": "路网距离较远 (8.65 km > 3.56 km)"
+          "name": "团风县人民医院",
+          "euclidean_km": 2.71,
+          "net_dist_km": 3.48,
+          "reason": "路网距离较远 (3.48 km > 3.47 km)"
         },
         {
-          "name": "马曹庙镇卫生院",
-          "euclidean_km": 4.9,
-          "net_dist_km": 10.04,
-          "reason": "路网距离较远 (10.04 km > 3.56 km)"
+          "name": "黄冈市黄州区人民医院",
+          "euclidean_km": 19.99,
+          "net_dist_km": 21.36,
+          "reason": "路网距离较远 (21.36 km > 3.47 km)"
         }
       ]
     },
@@ -33,25 +33,25 @@
       "color": "#f97316",
       "icon": "fire",
       "poi": {
-        "name": "江北工业园专职消防队",
-        "lat": 30.608,
-        "lon": 114.8805,
-        "dist_km": 2.78,
-        "net_dist_km": 2.66
+        "name": "团风县公安消防大队",
+        "lat": 30.6426,
+        "lon": 114.8751,
+        "dist_km": 2.07,
+        "net_dist_km": 3.72
       },
       "has_path": true,
       "losers": [
         {
-          "name": "团风县公安消防大队",
-          "euclidean_km": 2.28,
-          "net_dist_km": 3.56,
-          "reason": "空间直线距离虽近，但路网绕行达 3.56 km (优选方案仅 2.66 km)"
+          "name": "黄冈市黄州区路口镇专职消防队",
+          "euclidean_km": 13.13,
+          "net_dist_km": 17.12,
+          "reason": "路网距离较远 (17.12 km > 3.72 km)"
         },
         {
-          "name": "回龙山镇消防备勤点",
-          "euclidean_km": 5.12,
-          "net_dist_km": 7.68,
-          "reason": "路网距离较远 (7.68 km > 2.66 km)"
+          "name": "黄冈市消防救援支队特勤站",
+          "euclidean_km": 19.71,
+          "net_dist_km": 21.78,
+          "reason": "路网距离较远 (21.78 km > 3.72 km)"
         }
       ]
     },
@@ -61,24 +61,24 @@
       "icon": "flag",
       "poi": {
         "name": "团风县公安局交警大队",
-        "lat": 30.6395,
-        "lon": 114.869,
-        "dist_km": 2.41,
-        "net_dist_km": 3.44
+        "lat": 30.6391,
+        "lon": 114.8716,
+        "dist_km": 2.16,
+        "net_dist_km": 3.03
       },
       "has_path": true,
       "losers": [
         {
-          "name": "总路咀镇交警中队",
-          "euclidean_km": 3.55,
-          "net_dist_km": 5.36,
-          "reason": "路网距离较远 (5.36 km > 3.44 km)"
+          "name": "团风县团风水陆派出所",
+          "euclidean_km": 2.39,
+          "net_dist_km": 3.2,
+          "reason": "路网距离较远 (3.2 km > 3.03 km)"
         },
         {
-          "name": "方高坪镇派出所",
-          "euclidean_km": 6.02,
-          "net_dist_km": 9.94,
-          "reason": "路网距离较远 (9.94 km > 3.44 km)"
+          "name": "黄冈市公安局黄州分局",
+          "euclidean_km": 20.13,
+          "net_dist_km": 21.49,
+          "reason": "路网距离较远 (21.49 km > 3.03 km)"
         }
       ]
     },
@@ -87,25 +87,25 @@
       "color": "#a855f7",
       "icon": "flash",
       "poi": {
-        "name": "团风县消防特勤防化站",
-        "lat": 30.651,
-        "lon": 114.865,
-        "dist_km": 3.41,
-        "net_dist_km": 4.16
+        "name": "团风县应急管理局",
+        "lat": 30.6405,
+        "lon": 114.8738,
+        "dist_km": 2.04,
+        "net_dist_km": 2.67
       },
       "has_path": true,
       "losers": [
         {
-          "name": "黄州区防化增援大队",
-          "euclidean_km": 5.15,
-          "net_dist_km": 8.12,
-          "reason": "路网距离较远 (8.12 km > 4.16 km)"
+          "name": "团风县消防特勤防化站",
+          "euclidean_km": 2.91,
+          "net_dist_km": 3.68,
+          "reason": "路网距离较远 (3.68 km > 2.67 km)"
         },
         {
-          "name": "团风港区危化应急站",
-          "euclidean_km": 4.54,
-          "net_dist_km": 8.58,
-          "reason": "路网距离较远 (8.58 km > 4.16 km)"
+          "name": "黄冈市应急管理局",
+          "euclidean_km": 19.87,
+          "net_dist_km": 21.12,
+          "reason": "路网距离较远 (21.12 km > 2.67 km)"
         }
       ]
     },
@@ -115,24 +115,24 @@
       "icon": "wrench",
       "poi": {
         "name": "团风县路政管理大队",
-        "lat": 30.642,
-        "lon": 114.8785,
-        "dist_km": 1.78,
-        "net_dist_km": 2.26
+        "lat": 30.6412,
+        "lon": 114.878,
+        "dist_km": 1.76,
+        "net_dist_km": 2.35
       },
       "has_path": true,
       "losers": [
         {
-          "name": "大桥收费站管理处",
-          "euclidean_km": 5.51,
-          "net_dist_km": 9.22,
-          "reason": "路网距离较远 (9.22 km > 2.26 km)"
+          "name": "团风县交通运输局",
+          "euclidean_km": 1.9,
+          "net_dist_km": 2.74,
+          "reason": "路网距离较远 (2.74 km > 2.35 km)"
         },
         {
-          "name": "上巴河镇道班",
-          "euclidean_km": 6.32,
-          "net_dist_km": 10.51,
-          "reason": "路网距离较远 (10.51 km > 2.26 km)"
+          "name": "黄冈市公路管理局",
+          "euclidean_km": 20.03,
+          "net_dist_km": 21.58,
+          "reason": "路网距离较远 (21.58 km > 2.35 km)"
         }
       ]
     }
