@@ -900,8 +900,8 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
     czml = [{"id": "document", "version": "1.0", "clock": {"interval": avail, "currentTime": start_str, "multiplier": 1, "range": "LOOP_STOP"}}]
     
     # 静态地标
-    czml.append({"id": "StartMarker", "position": {"cartographicDegrees": [START_POINT[1], START_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [0,255,0,255]}}, "label": {"text": START_POINT_NAME, "font": "16px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}, "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 50000.0]}}})
-    czml.append({"id": "EndMarker", "position": {"cartographicDegrees": [END_POINT[1], END_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [255,0,0,255]}}, "label": {"text": END_POINT_NAME, "font": "16px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}, "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 50000.0]}}})
+    czml.append({"id": "StartMarker", "position": {"cartographicDegrees": [START_POINT[1], START_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [0,255,0,255]}}, "label": {"text": START_POINT_NAME, "font": "16px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}, "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 25000.0]}}})
+    czml.append({"id": "EndMarker", "position": {"cartographicDegrees": [END_POINT[1], END_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [255,0,0,255]}}, "label": {"text": END_POINT_NAME, "font": "16px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}, "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 25000.0]}}})
 
     # 路径线（各保留一条宽度与色彩对比鲜明的路线，避免重叠与 Z-fighting 闪烁）
     if not multi_agent_data:
@@ -963,7 +963,7 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
                       "outlineWidth": 2 if is_sel else 0},
             "label": {"text": prefix + p['name'], "font": "11px Microsoft YaHei",
                       "pixelOffset": {"cartesian2": [0, -14]},
-                      "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 50000.0]}}
+                      "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 25000.0]}}
         })
 
     # 路径 + 动画（仅装备出动后）
@@ -1032,7 +1032,7 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
             "position": {"epoch": start_str, "cartographicDegrees": uav_pos, "interpolationAlgorithm": "LINEAR", "interpolationDegree": 1},
             "point": {"pixelSize": 15, "color": {"rgba": [255, 0, 0, 255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 2},
             "label": {"text": "无人机", "font": "14px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -25]},
-                      "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 10000.0]}}
+                      "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 25000.0]}}
         })
 
         car_pos = []
@@ -1042,7 +1042,7 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
             "position": {"epoch": start_str, "cartographicDegrees": car_pos, "interpolationAlgorithm": "LINEAR", "interpolationDegree": 1},
             "point": {"pixelSize": 15, "color": {"rgba": [0, 0, 255, 255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 2},
             "label": {"text": "无人车", "font": "14px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -25]},
-                      "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 10000.0]}}
+                      "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 25000.0]}}
         })
 
     # 3D 路径进度检查点（透明底色 HUD 标签）
