@@ -1093,10 +1093,17 @@ watch([activePhaseIndex, activeScene], ([phaseIdx, scene]) => {
     if (fireParticle) fireParticle.show = (currentCity.value === 'xiantao' && phaseIdx >= 4)
     if (diffusionParticle) diffusionParticle.show = (currentCity.value === 'huanggang' && phaseIdx >= 2)
     
-    // 同步更新 CZML 实体可见性，如果是第6阶段（无人装备出动），场景中只需要有粒子效果，隐藏所有CZML模型和规划路线
+    // 同步更新 CZML 实体可见性
     if (currentCzmlDataSource) {
+      const multiAgentPrefixes = ['Agent_', 'AgentPath_', 'AgentPOI_', 'AgentCP_'];
       currentCzmlDataSource.entities.values.forEach(entity => {
-        entity.show = (Number(phaseIdx) !== 6);
+        const id = entity.id;
+        if (id && multiAgentPrefixes.some(prefix => id.startsWith(prefix))) {
+            const shouldShow = (Number(phaseIdx) >= 10);
+            entity.show = shouldShow;
+        } else {
+            entity.show = (Number(phaseIdx) !== 6);
+        }
       });
     }
   }
@@ -1168,10 +1175,16 @@ const loadMission = async () => {
     if (!viewer) return
     currentCzmlDataSource = dataSource
     
-    // Clear availability and hide in phase 6
+    // Clear availability and handle visibility
+    const multiAgentPrefixes = ['Agent_', 'AgentPath_', 'AgentPOI_', 'AgentCP_'];
     dataSource.entities.values.forEach(entity => {
       entity.availability = undefined;
-      entity.show = (Number(activePhaseIndex.value) !== 6);
+      const id = entity.id;
+      if (id && multiAgentPrefixes.some(prefix => id.startsWith(prefix))) {
+          entity.show = (Number(activePhaseIndex.value) >= 10);
+      } else {
+          entity.show = (Number(activePhaseIndex.value) !== 6);
+      }
     });
 
     viewer.dataSources.add(dataSource)
@@ -1197,7 +1210,8 @@ const generate2DDeduction = async (city) => {
   errorMessage.value = ''
   const baseUrl = getCollaborativeCommandCenterBaseUrl()
   try {
-    const response = await fetch(`${baseUrl}/api/run_3d_strategy?end_point=${endpoint}`)
+    // 使用 run_multi_agent 确保二维和三维推演始终带有协同救援的路径
+    const response = await fetch(`${baseUrl}/api/run_multi_agent?end_point=${endpoint}`)
     if (!response.ok) {
       console.warn('后端生成策略返回非200状态码，将启用本地/历史二维推演缓存显示。')
     }
@@ -1299,7 +1313,6 @@ async function initCityRegionsAndLabels() {
   persistentCityEntities = [];
 
   const citiesConfig = [
-    { name: '武汉市', file: 'wuhan.json', color: '#00ffd8', center: [114.30, 30.59] },
     { name: '黄冈市', file: 'huanggang.json', color: '#ffd700', center: [114.87, 30.61] },
     { name: '仙桃市', file: 'xiantao.json', color: '#ff007f', center: [113.43, 30.29] }
   ];
@@ -1434,7 +1447,7 @@ const flyToCity = async (city) => {
       });
     } else if (city === 'huanggang') {
       viewer.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(114.90, 30.70, 380000), // 黄冈+武汉：中心微调以同时容纳并看清两市及救援路径
+        destination: Cesium.Cartesian3.fromDegrees(114.87, 30.61, 150000), // 黄冈视角：高度适中
         duration: 2.0
       });
     }
