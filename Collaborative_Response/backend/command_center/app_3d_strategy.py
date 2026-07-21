@@ -900,8 +900,8 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
     czml = [{"id": "document", "version": "1.0", "clock": {"interval": avail, "currentTime": start_str, "multiplier": 1, "range": "LOOP_STOP"}}]
     
     # 静态地标
-    czml.append({"id": "StartMarker", "position": {"cartographicDegrees": [START_POINT[1], START_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [0,255,0,255]}}, "label": {"text": START_POINT_NAME, "font": "16px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}, "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 10000.0]}}})
-    czml.append({"id": "EndMarker", "position": {"cartographicDegrees": [END_POINT[1], END_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [255,0,0,255]}}, "label": {"text": END_POINT_NAME, "font": "16px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}, "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 10000.0]}}})
+    czml.append({"id": "StartMarker", "position": {"cartographicDegrees": [START_POINT[1], START_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [0,255,0,255]}}, "label": {"text": START_POINT_NAME, "font": "16px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}, "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 50000.0]}}})
+    czml.append({"id": "EndMarker", "position": {"cartographicDegrees": [END_POINT[1], END_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [255,0,0,255]}}, "label": {"text": END_POINT_NAME, "font": "16px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}, "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 50000.0]}}})
 
     # 路径线（各保留一条宽度与色彩对比鲜明的路线，避免重叠与 Z-fighting 闪烁）
     if not multi_agent_data:
@@ -956,14 +956,14 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
         else:
             color = [120, 120, 120, 160]; prefix = p['label'] + ': '; size = 8
         czml.append({
-            "id": f"AgentPOI_{p['agent_key']}_{p['name'][:6]}",
+            "id": f"AgentPOI_{p['agent_key']}_{p['name']}",
             "position": {"cartographicDegrees": [pos_lon, pos_lat, 0]},
             "point": {"pixelSize": size, "color": {"rgba": color},
                       "outlineColor": {"rgba": [255,255,255,200] if is_sel or not multi_agent_data else [0,0,0,0]},
                       "outlineWidth": 2 if is_sel else 0},
             "label": {"text": prefix + p['name'], "font": "11px Microsoft YaHei",
                       "pixelOffset": {"cartesian2": [0, -14]},
-                      "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 8000.0 if is_sel else 4500.0]}}
+                      "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 50000.0]}}
         })
 
     # 路径 + 动画（仅装备出动后）
