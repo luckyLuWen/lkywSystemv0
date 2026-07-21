@@ -4,11 +4,11 @@
       <h2>协同响应指挥面板</h2>
 
       <div class="menu">
-        <button class="menu-btn blue" @click="showHome">系统首页</button>
-        <button class="menu-btn blue" @click="showStreamlitView">协同调度平台</button>
-        <button class="menu-btn cyan" @click="show2DView">二维动态推演</button>
-        <button class="menu-btn purple" @click="show3DView">三维态势地图</button>
-        <button class="menu-btn green" @click="openEvaluationPanel">协同策略评估</button>
+        <button :class="['menu-btn', { active: currentView === 'home' && !showEvaluationPanel }]" @click="showHome">系统首页</button>
+        <button :class="['menu-btn', { active: currentView === 'streamlit' }]" @click="showStreamlitView">协同调度平台</button>
+        <button :class="['menu-btn', { active: currentView === '2d' }]" @click="show2DView">二维动态推演</button>
+        <button :class="['menu-btn', { active: currentView === '3d' }]" @click="show3DView">三维态势地图</button>
+        <button :class="['menu-btn', { active: showEvaluationPanel }]" @click="openEvaluationPanel">协同策略评估</button>
       </div>
 
       <div class="status-box">
@@ -100,8 +100,8 @@
           </select>
         </label>
         <div class="ctrl-btns">
-          <button class="ctrl-btn blue" :disabled="deductionPending" @click="triggerReplan">规划路径</button>
-          <button class="ctrl-btn green" :disabled="deductionPending" @click="triggerMultiAgent">装备启动</button>
+          <button class="ctrl-btn blue" :disabled="deductionPending" @click="triggerReplan">无人装备出动</button>
+          <button class="ctrl-btn green" :disabled="deductionPending" @click="triggerMultiAgent">救援装备出动</button>
         </div>
         <p v-if="deductionStatus" class="ctrl-status">{{ deductionStatus }}</p>
       </div>
@@ -124,6 +124,13 @@
         </div>
         <p v-if="cesiumStatus" class="ctrl-status">{{ cesiumStatus }}</p>
       </div>
+
+      <!-- 多智能体决策分析面板 -->
+      <AgentSelectionPanel
+        v-if="(currentView === '2d' || currentView === '3d') && showMultiAgentPanel && multiAgentData"
+        :multiAgentData="multiAgentData"
+        :isComputing="deductionPending || cesiumPending"
+      />
     </aside>
 
     <main class="content">
@@ -256,39 +263,126 @@
       </section>
 
       <div v-if="showEvaluationPanel" class="overlay">
-        <div class="overlay-card">
+        <div class="overlay-card strategy-evaluation-modal">
           <button class="close-btn" @click="showEvaluationPanel = false">关闭</button>
-          <h3>协同策略评估</h3>
-          <div class="metrics">
-            <div class="metric">
-              <span>车辆到场时间</span>
-              <strong>{{ metricsDisplay.carTime }}</strong>
+          <h3 class="modal-title">🏆 协同策略综合评估报告</h3>
+          
+          <div class="evaluation-meta-grid">
+            <div class="meta-item">
+              <span class="label">当前起调站点：</span>
+              <span class="val">{{ evaluation.metricsRaw?.start_point_name || '未获取' }}</span>
             </div>
-            <div class="metric">
-              <span>无人机到场时间</span>
-              <strong>{{ metricsDisplay.uavTime }}</strong>
-            </div>
-            <div class="metric">
-              <span>无人机能耗</span>
-              <strong>{{ metricsDisplay.uavEnergy }}</strong>
-            </div>
-            <div class="metric">
-              <span>协同等待时延</span>
-              <strong>{{ metricsDisplay.delay }}</strong>
+            <div class="meta-item">
+              <span class="label">联合集结终点：</span>
+              <span class="val">{{ evaluation.metricsRaw?.end_point_name || '未获取' }}</span>
             </div>
           </div>
-          <p class="overlay-meta">结果状态：{{ evaluation.message || '暂无结果' }}</p>
-          <p class="overlay-meta">最近更新：{{ formatDateTime(evaluation.updatedAt) }}</p>
-          <div class="action-row">
+
+          <!-- 第一部分：核心协同指标 -->
+          <h4 class="section-title">⏱️ 协同执行核心时效指标</h4>
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span class="card-label">车辆集结时效</span>
+              <strong class="card-val">{{ metricsDisplay.carTime }}</strong>
+            </div>
+            <div class="metric-card">
+              <span class="card-label">无人机集结时效</span>
+              <strong class="card-val">{{ metricsDisplay.uavTime }}</strong>
+            </div>
+            <div class="metric-card">
+              <span class="card-label">协同集结时延</span>
+              <strong class="card-val">{{ metricsDisplay.delay }}</strong>
+            </div>
+            <div class="metric-card">
+              <span class="card-label">无人机动力能耗</span>
+              <strong class="card-val">{{ metricsDisplay.uavEnergy }}</strong>
+            </div>
+          </div>
+
+          <!-- 第二部分：常规模式 vs 协同优化比对 -->
+          <div v-if="evaluation.metricsRaw?.comparison" class="comparison-section">
+            <h4 class="section-title">📊 协同优化效能比对</h4>
+            <div class="comparison-grid">
+              <div class="comparison-card">
+                <h5>🚗 车辆行驶路径节省</h5>
+                <div class="comp-details">
+                  <span>独立基线: {{ evaluation.metricsRaw.comparison.baselineCarDistKm }} km</span>
+                  <span class="arrow">➡️</span>
+                  <span class="opt">协同优化: {{ evaluation.metricsRaw.comparison.carDistKm }} km</span>
+                </div>
+                <div class="saving-badge text-cyan">
+                  已节省 {{ evaluation.metricsRaw.comparison.carSavingKm }} km (缩减 {{ evaluation.metricsRaw.comparison.carSavingPct }}%)
+                </div>
+              </div>
+              
+              <div class="comparison-card">
+                <h5>🛸 无人机航线路径节省</h5>
+                <div class="comp-details">
+                  <span>独立基线: {{ evaluation.metricsRaw.comparison.baselineUavDistKm }} km</span>
+                  <span class="arrow">➡️</span>
+                  <span class="opt">协同优化: {{ evaluation.metricsRaw.comparison.uavDistKm }} km</span>
+                </div>
+                <div class="saving-badge text-cyan">
+                  已节省 {{ evaluation.metricsRaw.comparison.uavSavingKm }} km (缩减 {{ evaluation.metricsRaw.comparison.uavSavingPct }}%)
+                </div>
+              </div>
+            </div>
+            <div class="total-opt-bar">
+              <span>系统路径寻优综合效率提升：</span>
+              <strong class="text-cyan">{{ evaluation.metricsRaw.comparison.avgOptimizationPct }}%</strong>
+            </div>
+          </div>
+
+          <!-- 第三部分：路网灾害感知情况 -->
+          <div v-if="evaluation.metricsRaw?.scenario" class="scenario-section">
+            <h4 class="section-title">🚧 路网实时障碍与态势感知</h4>
+            <div class="scenario-badges">
+              <span class="badge" :class="evaluation.metricsRaw.scenario.ugv_blocked ? 'danger' : 'success'">
+                地面路网受阻: {{ evaluation.metricsRaw.scenario.ugv_blocked ? '是 (已避绕)' : '否' }}
+              </span>
+              <span class="badge" :class="evaluation.metricsRaw.scenario.uav_smoke ? 'warning' : 'success'">
+                空域气流/浓雾影响: {{ evaluation.metricsRaw.scenario.uav_smoke ? '是 (已校准速度)' : '否' }}
+              </span>
+              <span class="badge info">
+                监测到禁飞区: {{ evaluation.metricsRaw.scenario.nfz_count }} 处
+              </span>
+            </div>
+            <div v-if="evaluation.metricsRaw.scenario.congestion_name" class="congestion-info-box">
+              🚨 <strong>{{ evaluation.metricsRaw.scenario.congestion_name }}</strong>: 
+              {{ evaluation.metricsRaw.scenario.congestion_info }}
+            </div>
+          </div>
+
+          <!-- 第四部分：备选力量综合评级与优选比对 -->
+          <div v-if="evaluation.metricsRaw?.candidate_points?.length" class="candidates-section">
+            <h4 class="section-title">📋 候选协同力量响应比对</h4>
+            <div class="candidate-list">
+              <div 
+                v-for="pt in evaluation.metricsRaw.candidate_points" 
+                :key="pt.name" 
+                class="candidate-row"
+                :class="{ 'is-selected': pt.selected }"
+              >
+                <span class="name">
+                  {{ pt.name }}
+                  <span v-if="pt.selected" class="selected-tag">最佳起调点</span>
+                </span>
+                <span class="dist">距集结地：{{ pt.dist_km.toFixed(2) }} km</span>
+              </div>
+            </div>
+          </div>
+
+          <p class="overlay-meta">状态：{{ evaluation.message || '已载入最新策略数据' }} | 更新于：{{ formatDateTime(evaluation.updatedAt) }}</p>
+          <div class="action-row modal-footer">
             <button
               class="cyan-btn"
               :disabled="businessActionPending || !services.commandCenter.online"
               @click="generateStrategy"
             >
-              重新生成评估
+              重新寻优解算
             </button>
-            <button class="dark-btn" @click="show2DView">查看二维结果</button>
-            <button class="purple-btn" @click="show3DView">查看三维结果</button>
+            <button class="dark-btn" @click="show2DView">二维动态推演</button>
+            <button class="purple-btn" @click="show3DView">三维数字地球</button>
           </div>
         </div>
       </div>
@@ -297,7 +391,8 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import AgentSelectionPanel from './components/AgentSelectionPanel.vue'
 import {
   appendUrlParams,
   buildCollaborativeApiUrl,
@@ -335,6 +430,7 @@ const services = reactive({
 const evaluation = reactive({
   message: '尚未读取策略评估结果',
   metrics: {},
+  metricsRaw: null,
   updatedAt: '',
 })
 
@@ -343,10 +439,16 @@ const deductionObstacle = ref('1')
 const deductionStrategy = ref('rcd')
 const deductionPending = ref(false)
 const deductionStatus = ref('')
+const multiAgentData = ref(null)
+const showMultiAgentPanel = ref(false)
 
 const cesiumScene = ref('leak')
 const cesiumPending = ref(false)
 const cesiumStatus = ref('')
+
+watch([deductionScene, cesiumScene, deductionObstacle, deductionStrategy], () => {
+  showMultiAgentPanel.value = false
+})
 
 const streamlitMode = ref('medical')
 const streamlitSeverity = ref('中度')
@@ -494,11 +596,15 @@ async function refreshEvaluation() {
     )
     evaluation.message = payload.message || '已读取策略评估结果'
     evaluation.metrics = payload.metrics || {}
+    evaluation.metricsRaw = payload || null
     evaluation.updatedAt = payload.updated_at || ''
+    multiAgentData.value = payload.multi_agent || null
   } catch {
     evaluation.message = '暂未获取到策略评估结果'
     evaluation.metrics = {}
+    evaluation.metricsRaw = null
     evaluation.updatedAt = ''
+    multiAgentData.value = null
   }
 }
 
@@ -659,6 +765,7 @@ function refreshFrames() {
 
 function showHome() {
   currentView.value = 'home'
+  showMultiAgentPanel.value = false
 }
 
 async function openManagedView(viewId, serviceId, frameBuilder) {
@@ -695,6 +802,7 @@ async function showStreamlitView() {
     streamlitFrameSrc.value = buildStreamlitUrl()
     streamlitFrameKey.value += 1
   })
+  showMultiAgentPanel.value = false
 }
 
 async function show2DView() {
@@ -705,6 +813,7 @@ async function show2DView() {
     )
     strategyFrameKey.value += 1
   })
+  showMultiAgentPanel.value = false
 }
 
 async function show3DView() {
@@ -714,6 +823,7 @@ async function show3DView() {
     cesiumFrameSrc.value = buildCommandCenterUrl('cesium_viewer?end_point=' + cesiumScene.value, resolvedCommandCenterBaseUrl.value)
     cesiumFrameKey.value += 1
   })
+  showMultiAgentPanel.value = false
 }
 
 function retryCurrentView() {
@@ -745,6 +855,7 @@ function generateCesium() {
 }
 
 async function triggerReplan() {
+  showMultiAgentPanel.value = false
   deductionPending.value = true
   deductionStatus.value = '规划中...'
   try {
@@ -767,6 +878,7 @@ async function triggerReplan() {
 }
 
 async function triggerMultiAgent() {
+  showMultiAgentPanel.value = false
   deductionPending.value = true
   deductionStatus.value = '装备启动中...'
   try {
@@ -780,6 +892,9 @@ async function triggerMultiAgent() {
     if (!resp.ok) throw new Error('HTTP ' + resp.status)
     deductionStatus.value = '装备已启动'
     refreshFrames()
+    await refreshEvaluation()
+    // 计算完成后延迟展示决策日志，体现智能性
+    setTimeout(() => { showMultiAgentPanel.value = true }, 800)
   } catch (e) {
     deductionStatus.value = '启动失败: ' + e.message
   } finally {
@@ -788,6 +903,7 @@ async function triggerMultiAgent() {
 }
 
 async function triggerCesiumUGVUAV() {
+  showMultiAgentPanel.value = false
   cesiumPending.value = true; cesiumStatus.value = '无人装备出动中...'
   try {
     const r = await fetch(buildCommandCenterUrl(`api/run_3d_cesium?end_point=${cesiumScene.value}`, commandCenterBaseUrl.value))
@@ -798,12 +914,16 @@ async function triggerCesiumUGVUAV() {
 }
 
 async function triggerCesiumMultiAgent() {
+  showMultiAgentPanel.value = false
   cesiumPending.value = true; cesiumStatus.value = '救援装备出动中...'
   try {
     const r = await fetch(buildCommandCenterUrl(`api/run_multi_agent?end_point=${cesiumScene.value}&strategy=rcd`, commandCenterBaseUrl.value))
     if (!r.ok) throw new Error('HTTP ' + r.status)
     cesiumStatus.value = '已出动'
     cesiumFrameSrc.value = ''; setTimeout(() => refreshFrames(), 1000)
+    await refreshEvaluation()
+    // 计算完成后延迟展示决策日志，体现智能性
+    setTimeout(() => { showMultiAgentPanel.value = true }, 800)
   } catch (e) { cesiumStatus.value = '失败: ' + e.message } finally { cesiumPending.value = false }
 }
 
@@ -836,26 +956,41 @@ onUnmounted(() => {
 .layout {
   display: flex;
   height: 100vh;
-  background: #0f172a;
-  color: #e2e8f0;
-  font-family: 'Microsoft YaHei', sans-serif;
+  background: #020813;
+  color: #cbd5e1;
+  font-family: 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden;
 }
 
 .sidebar {
   width: 320px;
   padding: 24px;
-  background: linear-gradient(180deg, #10223f 0%, #17253a 100%);
-  border-right: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(10, 19, 35, 0.82);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border-right: 1px solid rgba(0, 242, 254, 0.22);
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(0, 242, 254, 0.05);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .sidebar h2 {
-  margin: 0 0 20px;
-  font-size: 26px;
+  margin: 0 0 10px;
+  font-size: 22px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #ffffff 0%, #93c5fd 50%, #00f2fe 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 20px rgba(0, 242, 254, 0.2);
+  text-align: center;
+  letter-spacing: 1px;
 }
 
 .menu {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .menu-btn,
@@ -864,53 +999,94 @@ onUnmounted(() => {
 .purple-btn,
 .dark-btn,
 .ghost-btn {
-  border: none;
+  border: 1px solid transparent;
   border-radius: 12px;
-  color: #fff;
+  color: #cbd5e1;
   cursor: pointer;
   font-weight: 700;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
 }
 
 .menu-btn {
   padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  font-size: 13px;
 }
 
-.menu-btn.blue,
-.blue-btn {
-  background: linear-gradient(to right, #2563eb, #38bdf8);
+.menu-btn:hover {
+  background: rgba(0, 242, 254, 0.08);
+  border-color: rgba(0, 242, 254, 0.35);
+  color: #00f2fe;
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.15);
 }
 
-.menu-btn.cyan,
-.cyan-btn {
-  background: linear-gradient(to right, #0891b2, #22d3ee);
+.menu-btn.active {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.18) 0%, rgba(37, 99, 235, 0.18) 100%);
+  border-color: #00f2fe;
+  color: #00f2fe;
+  box-shadow: 0 0 15px rgba(0, 242, 254, 0.3);
+  text-shadow: 0 0 5px rgba(0, 242, 254, 0.5);
 }
 
-.menu-btn.purple,
+.blue-btn,
+.cyan-btn,
 .purple-btn {
-  background: linear-gradient(to right, #7c3aed, #a855f7);
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%);
+  border: 1px solid rgba(0, 242, 254, 0.4);
+  color: #00f2fe;
+  text-shadow: 0 0 2px rgba(0, 242, 254, 0.3);
 }
 
-.menu-btn.green {
-  background: linear-gradient(to right, #059669, #10b981);
+.blue-btn:hover,
+.cyan-btn:hover,
+.purple-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.28) 0%, rgba(37, 99, 235, 0.28) 100%);
+  border-color: #00f2fe;
+  color: #ffffff;
+  box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+}
+
+.blue-btn:active,
+.cyan-btn:active,
+.purple-btn:active {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.4) 0%, rgba(37, 99, 235, 0.4) 100%);
+  box-shadow: 0 0 20px rgba(0, 242, 254, 0.6);
 }
 
 .dark-btn,
 .ghost-btn {
-  background: linear-gradient(to right, #334155, #475569);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+}
+
+.dark-btn:hover,
+.ghost-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
 }
 
 .status-box {
-  margin-top: 24px;
-  padding: 18px;
+  padding: 16px;
   border-radius: 16px;
-  background: rgba(15, 23, 42, 0.88);
+  background: rgba(2, 12, 26, 0.6);
+  border: 1px solid rgba(0, 242, 254, 0.15);
+  box-shadow: inset 0 0 10px rgba(0, 242, 254, 0.05);
 }
 
 .status-row {
   display: flex;
   justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 242, 254, 0.1);
+  font-size: 13px;
 }
 
 .status-row:last-child {
@@ -918,81 +1094,125 @@ onUnmounted(() => {
 }
 
 .ok {
-  color: #34d399;
+  color: #00f2fe;
+  text-shadow: 0 0 8px rgba(0, 242, 254, 0.4);
 }
 
 .warn {
-  color: #f87171;
+  color: #ef4444;
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
 }
 
 .pending {
-  color: #facc15;
+  color: #f59e0b;
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
 }
 
 .deduction-controls {
-  margin-top: 16px;
   padding: 16px;
   border-radius: 14px;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(96, 165, 250, 0.18);
+  background: rgba(2, 12, 26, 0.6);
+  border: 1px solid rgba(0, 242, 254, 0.15);
+  box-shadow: inset 0 0 10px rgba(0, 242, 254, 0.05);
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
+
 .ctrl-title {
   margin: 0 0 4px 0;
   font-size: 14px;
   font-weight: 700;
-  color: #93c5fd;
+  color: #00f2fe;
+  text-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
 }
+
 .ctrl-field {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
+
 .ctrl-field span {
   font-size: 11px;
   color: #94a3b8;
   font-weight: 600;
 }
+
 .ctrl-select {
   padding: 7px 28px 7px 10px;
-  border: 1px solid rgba(96, 165, 250, 0.2);
+  border: 1px solid rgba(0, 242, 254, 0.3);
   border-radius: 6px;
-  background: rgba(2, 10, 22, 0.7);
+  background: rgba(0, 0, 0, 0.4);
   color: #e2e8f0;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   outline: none;
+  transition: all 0.3s;
 }
+
+.ctrl-select:focus {
+  border-color: #00f2fe;
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.4), inset 0 0 8px rgba(0, 242, 254, 0.15);
+}
+
 .ctrl-btns {
   display: flex;
   gap: 8px;
   margin-top: 4px;
 }
+
 .ctrl-btn {
   flex: 1;
   min-height: 36px;
   border-radius: 8px;
-  border: none;
+  border: 1px solid transparent;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
 }
+
 .ctrl-btn.blue {
-  background: linear-gradient(to right, #2563eb, #38bdf8);
-  color: #fff;
+  background: rgba(37, 99, 235, 0.2);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
 }
+
+.ctrl-btn.blue:hover {
+  background: rgba(56, 189, 248, 0.35);
+  border-color: #38bdf8;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
 .ctrl-btn.green {
-  background: linear-gradient(to right, #059669, #10b981);
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  color: #34d399;
+}
+
+.ctrl-btn.green:hover {
+  background: rgba(52, 211, 153, 0.35);
+  border-color: #34d399;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.3);
+}
+
+.ctrl-btn.ghost {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+}
+
+.ctrl-btn.ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
   color: #fff;
 }
-.ctrl-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+
 .ctrl-status {
   margin: 0;
   font-size: 11px;
@@ -1004,8 +1224,9 @@ onUnmounted(() => {
   flex: 1;
   position: relative;
   background:
-    radial-gradient(circle at top left, rgba(56, 189, 248, 0.16), transparent 30%),
-    linear-gradient(135deg, #020617 0%, #0f172a 100%);
+    radial-gradient(circle at top left, rgba(0, 242, 254, 0.08), transparent 35%),
+    radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.08), transparent 35%),
+    #020813;
 }
 
 .panel,
@@ -1020,36 +1241,46 @@ onUnmounted(() => {
   justify-content: center;
   padding: 32px;
   box-sizing: border-box;
+  overflow-y: auto;
 }
 
 .card {
   width: min(1080px, 100%);
   padding: 28px;
   border-radius: 24px;
-  background: rgba(15, 23, 42, 0.86);
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(2, 12, 26, 0.7);
+  border: 1px solid rgba(0, 242, 254, 0.18);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 0 30px rgba(0, 242, 254, 0.05);
 }
 
 .card h3 {
   margin: 0 0 14px;
-  font-size: 30px;
+  font-size: 26px;
+  font-weight: 800;
+  color: #ffffff;
+  background: linear-gradient(135deg, #ffffff 0%, #00f2fe 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .card p {
   line-height: 1.8;
   color: #cbd5e1;
+  font-size: 14px;
 }
 
 .config-list {
   display: grid;
-  gap: 12px;
-  margin-top: 20px;
+  gap: 16px;
+  margin-top: 24px;
 }
 
 .field span {
   display: block;
   margin-bottom: 8px;
   font-weight: 700;
+  color: #94a3b8;
+  font-size: 13px;
 }
 
 .field-row,
@@ -1064,9 +1295,16 @@ onUnmounted(() => {
   min-height: 42px;
   padding: 0 14px;
   border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  background: rgba(2, 11, 22, 0.92);
+  border: 1px solid rgba(0, 242, 254, 0.3);
+  background: rgba(0, 0, 0, 0.4);
   color: #fff;
+  transition: all 0.3s;
+}
+
+.field input:focus {
+  border-color: #00f2fe;
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.4), inset 0 0 8px rgba(0, 242, 254, 0.15);
+  outline: none;
 }
 
 .ghost-btn,
@@ -1075,59 +1313,83 @@ onUnmounted(() => {
 .purple-btn,
 .dark-btn {
   min-height: 42px;
-  padding: 0 16px;
+  padding: 0 20px;
 }
 
 .service-grid {
   display: grid;
-  gap: 12px;
+  gap: 16px;
   margin-top: 24px;
 }
 
 .service-card {
-  padding: 16px;
+  padding: 20px;
   border-radius: 14px;
-  background: rgba(30, 41, 59, 0.92);
+  background: rgba(10, 25, 47, 0.4);
+  border: 1px solid rgba(0, 242, 254, 0.12);
+  box-shadow: inset 0 0 15px rgba(0, 242, 254, 0.03);
+  transition: all 0.3s ease;
+}
+
+.service-card:hover {
+  border-color: rgba(0, 242, 254, 0.35);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(0, 242, 254, 0.08);
+}
+
+.service-card strong {
+  color: #ffffff;
+  font-size: 16px;
 }
 
 .service-top {
   display: flex;
   justify-content: space-between;
   gap: 16px;
+  margin-bottom: 16px;
 }
 
 .service-top p {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   font-size: 13px;
-  color: #93c5fd;
+  color: #00f2fe;
   word-break: break-all;
+  font-family: monospace;
 }
 
 .chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 28px;
+  min-height: 26px;
   padding: 0 12px;
   border-radius: 999px;
   font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
 }
 
 .chip.ok {
-  background: rgba(28, 140, 96, 0.2);
+  background: rgba(0, 242, 254, 0.1);
+  color: #00f2fe;
+  border-color: rgba(0, 242, 254, 0.3);
 }
 
 .chip.warn {
-  background: rgba(160, 40, 40, 0.18);
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
 .chip.pending {
-  background: rgba(146, 115, 33, 0.18);
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.3);
 }
 
 .error-text {
   margin-top: 16px;
-  color: #fda4af;
+  color: #f87171;
+  font-size: 13px;
 }
 
 .frame-shell {
@@ -1140,36 +1402,40 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 14px;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
   padding: 32px;
-  background: linear-gradient(180deg, rgba(2, 6, 23, 0.92), rgba(15, 23, 42, 0.88));
+  background: rgba(2, 8, 19, 0.95);
 }
 
 .frame-state h3 {
   margin: 0;
-  font-size: 28px;
+  font-size: 24px;
+  color: #ffffff;
 }
 
 .frame-state p {
   margin: 0;
-  max-width: 720px;
+  max-width: 600px;
   line-height: 1.8;
   color: #cbd5e1;
 }
 
 .frame-state__meta {
-  color: #93c5fd;
+  color: #00f2fe;
+  font-family: monospace;
 }
 
 .frame-state__meta.is-error {
-  color: #fda4af;
+  color: #ef4444;
 }
 
 .frame {
   width: 100%;
   height: 100%;
   border: none;
-  background: #0b1220;
+  background: #020813;
 }
 
 .overlay {
@@ -1178,27 +1444,51 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(15, 23, 42, 0.82);
+  background: rgba(2, 8, 19, 0.85);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .overlay-card {
   width: min(760px, calc(100% - 48px));
-  padding: 28px;
+  padding: 32px;
   border-radius: 20px;
-  background: linear-gradient(145deg, #1e293b, #0f172a);
-  border: 1px solid rgba(59, 130, 246, 0.4);
+  background: rgba(2, 12, 26, 0.95);
+  border: 1px solid rgba(0, 242, 254, 0.35);
   position: relative;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), inset 0 0 30px rgba(0, 242, 254, 0.08);
+}
+
+.overlay-card h3 {
+  margin: 0 0 20px;
+  font-size: 24px;
+  color: #ffffff;
+  border-bottom: 1px solid rgba(0, 242, 254, 0.15);
+  padding-bottom: 10px;
 }
 
 .close-btn {
   position: absolute;
-  top: 16px;
-  right: 16px;
-  border: none;
-  background: transparent;
+  top: 20px;
+  right: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
   color: #94a3b8;
   cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  transition: all 0.3s;
+}
+
+.close-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ffffff;
 }
 
 .metrics {
@@ -1211,21 +1501,27 @@ onUnmounted(() => {
 .metric {
   padding: 18px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(0, 242, 254, 0.08);
 }
 
 .metric span {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+  color: #94a3b8;
+  font-size: 13px;
 }
 
 .metric strong {
-  font-size: 22px;
+  font-size: 24px;
+  color: #00f2fe;
+  text-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
 }
 
 .overlay-meta {
-  margin-top: 16px;
+  margin-top: 20px;
   color: #cbd5e1;
+  font-size: 13px;
 }
 
 @media (max-width: 1200px) {
@@ -1235,29 +1531,265 @@ onUnmounted(() => {
 
   .sidebar {
     width: 100%;
+    border-right: none;
+    border-bottom: 1px solid rgba(0, 242, 254, 0.22);
   }
 }
 
 .scene-select {
   min-height: 42px;
   padding: 0 32px 0 12px;
-  border: 1px solid rgba(59, 130, 246, 0.5);
+  border: 1px solid rgba(0, 242, 254, 0.3);
   border-radius: 10px;
-  background: rgba(2, 11, 22, 0.92);
+  background: rgba(0, 0, 0, 0.4);
   color: #fbbf24;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   outline: none;
+  transition: all 0.3s;
 }
+
+.scene-select:hover,
+.scene-select:focus {
+  border-color: #00f2fe;
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+}
+
 .scene-select option {
-  background: #1e293b;
+  background: #020813;
   color: #e2e8f0;
+}
+
+.dark-btn:disabled,
+.ghost-btn:disabled,
+.blue-btn:disabled,
+.cyan-btn:disabled,
+.purple-btn:disabled,
+.ctrl-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  box-shadow: none !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  color: #64748b !important;
+  text-shadow: none !important;
 }
 
 @media (max-width: 768px) {
   .metrics {
     grid-template-columns: 1fr;
   }
+}
+
+/* 协同策略评估报告弹窗增强样式 */
+.strategy-evaluation-modal {
+  width: min(840px, calc(100% - 48px)) !important;
+  max-height: 85vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 242, 254, 0.3) transparent;
+}
+.strategy-evaluation-modal::-webkit-scrollbar {
+  width: 6px;
+}
+.strategy-evaluation-modal::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 242, 254, 0.3);
+  border-radius: 3px;
+}
+.modal-title {
+  text-shadow: 0 0 10px rgba(0, 242, 254, 0.3);
+}
+.evaluation-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(0, 242, 254, 0.15);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+.evaluation-meta-grid .meta-item {
+  display: flex;
+  flex-direction: column;
+}
+.evaluation-meta-grid .label {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+.evaluation-meta-grid .val {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+.section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #00f2fe;
+  margin: 18px 0 10px;
+  border-left: 3px solid #00f2fe;
+  padding-left: 8px;
+}
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.metric-card {
+  background: rgba(10, 25, 47, 0.3);
+  border: 1px solid rgba(0, 242, 254, 0.12);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  box-shadow: inset 0 0 10px rgba(0, 242, 254, 0.02);
+}
+.metric-card .card-label {
+  display: block;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}
+.metric-card .card-val {
+  font-size: 18px;
+  color: #ffffff;
+  font-weight: 700;
+}
+.comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.comparison-card {
+  background: rgba(2, 12, 26, 0.5);
+  border: 1px solid rgba(0, 242, 254, 0.15);
+  border-radius: 8px;
+  padding: 14px;
+}
+.comparison-card h5 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #cbd5e1;
+}
+.comp-details {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+.comp-details .arrow {
+  color: #00f2fe;
+}
+.comp-details .opt {
+  color: #ffffff;
+  font-weight: 600;
+}
+.saving-badge {
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(0, 242, 254, 0.08);
+  border: 1px solid rgba(0, 242, 254, 0.2);
+  border-radius: 4px;
+  padding: 4px;
+  text-align: center;
+}
+.text-cyan {
+  color: #00f2fe !important;
+}
+.total-opt-bar {
+  background: rgba(0, 242, 254, 0.05);
+  border: 1px dashed rgba(0, 242, 254, 0.3);
+  border-radius: 6px;
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+.total-opt-bar strong {
+  font-size: 16px;
+}
+.scenario-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+.badge.danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.25);
+}
+.badge.warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.25);
+}
+.badge.success {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+.badge.info {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border-color: rgba(59, 130, 246, 0.25);
+}
+.congestion-info-box {
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #cbd5e1;
+  margin-bottom: 20px;
+}
+.candidate-list {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.candidate-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+.candidate-row.is-selected {
+  background: rgba(0, 242, 254, 0.04);
+  border-color: rgba(0, 242, 254, 0.3);
+  color: #ffffff;
+}
+.candidate-row .selected-tag {
+  background: #00f2fe;
+  color: #020813;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 8px;
+}
+.modal-footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 </style>

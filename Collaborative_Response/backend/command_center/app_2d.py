@@ -23,32 +23,232 @@ st.markdown("""
         max-width: 100% !important;
     }
     
-    /* 卡片样式 */
+    /* 使得左右列高度自动拉伸对齐，并且让地图 iframe 高度 100% 填满左侧，杜绝任何白边或断层 */
+    div[data-testid="stHorizontalBlock"] {
+        align-items: stretch !important;
+    }
+    div[data-testid="column"] {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    div[data-testid="column"] > div {
+        flex-grow: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    div[data-testid="column"] iframe {
+        flex-grow: 1 !important;
+        height: 100% !important;
+        min-height: 520px !important;
+    }
+    
+    /* 强制全局暗色背景与CSS变量设置 */
+    html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stHeader"], [data-testid="stBlockContainer"] {
+        --primary-color: #00f2fe !important;
+        --background-color: #020813 !important;
+        --secondary-background-color: rgba(10, 19, 35, 0.82) !important;
+        --text-color: #cbd5e1 !important;
+        background-color: #020813 !important;
+        color: #cbd5e1 !important;
+    }
+    
+    /* 侧边栏样式，完美复刻左侧系统侧边栏样式 */
+    section[data-testid="stSidebar"] {
+        width: 260px !important;
+        min-width: 260px !important;
+        background-color: rgba(10, 19, 35, 0.82) !important;
+        backdrop-filter: blur(20px) saturate(140%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+        border-right: 1px solid rgba(0, 242, 254, 0.22) !important;
+        box-shadow: 0 0 30px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(0, 242, 254, 0.05) !important;
+    }
+    section[data-testid="stSidebar"] .stMarkdown, 
+    section[data-testid="stSidebar"] .stRadio, 
+    section[data-testid="stSidebar"] label,
+    section[data-testid="stSidebar"] p,
+    section[data-testid="stSidebar"] span {
+        color: #cbd5e1 !important;
+    }
+
+    /* 卡片采用纯深色固体背景，保障字样高度清晰 */
     .info-card {
-        background-color: #ffffff;
-        border: 1px solid #e0e0e0;
-        border-left: 6px solid #6c757d;
+        background-color: #0a1220 !important;
+        border: 1px solid rgba(0, 242, 254, 0.18) !important;
+        border-left: 6px solid #6c757d !important;
         border-radius: 8px;
         padding: 15px;
         margin-bottom: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        color: #cbd5e1 !important;
     }
-    .info-card.best { border-left-color: #28a745; background-color: #f4fff4; }
-    .info-card.selected { border-left-color: #007bff; background-color: #f0f7ff; }
-    .info-card.warn { border-left-color: #dc3545; background-color: #fff5f5; }
+    .info-card h3 {
+        color: #ffffff !important;
+        margin: 5px 0 !important;
+    }
+    .info-card.best { 
+        border-left-color: #00f2fe !important; 
+        background-color: #0b1c31 !important; 
+        box-shadow: 0 0 15px rgba(0, 242, 254, 0.15) !important;
+    }
+    .info-card.selected { 
+        border-left-color: #2563eb !important; 
+        background-color: #0e1d3e !important; 
+    }
+    .info-card.warn { 
+        border-left-color: #ef4444 !important; 
+        background-color: #21121c !important; 
+    }
 
-    /* 底部仪表盘样式 */
-    .dashboard-container {
-        background-color: #f1f3f5;
+    /* 直接对 Tabs 进行样式定义，杜绝假 div 产生多余留白 */
+    .stTabs {
+        background-color: rgba(2, 12, 26, 0.6) !important;
         padding: 20px;
         border-radius: 8px;
-        border: 1px solid #dee2e6;
-        margin-top: 20px;
+        border: 1px solid rgba(0, 242, 254, 0.15) !important;
+        box-shadow: inset 0 0 10px rgba(0, 242, 254, 0.05) !important;
+        margin-top: 15px;
+        color: #cbd5e1 !important;
     }
-    .metric-small { font-size: 0.9rem; color: #666; }
-    section[data-testid="stSidebar"] { width: 260px !important; min-width: 260px !important; }
-    body { background: #f8fafc !important; }
-    header { background: #ffffff !important; }
+    
+    .metric-small { 
+        font-size: 0.9rem; 
+        color: #94a3b8; 
+    }
+
+    /* 折叠面板 (Expander) 新版及老版样式覆盖 */
+    [data-testid="stExpander"] {
+        background-color: rgba(10, 25, 47, 0.3) !important;
+        border: 1px solid rgba(0, 242, 254, 0.15) !important;
+        border-radius: 8px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+    }
+    /* 彻底清除按钮在 hover/focus 下变白的问题，引入科技蓝悬停光晕 */
+    [data-testid="stExpander"] button,
+    [data-testid="stExpander"] [data-testid="stExpanderToggleHeader"] button {
+        background: transparent !important;
+        background-color: transparent !important;
+        color: #ffffff !important;
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+    }
+    [data-testid="stExpander"] button:hover,
+    [data-testid="stExpander"] button:focus,
+    [data-testid="stExpander"] button:active,
+    [data-testid="stExpander"] [data-testid="stExpanderToggleHeader"] button:hover,
+    [data-testid="stExpander"] [data-testid="stExpanderToggleHeader"] button:focus {
+        background: rgba(0, 242, 254, 0.08) !important;
+        background-color: rgba(0, 242, 254, 0.08) !important;
+        color: #00f2fe !important;
+        box-shadow: none !important;
+    }
+    [data-testid="stExpander"] div,
+    [data-testid="stExpander"] p,
+    [data-testid="stExpander"] span {
+        background-color: transparent !important;
+    }
+    .streamlit-expanderHeader, [data-testid="stExpanderToggleHeader"] {
+        background-color: rgba(10, 25, 47, 0.5) !important;
+        border-bottom: 1px solid rgba(0, 242, 254, 0.15) !important;
+        color: #ffffff !important;
+    }
+    .streamlit-expanderHeader p, 
+    .streamlit-expanderHeader span, 
+    [data-testid="stExpanderToggleHeader"] p, 
+    [data-testid="stExpanderToggleHeader"] span {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+    }
+    .streamlit-expanderContent, [data-testid="stExpanderDetails"], [data-testid="stExpanderDetails"] > div {
+        background-color: rgba(2, 12, 26, 0.5) !important;
+        border: none !important;
+        color: #cbd5e1 !important;
+    }
+
+    /* 指标 (Metrics) 样式增强 */
+    [data-testid="stMetricLabel"], 
+    [data-testid="stMetricLabel"] > div,
+    .stMetric label {
+        color: #94a3b8 !important;
+        font-size: 0.9rem !important;
+        font-weight: 600 !important;
+    }
+    [data-testid="stMetricValue"], 
+    [data-testid="stMetricValue"] > div,
+    .stMetric [data-testid="stMetricValue"] {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        font-size: 1.6rem !important;
+    }
+
+    /* 辅助说明字样 (Caption) */
+    .stCaption, 
+    [data-testid="stCaptionContainer"], 
+    .stCaption p {
+        color: #94a3b8 !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* 选项卡 (Tabs) */
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: transparent !important;
+        border-bottom: 1px solid rgba(0, 242, 254, 0.15) !important;
+    }
+    .stTabs [data-baseweb="tab"] {
+        color: #94a3b8 !important;
+        font-weight: 600 !important;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #00f2fe !important;
+        border-bottom-color: #00f2fe !important;
+    }
+
+    /* 按钮定制 */
+    .stButton>button {
+        background: linear-gradient(135deg, rgba(0, 229, 255, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%) !important;
+        border: 1px solid rgba(0, 242, 254, 0.4) !important;
+        color: #00f2fe !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
+        transition: all 0.3s !important;
+        min-height: 38px !important;
+    }
+    .stButton>button:hover {
+        background: linear-gradient(135deg, rgba(0, 242, 254, 0.28) 0%, rgba(37, 99, 235, 0.28) 100%) !important;
+        border-color: #00f2fe !important;
+        color: #ffffff !important;
+        box-shadow: 0 0 15px rgba(0, 242, 254, 0.4) !important;
+    }
+    .stButton>button[kind="primary"] {
+        background: linear-gradient(135deg, rgba(0, 229, 255, 0.3) 0%, rgba(37, 99, 235, 0.3) 100%) !important;
+        border: 1px solid #00f2fe !important;
+        color: #ffffff !important;
+        box-shadow: 0 0 10px rgba(0, 242, 254, 0.2) !important;
+    }
+    .stButton>button[kind="primary"]:hover {
+        background: linear-gradient(135deg, rgba(0, 242, 254, 0.45) 0%, rgba(37, 99, 235, 0.45) 100%) !important;
+        box-shadow: 0 0 18px rgba(0, 242, 254, 0.5) !important;
+    }
+
+    /* 下拉选择框和输入框 */
+    div[data-baseweb="select"] {
+        background-color: rgba(18, 30, 49, 0.8) !important;
+        border: 1px solid rgba(0, 242, 254, 0.3) !important;
+        border-radius: 6px !important;
+    }
+    div[data-baseweb="select"] div {
+        color: #ffffff !important;
+    }
+    input {
+        background-color: rgba(18, 30, 49, 0.8) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(0, 242, 254, 0.3) !important;
+    }
+    div[data-baseweb="input"] {
+        background-color: rgba(18, 30, 49, 0.8) !important;
+        border: 1px solid rgba(0, 242, 254, 0.3) !important;
+        border-radius: 6px !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -251,8 +451,8 @@ def main():
     
     # 3. 互动模式
     st.sidebar.markdown("""
-    <div style="background:#fff;border-left:4px solid #3b82f6;border-radius:6px;padding:10px 14px;margin-bottom:4px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
-        <span style="font-size:16px;font-weight:700;color:#1e293b;">&#x1F3AE; 交互控制台</span>
+    <div style="background:rgba(0, 242, 254, 0.06);border:1px solid rgba(0, 242, 254, 0.3);border-left:4px solid #00f2fe;border-radius:6px;padding:10px 14px;margin-bottom:4px;box-shadow:0 0 12px rgba(0, 242, 254, 0.1);">
+        <span style="font-size:16px;font-weight:700;color:#00f2fe;text-shadow:0 0 8px rgba(0, 242, 254, 0.3);">&#x1F3AE; 交互控制台</span>
     </div>
     """, unsafe_allow_html=True)
     inter_mode = st.sidebar.radio("地图点击功能", ["&#x1F50D; 查看站点详情", "&#x1F6AB; 添加道路阻断"], index=0, key="interact_radio")
@@ -266,18 +466,18 @@ def main():
     w_rate = get_weather_impact(weather)
     h = sim_time.hour
     traffic_f = 2.5 if 7<=h<=9 else (2.2 if 17<=h<=19 else 1.2)
-    tf_color = "#dc2626" if traffic_f >= 2.0 else "#d97706" if traffic_f >= 1.5 else "#059669"
+    tf_color = "#ef4444" if traffic_f >= 2.0 else "#f59e0b" if traffic_f >= 1.5 else "#10b981"
     st.sidebar.markdown(f"""
-    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;margin:10px 0;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-        <div style="font-size:13px;font-weight:700;color:#475569;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-            <span style="display:inline-block;width:4px;height:16px;background:#3b82f6;border-radius:2px;"></span>&#x1F4CB; 调度参数
+    <div style="background:rgba(2,12,26,0.6);border:1px solid rgba(0,242,254,0.15);border-radius:8px;padding:12px 14px;margin:10px 0;box-shadow:inset 0 0 10px rgba(0,242,254,0.05);">
+        <div style="font-size:13px;font-weight:700;color:#00f2fe;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+            <span style="display:inline-block;width:4px;height:16px;background:#00f2fe;border-radius:2px;"></span>&#x1F4CB; 调度参数
         </div>
-        <table style="width:100%;font-size:13px;line-height:2.2;color:#334155;border-collapse:collapse;">
-        <tr><td style="color:#94a3b8;width:68px;padding:2px 0;">调度主体</td><td style="font-weight:600;">{current_task['mode']}</td></tr>
-        <tr><td style="color:#94a3b8;padding:2px 0;">响应等级</td><td style="font-weight:600;">{severity}</td></tr>
-        <tr><td style="color:#94a3b8;padding:2px 0;">天气状况</td><td>{weather}&ensp;<span style="color:#059669;font-weight:500;">通行 {w_rate*100:.0f}%</span></td></tr>
+        <table style="width:100%;font-size:13px;line-height:2.2;color:#cbd5e1;border-collapse:collapse;">
+        <tr><td style="color:#94a3b8;width:68px;padding:2px 0;">调度主体</td><td style="font-weight:600;color:#ffffff;">{current_task['mode']}</td></tr>
+        <tr><td style="color:#94a3b8;padding:2px 0;">响应等级</td><td style="font-weight:600;color:#ffffff;">{severity}</td></tr>
+        <tr><td style="color:#94a3b8;padding:2px 0;">天气状况</td><td>{weather}&ensp;<span style="color:#00f2fe;font-weight:500;">通行 {w_rate*100:.0f}%</span></td></tr>
         <tr><td style="color:#94a3b8;padding:2px 0;">模拟时间</td><td>{sim_time.strftime('%H:%M')}&ensp;<span style="color:{tf_color};font-weight:500;">系数 {traffic_f:.1f}</span></td></tr>
-        <tr><td style="color:#94a3b8;padding:2px 0;">可用站点</td><td style="font-weight:600;">{len(facilities_basic)} 个</td></tr>
+        <tr><td style="color:#94a3b8;padding:2px 0;">可用站点</td><td style="font-weight:600;color:#ffffff;">{len(facilities_basic)} 个</td></tr>
         </table>
     </div>
     """, unsafe_allow_html=True)
@@ -372,7 +572,7 @@ def main():
                 elif item['name'] == best_name: color = theme_color
             folium.Marker(item['coords'], tooltip=f"{item['name']}", icon=folium.Icon(color=color, icon=fa_icon, prefix='fa')).add_to(m)
 
-        map_output = st_folium(m, width="100%", height=650, returned_objects=["last_clicked", "last_object_clicked"])
+        map_output = st_folium(m, width="100%", height=450, returned_objects=["last_clicked", "last_object_clicked"])
 
         if map_output['last_clicked'] and st.session_state.interaction_mode == 'block':
             lat, lng = map_output['last_clicked']['lat'], map_output['last_clicked']['lng']
@@ -380,6 +580,65 @@ def main():
             if not is_exist:
                 st.session_state.obstacles.append((lat, lng))
                 st.rerun()
+
+    # === 🔥 底部重构：交通事故救援路径效能评估系统 ===
+        st.markdown("### 📊 交通事故空间协同调度效能评估")
+        with st.container():
+            tab1, tab2, tab3 = st.tabs(["🛣️ 路径损耗评估", "🚧 道路阻断详情", "📡 算法执行监控"])
+
+            # Tab 1: 路径损耗 (核心：对比灾害前后的距离)
+            with tab1:
+                if st.session_state.dispatched and st.session_state.route_comparison:
+                    comp = st.session_state.route_comparison
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("理想路网行程 (无灾害)", f"{comp['orig_dist']:.0f} m")
+                    c2.metric("当前避障行程 (有灾害)", f"{comp['curr_dist']:.0f} m")
+
+                    delta = comp['detour']
+                    delta_color = "inverse" if delta > 0 else "normal"
+                    c3.metric("次生事故导致的绕行损耗", f"+{delta:.0f} m", delta_color=delta_color)
+
+                    # 损耗图表
+                    chart_data = pd.DataFrame({
+                        'Scenario': ['理想路径', '灾后避障路径'],
+                        'Distance': [comp['orig_dist'], comp['curr_dist']]
+                    })
+                    chart = alt.Chart(chart_data).mark_bar().encode(
+                        x='Distance:Q', y=alt.Y('Scenario:N', sort=None), color='Scenario:N'
+                    ).properties(height=150)
+                    st.altair_chart(chart, use_container_width=True)
+
+                    if delta > 0: st.warning(f"⚠️ 受 {comp['obstacles']} 处障碍物影响，目标单位 {comp['name']} 被迫绕行，时效性受到影响。")
+                    else: st.success("✅ 当前目标单位规划路径未受阻断影响，保持最佳通行效率。")
+                else:
+                    st.info("💡 系统已就绪，请在左侧【交互控制台】选择调度主体与等级，点击按钮开始动态路径联合解算。")
+                    st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("监测覆盖率", "100%", help="全路网拓扑传感器状态")
+                    c2.metric("平均调度响应时效", "< 15s", help="历史解算平均耗时")
+                    c3.metric("应急车道可用状态", "正常", help="全段应急通道通行率")
+
+            # Tab 2: 障碍物列表
+            with tab2:
+                if st.session_state.obstacles:
+                    obs_df = pd.DataFrame(st.session_state.obstacles, columns=['纬度', '经度'])
+                    obs_df.index += 1
+                    st.dataframe(obs_df, use_container_width=True)
+                    st.caption(f"共监测到 {len(obs_df)} 处道路中断点，已在底层网络拓扑中动态剔除。")
+                else:
+                    st.success("当前路网畅通，无结构性阻断记录。")
+
+            # Tab 3: 算法日志
+            with tab3:
+                obs_log = f"网络拓扑动态重构: 移除 {len(st.session_state.obstacles)} 个故障节点..." if st.session_state.obstacles else "路网连通性校验... 完整."
+                best_info = st.session_state.route_comparison.get('name', 'N/A')
+                st.code(f"""
+    [System] {datetime.now().strftime('%H:%M:%S')} GIS空间调度引擎自检... OK
+    [System] {datetime.now().strftime('%H:%M:%S')} {obs_log}
+    [Algorithm] 多目标智能打分系统 (考虑因素: 距离约束, 业务资质约束, {NETWORK_TYPE}载具运动学)
+    [Context] 当前调度模块: {mode.upper()} | 气象折损权重: {get_weather_impact(weather)}
+    [Result] 最优协同响应单位: {best_info}
+                """, language="bash")
 
     with col_data:
         if st.session_state.obstacles:
@@ -394,7 +653,7 @@ def main():
             ec1.metric("天气", weather)
             w_rate = get_weather_impact(weather)
             ec2.metric("通行效率", f"{w_rate*100:.0f}%", delta=f"-{(1-w_rate)*100:.0f}%" if w_rate<1 else None)
-            mode_style = "background-color:#dc3545; color:white;" if st.session_state.interaction_mode == 'block' else "background-color:#007bff; color:white;"
+            mode_style = "background-color:rgba(239, 68, 68, 0.15); border:1px solid rgba(239, 68, 68, 0.4); color:#ef4444;" if st.session_state.interaction_mode == 'block' else "background-color:rgba(0, 242, 254, 0.1); border:1px solid rgba(0, 242, 254, 0.3); color:#00f2fe;"
             mode_text = "🚧 点击地图添加障碍" if st.session_state.interaction_mode == 'block' else "🔍 点击站点查看详情"
             st.markdown(f'<div style="{mode_style} padding:10px; border-radius:5px; text-align:center; margin-top:10px;">当前模式：{mode_text}</div>', unsafe_allow_html=True)
 
@@ -415,7 +674,7 @@ def main():
             card_class = "info-card best" if is_best else "info-card selected"
             if is_unreachable: card_class, title_pre = "info-card warn", "🚫 不符合条件 / 不可达"
 
-            st.markdown(f"""<div class="{card_class}"><div style="color:#666; font-size:0.8rem;">{title_pre}</div><h3 style="margin:5px 0;">{selected['name']}</h3><span style="background:#eee; padding:2px 6px; font-size:0.8rem;">{selected['level']}</span></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class="{card_class}"><div style="color:#94a3b8; font-size:0.8rem;">{title_pre}</div><h3 style="margin:5px 0;">{selected['name']}</h3><span style="background:rgba(255,255,255,0.08);color:#ffffff;border:1px solid rgba(255,255,255,0.1);border-radius:4px; padding:2px 6px; font-size:0.8rem;">{selected['level']}</span></div>""", unsafe_allow_html=True)
 
             if st.session_state.dispatched and not is_unreachable:
                 c1, c2 = st.columns(2)
@@ -428,7 +687,7 @@ def main():
                 else: st.success("当前为最快方案")
 
             # 针对不同模块显示动态业务属性
-            st.divider()
+            st.markdown('<hr style="margin: 8px 0; border: none; border-top: 1px solid rgba(255,255,255,0.12);"/>', unsafe_allow_html=True)
             if mode == 'medical':
                 st.caption(f"床位使用情况: {selected['available_beds']}/{selected['total_beds']}")
                 st.progress(1 - selected['available_beds']/selected['total_beds'])
@@ -440,65 +699,43 @@ def main():
                 st.write(f"☣️ **状态:** {selected['status']} | **洗消剂储备:** {selected.get('neutralizer','未知')}")
             elif mode == 'road':
                 st.write(f"🏗️ **状态:** {selected['status']} | **重型吊车:** {selected.get('heavy_cranes',0)}台 | **清障拖车:** {selected.get('tow_trucks',0)}台")
+            
+            # 解决右侧留白：如果已解算，在下方展示备选优选排序
+            if st.session_state.dispatched and len(st.session_state.calculation_results) > 1:
+                st.markdown("<div style='margin-top: 15px; border-top: 1px solid rgba(0,242,254,0.15); padding-top: 10px;'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='font-size: 13px; font-weight: 700; color: #00f2fe; margin-bottom: 10px;'>📊 协同响应效能优选排序</div>", unsafe_allow_html=True)
+                for rank, res in enumerate(st.session_state.calculation_results[1:4], start=2):
+                    st.markdown(f"""
+                    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 12px; color: #cbd5e1;">
+                            <span>No.{rank} {res['name']}</span>
+                            <span style="color: #94a3b8; font-size: 11px;">{res['level']}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 11px; margin-top: 6px;">
+                            <span>耗时: {res['time']:.1f}m</span>
+                            <span>距离: {res['dist']/1000:.1f} km</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
         else:
             st.info("👈 在 [查看模式] 下点击地图图标查看详情")
+            st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='font-size: 13px; font-weight: 700; color: #00f2fe; margin-bottom: 10px;'>📋 备选保障力量状态一览</div>", unsafe_allow_html=True)
+            for fac in facilities_basic[:4]:
+                st.markdown(f"""
+                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(0, 242, 254, 0.15); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; box-shadow: inset 0 0 10px rgba(0,242,254,0.02);">
+                    <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 12px; color: #ffffff;">
+                        <span>{fac['name']}</span>
+                        <span style="color: #00f2fe; background: rgba(0,242,254,0.1); border: 1px solid rgba(0,242,254,0.25); border-radius: 4px; padding: 1px 6px; font-size: 10px;">{fac['level']}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; color: #cbd5e1; font-size: 11px; margin-top: 6px;">
+                        <span>预计距离: 内侧寻优中</span>
+                        <span style="color: #10b981;">● 待命可用</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
-    # === 🔥 底部重构：交通事故救援路径效能评估系统 ===
-    st.markdown("### 📊 交通事故空间协同调度效能评估")
-    with st.container():
-        st.markdown('<div class="dashboard-container">', unsafe_allow_html=True)
-        tab1, tab2, tab3 = st.tabs(["🛣️ 路径损耗评估", "🚧 道路阻断详情", "📡 算法执行监控"])
-        
-        # Tab 1: 路径损耗 (核心：对比灾害前后的距离)
-        with tab1:
-            if st.session_state.dispatched and st.session_state.route_comparison:
-                comp = st.session_state.route_comparison
-                c1, c2, c3 = st.columns(3)
-                c1.metric("理想路网行程 (无灾害)", f"{comp['orig_dist']:.0f} m")
-                c2.metric("当前避障行程 (有灾害)", f"{comp['curr_dist']:.0f} m")
-                
-                delta = comp['detour']
-                delta_color = "inverse" if delta > 0 else "normal"
-                c3.metric("次生事故导致的绕行损耗", f"+{delta:.0f} m", delta_color=delta_color)
-                
-                # 损耗图表
-                chart_data = pd.DataFrame({
-                    'Scenario': ['理想路径', '灾后避障路径'],
-                    'Distance': [comp['orig_dist'], comp['curr_dist']]
-                })
-                chart = alt.Chart(chart_data).mark_bar().encode(
-                    x='Distance:Q', y=alt.Y('Scenario:N', sort=None), color='Scenario:N'
-                ).properties(height=150)
-                st.altair_chart(chart, use_container_width=True)
-                
-                if delta > 0: st.warning(f"⚠️ 受 {comp['obstacles']} 处障碍物影响，目标单位 {comp['name']} 被迫绕行，时效性受到影响。")
-                else: st.success("✅ 当前目标单位规划路径未受阻断影响，保持最佳通行效率。")
-            else:
-                st.info("待执行动态规划后查看对比分析。")
 
-        # Tab 2: 障碍物列表
-        with tab2:
-            if st.session_state.obstacles:
-                obs_df = pd.DataFrame(st.session_state.obstacles, columns=['纬度', '经度'])
-                obs_df.index += 1
-                st.dataframe(obs_df, use_container_width=True)
-                st.caption(f"共监测到 {len(obs_df)} 处道路中断点，已在底层网络拓扑中动态剔除。")
-            else:
-                st.success("当前路网畅通，无结构性阻断记录。")
-
-        # Tab 3: 算法日志
-        with tab3:
-            obs_log = f"网络拓扑动态重构: 移除 {len(st.session_state.obstacles)} 个故障节点..." if st.session_state.obstacles else "路网连通性校验... 完整."
-            best_info = st.session_state.route_comparison.get('name', 'N/A')
-            st.code(f"""
-[System] {datetime.now().strftime('%H:%M:%S')} GIS空间调度引擎自检... OK
-[System] {datetime.now().strftime('%H:%M:%S')} {obs_log}
-[Algorithm] 多目标智能打分系统 (考虑因素: 距离约束, 业务资质约束, {NETWORK_TYPE}载具运动学)
-[Context] 当前调度模块: {mode.upper()} | 气象折损权重: {get_weather_impact(weather)}
-[Result] 最优协同响应单位: {best_info}
-            """, language="bash")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
