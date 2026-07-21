@@ -10,12 +10,10 @@
       </div>
       <div class="filter-field label-field">
         <label>检测标签</label>
-        <input
-          v-model.trim="filters.label"
-          type="text"
-          placeholder="例如 lkyw_fire / car_nofire"
-          @keyup.enter="loadRecords"
-        />
+        <select v-model="filters.label">
+          <option value="">全部标签</option>
+          <option v-for="label in labelOptions" :key="label" :value="label">{{ label }}</option>
+        </select>
       </div>
       <div class="filter-actions">
         <button class="btn-filter primary" @click="loadRecords">查询</button>
@@ -144,6 +142,7 @@ const records = ref([])
 const detail = ref(null)
 
 const modelOptions = ['SFGA-YOLO26M', 'YOLO26M', 'YOLO11M']
+const labelOptions = ['car_fire', 'lkyw_fire', 'car_nofire', 'lkyw_nofire']
 const filters = reactive({
   model: '',
   label: ''

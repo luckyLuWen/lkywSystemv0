@@ -100,7 +100,6 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import ModelMetricsPanel from './ModelMetricsPanel.vue'
 import { getClassStyle } from '../utils/classColors'
 
 const props = defineProps({
