@@ -1856,6 +1856,16 @@
       </div>
 
       <!-- 1. 在途监控卡片列表 (全景总览模式展示) -->
+      <div v-show="activeHudTab === 'overview'" style="display: flex; justify-content: space-between; align-items: center; margin: 10px 14px 8px;">
+        <span style="color: #94a3b8; font-size: 13px; font-weight: 500; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">在途分类监控</span>
+        <button 
+          @click="toggleVehicleFilter('all')"
+          style="background: transparent; border: 1px solid #00f2fe; color: #00f2fe; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; transition: all 0.3s;"
+          :style="activeVehicleFilter === 'all' ? 'background: rgba(0,242,254,0.25); box-shadow: 0 0 10px rgba(0,242,254,0.4); text-shadow: 0 0 5px #00f2fe;' : 'opacity: 0.7; border-color: rgba(0,242,254,0.5);'"
+        >
+          显示全部3种车辆
+        </button>
+      </div>
       <div v-show="activeHudTab === 'overview'" class="lkyw-hud-grid">
         <!-- 危化品运输车 -->
         <div 
@@ -2543,7 +2553,8 @@ const initialPhaseCameraConfigs = {
     7: { range: 100000, pitch: -90, heading: -3 },
     8: { range: 641, pitch: -26, heading: -25 },
     9: { range: 500, pitch: -21, heading: 28 },
-    10: { range: 2200, pitch: -50, heading: 0 }
+    10: { range: 1440, pitch: -39, heading: -5 },
+    11: { range: 62750, pitch: -79, heading: 5 }
   },
   tanker: {
     1: { range: 2500, pitch: -45, heading: 0 },
@@ -2555,7 +2566,7 @@ const initialPhaseCameraConfigs = {
     7: { range: 9000, pitch: -45, heading: 352 },
     8: { range: 600, pitch: -30, heading: -10 },
     9: { range: 600, pitch: -18, heading: -21 },
-    10: { range: 2200, pitch: -50, heading: 0 }
+    10: { range: 62750, pitch: -79, heading: 5 }
   }
 }
 
@@ -4365,7 +4376,7 @@ let readyCheckFrameCounter = 0; // 帧计数器，用于节流
 let currentMissionDataSource = null;
 let currentLoadMissionId = 0;
 
-const loadMission = async () => {
+const loadMission = async (isMultiAgent = false) => {
   if (!viewer) return;
   const loadId = ++currentLoadMissionId;
   try {
@@ -4374,7 +4385,8 @@ const loadMission = async () => {
     const endpoint = currentScene.value === 'truck' ? 'crash' : 'leak';
     // 触发并等待生成，确保 CZML 已经写入完毕
     try {
-      await fetch(`${baseUrl}/api/run_3d_strategy?end_point=${endpoint}`);
+      const apiPath = isMultiAgent ? 'api/run_multi_agent' : 'api/run_3d_strategy';
+      await fetch(`${baseUrl}/${apiPath}?end_point=${endpoint}`);
     } catch (e) {
       console.warn('[Cesium] 触发策略生成失败，将尝试加载已有 CZML:', e);
     }
@@ -6082,6 +6094,11 @@ function startHudStatsSimulation() {
 startHudStatsSimulation();
 
 function toggleVehicleFilter(filterType) {
+  // 允许点击已选中的类别时取消选中，恢复显示全部车辆
+  if (activeVehicleFilter.value === filterType && filterType !== 'all') {
+    filterType = 'all';
+  }
+  
   activeVehicleFilter.value = filterType;
   trafficConfig.activeCategory = filterType;
 
@@ -8814,30 +8831,26 @@ function updatePhaseScene(index, animate = false) {
       rescuePopup.show = true;
       ugvPopup.show = true;
     } else if (isTruckScene && index === 10) {
-      rescuePopup.title = '无人机出发';
-      rescuePopup.model = 'DJI M300 RTK';
-      rescuePopup.altitude = '100 m';
-      rescuePopup.speed = '15 m/s';
-      rescuePopup.status = '已出发';
+      rescuePopup.title = '救援车出动';
+      rescuePopup.model = '多维救援协同';
+      rescuePopup.altitude = '--';
+      rescuePopup.speed = '协同编队';
+      rescuePopup.status = '出动中';
       rescuePopup.xOffset = truckRescuePopupAdjust.xOffset;
       rescuePopup.yOffset = truckRescuePopupAdjust.yOffset;
       rescueCoords.lng = 113.202;
       rescueCoords.lat = 30.3268;
       rescueCoords.height = 120.0;
-      ugvPopup.title = '无人车出发';
-      ugvPopup.model = 'SCOUT 2.0';
-      ugvPopup.count = '2 辆';
-      ugvPopup.speed = '5 km/h';
-      ugvPopup.status = '已出发';
-      ugvPopup.xOffset = truckUgvPopupAdjust.xOffset;
-      ugvPopup.yOffset = truckUgvPopupAdjust.yOffset;
-      ugvCoords.lng = 113.202;
-      ugvCoords.lat = 30.3268;
-      ugvCoords.height = 10.0;
       
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
       rescuePopup.show = true;
-      ugvPopup.show = true;
+      ugvPopup.show = false;
+
+      if (!window.__multiAgentTriggeredFor || window.__multiAgentTriggeredFor !== 'truck') {
+          window.__multiAgentTriggeredFor = 'truck';
+          rescueDispatchScene.value = 'crash';
+          triggerRescueMultiAgent();
+      }
     } else if (isTankerScene && index === 6) {
       // 油罐车场景无人机
       rescuePopup.title = '无人机出发';
@@ -8918,30 +8931,26 @@ function updatePhaseScene(index, animate = false) {
       rescuePopup.show = true;
       ugvPopup.show = true;
     } else if (isTankerScene && index === 10) {
-      rescuePopup.title = '无人机出发';
-      rescuePopup.model = 'DJI M300 RTK';
-      rescuePopup.altitude = '80 m';
-      rescuePopup.speed = '12 m/s';
-      rescuePopup.status = '已出发';
+      rescuePopup.title = '救援车出动';
+      rescuePopup.model = '多维救援协同';
+      rescuePopup.altitude = '--';
+      rescuePopup.speed = '协同编队';
+      rescuePopup.status = '出动中';
       rescuePopup.xOffset = tankerRescuePopupAdjust.xOffset;
       rescuePopup.yOffset = tankerRescuePopupAdjust.yOffset;
       rescueCoords.lng = tankerPointAdjust.lng;
       rescueCoords.lat = tankerPointAdjust.lat;
       rescueCoords.height = 17.0;
-      ugvPopup.title = '无人车出发';
-      ugvPopup.model = 'SCOUT 2.0';
-      ugvPopup.count = '2 辆';
-      ugvPopup.speed = '5 km/h';
-      ugvPopup.status = '已出发';
-      ugvPopup.xOffset = tankerUgvPopupAdjust.xOffset;
-      ugvPopup.yOffset = tankerUgvPopupAdjust.yOffset;
-      ugvCoords.lng = tankerPointAdjust.lng;
-      ugvCoords.lat = tankerPointAdjust.lat;
-      ugvCoords.height = 10.0;
       
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
       rescuePopup.show = true;
-      ugvPopup.show = true;
+      ugvPopup.show = false;
+
+      if (!window.__multiAgentTriggeredFor || window.__multiAgentTriggeredFor !== 'leak') {
+          window.__multiAgentTriggeredFor = 'leak';
+          rescueDispatchScene.value = 'leak';
+          triggerRescueMultiAgent();
+      }
     } else {
       if (rescueMarkerEntity) rescueMarkerEntity.show = false;
       rescuePopup.show = false;
@@ -8976,6 +8985,16 @@ function updatePhaseScene(index, animate = false) {
               carPathGlow.show = true;
               if (carPathGlow.polyline) carPathGlow.polyline.show = true;
             }
+
+            // 多智能体路径显示逻辑：只有到达第 10 阶段（救援装备出动）才显示
+            const multiAgentPrefixes = ['Agent_', 'AgentPath_', 'AgentPOI_', 'AgentCP_'];
+            currentMissionDataSource.entities.values.forEach(entity => {
+                const id = entity.id;
+                if (id && multiAgentPrefixes.some(prefix => id.startsWith(prefix))) {
+                    const shouldShow = (index >= 10);
+                    entity.show = shouldShow;
+                }
+            });
         }
       }
 
@@ -9543,9 +9562,14 @@ async function triggerRescueMultiAgent() {
   rescueDispatchPending.value = true
   rescueDispatchStatus.value = '救援装备出动中...'
   try {
-    const url = buildCommandCenterApiUrl(`api/run_multi_agent?end_point=${rescueDispatchScene.value}&strategy=rcd`)
-    const r = await fetch(url)
-    if (!r.ok) throw new Error('HTTP ' + r.status)
+    // 强制加载包含协同救援规划路线的 CZML，它内部会调用 api/run_multi_agent 接口
+    if (typeof loadMission === 'function') {
+        await loadMission(true);
+    } else {
+        const url = buildCommandCenterApiUrl(`api/run_multi_agent?end_point=${rescueDispatchScene.value}&strategy=rcd`)
+        const r = await fetch(url)
+        if (!r.ok) throw new Error('HTTP ' + r.status)
+    }
     rescueDispatchStatus.value = '✅ 救援装备已出动'
   } catch (e) {
     rescueDispatchStatus.value = '失败: ' + (e instanceof Error ? e.message : String(e))

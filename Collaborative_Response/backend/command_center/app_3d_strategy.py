@@ -1023,8 +1023,8 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
                 })
     
 
-    # 动态对象（非多智能体模式下包含 UAV/Car）
-    if not multi_agent_data:
+    # 动态对象（包含 UAV/Car）
+    if True:
         uav_pos = []
         for _, r in uav_df.iterrows(): uav_pos.extend([format_timestamp(r['timestamp']), r['lon'], r['lat'], r['alt']])
         czml.append({
@@ -1046,7 +1046,7 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
         })
 
     # 3D 路径进度检查点（透明底色 HUD 标签）
-    if not multi_agent_data:
+    if True:
         car_total_dist = car_df['dist'].sum() / 1000 if 'dist' in car_df.columns else 0
         car_eta_min = car_df['time_s'].iloc[-1] / 60 if len(car_df) > 0 else 0
         uav_eta_min = (uav_df['time_s'].iloc[-1] - delay) / 60 if len(uav_df) > 0 else 0
@@ -1133,8 +1133,8 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
             }
         })
 
-    # 障碍物（非多智能体模式下显示）
-    if not multi_agent_data:
+    # 障碍物
+    if True:
         for i, nfz in enumerate(NFZ_LIST + NEW_NFZ_LIST):
             color = [255, 0, 0, 100] if i < len(NFZ_LIST) else [255, 165, 0, 100]
             if 'polygon' in nfz:
