@@ -156,7 +156,7 @@
           0
         ]
       },
-      "outlineWidth": 0
+      "outlineWidth": 2
     },
     "label": {
       "text": "医疗急救: 三伏潭镇卫生院分院",
@@ -170,7 +170,7 @@
       "distanceDisplayCondition": {
         "distanceDisplayCondition": [
           0.0,
-          4500.0
+          8000.0
         ]
       }
     }
@@ -188,18 +188,18 @@
       "pixelSize": 12,
       "color": {
         "rgba": [
-          34,
-          197,
-          94,
-          220
+          120,
+          120,
+          120,
+          160
         ]
       },
       "outlineColor": {
         "rgba": [
-          255,
-          255,
-          255,
-          200
+          0,
+          0,
+          0,
+          0
         ]
       },
       "outlineWidth": 2
@@ -386,7 +386,7 @@
           0
         ]
       },
-      "outlineWidth": 0
+      "outlineWidth": 2
     },
     "label": {
       "text": "公安交警: 剅河镇派出所",
@@ -400,7 +400,7 @@
       "distanceDisplayCondition": {
         "distanceDisplayCondition": [
           0.0,
-          4500.0
+          8000.0
         ]
       }
     }
@@ -464,18 +464,18 @@
       "pixelSize": 12,
       "color": {
         "rgba": [
-          59,
-          130,
-          246,
-          220
+          120,
+          120,
+          120,
+          160
         ]
       },
       "outlineColor": {
         "rgba": [
-          255,
-          255,
-          255,
-          200
+          0,
+          0,
+          0,
+          0
         ]
       },
       "outlineWidth": 2
@@ -510,18 +510,18 @@
       "pixelSize": 12,
       "color": {
         "rgba": [
-          168,
-          85,
-          247,
-          220
+          120,
+          120,
+          120,
+          160
         ]
       },
       "outlineColor": {
         "rgba": [
-          255,
-          255,
-          255,
-          200
+          0,
+          0,
+          0,
+          0
         ]
       },
       "outlineWidth": 2
@@ -570,7 +570,7 @@
           0
         ]
       },
-      "outlineWidth": 0
+      "outlineWidth": 2
     },
     "label": {
       "text": "防化部队: 三伏潭镇危化品监管站",
@@ -584,7 +584,7 @@
       "distanceDisplayCondition": {
         "distanceDisplayCondition": [
           0.0,
-          4500.0
+          8000.0
         ]
       }
     }
@@ -662,7 +662,7 @@
           0
         ]
       },
-      "outlineWidth": 0
+      "outlineWidth": 2
     },
     "label": {
       "text": "交通路政: 剅河镇路政管理所",
@@ -676,7 +676,7 @@
       "distanceDisplayCondition": {
         "distanceDisplayCondition": [
           0.0,
-          4500.0
+          8000.0
         ]
       }
     }
@@ -740,18 +740,18 @@
       "pixelSize": 12,
       "color": {
         "rgba": [
-          148,
-          163,
-          184,
-          220
+          120,
+          120,
+          120,
+          160
         ]
       },
       "outlineColor": {
         "rgba": [
-          255,
-          255,
-          255,
-          200
+          0,
+          0,
+          0,
+          0
         ]
       },
       "outlineWidth": 2
@@ -2743,7 +2743,7 @@
           255,
           255,
           255,
-          255
+          230
         ]
       },
       "outlineWidth": 1,
@@ -2789,7 +2789,7 @@
       "distanceDisplayCondition": {
         "distanceDisplayCondition": [
           0.0,
-          4500.0
+          8000.0
         ]
       }
     }
