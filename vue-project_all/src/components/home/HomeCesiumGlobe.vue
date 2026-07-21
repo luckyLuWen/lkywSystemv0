@@ -138,7 +138,7 @@
         </div>
 
         <div class="camera-modal-body">
-          <!-- Tab 选项卡标签页导航（包含 0-1 ~ 0-4 4辆车的独立通道） -->
+          <!-- Tab 选项卡标签页导航（包含 0-1 ~ 0-4 4辆车的独立通道及 🛣️ 路线微调） -->
           <div class="vehicle-tab-container" style="display: flex; gap: 4px; margin-bottom: 14px; background: rgba(0, 242, 254, 0.08); padding: 4px; border-radius: 6px; border: 1px solid rgba(0, 242, 254, 0.2);">
             <button 
               v-for="(car, idx) in startStageVehicleAdjust.cars" 
@@ -148,6 +148,13 @@
               @click="startStageVehicleAdjust.activeTab = 'car' + (idx + 1)"
             >
               🚗 0-{{ idx + 1 }}
+            </button>
+            <button 
+              class="v-tab-btn" 
+              :style="startStageVehicleAdjust.activeTab === 'road' ? 'flex: 1.2; padding: 6px 0; font-size: 12px; border: 1px solid #00f2fe; background: rgba(0, 242, 254, 0.25); color: #00f2fe; font-weight: bold; border-radius: 4px; cursor: pointer;' : 'flex: 1.2; padding: 6px 0; font-size: 12px; border: 1px solid transparent; background: transparent; color: #a0aec0; cursor: pointer; border-radius: 4px;'"
+              @click="startStageVehicleAdjust.activeTab = 'road'; startStageVehicleAdjust.showRoadLine = true;"
+            >
+              🛣️ 路线
             </button>
           </div>
 
@@ -208,6 +215,93 @@
               </div>
             </div>
           </template>
+
+          <!-- 🛣️ 路线 (P1 ~ P8) 独立控制面板 -->
+          <div v-if="startStageVehicleAdjust.activeTab === 'road'">
+            <div style="font-size: 13px; color: #00f2fe; margin-bottom: 10px; font-weight: bold; display: flex; align-items: center; justify-content: space-between;">
+              <span>🛣️ 沥青公路中线航点 (P1 ~ P8) 调整：</span>
+              <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; color: #fff; cursor: pointer; font-weight: normal;">
+                <input type="checkbox" v-model="startStageVehicleAdjust.showRoadLine" style="accent-color: #00f2fe; cursor: pointer;" />
+                <span>显示路线与P1~P8标记</span>
+              </label>
+            </div>
+
+            <!-- P1 ~ P8 8个航点切换按钮 -->
+            <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 12px;">
+              <button 
+                v-for="pIdx in 8" 
+                :key="pIdx"
+                :style="startStageVehicleAdjust.selectedWaypointIndex === (pIdx - 1) ? 'flex: 1; min-width: 32px; padding: 4px 0; font-size: 12px; border: 1px solid #ffaa00; background: rgba(255, 170, 0, 0.25); color: #ffaa00; font-weight: bold; border-radius: 4px; cursor: pointer;' : 'flex: 1; min-width: 32px; padding: 4px 0; font-size: 12px; border: 1px solid rgba(0, 242, 254, 0.3); background: rgba(0, 242, 254, 0.05); color: #00f2fe; cursor: pointer; border-radius: 4px;'"
+                @click="startStageVehicleAdjust.selectedWaypointIndex = pIdx - 1; startStageVehicleAdjust.showRoadLine = true;"
+              >
+                P{{ pIdx }}
+              </button>
+            </div>
+
+            <!-- 当前选中航点参数调整 -->
+            <template v-if="startStageRoadWaypoints[startStageVehicleAdjust.selectedWaypointIndex]">
+              <div style="font-size: 12px; color: #ffaa00; margin-bottom: 8px; font-weight: bold;">
+                📍 P{{ startStageVehicleAdjust.selectedWaypointIndex + 1 }} 航点坐标微调：
+              </div>
+
+              <!-- 经度 (Lng) -->
+              <div class="slider-row">
+                <div class="slider-header">
+                  <span class="slider-label">P{{ startStageVehicleAdjust.selectedWaypointIndex + 1 }} 经度 (Lng)</span>
+                  <span class="val-tag cyan-tag">{{ startStageRoadWaypoints[startStageVehicleAdjust.selectedWaypointIndex][0].toFixed(6) }}</span>
+                </div>
+                <div class="slider-control">
+                  <input 
+                    type="range" 
+                    v-model.number="startStageRoadWaypoints[startStageVehicleAdjust.selectedWaypointIndex][0]" 
+                    min="113.090000" 
+                    max="113.120000" 
+                    step="0.000010" 
+                    class="cyber-range-slider cyan-slider" 
+                  />
+                  <input 
+                    type="number" 
+                    v-model.number="startStageRoadWaypoints[startStageVehicleAdjust.selectedWaypointIndex][0]" 
+                    step="0.000001" 
+                    class="cyber-num-input cyan-input" 
+                  />
+                </div>
+              </div>
+
+              <!-- 纬度 (Lat) -->
+              <div class="slider-row">
+                <div class="slider-header">
+                  <span class="slider-label">P{{ startStageVehicleAdjust.selectedWaypointIndex + 1 }} 纬度 (Lat)</span>
+                  <span class="val-tag cyan-tag">{{ startStageRoadWaypoints[startStageVehicleAdjust.selectedWaypointIndex][1].toFixed(6) }}</span>
+                </div>
+                <div class="slider-control">
+                  <input 
+                    type="range" 
+                    v-model.number="startStageRoadWaypoints[startStageVehicleAdjust.selectedWaypointIndex][1]" 
+                    min="30.380000" 
+                    max="30.395000" 
+                    step="0.000010" 
+                    class="cyber-range-slider cyan-slider" 
+                  />
+                  <input 
+                    type="number" 
+                    v-model.number="startStageRoadWaypoints[startStageVehicleAdjust.selectedWaypointIndex][1]" 
+                    step="0.000001" 
+                    class="cyber-num-input cyan-input" 
+                  />
+                </div>
+              </div>
+
+              <!-- 整体轨迹快捷平移微调 -->
+              <div style="font-size: 12px; color: #a0aec0; margin: 10px 0 6px 0;">整体路线平移 (米)：</div>
+              <div style="display: flex; gap: 6px;">
+                <button class="action-btn-reset cyan-btn" style="flex: 1; padding: 4px 0; font-size: 12px;" @click="shiftAllRoadWaypoints(0, 5)">⬆️ 北移5m</button>
+                <button class="action-btn-reset cyan-btn" style="flex: 1; padding: 4px 0; font-size: 12px;" @click="shiftAllRoadWaypoints(0, -5)">⬇️ 南移5m</button>
+                <button class="action-btn-reset cyan-btn" style="flex: 1; padding: 4px 0; font-size: 12px;" @click="shiftAllRoadWaypoints(-5, 0)">⬅️ 西移5m</button>
+                <button class="action-btn-reset cyan-btn" style="flex: 1; padding: 4px 0; font-size: 12px;" @click="shiftAllRoadWaypoints(5, 0)">➡️ 东移5m</button>
+              </div>
+            </template>
+          </div>
 
           <div style="height: 1px; background: rgba(0, 242, 254, 0.2); margin: 12px 0;"></div>
 
@@ -2380,9 +2474,9 @@ const cameraAdjust = reactive({
   show: false,
   scene: 'truck',
   phaseIndex: 1,
-  range: 800,
-  pitch: -11,
-  heading: -39,
+  range: 600,
+  pitch: -20,
+  heading: -25,
   copiedMsg: ''
 })
 
@@ -2440,7 +2534,7 @@ function setVehicleCategoryFilter(cat) {
 
 const initialPhaseCameraConfigs = {
   truck: {
-    1: { range: 600, pitch: -10, heading: -74 },
+    1: { range: 600, pitch: -20, heading: -25 },
     2: { range: 480, pitch: -25, heading: 33 },
     3: { range: 480, pitch: -25, heading: 33 },
     4: { range: 480, pitch: -25, heading: 33 },
@@ -3527,10 +3621,10 @@ const startStageRoadWaypoints = reactive([
 ])
 
 const startStageVehicleConfigs = [
-  { id: 'start_stage_car_01', uri: '/Dashboard/models/0-1.glb', label: '仿真初始车辆01(大客车)', offsetRatio: 0.05, speedFactor: 0.85, laneOffset: 0.000025, scale: 0.82 },
-  { id: 'start_stage_car_02', uri: '/Dashboard/models/0-2.glb', label: '仿真初始车辆02(跑车)', offsetRatio: 0.30, speedFactor: 1.20, laneOffset: -0.000025, scale: 0.82 },
-  { id: 'start_stage_car_03', uri: '/Dashboard/models/0-3.glb', label: '仿真初始车辆03(轿车)', offsetRatio: 0.55, speedFactor: 1.05, laneOffset: -0.000020, scale: 0.82 },
-  { id: 'start_stage_car_04', uri: '/Dashboard/models/0-4.glb', label: '仿真初始车辆04(轿跑)', offsetRatio: 0.80, speedFactor: 0.95, laneOffset: 0.000020, scale: 0.82 }
+  { id: 'start_stage_car_01', uri: '/Dashboard/models/0-1.glb', label: '仿真初始车辆01(大客车)', delayRatio: 0.00, speedFactor: 0.85, laneOffset: 0.000025, scale: 0.82 },
+  { id: 'start_stage_car_02', uri: '/Dashboard/models/0-2.glb', label: '仿真初始车辆02(跑车)', delayRatio: 0.12, speedFactor: 1.20, laneOffset: -0.000025, scale: 0.82 },
+  { id: 'start_stage_car_03', uri: '/Dashboard/models/0-3.glb', label: '仿真初始车辆03(轿车)', delayRatio: 0.24, speedFactor: 1.05, laneOffset: -0.000020, scale: 0.82 },
+  { id: 'start_stage_car_04', uri: '/Dashboard/models/0-4.glb', label: '仿真初始车辆04(轿跑)', delayRatio: 0.36, speedFactor: 0.95, laneOffset: 0.000020, scale: 0.82 }
 ]
 
 let startStageVehicleEntities = []
@@ -3539,15 +3633,15 @@ let startStageVehicleEntities = []
 const startStageVehicleAdjust = reactive({
   show: false,
   isPaused: false,         // 默认【开始行驶】状态（点击仿真开始即可播放车流行驶动画）
-  showRoadLine: false,     // 路线与航点 Marker 隐藏/显示开关（默认隐藏，保持画面干净）
+  showRoadLine: true,      // 路线与航点 Marker 隐藏/显示开关（开启显示 P1~P8 航点与路线）
   activeTab: 'car1',       // 默认激活 0-1.glb (车辆01) 独立控制面板
-  selectedWaypointIndex: 2, // 默认选中 P3 (事故点) 道路航点索引 (0~7)
+  selectedWaypointIndex: 0, // 默认选中 P1 道路航点索引 (0~7)
   loopDurationSec: 18,     // 单圈时长(s)
   
   // 4 辆车的独立缩放、航向及经纬度参数（默认沿着真实沥青公路中线行驶）
   cars: [
-    { name: '0-1.glb (车辆01)', scale: 0.40, lngOffset: 0.0, latOffset: 0.0, heading: -161 },
-    { name: '0-2.glb (车辆02)', scale: 1.00, lngOffset: 0.0, latOffset: 0.0, heading: -92 },
+    { name: '0-1.glb (车辆01)', scale: 0.35, lngOffset: 0.00020, latOffset: 0.0, heading: -166 },
+    { name: '0-2.glb (车辆02)', scale: 0.95, lngOffset: 0.00010, latOffset: 0.0, heading: -92 },
     { name: '0-3.glb (车辆03)', scale: 3.50, lngOffset: 0.0, latOffset: 0.0, heading: -92 },
     { name: '0-4.glb (车辆04)', scale: 2.35, lngOffset: 0.0, latOffset: 0.0, heading: -88 }
   ],
@@ -3654,7 +3748,7 @@ function getCatmullRomSplinePoint(pts, globalT) {
   return { lng, lat, baseHeadingRad };
 }
 
-function getStartStageVehiclePosAndOrient(index, offsetRatio) {
+function getStartStageVehiclePosAndOrient(index, overrideDelay) {
   const now = Date.now()
   const delta = now - startStageVehicleLastFrameTime
   startStageVehicleLastFrameTime = now
@@ -3678,11 +3772,24 @@ function getStartStageVehiclePosAndOrient(index, offsetRatio) {
     return { position: pos, orientation: orient }
   }
 
-  const config = startStageVehicleConfigs[index] || { offsetRatio: 0, speedFactor: 1.0, laneOffset: 0 }
+  const config = startStageVehicleConfigs[index] || { delayRatio: 0, speedFactor: 1.0, laneOffset: 0 }
 
   const durationMs = (startStageVehicleAdjust.loopDurationSec || 18) * 1000
   const speedFactor = config.speedFactor || 1.0
-  const t = Math.min(((startStageVehicleRunningTimeMs / durationMs * speedFactor) + (offsetRatio !== undefined ? offsetRatio : config.offsetRatio)), 1.0)
+  const delayRatio = overrideDelay !== undefined ? overrideDelay : (config.delayRatio !== undefined ? config.delayRatio : 0)
+
+  // 所有车辆均从 P1 起点发车，按 delayRatio 间隔依次错峰发车
+  const globalProgress = startStageVehicleRunningTimeMs / durationMs
+  const elapsedProgress = globalProgress - delayRatio
+
+  let t = 0
+  if (elapsedProgress > 0) {
+    // 已经到了发车时刻，从 P1 出发沿着公路中线向前行驶（单次播放，到达 P8 终点后停止）
+    t = Math.min(elapsedProgress * speedFactor, 1.0)
+  } else {
+    // 尚未到达发车时刻，停留在 P1 起点等待发车
+    t = 0
+  }
 
   // 采用 Catmull-Rom 样条算法进行道路平滑弧线插值与动态切线姿态推算
   const spline = getCatmullRomSplinePoint(startStageRoadWaypoints, t);
@@ -7354,10 +7461,10 @@ function addEventEntities() {
         return currentScene.value === 'truck' && props.activePhaseIndex === 0
       }, false),
       position: new Cesium.CallbackProperty(() => {
-        return getStartStageVehiclePosAndOrient(index, config.offsetRatio).position
+        return getStartStageVehiclePosAndOrient(index, config.delayRatio).position
       }, false),
       orientation: new Cesium.CallbackProperty(() => {
-        return getStartStageVehiclePosAndOrient(index, config.offsetRatio).orientation
+        return getStartStageVehiclePosAndOrient(index, config.delayRatio).orientation
       }, false),
       model: {
         uri: config.uri,
@@ -7378,6 +7485,75 @@ function addEventEntities() {
     })
     startStageVehicleEntities.push(entity)
   })
+
+  // 🛣️ 初始化 0-1~0-4 初始车流沥青公路轨迹线段 (Polyline) 及 P1 ~ P8 航点标记 Entities
+  viewer.entities.add({
+    id: 'start_stage_road_polyline',
+    name: '初始车流沥青公路轨迹线',
+    show: new Cesium.CallbackProperty(() => {
+      return currentScene.value === 'truck' && props.activePhaseIndex === 0 && startStageVehicleAdjust.show && startStageVehicleAdjust.showRoadLine
+    }, false),
+    polyline: {
+      positions: new Cesium.CallbackProperty(() => {
+        const positions = []
+        for (let i = 0; i <= 100; i++) {
+          const pt = getCatmullRomSplinePoint(startStageRoadWaypoints, i / 100.0)
+          positions.push(Cesium.Cartesian3.fromDegrees(pt.lng, pt.lat, 0.5))
+        }
+        return positions
+      }, false),
+      width: 4,
+      material: new Cesium.PolylineGlowMaterialProperty({
+        glowPower: 0.25,
+        taperPower: 1.0,
+        color: Cesium.Color.fromCssColorString('#00f2fe')
+      }),
+      clampToGround: true
+    }
+  })
+
+  // 为 P1 ~ P8 8个航点添加 3D 地球 Entity 标注 (Point + Label)
+  for (let i = 0; i < 8; i++) {
+    viewer.entities.add({
+      id: `start_stage_road_waypoint_p${i + 1}`,
+      name: `航点 P${i + 1}`,
+      show: new Cesium.CallbackProperty(() => {
+        return currentScene.value === 'truck' && props.activePhaseIndex === 0 && startStageVehicleAdjust.show && startStageVehicleAdjust.showRoadLine
+      }, false),
+      position: new Cesium.CallbackProperty(() => {
+        const pt = startStageRoadWaypoints[i]
+        if (!pt) return Cesium.Cartesian3.fromDegrees(113.104870, 30.385469, 1.0)
+        return Cesium.Cartesian3.fromDegrees(pt[0], pt[1], 1.0)
+      }, false),
+      point: {
+        pixelSize: new Cesium.CallbackProperty(() => {
+          return startStageVehicleAdjust.selectedWaypointIndex === i ? 14 : 10
+        }, false),
+        color: new Cesium.CallbackProperty(() => {
+          return startStageVehicleAdjust.selectedWaypointIndex === i 
+            ? Cesium.Color.YELLOW 
+            : Cesium.Color.fromCssColorString('#00f2fe')
+        }, false),
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 2,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY
+      },
+      label: {
+        text: `P${i + 1}`,
+        font: 'bold 15px sans-serif',
+        fillColor: new Cesium.CallbackProperty(() => {
+          return startStageVehicleAdjust.selectedWaypointIndex === i 
+            ? Cesium.Color.YELLOW 
+            : Cesium.Color.WHITE
+        }, false),
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 3,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        pixelOffset: new Cesium.Cartesian2(0, -20),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY
+      }
+    })
+  }
 
   // 初始化无人机模型（用于货车追尾现场的无人装备出动阶段）
   // 初始化无人机模型（用于货车追尾现场的无人装备出动阶段）
