@@ -3,12 +3,11 @@
     <Header v-model:activeTab="activeTab" :isOnline="isOnline" :statusDetail="statusDetail" />
 
     <main class="dashboard-main">
-      <!-- Left Panel: Settings -->
       <aside class="side-panel">
         <DetectionSettings :settings="settings" :availableModels="availableModels" />
+        <ModelMetricsPanel :settings="settings" :availableModels="availableModels" />
       </aside>
 
-      <!-- Center Content -->
       <section class="viewport-panel">
         <ImageDetection
           v-if="activeTab === 'image'"
@@ -45,13 +44,10 @@
         />
       </section>
 
-      <!-- Right Panel: Telemetry -->
       <aside class="right-panel">
         <div class="card telemetry-card">
           <div class="card-header">
-            <!-- <span class="bracket">[</span> -->
             <h3>[算法推理监控面板]</h3>
-            <!-- <span class="bracket">]</span> -->
           </div>
           <div class="status-content">
             <div class="status-item gpu-row">
@@ -120,6 +116,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import Header from './components/Header.vue'
 import DetectionSettings from './components/DetectionSettings.vue'
+import ModelMetricsPanel from './components/ModelMetricsPanel.vue'
 import ImageDetection from './components/ImageDetection.vue'
 import VideoDetection from './components/VideoDetection.vue'
 import RealtimeDetection from './components/RealtimeDetection.vue'
@@ -190,60 +187,112 @@ onMounted(() => { fetchSystemInfo(); setInterval(fetchSystemInfo, 2500) })
 </script>
 
 <style>
+#app {
+  min-height: 100vh;
+}
+
 .dashboard-main {
   display: grid;
-  grid-template-columns: 480px 1fr 440px;
-  gap: 36px;
-  padding: 150px 40px 50px;
-  min-height: calc(100vh - 80px);
+  grid-template-columns: minmax(380px, 420px) minmax(0, 1fr) minmax(390px, 440px);
+  gap: 22px;
+  padding: 178px 20px 18px;
+  min-height: calc(100vh - 74px);
+  align-items: start;
 }
 
-.side-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
+.side-panel,
 .right-panel {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
+  min-width: 0;
+  position: sticky;
+  top: 178px;
+  align-self: start;
+  min-height: 0;
+  max-height: calc(100vh - 196px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.side-panel > .card,
+.side-panel > .model-metrics-panel,
+.right-panel > .card {
+  width: 100%;
+}
+
+.viewport-panel {
+  min-height: calc(100vh - 206px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.viewport-panel > * {
+  min-height: calc(100vh - 206px);
 }
 
 .telemetry-card {
-  padding: 28px 24px;
-  background: rgba(13, 25, 41, 0.4) !important;
+  max-height: calc(100vh - 196px);
+  min-height: 0;
+  overflow: hidden;
+  padding: 24px 22px;
+  background: var(--card-bg-strong) !important;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.card-header h3 {
+  font-size: 28px;
+  line-height: 1.15;
+  margin-bottom: 0;
+}
+
+.status-content {
+  display: grid;
+  gap: 4px;
 }
 
 .status-item {
   display: grid;
-  grid-template-columns: 154px minmax(0, 1fr);
+  grid-template-columns: 180px minmax(0, 1fr);
   align-items: center;
   gap: 14px;
-  padding: 18px 0;
-  border-bottom: 1px solid rgba(0, 229, 255, 0.05);
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 229, 255, 0.08);
 }
 
 .status-item.gpu-row {
-  grid-template-columns: 56px minmax(0, 1fr);
+  grid-template-columns: 68px minmax(0, 1fr);
 }
 
 .status-item .label {
-  font-size: 22px;
+  font-size: 21px;
   color: var(--text-dim);
   font-family: monospace;
-  letter-spacing: 0;
   white-space: nowrap;
 }
 
 .status-item .value {
-  font-size: 24px;
+  font-size: 20px;
   color: #fff;
-  font-weight: bold;
+  font-weight: 800;
   font-family: monospace;
   min-width: 0;
   text-align: right;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-item.gpu-row .value {
+  font-size: 18px;
 }
 
 .status-item .value.online {
@@ -251,8 +300,9 @@ onMounted(() => { fetchSystemInfo(); setInterval(fetchSystemInfo, 2500) })
   text-shadow: 0 0 8px var(--primary-cyan);
 }
 
-.status-item.gpu-row .value {
-  font-size: 20px;
+.status-item .value.cyan {
+  color: var(--primary-cyan);
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.55);
 }
 
 .status-item .model-status-value {
@@ -262,12 +312,12 @@ onMounted(() => { fetchSystemInfo(); setInterval(fetchSystemInfo, 2500) })
 .telemetry-trends {
   display: grid;
   gap: 14px;
-  margin-top: 22px;
+  margin-top: 18px;
 }
 
 .trend-card {
-  padding: 12px 12px 10px;
-  border: 1px solid rgba(0, 229, 255, 0.16);
+  padding: 14px 14px 12px;
+  border: 1px solid rgba(0, 229, 255, 0.18);
   background: rgba(0, 229, 255, 0.045);
 }
 
@@ -275,26 +325,26 @@ onMounted(() => { fetchSystemInfo(); setInterval(fetchSystemInfo, 2500) })
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   margin-bottom: 8px;
   font-family: monospace;
 }
 
 .trend-head span {
   color: var(--text-dim);
-  font-size: 15px;
+  font-size: 17px;
   white-space: nowrap;
 }
 
 .trend-head strong {
   color: #fff3bf;
-  font-size: 16px;
+  font-size: 18px;
   white-space: nowrap;
 }
 
 .trend-chart {
   width: 100%;
-  height: 58px;
+  height: 66px;
   overflow: visible;
 }
 
@@ -307,7 +357,7 @@ onMounted(() => { fetchSystemInfo(); setInterval(fetchSystemInfo, 2500) })
 
 .trend-line {
   fill: none;
-  stroke-width: 2.2;
+  stroke-width: 2.4;
   stroke-linecap: round;
   stroke-linejoin: round;
   filter: drop-shadow(0 0 4px currentColor);
@@ -328,26 +378,49 @@ onMounted(() => { fetchSystemInfo(); setInterval(fetchSystemInfo, 2500) })
   color: #fb7185;
 }
 
-.viewport-panel {
-  min-height: 70vh;
-}
-
 .cyber-footer {
-  padding: 40px;
+  padding: 18px 24px 24px;
   text-align: center;
 }
 
 .footer-line {
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--border-cyan), transparent);
-  margin-bottom: 15px;
+  margin-bottom: 8px;
 }
 
 .cyber-footer p {
   font-family: monospace;
-  font-size: 19px;
+  font-size: 14px;
   color: var(--text-dim);
-  letter-spacing: 3px;
-  opacity: 0.6;
+  letter-spacing: 0.12em;
+  opacity: 0.75;
+}
+
+@media (max-width: 1500px) {
+  .dashboard-main {
+    grid-template-columns: 360px minmax(0, 1fr) 380px;
+  }
+}
+
+@media (max-width: 1280px) {
+  .dashboard-main {
+    grid-template-columns: 1fr;
+    padding-top: 146px;
+  }
+
+  .side-panel,
+  .right-panel {
+    position: static;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .telemetry-card {
+    min-height: 0;
+  }
 }
 </style>
+
+

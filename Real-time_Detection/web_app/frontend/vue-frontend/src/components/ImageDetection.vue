@@ -1,8 +1,9 @@
 <template>
   <div class="image-detection-container">
-    <ModelMetricsPanel :settings="props.settings" :availableModels="props.availableModels" />
+    <div class="card image-detection-card">
+      <h3>📷 图片检测</h3>
 
-    <!-- Upload Area -->
+      <!-- Upload Area -->
     <div v-if="!result && !loading" class="upload-center">
       <div
         class="card upload-card"
@@ -117,7 +118,7 @@
       </div>
     </div>
 
-    <!-- Batch Item Detail Modal -->
+      <!-- Batch Item Detail Modal -->
     <div v-if="batchDetail" class="modal-overlay" @click.self="batchDetail = null">
       <div class="modal-container">
         <div class="modal-header">
@@ -157,13 +158,13 @@
         </div>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
 import ExportButtons from './ExportButtons.vue'
-import ModelMetricsPanel from './ModelMetricsPanel.vue'
 import { getClassStyle } from '../utils/classColors'
 
 const props = defineProps({
@@ -278,14 +279,23 @@ const processFiles = async (files) => {
 
 <style scoped>
 .image-detection-container { height: 100%; }
+.image-detection-card {
+  min-height: calc(100vh - 206px);
+  padding: 24px;
+}
+.image-detection-card > h3 {
+  font-size: 24px;
+  margin-bottom: 18px;
+}
 .upload-center {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 50vh;
+  min-height: calc(100vh - 312px);
+  padding: 24px 0 48px;
 }
 .upload-card {
-  width: 840px; height: 510px;
+  width: min(840px, 82%); height: min(510px, 56vh); min-height: 400px;
   display: flex; flex-direction: column;
   justify-content: center; align-items: center;
   border: 1px dashed var(--border-cyan);
