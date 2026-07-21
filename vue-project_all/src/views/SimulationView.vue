@@ -387,13 +387,14 @@ const accidentPoints = [
       { id: 't-start', time: '14:00', shortLabel: '仿真开始', title: '仿真推演开始' },
       { id: 't-normal', time: '14:05', shortLabel: '正常行驶', title: '车辆正常行驶阶段' },
       { id: 't-accident', time: '14:12', shortLabel: '事故发生', title: '货车追尾事故瞬间' },
+      { id: 't-uav-recon', time: '14:15', shortLabel: '无人机侦察', title: '无人机快速出动侦察' },
       { id: 't-smoke', time: '14:18', shortLabel: '次生灾害（烟雾）', title: '事故现场产生大量烟雾' },
       { id: 't-fire', time: '14:26', shortLabel: '次生灾害（起火）', title: '事故车辆开始起火' },
-      { id: 't-spread', time: '14:40', shortLabel: '次生灾害（大火）', title: '火势进一步扩大蔓延' },
-      { id: 't-uav-start', time: '14:45', shortLabel: '无人装备出动', title: '无人装备协同出动' },
-      { id: 't-uav-deploy', time: '14:50', shortLabel: '无人感知部署', title: '无人感知节点部署' },
-      { id: 't-uav-exec', time: '14:55', shortLabel: '无人感知执行', title: '无人感知任务执行' },
-      { id: 't-rescue-start', time: '15:00', shortLabel: '救援装备出动', title: '专业救援装备协同出动' },
+      { id: 't-uav-start', time: '14:30', shortLabel: '无人装备出动', title: '无人装备协同出动' },
+      { id: 't-uav-deploy', time: '14:35', shortLabel: '无人感知部署', title: '无人感知节点部署' },
+      { id: 't-uav-exec', time: '14:40', shortLabel: '无人感知执行', title: '无人感知任务执行' },
+      { id: 't-signal', time: '14:45', shortLabel: '信号干扰', title: '通信信号受到干扰' },
+      { id: 't-rescue-start', time: '14:50', shortLabel: '救援装备出动', title: '专业救援装备协同出动' },
     ]
   },
   {
@@ -403,13 +404,14 @@ const accidentPoints = [
       { id: 'l-start', time: '15:00', shortLabel: '仿真开始', title: '油罐车仿真推演开始' },
       { id: 'l-normal', time: '15:05', shortLabel: '正常行驶', title: '油罐车正常行驶阶段' },
       { id: 'l-accident', time: '15:12', shortLabel: '事故发生（侧翻）', title: '油罐车发生侧翻事故' },
+      { id: 'l-uav-recon', time: '15:15', shortLabel: '无人机侦察', title: '无人机快速出动侦察' },
       { id: 'l-leak', time: '15:20', shortLabel: '次生灾害（泄露）', title: '罐体受损开始发生化学品泄露' },
       { id: 'l-fill', time: '15:35', shortLabel: '次生灾害（弥漫）', title: '泄露液体开始向四周大面积弥漫' },
-      { id: 'l-spread', time: '15:50', shortLabel: '次生灾害（扩散）', title: '挥发气体随风向周边区域扩散' },
-      { id: 'l-uav-start', time: '15:55', shortLabel: '无人装备出动', title: '无人装备协同出动' },
-      { id: 'l-uav-deploy', time: '16:00', shortLabel: '无人感知部署', title: '无人感知节点部署' },
-      { id: 'l-uav-exec', time: '16:05', shortLabel: '无人感知执行', title: '无人感知任务执行' },
-      { id: 'l-rescue-start', time: '16:10', shortLabel: '救援装备出动', title: '专业救援装备协同出动' },
+      { id: 'l-uav-start', time: '15:40', shortLabel: '无人装备出动', title: '无人装备协同出动' },
+      { id: 'l-uav-deploy', time: '15:45', shortLabel: '无人感知部署', title: '无人感知节点部署' },
+      { id: 'l-uav-exec', time: '15:50', shortLabel: '无人感知执行', title: '无人感知任务执行' },
+      { id: 'l-signal', time: '15:55', shortLabel: '信号干扰', title: '通信信号受到干扰' },
+      { id: 'l-rescue-start', time: '16:00', shortLabel: '救援装备出动', title: '专业救援装备协同出动' },
     ]
   }
 ]
@@ -1091,10 +1093,17 @@ watch([activePhaseIndex, activeScene], ([phaseIdx, scene]) => {
     if (fireParticle) fireParticle.show = (currentCity.value === 'xiantao' && phaseIdx >= 4)
     if (diffusionParticle) diffusionParticle.show = (currentCity.value === 'huanggang' && phaseIdx >= 2)
     
-    // 同步更新 CZML 实体可见性，如果是第6阶段（无人装备出动），场景中只需要有粒子效果，隐藏所有CZML模型和规划路线
+    // 同步更新 CZML 实体可见性
     if (currentCzmlDataSource) {
+      const multiAgentPrefixes = ['Agent_', 'AgentPath_', 'AgentPOI_', 'AgentCP_'];
       currentCzmlDataSource.entities.values.forEach(entity => {
-        entity.show = (Number(phaseIdx) !== 6);
+        const id = entity.id;
+        if (id && multiAgentPrefixes.some(prefix => id.startsWith(prefix))) {
+            const shouldShow = (Number(phaseIdx) >= 10);
+            entity.show = shouldShow;
+        } else {
+            entity.show = (Number(phaseIdx) !== 6);
+        }
       });
     }
   }
@@ -1166,10 +1175,16 @@ const loadMission = async () => {
     if (!viewer) return
     currentCzmlDataSource = dataSource
     
-    // Clear availability and hide in phase 6
+    // Clear availability and handle visibility
+    const multiAgentPrefixes = ['Agent_', 'AgentPath_', 'AgentPOI_', 'AgentCP_'];
     dataSource.entities.values.forEach(entity => {
       entity.availability = undefined;
-      entity.show = (Number(activePhaseIndex.value) !== 6);
+      const id = entity.id;
+      if (id && multiAgentPrefixes.some(prefix => id.startsWith(prefix))) {
+          entity.show = (Number(activePhaseIndex.value) >= 10);
+      } else {
+          entity.show = (Number(activePhaseIndex.value) !== 6);
+      }
     });
 
     viewer.dataSources.add(dataSource)
@@ -1195,7 +1210,8 @@ const generate2DDeduction = async (city) => {
   errorMessage.value = ''
   const baseUrl = getCollaborativeCommandCenterBaseUrl()
   try {
-    const response = await fetch(`${baseUrl}/api/run_3d_strategy?end_point=${endpoint}`)
+    // 使用 run_multi_agent 确保二维和三维推演始终带有协同救援的路径
+    const response = await fetch(`${baseUrl}/api/run_multi_agent?end_point=${endpoint}`)
     if (!response.ok) {
       console.warn('后端生成策略返回非200状态码，将启用本地/历史二维推演缓存显示。')
     }
@@ -1297,7 +1313,6 @@ async function initCityRegionsAndLabels() {
   persistentCityEntities = [];
 
   const citiesConfig = [
-    { name: '武汉市', file: 'wuhan.json', color: '#00ffd8', center: [114.30, 30.59] },
     { name: '黄冈市', file: 'huanggang.json', color: '#ffd700', center: [114.87, 30.61] },
     { name: '仙桃市', file: 'xiantao.json', color: '#ff007f', center: [113.43, 30.29] }
   ];
@@ -1432,7 +1447,7 @@ const flyToCity = async (city) => {
       });
     } else if (city === 'huanggang') {
       viewer.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(114.90, 30.70, 380000), // 黄冈+武汉：中心微调以同时容纳并看清两市及救援路径
+        destination: Cesium.Cartesian3.fromDegrees(114.87, 30.61, 150000), // 黄冈视角：高度适中
         duration: 2.0
       });
     }

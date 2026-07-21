@@ -1,13 +1,12 @@
 <template>
   <div class="card settings-card">
-    <div class="card-header">
-      <span class="bracket">[</span>
-      <h2 style="font-size:40px">模型配置</h2>
-      <span class="bracket">]</span>
+    <div class="settings-header">
+      <span class="panel-kicker">Model Config</span>
+      <h2>模型配置</h2>
     </div>
-    
+
     <div class="model-info">
-      <div class="label">模型选择</div>
+      <div class="field-title">模型选择</div>
       <select v-model="settings.model" class="cyber-select">
         <option v-for="model in availableModels" :key="model.name" :value="model.name">
           {{ getModelLabel(model) }}
@@ -15,24 +14,24 @@
       </select>
       <div class="tag">主模型与对照模型</div>
     </div>
-    
+
     <div class="control-group">
       <div class="control-label">
-        <span style="font-size:30px">置信度设置</span>
-        <span class="value">{{ settings.conf }}</span>
+        <span>置信度设置</span>
+        <strong>{{ Number(settings.conf).toFixed(2) }}</strong>
       </div>
       <input type="range" v-model.number="settings.conf" min="0.1" max="0.9" step="0.05" class="cyber-range">
     </div>
-    
+
     <div class="control-group">
       <div class="control-label">
-        <span style="font-size:30px">IOU阈值设置</span>
-        <span class="value">{{ settings.iou }}</span>
+        <span>IOU阈值设置</span>
+        <strong>{{ Number(settings.iou).toFixed(2) }}</strong>
       </div>
       <input type="range" v-model.number="settings.iou" min="0.1" max="0.9" step="0.05" class="cyber-range">
     </div>
 
-    <div class="decoration-line"></div>
+    <div class="settings-footline"></div>
   </div>
 </template>
 
@@ -42,7 +41,6 @@ defineProps({
   availableModels: Array
 })
 
-// 优先使用后端给出的展示名；旧模型目录名保留下划线前的核心型号。
 const getModelLabel = (model) => {
   if (model.display_name) return model.display_name
   return model.name.split('_')[0]
@@ -51,111 +49,119 @@ const getModelLabel = (model) => {
 
 <style scoped>
 .settings-card {
-  height: fit-content;
+  padding: 30px 27px;
 }
 
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 25px;
+.settings-header {
+  margin-bottom: 27px;
 }
 
-.bracket {
-  color: var(--primary-cyan);
-  font-weight: bold;
-  font-size: 44px;
+.panel-kicker {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--text-muted);
+  font-size: 28px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.settings-header h2 {
+  font-size: 38px;
+  line-height: 1.1;
 }
 
 .model-info {
-  background: rgba(0, 0, 0, 0.3);
-  padding: 34px;
+  padding: 24px;
   border-left: 3px solid var(--accent-amber);
-  margin-bottom: 42px;
+  border-top: 1px solid rgba(255, 179, 0, 0.16);
+  background: rgba(255, 179, 0, 0.055);
+  margin-bottom: 33px;
 }
 
-.label {
-  font-size: 28px;
+.field-title {
   color: var(--text-dim);
+  font-size: 23px;
+  margin-bottom: 15px;
 }
 
 .cyber-select {
   width: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--accent-amber);
+  min-width: 0;
+  min-height: 69px;
+  border: 1px solid rgba(255, 179, 0, 0.62);
+  background: rgba(0, 0, 0, 0.32);
   color: var(--accent-amber);
-  padding: 18px;
-  font-size: 35px;
-  font-weight: bold;
-  margin: 18px 0;
+  padding: 0 18px;
+  font-size: 30px;
+  font-weight: 900;
   cursor: pointer;
   outline: none;
-  border-radius: 0;
+  border-radius: 3px;
 }
 
 .cyber-select option {
-  background: #0a1929;
+  background: #071827;
   color: var(--accent-amber);
-}
-
-.value {
-  font-size: 44px;
-  color: var(--accent-amber);
-  font-weight: bold;
-  margin: 8px 0;
 }
 
 .tag {
-  font-size: 23px;
-  display: inline-block;
-  padding: 5px 12px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  margin-top: 18px;
+  padding: 0 12px;
   background: var(--accent-amber);
-  color: black;
-  font-weight: bold;
+  color: #06111d;
+  font-size: 20px;
+  font-weight: 800;
 }
 
 .control-group {
-  margin-bottom: 44px;
+  margin-bottom: 33px;
 }
 
 .control-label {
   display: flex;
   justify-content: space-between;
-  font-size: 24px;
-  margin-bottom: 14px;
-  font-family: monospace;
+  align-items: baseline;
+  margin-bottom: 15px;
   color: var(--text-main);
+  font-family: monospace;
+}
+
+.control-label span {
+  font-size: 24px;
+  color: var(--text-dim);
+}
+
+.control-label strong {
+  font-size: 38px;
+  color: var(--accent-amber);
 }
 
 .cyber-range {
   -webkit-appearance: none;
   width: 100%;
-  height: 10px;
-  background: rgba(0, 229, 255, 0.1);
+  height: 12px;
   border-radius: 2px;
+  background: rgba(0, 229, 255, 0.12);
   outline: none;
 }
 
 .cyber-range::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 34px;
-  height: 34px;
-  background: var(--primary-cyan);
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
+  background: var(--primary-cyan);
   cursor: pointer;
-  box-shadow: 0 0 10px var(--primary-cyan);
+  box-shadow: 0 0 12px var(--primary-cyan);
 }
 
-.decoration-line {
-  height: 2px;
-  background: repeating-linear-gradient(
-    90deg,
-    var(--primary-cyan),
-    var(--primary-cyan) 2px,
-    transparent 2px,
-    transparent 10px
-  );
-  margin-top: 20px;
-  opacity: 0.3;
+.settings-footline {
+  height: 1px;
+  margin-top: 8px;
+  background: repeating-linear-gradient(90deg, var(--primary-cyan), var(--primary-cyan) 3px, transparent 3px, transparent 10px);
+  opacity: 0.34;
 }
 </style>

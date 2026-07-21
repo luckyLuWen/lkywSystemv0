@@ -43,30 +43,70 @@ def find_agent_paths(scenario: str, end_point: tuple) -> dict:
 
     results = {}
     for agent_key, pois in by_type.items():
-        pois.sort(key=lambda x: x["dist_km"])
-        best = pois[0]  # 最近的
         cfg = AGENT_CONFIG.get(agent_key, {})
+        evaluated = []
 
-        path = None
-        try:
-            orig_node = ox.nearest_nodes(graph, best["lon"], best["lat"])
-            route = nx.shortest_path(graph, orig_node, dest_node, weight="length")
-            path = [(graph.nodes[n]["y"], graph.nodes[n]["x"]) for n in route]
-        except nx.NetworkXNoPath:
-            pass
+        for p in pois:
+            orig_node = ox.nearest_nodes(graph, p["lon"], p["lat"])
+            try:
+                # 尝试计算路网距离
+                net_dist = nx.shortest_path_length(graph, orig_node, dest_node, weight="length") / 1000.0
+                route = nx.shortest_path(graph, orig_node, dest_node, weight="length")
+                path = [(graph.nodes[n]["y"], graph.nodes[n]["x"]) for n in route]
+                evaluated.append({
+                    "poi": p,
+                    "net_dist_km": round(net_dist, 2),
+                    "path": path
+                })
+            except nx.NetworkXNoPath:
+                evaluated.append({
+                    "poi": p,
+                    "net_dist_km": float('inf'),
+                    "path": None
+                })
 
-        results[agent_key] = {
-            "label": cfg.get("label", agent_key),
-            "color": cfg.get("color", "#888"),
-            "icon": cfg.get("icon", "flag"),
-            "poi": {
-                "name": best["name"],
-                "lat": best["lat"],
-                "lon": best["lon"],
-                "dist_km": best["dist_km"],
-            },
-            "path": path,
-        }
+        # 按照路网真实距离排序
+        evaluated.sort(key=lambda x: x["net_dist_km"])
+        
+        # 最优解
+        best_eval = evaluated[0] if evaluated else None
+        best_poi = best_eval["poi"] if best_eval else None
+        
+        # 淘汰者列表（用于前端比对展示）
+        losers = []
+        if best_eval and len(evaluated) > 1:
+            for ev in evaluated[1:]:
+                loser_poi = ev["poi"]
+                # 对比欧氏距离与路网距离的差异
+                if ev["net_dist_km"] == float('inf'):
+                    reason = "路网不可达"
+                elif loser_poi["dist_km"] < best_poi["dist_km"]:
+                    reason = f"空间直线距离虽近，但路网绕行达 {ev['net_dist_km']} km (优选方案仅 {best_eval['net_dist_km']} km)"
+                else:
+                    reason = f"路网距离较远 ({ev['net_dist_km']} km > {best_eval['net_dist_km']} km)"
+                
+                losers.append({
+                    "name": loser_poi["name"],
+                    "euclidean_km": loser_poi["dist_km"],
+                    "net_dist_km": ev["net_dist_km"] if ev["net_dist_km"] != float('inf') else "N/A",
+                    "reason": reason
+                })
+
+        if best_poi:
+            results[agent_key] = {
+                "label": cfg.get("label", agent_key),
+                "color": cfg.get("color", "#888"),
+                "icon": cfg.get("icon", "flag"),
+                "poi": {
+                    "name": best_poi["name"],
+                    "lat": best_poi["lat"],
+                    "lon": best_poi["lon"],
+                    "dist_km": best_poi["dist_km"],  # 直线距离
+                    "net_dist_km": best_eval["net_dist_km"], # 路网距离
+                },
+                "path": best_eval["path"],
+                "losers": losers
+            }
 
     return results
 
@@ -82,6 +122,7 @@ def save_multi_agent_result(scenario: str, results: dict) -> Path:
             "icon": val["icon"],
             "poi": poi,
             "has_path": val.get("path") is not None,
+            "losers": val.get("losers", [])
         }
     result_path = BASE_DIR / "multi_agent_result.json"
     with open(result_path, "w", encoding="utf-8") as f:

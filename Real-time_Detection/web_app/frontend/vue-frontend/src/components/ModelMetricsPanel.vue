@@ -25,7 +25,7 @@
       </div>
       <div class="metric-item wide">
         <span class="metric-label">测试集</span>
-        <strong>{{ performance.test_set || 'LKYWDetection Test set' }}</strong>
+        <strong>{{ 'LKYWDetection' }}</strong>
       </div>
     </div>
   </section>
@@ -62,71 +62,112 @@ const formatPercent = (value) => {
 
 <style scoped>
 .model-metrics-panel {
-  margin-bottom: 24px;
-  padding: 18px;
-  border: 1px solid rgba(0, 229, 255, 0.18);
+  margin-bottom: 0;
+  padding: 26px 22px;
+  border: 1px solid rgba(0, 229, 255, 0.22);
   border-left: 4px solid var(--accent-amber);
-  background: rgba(0, 0, 0, 0.28);
+  background: rgba(4, 22, 39, 0.78);
+  position: relative;
+}
+
+.model-metrics-panel::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 18px;
+  height: 18px;
+  border-top: 2px solid var(--primary-cyan);
+  border-left: 2px solid var(--primary-cyan);
+}
+
+.model-metrics-panel::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 18px;
+  height: 18px;
+  border-right: 2px solid var(--primary-cyan);
+  border-bottom: 2px solid var(--primary-cyan);
 }
 
 .metrics-title {
   color: var(--primary-cyan);
-  font-size: 30px;
-  letter-spacing: 1px;
-  margin-bottom: 14px;
+  font-size: 31px;
+  font-weight: 900;
+  margin-bottom: 20px;
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
 }
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: 1fr;
+  gap: 14px;
 }
 
 .metric-item {
   min-height: 78px;
-  padding: 12px;
-  border: 1px solid rgba(255, 179, 0, 0.18);
-  background: rgba(255, 179, 0, 0.05);
-}
-
-.metric-item.wide {
-  grid-column: 1 / -1;
+  padding: 14px 18px;
+  border: 1px solid rgba(255, 179, 0, 0.2);
+  background: rgba(255, 179, 0, 0.045);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 16px;
 }
 
 .metric-item.map50-item {
-  min-height: 86px;
-  border-color: rgba(255, 179, 0, 0.34);
+  min-height: 96px;
+  grid-template-columns: 1fr;
+  align-items: start;
+  border-color: rgba(255, 179, 0, 0.4);
   background: rgba(255, 179, 0, 0.08);
 }
 
 .metric-label {
   display: block;
   color: var(--text-dim);
-  font-size: 20px;
-  margin-bottom: 6px;
+  font-size: 21px;
+  line-height: 1.22;
+  min-width: 0;
 }
 
 .metric-item strong {
   display: block;
   color: #fff3bf;
   font-size: 27px;
-  line-height: 1.25;
+  line-height: 1.16;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.metric-item.map50-item strong {
+  margin-top: 8px;
+  text-align: left;
+  font-size: 33px;
 }
 
 .metric-item small {
   display: block;
   color: #fbbf24;
-  font-size: 19px;
-  margin-top: 4px;
+  font-size: 20px;
+  margin-top: 6px;
+}
+
+.metric-item.wide strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 900px) {
-  .metrics-grid {
+  .metric-item {
     grid-template-columns: 1fr;
+    row-gap: 8px;
   }
 
-  .metric-item.wide {
-    grid-column: auto;
+  .metric-item strong {
+    text-align: left;
   }
 }
 </style>
