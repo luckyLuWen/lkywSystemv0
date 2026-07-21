@@ -3721,10 +3721,10 @@
       },
       "outlineColor": {
         "rgba": [
-          255,
-          255,
-          255,
-          200
+          0,
+          0,
+          0,
+          0
         ]
       },
       "outlineWidth": 0
@@ -3813,10 +3813,10 @@
       },
       "outlineColor": {
         "rgba": [
-          255,
-          255,
-          255,
-          200
+          0,
+          0,
+          0,
+          0
         ]
       },
       "outlineWidth": 0
@@ -3911,7 +3911,7 @@
           200
         ]
       },
-      "outlineWidth": 0
+      "outlineWidth": 2
     },
     "label": {
       "text": "消防灭火: 胡场镇消防执勤点",
@@ -3925,7 +3925,7 @@
       "distanceDisplayCondition": {
         "distanceDisplayCondition": [
           0.0,
-          4500.0
+          8000.0
         ]
       }
     }
@@ -4201,7 +4201,7 @@
       "distanceDisplayCondition": {
         "distanceDisplayCondition": [
           0.0,
-          4500.0
+          8000.0
         ]
       }
     }

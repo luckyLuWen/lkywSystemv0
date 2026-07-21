@@ -1,30 +1,30 @@
 {
-  "scenario": "leak",
+  "scenario": "crash",
   "agents": {
     "medical": {
       "label": "医疗急救",
       "color": "#22c55e",
       "icon": "plus",
       "poi": {
-        "name": "团风县中医医院",
-        "lat": 30.6423,
-        "lon": 114.8735,
-        "dist_km": 2.18,
-        "net_dist_km": 3.47
+        "name": "胡场镇卫生院",
+        "lat": 30.3502,
+        "lon": 113.2085,
+        "dist_km": 10.7,
+        "net_dist_km": 20.73
       },
       "has_path": true,
       "losers": [
         {
-          "name": "团风县人民医院",
-          "euclidean_km": 2.71,
-          "net_dist_km": 3.48,
-          "reason": "路网距离较远 (3.48 km > 3.47 km)"
+          "name": "剅河镇卫生院",
+          "euclidean_km": 6.25,
+          "net_dist_km": 22.56,
+          "reason": "空间直线距离虽近，但路网绕行达 22.56 km (优选方案仅 20.73 km)"
         },
         {
-          "name": "黄冈市黄州区人民医院",
-          "euclidean_km": 19.99,
-          "net_dist_km": 21.36,
-          "reason": "路网距离较远 (21.36 km > 3.47 km)"
+          "name": "三伏潭镇卫生院分院",
+          "euclidean_km": 11.25,
+          "net_dist_km": 23.39,
+          "reason": "路网距离较远 (23.39 km > 20.73 km)"
         }
       ]
     },
@@ -33,25 +33,25 @@
       "color": "#f97316",
       "icon": "fire",
       "poi": {
-        "name": "团风县公安消防大队",
-        "lat": 30.6426,
-        "lon": 114.8751,
-        "dist_km": 2.07,
-        "net_dist_km": 3.72
+        "name": "剅河镇应急消防救援站",
+        "lat": 30.3765,
+        "lon": 113.042,
+        "dist_km": 6.12,
+        "net_dist_km": 22.71
       },
       "has_path": true,
       "losers": [
         {
-          "name": "黄冈市黄州区路口镇专职消防队",
-          "euclidean_km": 13.13,
-          "net_dist_km": 17.12,
-          "reason": "路网距离较远 (17.12 km > 3.72 km)"
+          "name": "三伏潭镇专职消防队",
+          "euclidean_km": 11.48,
+          "net_dist_km": 23.63,
+          "reason": "路网距离较远 (23.63 km > 22.71 km)"
         },
         {
-          "name": "黄冈市消防救援支队特勤站",
-          "euclidean_km": 19.71,
-          "net_dist_km": 21.78,
-          "reason": "路网距离较远 (21.78 km > 3.72 km)"
+          "name": "胡场镇消防支队",
+          "euclidean_km": 11.18,
+          "net_dist_km": 26.02,
+          "reason": "路网距离较远 (26.02 km > 22.71 km)"
         }
       ]
     },
@@ -60,25 +60,25 @@
       "color": "#3b82f6",
       "icon": "flag",
       "poi": {
-        "name": "团风县公安局交警大队",
-        "lat": 30.6391,
-        "lon": 114.8716,
-        "dist_km": 2.16,
-        "net_dist_km": 3.03
+        "name": "胡场镇公安局派出所",
+        "lat": 30.3505,
+        "lon": 113.2065,
+        "dist_km": 10.51,
+        "net_dist_km": 20.73
       },
       "has_path": true,
       "losers": [
         {
-          "name": "团风县团风水陆派出所",
-          "euclidean_km": 2.39,
-          "net_dist_km": 3.2,
-          "reason": "路网距离较远 (3.2 km > 3.03 km)"
+          "name": "剅河镇派出所",
+          "euclidean_km": 6.32,
+          "net_dist_km": 22.56,
+          "reason": "空间直线距离虽近，但路网绕行达 22.56 km (优选方案仅 20.73 km)"
         },
         {
-          "name": "黄冈市公安局黄州分局",
-          "euclidean_km": 20.13,
-          "net_dist_km": 21.49,
-          "reason": "路网距离较远 (21.49 km > 3.03 km)"
+          "name": "三伏潭镇交警中队",
+          "euclidean_km": 10.83,
+          "net_dist_km": 23.08,
+          "reason": "路网距离较远 (23.08 km > 20.73 km)"
         }
       ]
     },
@@ -87,25 +87,25 @@
       "color": "#a855f7",
       "icon": "flash",
       "poi": {
-        "name": "团风县应急管理局",
-        "lat": 30.6405,
-        "lon": 114.8738,
-        "dist_km": 2.04,
-        "net_dist_km": 2.67
+        "name": "剅河镇应急安全中心",
+        "lat": 30.3808,
+        "lon": 113.0475,
+        "dist_km": 5.53,
+        "net_dist_km": 5.87
       },
       "has_path": true,
       "losers": [
         {
-          "name": "团风县消防特勤防化站",
-          "euclidean_km": 2.91,
-          "net_dist_km": 3.68,
-          "reason": "路网距离较远 (3.68 km > 2.67 km)"
+          "name": "三伏潭镇危化品监管站",
+          "euclidean_km": 11.77,
+          "net_dist_km": 24.69,
+          "reason": "路网距离较远 (24.69 km > 5.87 km)"
         },
         {
-          "name": "黄冈市应急管理局",
-          "euclidean_km": 19.87,
-          "net_dist_km": 21.12,
-          "reason": "路网距离较远 (21.12 km > 2.67 km)"
+          "name": "胡场镇环保局监察站",
+          "euclidean_km": 11.03,
+          "net_dist_km": 26.02,
+          "reason": "路网距离较远 (26.02 km > 5.87 km)"
         }
       ]
     },
@@ -114,25 +114,25 @@
       "color": "#94a3b8",
       "icon": "wrench",
       "poi": {
-        "name": "团风县路政管理大队",
-        "lat": 30.6412,
-        "lon": 114.878,
-        "dist_km": 1.76,
-        "net_dist_km": 2.35
+        "name": "胡场镇路政中队",
+        "lat": 30.351,
+        "lon": 113.202,
+        "dist_km": 10.09,
+        "net_dist_km": 20.2
       },
       "has_path": true,
       "losers": [
         {
-          "name": "团风县交通运输局",
-          "euclidean_km": 1.9,
-          "net_dist_km": 2.74,
-          "reason": "路网距离较远 (2.74 km > 2.35 km)"
+          "name": "剅河镇路政管理所",
+          "euclidean_km": 6.4,
+          "net_dist_km": 22.56,
+          "reason": "空间直线距离虽近，但路网绕行达 22.56 km (优选方案仅 20.2 km)"
         },
         {
-          "name": "黄冈市公路管理局",
-          "euclidean_km": 20.03,
-          "net_dist_km": 21.58,
-          "reason": "路网距离较远 (21.58 km > 2.35 km)"
+          "name": "三伏潭镇公路段道班",
+          "euclidean_km": 10.87,
+          "net_dist_km": 22.89,
+          "reason": "路网距离较远 (22.89 km > 20.2 km)"
         }
       ]
     }
