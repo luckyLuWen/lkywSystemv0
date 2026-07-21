@@ -84,6 +84,7 @@ const props = defineProps({
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
   margin-top: 16px;
   animation: slideInRight 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
 }
 
 @keyframes slideInRight {
