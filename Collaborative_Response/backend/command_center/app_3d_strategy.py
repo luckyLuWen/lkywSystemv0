@@ -1,3 +1,5 @@
+import os
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
 import pandas as pd
 import numpy as np
 import folium
@@ -458,15 +460,16 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
                 print(f"  [警告] 边界文件 {b_file} 损坏，跳过加载")
     # -----------------------
 
-    car_path_group = folium.FeatureGroup(name='车辆路径 (UGV Path)', show=True).add_to(m)
-    uav_path_group = folium.FeatureGroup(name='无人机路径 (UAV Path)', show=True).add_to(m)
+    if not multi_agent_data:
+        car_path_group = folium.FeatureGroup(name='车辆路径 (UGV Path)', show=True).add_to(m)
+        uav_path_group = folium.FeatureGroup(name='无人机路径 (UAV Path)', show=True).add_to(m)
 
-    if COMPARE and car_bfs_interp is not None:
-        car_base_group = folium.FeatureGroup(name='车辆-基线BFS (UGV Baseline)', show=True).add_to(m)
-    if COMPARE and uav_greedy_interp is not None:
-        uav_base_group = folium.FeatureGroup(name='无人机-基线Greedy (UAV Baseline)', show=True).add_to(m)
+        if COMPARE and car_bfs_interp is not None:
+            car_base_group = folium.FeatureGroup(name='车辆-基线BFS (UGV Baseline)', show=True).add_to(m)
+        if COMPARE and uav_greedy_interp is not None:
+            uav_base_group = folium.FeatureGroup(name='无人机-基线Greedy (UAV Baseline)', show=True).add_to(m)
 
-    if UAV_SMOKE:
+    if UAV_SMOKE and not multi_agent_data:
         # === 双层禁飞区渲染（航空图风格）===
         for nfz in NFZ_LIST:
             if 'polygon' in nfz:
@@ -537,7 +540,7 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
                     tooltip='&#x26A0; 限飞缓冲区 | 需提前报备飞行计划 | 审批时限: 24h'
                 ).add_to(m)
 
-    if UGV_BLOCKED:
+    if UGV_BLOCKED and not multi_agent_data:
         # === 拥堵区渲染（交通态势风格）===
         cong_name = NFZ_CONFIG[args.end_point].get('congestion_name', '拥堵地段')
         cong_info = NFZ_CONFIG[args.end_point].get('congestion_info', '')
@@ -641,15 +644,16 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
 
     folium.LayerControl(collapsed=True).add_to(m)
 
-    # 当前算法 — 车：蓝色实线 / 飞机：紫色虚线
-    folium.PolyLine(car_interp[['lat', 'lon']].values.tolist(), color='#0000ff', weight=5, opacity=0.7).add_to(car_path_group)
-    folium.PolyLine(uav_interp[['lat', 'lon']].values.tolist(), color='#ff00ff', weight=3, opacity=0.7, dash_array='5, 5').add_to(uav_path_group)
+    if not multi_agent_data:
+        # 当前算法 — 车：蓝色实线 / 飞机：紫色虚线
+        folium.PolyLine(car_interp[['lat', 'lon']].values.tolist(), color='#0000ff', weight=5, opacity=0.7).add_to(car_path_group)
+        folium.PolyLine(uav_interp[['lat', 'lon']].values.tolist(), color='#ff00ff', weight=3, opacity=0.7, dash_array='5, 5').add_to(uav_path_group)
 
-    # 基线算法 — 车：绿色虚线(BFS) / 飞机：橙色虚线(Greedy)
-    if COMPARE and car_bfs_interp is not None:
-        folium.PolyLine(car_bfs_interp[['lat', 'lon']].values.tolist(), color='#22c55e', weight=5, opacity=0.6, dash_array='8, 6').add_to(car_base_group)
-    if COMPARE and uav_greedy_interp is not None:
-        folium.PolyLine(uav_greedy_interp[['lat', 'lon']].values.tolist(), color='#f97316', weight=3, opacity=0.6, dash_array='8, 6').add_to(uav_base_group)
+        # 基线算法 — 车：绿色虚线(BFS) / 飞机：橙色虚线(Greedy)
+        if COMPARE and car_bfs_interp is not None:
+            folium.PolyLine(car_bfs_interp[['lat', 'lon']].values.tolist(), color='#22c55e', weight=5, opacity=0.6, dash_array='8, 6').add_to(car_base_group)
+        if COMPARE and uav_greedy_interp is not None:
+            folium.PolyLine(uav_greedy_interp[['lat', 'lon']].values.tolist(), color='#f97316', weight=3, opacity=0.6, dash_array='8, 6').add_to(uav_base_group)
 
     # 动画推演：多智能体模式下显示五类救援路径，否则显示 UGV+UAV
     if multi_agent_data:
@@ -813,18 +817,19 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
     m.get_root().html.add_child(folium.Element(ui_html))
 
     # 路径增强：无人机耗时节点 + UGV/UAV 速度标签（2D）
-    uav_coords = uav_interp[['lat', 'lon']].values.tolist()
-    uav_total_t = (uav_df['time_s'].iloc[-1] - delay) / 60 if len(uav_df) > 0 else 0
-    for pct in [0.33, 0.66]:
-        idx = int(len(uav_coords) * pct)
-        if idx < len(uav_coords):
-            t_val = (uav_interp.iloc[idx]['time_s'] - delay) / 60
-            alt_val = uav_interp.iloc[idx].get('alt', 0)
-            folium.CircleMarker(uav_coords[idx], radius=3, color='#ff00ff', fill=True, fill_opacity=0.8, tooltip=f'无人机 +{t_val:.1f}min alt={alt_val:.0f}m').add_to(uav_path_group)
-    car_coords = car_interp[['lat', 'lon']].values.tolist()
-    car_total = car_df['time_s'].iloc[-1] / 60 if len(car_df) > 0 else 0
-    folium.Marker(car_coords[len(car_coords)//2], icon=folium.DivIcon(html=f'<div style="font-size:9px;color:#1d4ed8;background:rgba(255,255,255,0.85);padding:1px 4px;border-radius:2px;white-space:nowrap;">{car_speed_kmh:.0f}km/h · {car_total:.1f}min</div>', icon_size=(100,14), icon_anchor=(50,7))).add_to(car_path_group)
-    folium.Marker(uav_coords[len(uav_coords)//2], icon=folium.DivIcon(html=f'<div style="font-size:9px;color:#a21caf;background:rgba(255,255,255,0.85);padding:1px 4px;border-radius:2px;white-space:nowrap;">{UAV_SPEED:.0f}m/s · {uav_total_t:.1f}min</div>', icon_size=(100,14), icon_anchor=(50,7))).add_to(uav_path_group)
+    if not multi_agent_data:
+        uav_coords = uav_interp[['lat', 'lon']].values.tolist()
+        uav_total_t = (uav_df['time_s'].iloc[-1] - delay) / 60 if len(uav_df) > 0 else 0
+        for pct in [0.33, 0.66]:
+            idx = int(len(uav_coords) * pct)
+            if idx < len(uav_coords):
+                t_val = (uav_interp.iloc[idx]['time_s'] - delay) / 60
+                alt_val = uav_interp.iloc[idx].get('alt', 0)
+                folium.CircleMarker(uav_coords[idx], radius=3, color='#ff00ff', fill=True, fill_opacity=0.8, tooltip=f'无人机 +{t_val:.1f}min alt={alt_val:.0f}m').add_to(uav_path_group)
+        car_coords = car_interp[['lat', 'lon']].values.tolist()
+        car_total = car_df['time_s'].iloc[-1] / 60 if len(car_df) > 0 else 0
+        folium.Marker(car_coords[len(car_coords)//2], icon=folium.DivIcon(html=f'<div style="font-size:9px;color:#1d4ed8;background:rgba(255,255,255,0.85);padding:1px 4px;border-radius:2px;white-space:nowrap;">{car_speed_kmh:.0f}km/h · {car_total:.1f}min</div>', icon_size=(100,14), icon_anchor=(50,7))).add_to(car_path_group)
+        folium.Marker(uav_coords[len(uav_coords)//2], icon=folium.DivIcon(html=f'<div style="font-size:9px;color:#a21caf;background:rgba(255,255,255,0.85);padding:1px 4px;border-radius:2px;white-space:nowrap;">{UAV_SPEED:.0f}m/s · {uav_total_t:.1f}min</div>', icon_size=(100,14), icon_anchor=(50,7))).add_to(uav_path_group)
 
     # 控制面板已移至 Vue 侧边栏，此处不再渲染
 
@@ -898,15 +903,30 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
     czml.append({"id": "StartMarker", "position": {"cartographicDegrees": [START_POINT[1], START_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [0,255,0,255]}}, "label": {"text": START_POINT_NAME, "font": "16px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}, "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 10000.0]}}})
     czml.append({"id": "EndMarker", "position": {"cartographicDegrees": [END_POINT[1], END_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [255,0,0,255]}}, "label": {"text": END_POINT_NAME, "font": "16px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}, "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 10000.0]}}})
 
-    # 路径线
-    uav_line = []
-    for _, r in uav_df.iterrows(): uav_line.extend([r['lon'], r['lat'], r['alt']])
-    czml.append({"id": "UAV_Path", "polyline": {"positions": {"cartographicDegrees": uav_line}, "width": 3, "material": {"solidColor": {"color": {"rgba": [255, 0, 0, 150]}}}}})
-    czml.append({"id": "UAV_Path_glow", "polyline": {"positions": {"cartographicDegrees": uav_line}, "width": 5, "material": {"solidColor": {"color": {"rgba": [255, 0, 0, 200]}}}}})
-    car_line = []
-    for _, r in car_df.iterrows(): car_line.extend([r['lon'], r['lat'], 2])
-    czml.append({"id": "Car_Path", "polyline": {"positions": {"cartographicDegrees": car_line}, "width": 3, "material": {"solidColor": {"color": {"rgba": [0, 0, 255, 150]}}}}})
-    czml.append({"id": "Car_Path_glow", "polyline": {"positions": {"cartographicDegrees": car_line}, "width": 5, "material": {"solidColor": {"color": {"rgba": [0, 0, 255, 200]}}}, "clampToGround": True}})
+    # 路径线（各保留一条宽度与色彩对比鲜明的路线，避免重叠与 Z-fighting 闪烁）
+    if not multi_agent_data:
+        uav_line = []
+        for _, r in uav_df.iterrows(): uav_line.extend([r['lon'], r['lat'], r['alt']])
+        czml.append({
+            "id": "UAV_Path", 
+            "polyline": {
+                "positions": {"cartographicDegrees": uav_line}, 
+                "width": 4, 
+                "material": {"solidColor": {"color": {"rgba": [239, 68, 68, 220]}}}
+            }
+        })
+        
+        car_line = []
+        for _, r in car_df.iterrows(): car_line.extend([r['lon'], r['lat'], 2])
+        czml.append({
+            "id": "Car_Path", 
+            "polyline": {
+                "positions": {"cartographicDegrees": car_line}, 
+                "width": 4, 
+                "material": {"solidColor": {"color": {"rgba": [59, 130, 246, 220]}}},
+                "clampToGround": True
+            }
+        })
 
     # 五类救援智能体 POI（始终渲染所有站点）
     agent_colors_czml = {
@@ -1003,28 +1023,27 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
                 })
     
 
-    # 动态对象（始终包含 UAV/Car）
-    uav_pos = []
-    for _, r in uav_df.iterrows(): uav_pos.extend([format_timestamp(r['timestamp']), r['lon'], r['lat'], r['alt']])
-    czml.append({
-        "id": "UAV", "name": "无人机 (B-Spline)", "availability": avail,
-        "position": {"epoch": start_str, "cartographicDegrees": uav_pos, "interpolationAlgorithm": "LINEAR", "interpolationDegree": 1},
-        "point": {"pixelSize": 15, "color": {"rgba": [255, 0, 0, 255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 2},
-        "label": {"text": "无人机", "font": "14px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -25]},
-                  "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 10000.0]}},
-        "path": {"material": {"solidColor": {"color": {"rgba": [255,0,0,80]}}}, "width": 2, "leadTime": 0, "trailTime": 99999}
-    })
+    # 动态对象（非多智能体模式下包含 UAV/Car）
+    if not multi_agent_data:
+        uav_pos = []
+        for _, r in uav_df.iterrows(): uav_pos.extend([format_timestamp(r['timestamp']), r['lon'], r['lat'], r['alt']])
+        czml.append({
+            "id": "UAV", "name": "无人机 (B-Spline)", "availability": avail,
+            "position": {"epoch": start_str, "cartographicDegrees": uav_pos, "interpolationAlgorithm": "LINEAR", "interpolationDegree": 1},
+            "point": {"pixelSize": 15, "color": {"rgba": [255, 0, 0, 255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 2},
+            "label": {"text": "无人机", "font": "14px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -25]},
+                      "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 10000.0]}}
+        })
 
-    car_pos = []
-    for _, r in car_df.iterrows(): car_pos.extend([format_timestamp(r['timestamp']), r['lon'], r['lat'], 2])
-    czml.append({
-        "id": "Car", "name": "无人车", "availability": avail,
-        "position": {"epoch": start_str, "cartographicDegrees": car_pos, "interpolationAlgorithm": "LINEAR", "interpolationDegree": 1},
-        "point": {"pixelSize": 15, "color": {"rgba": [0, 0, 255, 255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 2},
-        "label": {"text": "无人车", "font": "14px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -25]},
-                  "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 10000.0]}},
-        "path": {"material": {"solidColor": {"color": {"rgba": [0,0,255,80]}}}, "width": 2, "leadTime": 0, "trailTime": 99999}
-    })
+        car_pos = []
+        for _, r in car_df.iterrows(): car_pos.extend([format_timestamp(r['timestamp']), r['lon'], r['lat'], 2])
+        czml.append({
+            "id": "Car", "name": "无人车", "availability": avail,
+            "position": {"epoch": start_str, "cartographicDegrees": car_pos, "interpolationAlgorithm": "LINEAR", "interpolationDegree": 1},
+            "point": {"pixelSize": 15, "color": {"rgba": [0, 0, 255, 255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 2},
+            "label": {"text": "无人车", "font": "14px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -25]},
+                      "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 10000.0]}}
+        })
 
     # 3D 路径进度检查点（透明底色 HUD 标签）
     if not multi_agent_data:
@@ -1114,29 +1133,30 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
             }
         })
 
-    # 障碍物
-    for i, nfz in enumerate(NFZ_LIST + NEW_NFZ_LIST):
-        color = [255, 0, 0, 100] if i < len(NFZ_LIST) else [255, 165, 0, 100]
-        if 'polygon' in nfz:
-            poly_coords = []
-            for p in nfz['polygon']:
-                poly_coords.extend([p[1], p[0], 200])
-            czml.append({
-                "id": f"NFZ_{i}", "polygon": {
-                    "positions": {"cartographicDegrees": poly_coords},
-                    "material": {"solidColor": {"color": {"rgba": color}}},
-                    "extrudedHeight": 400
-                }
-            })
-        else:
-            czml.append({
-                "id": f"NFZ_{i}", "position": {"cartographicDegrees": [nfz['center'][1], nfz['center'][0], 200]},
-                "cylinder": {"length": 400, "topRadius": nfz['radius'], "bottomRadius": nfz['radius'],
-                             "material": {"solidColor": {"color": {"rgba": color}}}}
-            })
-    poly = []
-    for p in CONGESTION_ZONE_POLYGON: poly.extend([p[1], p[0], 0])
-    czml.append({"id": "Congestion", "polygon": {"positions": {"cartographicDegrees": poly}, "material": {"solidColor": {"color": {"rgba": [0, 0, 255, 80]}}}}})
+    # 障碍物（非多智能体模式下显示）
+    if not multi_agent_data:
+        for i, nfz in enumerate(NFZ_LIST + NEW_NFZ_LIST):
+            color = [255, 0, 0, 100] if i < len(NFZ_LIST) else [255, 165, 0, 100]
+            if 'polygon' in nfz:
+                poly_coords = []
+                for p in nfz['polygon']:
+                    poly_coords.extend([p[1], p[0], 200])
+                czml.append({
+                    "id": f"NFZ_{i}", "polygon": {
+                        "positions": {"cartographicDegrees": poly_coords},
+                        "material": {"solidColor": {"color": {"rgba": color}}},
+                        "extrudedHeight": 400
+                    }
+                })
+            else:
+                czml.append({
+                    "id": f"NFZ_{i}", "position": {"cartographicDegrees": [nfz['center'][1], nfz['center'][0], 200]},
+                    "cylinder": {"length": 400, "topRadius": nfz['radius'], "bottomRadius": nfz['radius'],
+                                 "material": {"solidColor": {"color": {"rgba": color}}}}
+                })
+        poly = []
+        for p in CONGESTION_ZONE_POLYGON: poly.extend([p[1], p[0], 0])
+        czml.append({"id": "Congestion", "polygon": {"positions": {"cartographicDegrees": poly}, "material": {"solidColor": {"color": {"rgba": [0, 0, 255, 80]}}}}})
 
     czml_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mission.czml")
     with open(czml_path, "w", encoding='utf-8') as f: 
