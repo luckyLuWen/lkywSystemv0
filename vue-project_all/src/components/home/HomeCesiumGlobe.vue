@@ -1,7 +1,6 @@
 <template>
   <div class="cesium-wrapper">
     <div id="cesiumContainer" ref="containerRef" class="cesium-container"></div>
-    
     <!-- 飞行动画照片 -->
     <div
       v-for="photo in flyingPhotos"
@@ -1484,9 +1483,9 @@
       <div class="detection-popup-arrow"></div>
     </div>
 
-    <!-- 仿真推演模块悬浮窗 (无人感知执行阶段 index === 8) -->
-    <div 
-      v-if="simulationPopup.show && props.activePhaseIndex === 8 && (props.focusedPointId === 'accident_blue' || props.focusedPointId === 'accident_red')" 
+    <!-- 仿真推演模块悬浮窗 (无人感知执行阶段 index === 7) -->
+    <div
+      v-if="simulationPopup.show && props.activePhaseIndex === 7 && (props.focusedPointId === 'accident_blue' || props.focusedPointId === 'accident_red')" 
       class="simulation-popup-panel"
       :style="{ left: simulationPopup.x + 'px', top: simulationPopup.y + 'px' }"
     >
@@ -1580,7 +1579,7 @@
       </table>
 
       <!-- 无人车 A / B 实时传感数据面板 (从出发阶段起显示) -->
-      <div v-if="props.activePhaseIndex >= 6 && props.sensorData" class="ugv-sensor-section">
+      <div v-if="props.activePhaseIndex >= 7 && props.sensorData" class="ugv-sensor-section">
         <div class="ugv-sensor-tabs">
           <button 
             :class="['ugv-sensor-tab', { active: activeUgvSensorTab === 'A' }]" 
@@ -2084,10 +2083,10 @@
 
 
 
-    <!-- 🚨 救援装备出动操控面板 (故事线阶段10专属) -->
+    <!-- 🚨 救援装备出动操控面板 (故事线阶段11专属) -->
     <transition name="rescue-panel-slide">
       <div
-        v-if="props.activePhaseIndex === 9"
+        v-if="props.activePhaseIndex === 10"
         class="rescue-dispatch-panel"
       >
         <div class="rescue-panel-header">
@@ -2186,13 +2185,13 @@ const sensorFusionState = computed(() => {
     },
     // 2. 路侧节点状态
     light: {
-      text: phase >= 3 ? '视场唤醒，视觉特征提取完成' : '休眠中，低功耗待机',
-      statusClass: phase >= 3 ? 'active' : 'waiting'
+      text: phase >= 4 ? '视场唤醒，视觉特征提取完成' : '休眠中，低功耗待机',
+      statusClass: phase >= 4 ? 'active' : 'waiting'
     },
     // 3. 空基节点 (无人机) 状态
     uav: {
-      text: phase >= 8 ? '已到达，红外全景推流中' : (phase >= 6 ? '飞行出动中...' : '基地待命'),
-      statusClass: phase >= 8 ? 'active' : (phase >= 6 ? 'moving' : 'waiting')
+      text: phase >= 8 ? '已到达，红外全景推流中' : (phase >= 3 ? '飞行侦察中...' : '基地待命'),
+      statusClass: phase >= 8 ? 'active' : (phase >= 3 ? 'moving' : 'waiting')
     },
     // 4. 地基节点 (无人车) 状态
     ugv: {
@@ -2203,7 +2202,7 @@ const sensorFusionState = computed(() => {
     resultText: phase >= 8 
       ? (isTanker ? '油罐侧翻特大泄露 (空地协同确证)' : '货车追尾引发大火 (空地协同确证)') 
       : (phase >= 2 ? '疑似交通事故 (单节点报警)' : '全域路网安全'),
-    confidence: phase >= 8 ? '98.5%' : (phase >= 3 ? '76.2%' : (phase >= 2 ? '45.0%' : '--'))
+    confidence: phase >= 8 ? '98.5%' : (phase >= 4 ? '76.2%' : (phase >= 2 ? '45.0%' : '--'))
   };
 });
 // ==========================================
@@ -2472,12 +2471,13 @@ const truckPhases = [
   { shortLabel: '仿真开始', title: '仿真推演开始' },
   { shortLabel: '正常行驶', title: '车辆正常行驶阶段' },
   { shortLabel: '事故发生', title: '货车追尾事故瞬间' },
+  { shortLabel: '无人机侦察', title: '无人机快速出动侦察' },
   { shortLabel: '次生灾害（烟雾）', title: '事故现场产生大量烟雾' },
   { shortLabel: '次生灾害（起火）', title: '事故车辆开始起火' },
-  { shortLabel: '次生灾害（大火）', title: '火势进一步扩大蔓延' },
   { shortLabel: '无人装备出动', title: '无人装备协同出动' },
   { shortLabel: '无人感知部署', title: '无人感知节点部署' },
   { shortLabel: '无人感知执行', title: '无人感知任务执行' },
+  { shortLabel: '信号干扰', title: '通信信号受到干扰' },
   { shortLabel: '救援装备出动', title: '专业救援装备协同出动' }
 ]
 
@@ -2485,12 +2485,13 @@ const tankerPhases = [
   { shortLabel: '仿真开始', title: '油罐车仿真推演开始' },
   { shortLabel: '正常行驶', title: '油罐车正常行驶阶段' },
   { shortLabel: '事故发生（侧翻）', title: '油罐车发生侧翻事故' },
+  { shortLabel: '无人机侦察', title: '无人机快速出动侦察' },
   { shortLabel: '次生灾害（泄露）', title: '罐体受损开始发生化学品泄露' },
   { shortLabel: '次生灾害（弥漫）', title: '泄露液体开始向四周大面积弥漫' },
-  { shortLabel: '次生灾害（扩散）', title: '挥发气体随风向周边区域扩散' },
   { shortLabel: '无人装备出动', title: '无人装备协同出动' },
   { shortLabel: '无人感知部署', title: '无人感知节点部署' },
   { shortLabel: '无人感知执行', title: '无人感知任务执行' },
+  { shortLabel: '信号干扰', title: '通信信号受到干扰' },
   { shortLabel: '救援装备出动', title: '专业救援装备协同出动' }
 ]
 
@@ -3016,7 +3017,7 @@ function copyLateFireParams() {
 
 // 实时监听微调面板数值变化，热更新火焰粒子系统参数
 watch(lateFireAdjust, (newVals) => {
-  if (fireParticle && props.activePhaseIndex >= 7) {
+  if (fireParticle && props.activePhaseIndex >= 5) {
     const isBigFire = (props.activePhaseIndex === 5);
     const fireScaleBase = isBigFire ? 2.0 : 1.0;
 
@@ -3089,7 +3090,7 @@ function copyLateSmokeParams() {
 
 // 实时监听微调面板数值变化，热更新烟雾粒子系统参数
 watch(lateSmokeAdjust, (newVals) => {
-  if (smokeParticle && props.activePhaseIndex >= 7) {
+  if (smokeParticle && props.activePhaseIndex >= 4) {
     const smokeScaleBase = 0.35;
 
     smokeParticle.startScale = newVals.startScale * smokeScaleBase;
@@ -3681,7 +3682,7 @@ function getStartStageVehiclePosAndOrient(index, offsetRatio) {
 
   const durationMs = (startStageVehicleAdjust.loopDurationSec || 18) * 1000
   const speedFactor = config.speedFactor || 1.0
-  const t = ((startStageVehicleRunningTimeMs / durationMs * speedFactor) + (offsetRatio !== undefined ? offsetRatio : config.offsetRatio)) % 1.0
+  const t = Math.min(((startStageVehicleRunningTimeMs / durationMs * speedFactor) + (offsetRatio !== undefined ? offsetRatio : config.offsetRatio)), 1.0)
 
   // 采用 Catmull-Rom 样条算法进行道路平滑弧线插值与动态切线姿态推算
   const spline = getCatmullRomSplinePoint(startStageRoadWaypoints, t);
@@ -4889,8 +4890,8 @@ function updatePopupPosition() {
       updateStoryDetectionPopupPosition();
     }
 
-  // 更新仿真推演悬浮窗坐标 (当位于货车追尾现场或油罐车泄漏现场的无人感知执行阶段 index === 8 时)
-  if (simulationPopup.show && props.activePhaseIndex === 8 && (props.focusedPointId === 'accident_blue' || props.focusedPointId === 'accident_red')) {
+  // 更新仿真推演悬浮窗坐标 (当位于货车追尾现场或油罐车泄漏现场的无人感知执行阶段 index === 7 时)
+  if (simulationPopup.show && props.activePhaseIndex === 7 && (props.focusedPointId === 'accident_blue' || props.focusedPointId === 'accident_red')) {
     const isTruck = props.focusedPointId === 'accident_blue';
     const lng = isTruck ? (Number(truckAdjust.lng) || 113.104833) : (Number(tankerPointAdjust.lng) || 114.8945);
     const lat = isTruck ? (Number(truckAdjust.lat) || 30.385469) : (Number(tankerPointAdjust.lat) || 30.632161);
@@ -6573,14 +6574,14 @@ function updateTruckSequence(phaseIndex, pointId = '') {
 
   const isTruckFocus = pointId === 'accident_blue' || props.focusedPointId === 'accident_blue';
 
-  const isBigFire = (phaseIndex === 5);
+  const isBigFire = (phaseIndex === 6);
   let smokeScaleBase = 1.0;
   let smokeEmissionRate = 60.0;
 
   if (isBigFire) {
     smokeScaleBase = 2.8;
     smokeEmissionRate = 60.0;
-  } else if (phaseIndex === 7 || phaseIndex === 8) {
+  } else if (phaseIndex === 8 || phaseIndex === 9) {
     smokeScaleBase = 0.35;
     smokeEmissionRate = 20.0;
   }
@@ -6588,11 +6589,11 @@ function updateTruckSequence(phaseIndex, pointId = '') {
   const fireScaleBase = isBigFire ? 2.0 : 1.0;
 
   if (smokeParticle) {
-    // 只有在聚焦该点且阶段 >= 3 时才显示，防止回退时粒子残留
-    smokeParticle.show = isTruckFocus && (phaseIndex >= 3);
+    // 只有在聚焦该点且阶段 >= 4 时才显示（无人机侦察阶段后），防止回退时粒子残留
+    smokeParticle.show = isTruckFocus && (phaseIndex >= 4);
     
-    if (phaseIndex >= 7) {
-      // 7 阶段及以后：事故中后期烟雾自动减弱，使用微调参数
+    if (phaseIndex >= 8) {
+      // 8 阶段及以后：事故中后期烟雾自动减弱，使用微调参数
       smokeParticle.startScale = lateSmokeAdjust.startScale * smokeScaleBase;
       smokeParticle.endScale = lateSmokeAdjust.endScale * smokeScaleBase;
       smokeParticle.emissionRate = lateSmokeAdjust.emissionRate;
@@ -6616,7 +6617,7 @@ function updateTruckSequence(phaseIndex, pointId = '') {
       // 3, 4, 5, 6 阶段 (正常行驶/事故爆发烟雾)
       smokeParticle.startScale = 0.5 * smokeScaleBase;
       smokeParticle.endScale = 2.0 * smokeScaleBase;
-      smokeParticle.emissionRate = (phaseIndex >= 3) ? smokeEmissionRate : 0.0;
+      smokeParticle.emissionRate = (phaseIndex >= 4) ? smokeEmissionRate : 0.0;
       smokeParticle.imageSize = new Cesium.Cartesian2(25, 25);
       smokeParticle.minimumSpeed = 2.0;
       smokeParticle.maximumSpeed = 5.0;
@@ -6631,11 +6632,11 @@ function updateTruckSequence(phaseIndex, pointId = '') {
     }
   }
   if (fireParticle) {
-    // 只有在聚焦该点且阶段 >= 4 时才显示
-    fireParticle.show = isTruckFocus && (phaseIndex >= 4);
+    // 只有在聚焦该点且阶段 >= 5 时才显示（次生灾害起火阶段）
+    fireParticle.show = isTruckFocus && (phaseIndex >= 5);
     
-    if (phaseIndex >= 7) {
-      // 7 阶段及以后 (无人感知部署、感知执行等)：事故中后期火势自然减弱，使用微调参数
+    if (phaseIndex >= 8) {
+      // 8 阶段及以后 (无人感知部署、感知执行等)：事故中后期火势自然减弱，使用微调参数
       fireParticle.startScale = lateFireAdjust.startScale * fireScaleBase;
       fireParticle.endScale = lateFireAdjust.endScale * fireScaleBase;
       fireParticle.emissionRate = lateFireAdjust.emissionRate; 
@@ -6696,7 +6697,7 @@ function updateTankerSequence(phaseIndex, pointId = '') {
     })
     const entity = tankerEntities.find(e => e.id === targetModelId)
     if (entity) {
-      const durationMap = { 1: 3, 2: 2, 3: 3, 4: 3, 5: 3 }
+      const durationMap = { 1: 3, 2: 2, 3: 3, 4: 3, 5: 3, 6: 3 }
       const duration = durationMap[phaseIndex] || 3
       playEntityAnimation(entity, false, duration)
     }
@@ -6712,19 +6713,19 @@ function updateTankerSequence(phaseIndex, pointId = '') {
   const isTankerFocus = pointId === 'accident_red' || props.focusedPointId === 'accident_red';
 
   if (leakParticle) {
-    // 只有在聚焦该点且阶段 >= 3 时才显示
-    leakParticle.show = isTankerFocus && (phaseIndex >= 3);
-    // 阶段3（泄露）开始产生
-    leakParticle.emissionRate = (phaseIndex >= 3) ? 45.0 : 0.0; 
+    // 只有在聚焦该点且阶段 >= 4 时才显示（无人机侦察阶段后）
+    leakParticle.show = isTankerFocus && (phaseIndex >= 4);
+    // 阶段4（泄露）开始产生
+    leakParticle.emissionRate = (phaseIndex >= 4) ? 45.0 : 0.0; 
   }
   
   if (diffusionParticle) {
-    // 只有在聚焦该点且阶段 >= 4 时才显示
-    diffusionParticle.show = isTankerFocus && (phaseIndex >= 4);
-    // 阶段4（弥漫）开始产生，阶段5（扩散）显著增强
-    if (phaseIndex === 4) {
+    // 只有在聚焦该点且阶段 >= 5 时才显示
+    diffusionParticle.show = isTankerFocus && (phaseIndex >= 5);
+    // 阶段5（弥漫）开始产生，阶段6（扩散）显著增强
+    if (phaseIndex === 5) {
       diffusionParticle.emissionRate = 100.0; // 提升初始浓度
-    } else if (phaseIndex >= 5) {
+    } else if (phaseIndex >= 6) {
       diffusionParticle.emissionRate = 180.0; // 显著增强，提供大范围浓烈雾气效果
     } else {
       diffusionParticle.emissionRate = 0.0;
@@ -7508,7 +7509,7 @@ function addEventEntities() {
         const height = startHeight + (targetHeight - startHeight) * easeT;
         return Cesium.Cartesian3.fromDegrees(lng, lat, height);
       } else {
-        // 阶段 >= 8：无人机围绕事故点做圆周绕飞拍照
+        // 阶段 >= 9：无人机围绕事故点做圆周绕飞拍照
         if (!uavOrbitStartTime) { uavOrbitStartTime = Date.now(); }
         const elapsed = Date.now() - uavOrbitStartTime;
         const period = 12000; 
@@ -7933,7 +7934,7 @@ const startHeight = Number(tankerUavAdjust.height) || 120.0;
         return Cesium.Cartesian3.fromDegrees(114.9238 + (config.lonOffset || 0), 30.5158 + (config.latOffset || 0), startHeight);
       } else if (props.activePhaseIndex < 6) {
         return Cesium.Cartesian3.fromDegrees(114.9238 + (config.lonOffset || 0), 30.5158 + (config.latOffset || 0), startHeight);
-      } else if (props.activePhaseIndex === 7) {
+      } else if (props.activePhaseIndex === 6) {
         if (!phase7StartTime) {
           phase7StartTime = Date.now();
         }
@@ -8078,7 +8079,7 @@ if (!tankerUavOrbitStartTime) { tankerUavOrbitStartTime = Date.now(); }
       if (!pos) return undefined;
 
       let headingRad;
-if (props.activePhaseIndex === 7) {
+if (props.activePhaseIndex === 6) {
         if (currentMissionDataSource) {
           const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
           if (pathEntity && pathEntity.polyline && pathEntity.polyline.positions) {
@@ -8159,10 +8160,10 @@ if (props.activePhaseIndex === 7) {
       name: `油罐车场景无人机数据链路`,
       show: new Cesium.CallbackProperty(() => {
         return Number(props.activePhaseIndex) >= 8 && entity.show && currentScene.value === 'tanker';
-      }, false),
-      polyline: {
-        positions: new Cesium.CallbackProperty((time) => {
-          if (Number(props.activePhaseIndex) < 8 || currentScene.value !== 'tanker') return [];
+        }, false),
+        polyline: {
+          positions: new Cesium.CallbackProperty((time) => {
+            if (Number(props.activePhaseIndex) < 8 || currentScene.value !== 'tanker') return [];
           const pos = entity.position.getValue(time);
           if (!pos) return [];
 
@@ -8261,7 +8262,7 @@ if (props.activePhaseIndex === 7) {
         const lat = baseStartLat + (actualTargetLat - baseStartLat) * easeT;
         return Cesium.Cartesian3.fromDegrees(lng, lat, startHeight);
       } else {
-        // 🚨 阶段 >= 8：驻停
+        // 阶段 >= 8：驻停在目标位置
         return Cesium.Cartesian3.fromDegrees(actualTargetLng, actualTargetLat, startHeight);
       }
     }, false);
@@ -8469,7 +8470,11 @@ tankerRescueCarEntities.forEach((carEntity, modelIndex) => {
 function updatePhaseScene(index, animate = false) {
   if (!viewer || !props.phases.length || !focusAreaEntity) return
 
-  if (index === 1) {
+  if (index === 0) {
+    startStageVehicleRunningTimeMs = 0;
+    startStageVehicleLastFrameTime = Date.now();
+    startStageVehicleAdjust.isPaused = false;
+  } else if (index === 1) {
     startStageVehicleAdjust.isPaused = false;
   }
 
@@ -8481,15 +8486,15 @@ function updatePhaseScene(index, animate = false) {
   }
 
   try {
-    if (index !== 6) {
+    if (index !== 7) {
       phase6StartTime = 0;
       tankerPhase6StartTime = 0;
     }
-    if (index !== 7) {
+    if (index !== 8) {
       phase7StartTime = 0;
       tankerPhase7StartTime = 0;
     }
-    if (index !== 8) {
+    if (index !== 9) {
       uavOrbitStartTime = 0;
       tankerUavOrbitStartTime = 0;
       capturedPhotos.value = [false, false, false, false];
@@ -8501,11 +8506,11 @@ function updatePhaseScene(index, animate = false) {
     // 🗺️ 控制无人机盘旋轨迹的显示/隐藏 (仅在第8阶段“无人感知执行”时显示)
     const orbitPathTruck = viewer.entities.getById('uav-orbit-path-truck');
     if (orbitPathTruck) {
-      orbitPathTruck.show = (pointId === 'accident_blue' && index === 8);
+      orbitPathTruck.show = (pointId === 'accident_blue' && index === 9);
     }
     const orbitPathTanker = viewer.entities.getById('uav-orbit-path-tanker');
     if (orbitPathTanker) {
-      orbitPathTanker.show = (pointId === 'accident_red' && index === 8);
+      orbitPathTanker.show = (pointId === 'accident_red' && index === 9);
     }
     const point = scenarioPoints[pointId] || scenarioPoints.gateway
 
@@ -8541,7 +8546,7 @@ function updatePhaseScene(index, animate = false) {
 
     focusAreaEntity.position = Cesium.Cartesian3.fromDegrees(lng, lat, 0)
 
-    // 悬浮窗展示逻辑：在货车追尾现场和油罐车泄露现场的“无人装备出动阶段”(索引 6) 、 “无人感知部署阶段”(索引 7) 、 “救援装备出动阶段”(索引 9) 、 “救援任务执行阶段”(索引 10) 显示
+    // 悬浮窗展示逻辑：在货车追尾现场和油罐车泄露现场的“无人装备出动阶段”(索引 7) 、 “无人感知部署阶段”(索引 8) 、 “救援装备出动阶段”(索引 9) 显示
     const isTruckScene = (pointId === 'accident_blue');
     const isTankerScene = (pointId === 'accident_red');
 
@@ -8604,13 +8609,13 @@ function updatePhaseScene(index, animate = false) {
       ugvPopup.show = false;
       
       setTimeout(() => {
-        if (props.focusedPointId === 'accident_blue' && Number(props.activePhaseIndex) === 7) {
+        if (props.focusedPointId === 'accident_blue' && Number(props.activePhaseIndex) === 6) {
           if (rescueMarkerEntity) rescueMarkerEntity.show = true;
           rescuePopup.show = true;
           ugvPopup.show = true;
         }
       }, 5000);
-    } else if (isTruckScene && index === 8) {
+    } else if (isTruckScene && index === 7) {
       rescuePopup.title = '无人机已到达';
       rescuePopup.model = 'DJI M300 RTK';
       rescuePopup.altitude = String(Math.round(uavAdjust.height)) + ' m';
@@ -8632,7 +8637,7 @@ function updatePhaseScene(index, animate = false) {
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
       rescuePopup.show = true;
       ugvPopup.show = true;
-    } else if (isTruckScene && index === 9) {
+    } else if (isTruckScene && index === 10) {
       rescuePopup.title = '无人机出发';
       rescuePopup.model = 'DJI M300 RTK';
       rescuePopup.altitude = '100 m';
@@ -8652,21 +8657,6 @@ function updatePhaseScene(index, animate = false) {
       ugvPopup.yOffset = truckUgvPopupAdjust.yOffset;
       ugvCoords.lng = 113.202;
       ugvCoords.lat = 30.3268;
-      ugvCoords.height = 10.0;
-      
-      if (rescueMarkerEntity) rescueMarkerEntity.show = true;
-      rescuePopup.show = true;
-      ugvPopup.show = true;
-    } else if (isTruckScene && index === 10) {
-      rescuePopup.title = '无人机执行中';
-      rescuePopup.status = '执行中';
-      rescueCoords.lng = 113.104833;
-      rescueCoords.lat = 30.385469;
-      rescueCoords.height = 120.0;
-      ugvPopup.title = '无人车执行中';
-      ugvPopup.status = '执行中';
-      ugvCoords.lng = 113.104833;
-      ugvCoords.lat = 30.385469;
       ugvCoords.height = 10.0;
       
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
@@ -8723,13 +8713,13 @@ function updatePhaseScene(index, animate = false) {
       ugvPopup.show = false;
       
       setTimeout(() => {
-        if (props.focusedPointId === 'accident_red' && Number(props.activePhaseIndex) === 7) {
+        if (props.focusedPointId === 'accident_red' && Number(props.activePhaseIndex) === 6) {
           if (rescueMarkerEntity) rescueMarkerEntity.show = true;
           rescuePopup.show = true;
           ugvPopup.show = true;
         }
       }, 5000);
-    } else if (isTankerScene && index === 8) {
+    } else if (isTankerScene && index === 7) {
       rescuePopup.title = '无人机已到达';
       rescuePopup.model = 'DJI M300 RTK';
       rescuePopup.altitude = String(Math.round(tankerUavAdjust.height)) + ' m';
@@ -8751,7 +8741,7 @@ function updatePhaseScene(index, animate = false) {
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
       rescuePopup.show = true;
       ugvPopup.show = true;
-    } else if (isTankerScene && index === 9) {
+    } else if (isTankerScene && index === 10) {
       rescuePopup.title = '无人机出发';
       rescuePopup.model = 'DJI M300 RTK';
       rescuePopup.altitude = '80 m';
@@ -8769,21 +8759,6 @@ function updatePhaseScene(index, animate = false) {
       ugvPopup.status = '已出发';
       ugvPopup.xOffset = tankerUgvPopupAdjust.xOffset;
       ugvPopup.yOffset = tankerUgvPopupAdjust.yOffset;
-      ugvCoords.lng = tankerPointAdjust.lng;
-      ugvCoords.lat = tankerPointAdjust.lat;
-      ugvCoords.height = 10.0;
-      
-      if (rescueMarkerEntity) rescueMarkerEntity.show = true;
-      rescuePopup.show = true;
-      ugvPopup.show = true;
-    } else if (isTankerScene && index === 10) {
-      rescuePopup.title = '无人机执行中';
-      rescuePopup.status = '执行中';
-      rescueCoords.lng = tankerPointAdjust.lng;
-      rescueCoords.lat = tankerPointAdjust.lat;
-      rescueCoords.height = 17.0;
-      ugvPopup.title = '无人车执行中';
-      ugvPopup.status = '执行中';
       ugvCoords.lng = tankerPointAdjust.lng;
       ugvCoords.lat = tankerPointAdjust.lat;
       ugvCoords.height = 10.0;
@@ -8886,8 +8861,15 @@ function updatePhaseScene(index, animate = false) {
         // 在货车追尾现场的无人机阶段显示无人机模型和救援车并隐藏所有粒子效果
         if (pointId === 'accident_blue') {
           uavEntities.forEach(entity => {
-            // 🚨 核心修改：使用 includes('move') 来动态匹配 1/2/3 号无人机
-            const isTarget = (index === 6 && !entity.id.includes('move')) || (index >= 7 && entity.id.includes('move'));
+            let isTarget = false;
+            if (index === 6) {
+              isTarget = (entity.id === 'uav_model');
+            } else if (index === 7) {
+              isTarget = (entity.id === 'uav_model_move');
+            } else if (index >= 8) {
+              isTarget = entity.id.includes('move');
+            }
+
             if (isTarget) {
               const needsAnimation = !entity.show || (entity.id.includes('move') && index === 7 && lastUavPhaseIndex !== 7);
               entity.show = true;
@@ -8898,7 +8880,6 @@ function updatePhaseScene(index, animate = false) {
               entity.show = false;
             }
           });
-          // ...后面保持不变
           // 恢复显示救援车模型
           rescueCarEntities.forEach(entity => { entity.show = true });
           
@@ -8909,15 +8890,22 @@ function updatePhaseScene(index, animate = false) {
           // 隐藏所有泄露和扩散粒子，但保留货车场景所需的烟雾与火焰粒子（由 updateTruckSequence 控制其具体大小）
           if (leakParticle) leakParticle.show = false
           if (diffusionParticle) diffusionParticle.show = false
-          if (index >= 9) {
+          if (index >= 8) {
             if (smokeParticle) smokeParticle.show = false
             if (fireParticle) fireParticle.show = false
           }
         } else if (pointId === 'accident_red') {
           // 在油罐车泄露现场的无人机阶段显示无人机模型和救援车并隐藏所有粒子效果
           tankerUavEntities.forEach(entity => {
-            // 🚨 核心修改同上
-            const isTarget = (index === 6 && !entity.id.includes('move')) || (index >= 7 && entity.id.includes('move'));
+            let isTarget = false;
+            if (index === 6) {
+              isTarget = (entity.id === 'uav_model');
+            } else if (index === 7) {
+              isTarget = (entity.id === 'uav_model_move');
+            } else if (index >= 8) {
+              isTarget = entity.id.includes('move');
+            }
+
             if (isTarget) {
               const needsAnimation = !entity.show || (entity.id.includes('move') && index === 7 && lastTankerUavPhaseIndex !== 7);
               entity.show = true;
@@ -9191,10 +9179,10 @@ watch(
 watch(() => props.activePhaseIndex, (next, prev) => {
   accidentViewLevel.value = null;
   stopAutoRotate();
-  if (next === 7 && prev !== 7) {
+  if (next === 6 && prev !== 6) {
     phase7StartTime = Date.now();
     tankerPhase7StartTime = Date.now();
-  } else if (next < 7) {
+  } else if (next < 6) {
     phase7StartTime = 0;
     tankerPhase7StartTime = 0;
   }
@@ -9330,7 +9318,7 @@ onBeforeUnmount(() => {
 })
 
 // ================================================================
-// 🚨 救援装备出动操控面板 (对应故事线阶段 10 - activePhaseIndex === 9)
+// 🚨 救援装备出动操控面板 (对应故事线阶段 11 - activePhaseIndex === 10)
 // 功能与协同响应三维态势地图的"救援装备出动"面板完全一致
 // ================================================================
 const rescueDispatchScene = ref('crash')  // 'crash' | 'leak'
