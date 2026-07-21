@@ -16,7 +16,32 @@
         backgroundImage: `url(${photo.src})`
       }"
     ></div>
-    
+    <!-- 阶段九：传感网原型放大镜悬浮窗 -->
+<div v-if="activePhaseIndex === 8 && showMagnifier" class="prototype-magnifier-popup">
+  <div class="popup-header">
+    <span class="icon">🔍</span>
+    <span class="title">立体组网传感网原型解析</span>
+    <button class="close-btn" @click="showMagnifier = false">×</button>
+  </div>
+
+  <div class="popup-body">
+    <!-- 左侧：导入你抠好的传感网原型图片 -->
+    <div class="prototype-image-container">
+      <img src="/Dashboard/images/传感网原型.png" alt="传感网原型" class="custom-prototype-img" />
+    </div>
+
+    <!-- 右侧：原型架构文本说明 (保持之前的设定) -->
+    <div class="prototype-desc">
+      <h4 class="desc-title">多源异构感知架构</h4>
+      <ul class="desc-list">
+        <li><strong>高速通信链路：</strong>核心控制指令通过 WebSocket 协议全双工直达底层节点，确保低延迟。</li>
+        <li><strong>空基巡航层：</strong>无人机搭载红外热成像相机，执行大范围视场唤醒与全局热点追踪。</li>
+        <li><strong>地基监测层：</strong>两台无人车呈非线性包围态势，挂载五类传感器监测阵列抵近核心区采样。</li>
+        <li><strong>泛在基础设施：</strong>智慧路灯与通信基站提供基础环境支撑与边缘计算中继。</li>
+      </ul>
+    </div>
+  </div>
+</div>
     <!-- 🛠️ 右下角微调控制台：弹窗面板堆叠容器 -->
     <div class="bottom-right-panels-stack">
       <!-- 🚗 全省车流与巡航动态微调工具 弹窗面板 -->
@@ -2032,6 +2057,11 @@ const fusionPanelConfig = reactive({
   show: true // 控制面板是否显示
 });
 
+// 假设 activePhaseIndex 是通过 props 传入的，或者是定义在当前组件的 ref
+// const props = defineProps({ activePhaseIndex: Number });
+
+// 1. 定义控制放大镜悬浮窗显示状态的变量
+
 // 根据当前的推演阶段，动态计算 4 个传感器的协同状态
 const sensorFusionState = computed(() => {
   const phase = Number(props.activePhaseIndex);
@@ -2146,7 +2176,26 @@ const props = defineProps({
   sensorData: { type: Object, default: () => ({}) },
   isWsConnected: { type: Boolean, default: false }
 })
+const showMagnifier = ref(false);
 
+// 2. 监听阶段索引的变化
+watch(
+  () => props.activePhaseIndex, // 如果是当前组件内的 ref，直接写 () => activePhaseIndex.value
+  (newIndex) => {
+    // 阶段九的数组索引为 8
+    if (newIndex === 8) {
+      // 进入阶段九时，自动弹出悬浮窗
+      showMagnifier.value = true;
+      
+      // 可选：你还可以在这里触发 Cesium 相机的视角调整，聚焦到无人车阵列
+      // focusOnSensorNetwork();
+    } else {
+      // 离开阶段九时，自动关闭悬浮窗，保持界面整洁
+      showMagnifier.value = false;
+    }
+  },
+  { immediate: true } // immediate 确保如果页面刷新直接进入阶段九，也能正常弹出
+);
 const emit = defineEmits(['accident-picked', 'models-ready', 'update:activePhaseIndex'])
 const TRUCK_PHASE_DESC = [
   { shortLabel: '仿真推演开始', time: '14:00', description: '系统完成初始化，开始对货车追尾事故场景进行数字孪生仿真推演，全域感知网络进入就绪状态。' },
@@ -13229,7 +13278,140 @@ onBeforeUnmount(() => {
   transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
   pointer-events: none;
 }
+/* ==========================================
+   阶段 9：传感网原型解析悬浮窗 (图片版)
+========================================== */
+/* 弹窗整体容器 */
+.prototype-magnifier-popup {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 650px; /* 宽度调整至容纳图片和文字 */
+  background: rgba(12, 22, 38, 0.9);
+  border: 1px solid rgba(45, 183, 245, 0.5);
+  border-radius: 8px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(45, 183, 245, 0.2);
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+}
 
+/* 头部标题区域 */
+.prototype-magnifier-popup .popup-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(45, 183, 245, 0.3);
+  background: linear-gradient(90deg, rgba(45, 183, 245, 0.15) 0%, transparent 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #2db7f5;
+}
+
+.prototype-magnifier-popup .popup-header .icon {
+  font-size: 18px;
+  margin-right: 8px;
+}
+
+.prototype-magnifier-popup .popup-header .title {
+  font-size: 16px;
+  font-weight: bold;
+  flex: 1;
+  letter-spacing: 1px;
+}
+
+.prototype-magnifier-popup .close-btn {
+  background: none;
+  border: none;
+  color: #8fa5c0;
+  font-size: 22px;
+  cursor: pointer;
+  transition: color 0.3s;
+  line-height: 1;
+}
+
+.prototype-magnifier-popup .close-btn:hover {
+  color: #ff4d4f;
+}
+
+/* 主体内容布局 */
+.prototype-magnifier-popup .popup-body {
+  display: flex;
+  padding: 24px;
+  gap: 24px;
+  align-items: center; /* 垂直居中对齐 */
+}
+
+/* 左侧图片容器 */
+.prototype-magnifier-popup .prototype-image-container {
+  width: 280px; /* 控制图片区域的宽度 */
+  height: 200px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(16, 40, 70, 0.4);
+  border: 1px dashed rgba(45, 183, 245, 0.4);
+  border-radius: 6px;
+  padding: 10px;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+/* 自定义抠图样式 */
+.prototype-magnifier-popup .custom-prototype-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  /* 给透明底的抠图加上赛博发光轮廓，自动捕捉你抠图的边缘 */
+  filter: drop-shadow(0 0 6px rgba(45, 183, 245, 0.6));
+}
+
+/* 右侧文本介绍样式 */
+.prototype-magnifier-popup .prototype-desc {
+  flex: 1;
+  color: #a0d8ef; /* 柔和的科技蓝白 */
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.prototype-magnifier-popup .desc-title {
+  color: #00e5ff;
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  border-left: 3px solid #00e5ff;
+  padding-left: 8px;
+}
+
+.prototype-magnifier-popup .desc-list {
+  padding-left: 16px;
+  margin: 0;
+  list-style-type: none; /* 使用自定义的发光圆点 */
+}
+
+.prototype-magnifier-popup .desc-list li {
+  margin-bottom: 12px;
+  position: relative;
+}
+
+/* 列表自定义发光圆点 */
+.prototype-magnifier-popup .desc-list li::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  top: 6px;
+  width: 5px;
+  height: 5px;
+  background: #2db7f5;
+  border-radius: 50%;
+  box-shadow: 0 0 5px #2db7f5;
+}
+
+.prototype-magnifier-popup .desc-list strong {
+  color: #fff;
+}
 /* ========================================
    📋 推演阶段说明悬浮卡片
    ======================================== */
