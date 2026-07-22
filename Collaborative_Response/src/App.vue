@@ -964,6 +964,8 @@ onUnmounted(() => {
 
 .sidebar {
   width: 320px;
+  height: 100vh;
+  box-sizing: border-box;
   padding: 24px;
   background: rgba(10, 19, 35, 0.82);
   backdrop-filter: blur(20px) saturate(140%);

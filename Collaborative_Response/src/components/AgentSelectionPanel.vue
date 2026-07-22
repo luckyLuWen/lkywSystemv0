@@ -84,6 +84,7 @@ const props = defineProps({
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(0, 242, 254, 0.05);
   margin-top: 16px;
   animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
 }
 
 @keyframes slideInUp {

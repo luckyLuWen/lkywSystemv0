@@ -15,7 +15,32 @@
         backgroundImage: `url(${photo.src})`
       }"
     ></div>
-    
+    <!-- 阶段九：传感网原型放大镜悬浮窗 -->
+<div v-if="activePhaseIndex === 8 && showMagnifier" class="prototype-magnifier-popup">
+  <div class="popup-header">
+    <span class="icon">🔍</span>
+    <span class="title">立体组网传感网原型解析</span>
+    <button class="close-btn" @click="showMagnifier = false">×</button>
+  </div>
+
+  <div class="popup-body">
+    <!-- 左侧：导入你抠好的传感网原型图片 -->
+    <div class="prototype-image-container">
+      <img src="/Dashboard/images/传感网原型.png" alt="传感网原型" class="custom-prototype-img" />
+    </div>
+
+    <!-- 右侧：原型架构文本说明 (保持之前的设定) -->
+    <div class="prototype-desc">
+      <h4 class="desc-title">多源异构感知架构</h4>
+      <ul class="desc-list">
+        <li><strong>高速通信链路：</strong>核心控制指令通过 WebSocket 协议全双工直达底层节点，确保低延迟。</li>
+        <li><strong>空基巡航层：</strong>无人机搭载红外热成像相机，执行大范围视场唤醒与全局热点追踪。</li>
+        <li><strong>地基监测层：</strong>两台无人车呈非线性包围态势，挂载五类传感器监测阵列抵近核心区采样。</li>
+        <li><strong>泛在基础设施：</strong>智慧路灯与通信基站提供基础环境支撑与边缘计算中继。</li>
+      </ul>
+    </div>
+  </div>
+</div>
     <!-- 🛠️ 右下角微调控制台：弹窗面板堆叠容器 -->
     <div class="bottom-right-panels-stack">
       <!-- 🚗 全省车流与巡航动态微调工具 弹窗面板 -->
@@ -2276,6 +2301,11 @@ const fusionPanelConfig = reactive({
   show: true // 控制面板是否显示
 });
 
+// 假设 activePhaseIndex 是通过 props 传入的，或者是定义在当前组件的 ref
+// const props = defineProps({ activePhaseIndex: Number });
+
+// 1. 定义控制放大镜悬浮窗显示状态的变量
+
 // 根据当前的推演阶段，动态计算 4 个传感器的协同状态
 const sensorFusionState = computed(() => {
   const phase = Number(props.activePhaseIndex);
@@ -2390,7 +2420,26 @@ const props = defineProps({
   sensorData: { type: Object, default: () => ({}) },
   isWsConnected: { type: Boolean, default: false }
 })
+const showMagnifier = ref(false);
 
+// 2. 监听阶段索引的变化
+watch(
+  () => props.activePhaseIndex, // 如果是当前组件内的 ref，直接写 () => activePhaseIndex.value
+  (newIndex) => {
+    // 阶段九的数组索引为 8
+    if (newIndex === 8) {
+      // 进入阶段九时，自动弹出悬浮窗
+      showMagnifier.value = true;
+      
+      // 可选：你还可以在这里触发 Cesium 相机的视角调整，聚焦到无人车阵列
+      // focusOnSensorNetwork();
+    } else {
+      // 离开阶段九时，自动关闭悬浮窗，保持界面整洁
+      showMagnifier.value = false;
+    }
+  },
+  { immediate: true } // immediate 确保如果页面刷新直接进入阶段九，也能正常弹出
+);
 const emit = defineEmits(['accident-picked', 'models-ready', 'update:activePhaseIndex'])
 
 
@@ -2699,7 +2748,8 @@ const lights = reactive([
   { id: 'light2', name: '灯光 2', show: true, lng: 113.105781, lat: 30.385317, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
   { id: 'light3', name: '灯光 3', show: true, lng: 113.104482, lat: 30.385632, height: 8.5, scale: 0.003, heading: 198, pitch: 0, roll: 0 },
   { id: 'light4', name: '灯光 4', show: true, lng: 114.891139, lat: 30.630711, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
-  { id: 'light5', name: '灯光 5', show: true, lng: 114.892429, lat: 30.631096, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light5', name: '灯光 5', show: true, lng: 114.892307, lat:30.631017, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  
   { id: 'light6', name: '灯光 6 (原3D自带)', show: true, lng: 114.893327, lat: 30.631683, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
   { 
  id: 'light7', 
@@ -2764,7 +2814,20 @@ const lights = reactive([
   { id: 'light20', name: '灯光 20', show: true, lng:113.108726, lat:30.384424, height: 8.5, scale: 0.003, heading: 201, pitch: 0, roll: 0 },
   { id: 'light21', name: '灯光 21', show: true, lng: 113.110784, lat: 30.384221, height: 8.5, scale: 0.003, heading: 198, pitch: 0, roll: 0 },
    { id: 'light22', name: '灯光 22', show: true, lng: 113.110784, lat:30.384051, height: 8.5, scale: 0.003, heading: 198, pitch: 0, roll: 0 },
-
+{ id: 'light23', name: '灯光 23', show: true, lng: 114.89137, lat: 30.630524, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light24', name: '灯光 24', show: true, lng: 114.892206, lat: 30.631211, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light25', name: '灯光 25', show: true, lng: 114.890568, lat: 30.630524, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light26', name: '灯光 26', show: true, lng: 114.893113, lat:30.631378, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+   { id: 'light27', name: '灯光 27', show: true, lng:114.890608, lat: 30.629945, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light28', name: '灯光 28', show: true, lng: 114.892978, lat:30.631556, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light29', name: '灯光 29', show: true, lng:114.890126, lat: 30.629685, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light30', name: '灯光 30', show: true, lng: 114.893848, lat:30.631709, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light31 ', name: '灯光 31', show: true, lng:114.890115, lat: 30.630225, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light32', name: '灯光 32', show: true, lng: 114.893781, lat:30.631934, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light33', name: '灯光 33', show: true, lng:114.890104, lat: 30.630925, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light34', name: '灯光 34', show: true, lng: 114.894522, lat:30.632024, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light35', name: '灯光 35', show: true, lng:114.890479, lat: 30.631868, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
+  { id: 'light36', name: '灯光 36', show: true, lng:114.894522, lat:30.632274, height: 8.5, scale: 0.003, heading: 0, pitch: 0, roll: 0 },
 ])
 
 const lightAdjust = reactive({
@@ -2848,8 +2911,8 @@ const jizhanAdjust = reactive({
 })
 const tankerJizhanAdjust = reactive({
   show: true,
-  lng: 114.894380, 
-  lat: 30.632350,
+  lng: 114.891890, 
+  lat: 30.631250,
   height: 1.5,
   scale: 0.01,
   heading: 45,
@@ -7097,7 +7160,8 @@ function addEventEntities() {
     // =====================================
     // 1. 添加感知视场 (排除了 light6 自带路灯)
     // =====================================
-    if (['light1', 'light2', 'light3', 'light4', 'light5','light8'].includes(l.id)) {
+    // 💡 新增了 'light23', 'light24'
+    if (['light1', 'light2', 'light3', 'light4', 'light5', 'light8', 'light23', 'light24'].includes(l.id)) {
       const heightOffset = 8.0;
       const pitchAngle = -45;
 
@@ -7110,8 +7174,13 @@ function addEventEntities() {
       if (l.id === 'light2') { headingOffset = 0; fovAngle = 35; maxRange = 250; }
       if (l.id === 'light3') { headingOffset = 180; fovAngle = 35; maxRange = 250; }
       if (l.id === 'light8') { headingOffset = 0; fovAngle = 35; maxRange = 250; }
+      
+      // 💡 为新增的 23 和 24 号灯光配置参数（可根据实际场景需要微调 headingOffset）
+      if (l.id === 'light23') { headingOffset = -45; fovAngle = 35; maxRange = 250; }
+      if (l.id === 'light24') { headingOffset = -225; fovAngle = 35; maxRange = 250; }
+
       // 油罐车现场
-      if (l.id === 'light4') { headingOffset = -5; fovAngle = 30; maxRange = 300; }
+      if (l.id === 'light4') { headingOffset = -25; fovAngle = 30; maxRange = 300; }
       if (l.id === 'light5') { headingOffset = 165; fovAngle = 30; maxRange = 150; }
 
       createLightFOV(
@@ -7149,7 +7218,8 @@ function addEventEntities() {
     // =====================================
     // 3. 路灯到对应基站的通信链路
     // =====================================
-    if (['light1', 'light2', 'light3', 'light4', 'light5','light8'].includes(l.id)) {
+    // 💡 新增了 'light23', 'light24'
+    if (['light1', 'light2', 'light3', 'light4', 'light5', 'light8', 'light23', 'light24'].includes(l.id)) {
       viewer.entities.add({
         id: `line-link-from-${l.id}-to-jizhan`,
         name: `数据传输链路:${l.id}->5G基站`,
@@ -8533,21 +8603,212 @@ if (props.activePhaseIndex === 3 || props.activePhaseIndex === 7) {
     tankerRescueCarEntities.push(entity);
   });
 // =========================================================
-  // 🛰️ 新增：绑定真实数据的 无人机 & 2辆无人车 动态回传链路
-  // =========================================================
-  // 1. 货车追尾现场 - 编队无人车链路 (连向 5G 基站)
-  // =========================================================
-  // 🛰️ 终极对准版：加大 X 轴偏移量，精准对齐双车车顶
-  // =========================================================
-
-  // 1. 货车追尾现场 - 编队无人车链路 (连向 5G 基站)
-  // =========================================================
-// 🛰️ 精准定位版：关闭 X 轴(前后)，使用 Y 轴(左右)精准对齐双车
-// =========================================================
 
 // 1. 货车追尾现场 - 编队无人车链路 (连向 5G 基站)
+// 🚨 设定移动参数（可根据现场视觉效果微调）
+const roadAngleDeg = 45; // 道路走向角度，0为东西，90为南北（控制移动方向避免下田地）
+const roadAngleRad = Cesium.Math.toRadians(roadAngleDeg);
+const patrolDistance = 0.00005; // 往复移动范围，大概 5 米
+const patrolSpeed = 0.5; // 移动速度
+// 🚨 全局时间轴锚点，控制组网生命周期
+// ==========================================
+// 还原版：无人车端（阶段 8 开始游走 + 绿色连线）
+// ==========================================
+// ==========================================
+// 还原版：无人车端（阶段 8 开始游走 + 绿色连线）
+// ==========================================
+// ==========================================
+// 1. 基站端：新增组网雷达波与调度面板 (严格锁定阶段 8)
+// ==========================================
+// (1) 基站向外发送的 5G 探测波纹
+// ==========================================
+// 🚨 终极核武器：全局强制校验器
+// 彻底屏蔽 NaN、undefined 导致的幽灵渲染
+// ==========================================
+// 🚨 终极核武器：全局强制校验器
+// 彻底屏蔽 NaN、undefined 导致的幽灵渲染
+const isPhase8Ready = () => {
+  const phase = Number(props.activePhaseIndex);
+  return !isNaN(phase) && phase >= 8 && currentScene.value === 'truck';
+};
+
+// ==========================================
+// 1. 基站端：组网雷达波与调度面板
+// ==========================================
+// 🧹 清理历史残留 (防止 Vite 热更新产生幽灵)
+['jizhan-broadcast-wave-truck', 'jizhan-network-panel-truck', 'jizhan-broadcast-wave-truck-safe', 'jizhan-network-panel-truck-safe'].forEach(id => viewer.entities.removeById(id));
+
+// (1) 基站向外发送的 5G 探测波纹
+viewer.entities.add({
+  id: 'jizhan-broadcast-wave-truck',
+  name: '基站广播信号',
+  position: Cesium.Cartesian3.fromDegrees(jizhanAdjust.lng, jizhanAdjust.lat, jizhanAdjust.height),
+  show: new Cesium.CallbackProperty(() => {
+    if (!isPhase8Ready()) {
+      jizhanAdjust._netTime = null; // 不达标，立刻清空计时器并隐藏
+      return false;
+    }
+    return true;
+  }, false),
+  ellipse: {
+    semiMinorAxis: new Cesium.CallbackProperty(() => {
+      if (Number(props.activePhaseIndex) < 8) return 0.1;
+      if (!jizhanAdjust._netTime) jizhanAdjust._netTime = Date.now();
+      return Math.max(0.1, (((Date.now() - jizhanAdjust._netTime) / 1000.0) % 2.0) * 40.0);
+    }, false),
+    semiMajorAxis: new Cesium.CallbackProperty(() => {
+      if (Number(props.activePhaseIndex) < 8) return 0.1;
+      if (!jizhanAdjust._netTime) jizhanAdjust._netTime = Date.now();
+      return Math.max(0.1, (((Date.now() - jizhanAdjust._netTime) / 1000.0) % 2.0) * 40.0);
+    }, false),
+    material: new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty(() => {
+      if (Number(props.activePhaseIndex) < 8 || !jizhanAdjust._netTime) return Cesium.Color.TRANSPARENT;
+      const alpha = Math.max(0, 1.0 - ((((Date.now() - jizhanAdjust._netTime) / 1000.0) % 2.0) / 2.0));
+      return Cesium.Color.CYAN.withAlpha(alpha * 0.6);
+    }, false)),
+    height: jizhanAdjust.height + 0.1,
+  }
+});
+
+// (2) 基站头顶的主控面板
+viewer.entities.add({
+  id: 'jizhan-network-panel-truck',
+  position: Cesium.Cartesian3.fromDegrees(jizhanAdjust.lng, jizhanAdjust.lat, jizhanAdjust.height + 6.5),
+  show: new Cesium.CallbackProperty(() => {
+    if (!isPhase8Ready() || !jizhanAdjust.show) {
+       jizhanAdjust._netTime = null; 
+       return false;
+    }
+    return true;
+  }, false),
+  label: {
+    text: new Cesium.CallbackProperty(() => {
+      if (Number(props.activePhaseIndex) < 8 || !jizhanAdjust._netTime) return '';
+      const elapsed = (Date.now() - jizhanAdjust._netTime) / 1000.0;
+      if (elapsed < 1.5) return `[CORE] 5G 核心网激活\n广播探测波纹...`;
+      if (elapsed < 3.5) return `[CORE] 捕获设备握手请求\n分配密钥并开通专线...`;
+      return `[CORE] 星型网络组网完毕\n▶ 主控链路: 稳定\n▶ 上行吞吐: 1.2 Gbps`;
+    }, false),
+    font: '14px monospace',
+    style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+    fillColor: Cesium.Color.CYAN,
+    outlineColor: Cesium.Color.BLACK,
+    outlineWidth: 2,
+    showBackground: true,
+    backgroundColor: new Cesium.Color(0.05, 0.1, 0.2, 0.8),
+    backgroundPadding: new Cesium.Cartesian2(12, 12),
+    pixelOffset: new Cesium.Cartesian2(0, -30),
+    horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+    disableDepthTestDistance: Number.POSITIVE_INFINITY
+  }
+});
+
+// ==========================================
+// 2. 无人车端：游走 + 终端面板 + 链路
+// ==========================================
+const truckRoadAngleRad = Cesium.Math.toRadians(45); 
+const truckPatrolDistance = 0.00005;
+const truckPatrolSpeed = 0.5;
+
 rescueCarEntities.forEach((carEntity, modelIndex) => {
+  
+  // 🧹 每次热更新时，先铲除这台车之前绑定的旧实体，彻底消灭幽灵！
+  [
+    `network-label-car${modelIndex + 1}`, `network-label-car-safe${modelIndex + 1}`,
+    `line-handshake-car${modelIndex + 1}-1`, `line-handshake-car-safe${modelIndex + 1}-1`,
+    `line-handshake-car${modelIndex + 1}-2`, `line-handshake-car-safe${modelIndex + 1}-2`,
+    `line-link-car${modelIndex + 1}-1-to-jizhan-real`, `line-link-car${modelIndex + 1}-2-to-jizhan-real`
+  ].forEach(id => viewer.entities.removeById(id));
+
+  const originalPosition = carEntity.position;
+  let lastValidPos = undefined;
+
+  // (1) 车辆游走
+  carEntity.position = new Cesium.CallbackProperty((time) => {
+    if (isPhase8Ready()) {
+      const basePos = originalPosition ? originalPosition.getValue(time) : undefined;
+      if (basePos) lastValidPos = basePos;
+      const targetPos = basePos || lastValidPos;
+      if (!targetPos) return undefined;
+
+      const carto = Cesium.Cartographic.fromCartesian(targetPos);
+      const wave = Math.sin((Date.now() / 1000.0) * truckPatrolSpeed + (modelIndex * Math.PI));
+      const curLng = Cesium.Math.toDegrees(carto.longitude) + wave * truckPatrolDistance * Math.cos(truckRoadAngleRad);
+      const curLat = Cesium.Math.toDegrees(carto.latitude) + wave * truckPatrolDistance * Math.sin(truckRoadAngleRad);
+
+      return Cesium.Cartesian3.fromDegrees(curLng, curLat, carto.height);
+    }
+    return originalPosition ? originalPosition.getValue(time) : undefined;
+  }, false);
+
+  // 辅助函数：解析实体自身显隐状态
+  const isCarVisible = (time) => {
+    let visible = carEntity.show;
+    if (visible && typeof visible.getValue === 'function') visible = visible.getValue(time);
+    return !!visible;
+  };
+
+  // (2) 车辆终端状态面板
+  viewer.entities.add({
+    id: `network-label-car${modelIndex + 1}`,
+    position: new Cesium.CallbackProperty((time) => {
+      const carPos = carEntity.position.getValue(time);
+      if (!carPos) return undefined;
+      const carto = Cesium.Cartographic.fromCartesian(carPos);
+      return Cesium.Cartesian3.fromDegrees(Cesium.Math.toDegrees(carto.longitude), Cesium.Math.toDegrees(carto.latitude), carto.height + 3.5);
+    }, false),
+    show: new Cesium.CallbackProperty((time) => {
+      if (isPhase8Ready() && isCarVisible(time)) {
+        return true;
+      }
+      carEntity._netTime = null; 
+      return false;
+    }, false),
+    label: {
+      text: new Cesium.CallbackProperty(() => {
+        if (Number(props.activePhaseIndex) < 8) return '';
+        if (!carEntity._netTime) carEntity._netTime = Date.now();
+        const elapsed = (Date.now() - carEntity._netTime) / 1000.0;
+        if (elapsed < 1.5) return `[SYS] 扫描 5G 信号...`;
+        if (elapsed < 3.5) return `[NET] 建立 WebSocket 专线...`;
+        return `▶ 环境数据流: ACTIVE\n▶ 延迟: 12ms`;
+      }, false),
+      font: '14px monospace',
+      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      fillColor: Cesium.Color.LIME,
+      outlineColor: Cesium.Color.BLACK,
+      outlineWidth: 2,
+      showBackground: true,
+      backgroundColor: new Cesium.Color(0.1, 0.1, 0.1, 0.8),
+      backgroundPadding: new Cesium.Cartesian2(10, 10),
+      pixelOffset: new Cesium.Cartesian2(0, -30),
+      horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY
+    }
+  });
+
+  // (3) 链路绘制
   [0, 1].forEach((innerCarIndex) => {
+    const getLinePositions = (time) => {
+      if (!isPhase8Ready()) return [];
+      const carCartesian = carEntity.position.getValue(time);
+      const carOrientation = carEntity.orientation.getValue(time);
+      if (!carCartesian || !carOrientation) return [];
+
+      const jizhanTop = getModelTopPosition(
+        jizhanAdjust.lng, jizhanAdjust.lat, jizhanAdjust.height,
+        jizhanAdjust.heading, jizhanAdjust.pitch, jizhanAdjust.roll, JIZHAN_TOP_OFFSET
+      );
+
+      const localOffset = new Cesium.Cartesian3(0.0, (innerCarIndex === 0) ? 1.5 : -1.5, 1.6);
+      const rotationMatrix = Cesium.Matrix3.fromQuaternion(carOrientation);
+      const worldOffset = Cesium.Matrix3.multiplyByVector(rotationMatrix, localOffset, new Cesium.Cartesian3());
+      return [ Cesium.Cartesian3.add(carCartesian, worldOffset, new Cesium.Cartesian3()), jizhanTop ];
+    };
+
+    // (新增) 握手阶段的橙色虚线
     viewer.entities.add({
       id: `line-link-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-real`,
       name: `链路`,
@@ -8583,13 +8844,8 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
         material: new DynamicFlowMaterialProperty({ color: Cesium.Color.CHARTREUSE, speed: 4.5, repeat: 6.0 })
       }
     });
-  });
-});
 
-// 2. 油罐车泄露现场 - 编队无人车链路
-// 2. 油罐车泄露现场 - 编队无人车链路 (连向 油罐车专属5G基站)
-tankerRescueCarEntities.forEach((carEntity, modelIndex) => {
-  [0, 1].forEach((innerCarIndex) => {
+    // (原版) 稳定阶段的绿色实线
     viewer.entities.add({
       id: `line-link-tanker-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-real`,
       name: `油罐现场链路`,
@@ -8624,6 +8880,8 @@ tankerRescueCarEntities.forEach((carEntity, modelIndex) => {
     });
   });
 });
+// ==========================================
+
   viewer.screenSpaceEventHandler.setInputAction((movement) => {
     const pickedObject = viewer.scene.pick(movement.position);
     if (Cesium.defined(pickedObject)) {
@@ -13701,7 +13959,146 @@ async function triggerRescueMultiAgent() {
   transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
   pointer-events: none;
 }
+/* ==========================================
+   阶段 9：传感网原型解析悬浮窗 (图片版)
+========================================== */
+/* 弹窗整体容器 */
+.prototype-magnifier-popup {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 650px; /* 宽度调整至容纳图片和文字 */
+  background: rgba(12, 22, 38, 0.9);
+  border: 1px solid rgba(45, 183, 245, 0.5);
+  border-radius: 8px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(45, 183, 245, 0.2);
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+}
 
+/* 头部标题区域 */
+.prototype-magnifier-popup .popup-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(45, 183, 245, 0.3);
+  background: linear-gradient(90deg, rgba(45, 183, 245, 0.15) 0%, transparent 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #2db7f5;
+}
+
+.prototype-magnifier-popup .popup-header .icon {
+  font-size: 18px;
+  margin-right: 8px;
+}
+
+.prototype-magnifier-popup .popup-header .title {
+  font-size: 16px;
+  font-weight: bold;
+  flex: 1;
+  letter-spacing: 1px;
+}
+
+.prototype-magnifier-popup .close-btn {
+  background: none;
+  border: none;
+  color: #8fa5c0;
+  font-size: 22px;
+  cursor: pointer;
+  transition: color 0.3s;
+  line-height: 1;
+}
+
+.prototype-magnifier-popup .close-btn:hover {
+  color: #ff4d4f;
+}
+
+/* 主体内容布局 */
+.prototype-magnifier-popup .popup-body {
+  display: flex;
+  padding: 24px;
+  gap: 24px;
+  align-items: center; /* 垂直居中对齐 */
+}
+
+/* 左侧图片容器 */
+.prototype-magnifier-popup .prototype-image-container {
+  width: 280px; /* 控制图片区域的宽度 */
+  height: 200px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(16, 40, 70, 0.4);
+  border: 1px dashed rgba(45, 183, 245, 0.4);
+  border-radius: 6px;
+  padding: 10px;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+/* 自定义抠图样式 */
+.prototype-magnifier-popup .custom-prototype-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  /* 给透明底的抠图加上赛博发光轮廓，自动捕捉你抠图的边缘 */
+  filter: drop-shadow(0 0 6px rgba(45, 183, 245, 0.6));
+}
+
+/* 右侧文本介绍样式 */
+.prototype-magnifier-popup .prototype-desc {
+  flex: 1;
+  color: #a0d8ef; /* 柔和的科技蓝白 */
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.prototype-magnifier-popup .desc-title {
+  color: #00e5ff;
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  border-left: 3px solid #00e5ff;
+  padding-left: 8px;
+}
+
+.prototype-magnifier-popup .desc-list {
+  padding-left: 16px;
+  margin: 0;
+  list-style-type: none; /* 使用自定义的发光圆点 */
+}
+
+.prototype-magnifier-popup .desc-list li {
+  margin-bottom: 12px;
+  position: relative;
+}
+
+/* 列表自定义发光圆点 */
+.prototype-magnifier-popup .desc-list li::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  top: 6px;
+  width: 5px;
+  height: 5px;
+  background: #2db7f5;
+  border-radius: 50%;
+  box-shadow: 0 0 5px #2db7f5;
+}
+
+.prototype-magnifier-popup .desc-list strong {
+  color: #fff;
+}
+/* ========================================
+   📋 推演阶段说明悬浮卡片
+   ======================================== */
+.phase-desc-card {
+  
+}
 /* ================================================================
    🚨 救援装备出动操控面板样式
    ================================================================ */
