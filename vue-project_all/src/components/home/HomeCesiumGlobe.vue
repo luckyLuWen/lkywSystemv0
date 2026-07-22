@@ -2314,7 +2314,7 @@ const sensorFusionState = computed(() => {
   return {
     // 1. 车端节点状态
     car: {
-      text: phase >= 2 ? (isTanker ? '检测到侧翻倾角异常' : '检测到 9.8G 异常冲击') : '平稳运行，各项数据正常',
+      text: phase >= 2 ? (isTanker ? '检测到侧翻倾角异常' : '检测到异常冲击') : '平稳运行，各项数据正常',
       statusClass: phase >= 2 ? 'alert' : 'normal'
     },
     // 2. 路侧节点状态
@@ -8774,8 +8774,11 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
   };
 
   // (2) 车辆终端状态面板
+  // ==========================================
+  // (2) 车辆终端状态面板 (阶段8常态 / 阶段9中继)
+  // ==========================================
   viewer.entities.add({
-    id: `network-label-car${modelIndex + 1}`,
+    id: `network-label-car${modelIndex + 1}`, // 保持原有 ID
     position: new Cesium.CallbackProperty((time) => {
       const carPos = carEntity.position.getValue(time);
       if (!carPos) return undefined;
@@ -8783,15 +8786,21 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       return Cesium.Cartesian3.fromDegrees(Cesium.Math.toDegrees(carto.longitude), Cesium.Math.toDegrees(carto.latitude), carto.height + 3.5);
     }, false),
     show: new Cesium.CallbackProperty((time) => {
-      if (isPhase8Ready() && isCarVisible(time)) {
-        return true;
-      }
+      if (isPhase8Ready() && isCarVisible(time)) return true;
       carEntity._netTime = null; 
       return false;
     }, false),
     label: {
       text: new Cesium.CallbackProperty(() => {
         if (Number(props.activePhaseIndex) < 8) return '';
+        
+        // 🚨 故事点十 (阶段 9)：启用无人车中继
+        if (Number(props.activePhaseIndex) >= 9) {
+           if (modelIndex === 0) return `[RELAY] 启用临时通信中继\n▶ 核心链路: 已接管\n▶ 延迟: 8ms`;
+           return `▶ 环境数据流: ACTIVE\n▶ 上传至中继: 稳定`;
+        }
+
+        // 🌟 故事点九 (阶段 8)：正常连向 5G 基站
         if (!carEntity._netTime) carEntity._netTime = Date.now();
         const elapsed = (Date.now() - carEntity._netTime) / 1000.0;
         if (elapsed < 1.5) return `[SYS] 扫描 5G 信号...`;
@@ -8800,7 +8809,8 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       }, false),
       font: '14px monospace',
       style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-      fillColor: Cesium.Color.LIME,
+      // 阶段 9 时，1号车变为金色，体现其核心中继地位
+      fillColor: new Cesium.CallbackProperty(() => (Number(props.activePhaseIndex) >= 9 && modelIndex === 0) ? Cesium.Color.GOLD : Cesium.Color.LIME, false),
       outlineColor: Cesium.Color.BLACK,
       outlineWidth: 2,
       showBackground: true,
@@ -8813,55 +8823,60 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
     }
   });
 
-  // (3) 链路绘制
+  // ==========================================
+  // (3) 链路绘制 (基站 / 无人车中继 动态切换)
+  // ==========================================
   [0, 1].forEach((innerCarIndex) => {
-    const getLinePositions = (time) => {
-      if (!isPhase8Ready()) return [];
-      const carCartesian = carEntity.position.getValue(time);
-      const carOrientation = carEntity.orientation.getValue(time);
-      if (!carCartesian || !carOrientation) return [];
-
-      const jizhanTop = getModelTopPosition(
-        jizhanAdjust.lng, jizhanAdjust.lat, jizhanAdjust.height,
-        jizhanAdjust.heading, jizhanAdjust.pitch, jizhanAdjust.roll, JIZHAN_TOP_OFFSET
-      );
-
-      const localOffset = new Cesium.Cartesian3(0.0, (innerCarIndex === 0) ? 1.5 : -1.5, 1.6);
-      const rotationMatrix = Cesium.Matrix3.fromQuaternion(carOrientation);
-      const worldOffset = Cesium.Matrix3.multiplyByVector(rotationMatrix, localOffset, new Cesium.Cartesian3());
-      return [ Cesium.Cartesian3.add(carCartesian, worldOffset, new Cesium.Cartesian3()), jizhanTop ];
-    };
-
-    // (新增) 握手阶段的橙色虚线
     viewer.entities.add({
-      id: `line-handshake-car${modelIndex + 1}-${innerCarIndex + 1}`,
-      name: `握手链路`,
+      id: `line-link-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-real`, // 保持原有 ID
+      name: `动态中心数据链路`,
       show: new Cesium.CallbackProperty((time) => {
-        if (isPhase8Ready() && isCarVisible(time) && carEntity._netTime) {
-           return ((Date.now() - carEntity._netTime) / 1000.0) < 3.5; 
-        }
-        return false; 
-      }, false),
-      polyline: {
-        positions: new Cesium.CallbackProperty((time) => getLinePositions(time), false),
-        width: 3.0,
-        material: new Cesium.PolylineDashMaterialProperty({ color: Cesium.Color.ORANGE, dashLength: 20.0 })
-      }
-    });
-
-    // (原版) 稳定阶段的绿色实线
-    viewer.entities.add({
-      id: `line-link-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-real`,
-      name: `稳定链路`,
-      show: new Cesium.CallbackProperty((time) => {
+        // 🚨 阶段 9 时，1 号车作为汇聚中心，不再向外发射数据线
+        if (Number(props.activePhaseIndex) >= 9 && modelIndex === 0) return false;
+        
         if (isPhase8Ready() && isCarVisible(time) && carEntity._netTime) {
            return ((Date.now() - carEntity._netTime) / 1000.0) >= 3.5; 
         }
         return false; 
       }, false),
       polyline: {
-        positions: new Cesium.CallbackProperty((time) => getLinePositions(time), false),
+        positions: new Cesium.CallbackProperty((time) => {
+          if (!isPhase8Ready()) return [];
+          const carCartesian = carEntity.position.getValue(time);
+          const carOrientation = carEntity.orientation.getValue(time);
+          if (!carCartesian || !carOrientation) return [];
+
+          // 计算车辆天线发射原点
+          const localOffset = new Cesium.Cartesian3(0.0, (innerCarIndex === 0) ? 1.5 : -1.5, 1.6);
+          const rotationMatrix = Cesium.Matrix3.fromQuaternion(carOrientation);
+          const worldOffset = Cesium.Matrix3.multiplyByVector(rotationMatrix, localOffset, new Cesium.Cartesian3());
+          const startPos = Cesium.Cartesian3.add(carCartesian, worldOffset, new Cesium.Cartesian3());
+
+          // 🚨 故事点十 (阶段 9)：其他车辆连向 1 号中继车
+          if (Number(props.activePhaseIndex) >= 9) {
+            if (modelIndex === 0) return []; // 1号车自身不连向外部
+            
+            // 自动判断场景，抓取正确的 1 号车作为终点
+            const relayUgv = currentScene.value === 'truck' ? rescueCarEntities[0] : tankerRescueCarEntities[0];
+            if (relayUgv) {
+              const ugv1Pos = relayUgv.position.getValue(time);
+              if (ugv1Pos) return [startPos, ugv1Pos];
+            }
+            return [];
+          }
+
+          // 🌟 故事点九 (阶段 8)：全部正常连向基站
+          const targetJizhan = currentScene.value === 'truck' ? jizhanAdjust : tankerJizhanAdjust;
+          if (!targetJizhan.show) return []; // 如果基站未显示则不连
+
+          const jizhanTop = getModelTopPosition(
+            targetJizhan.lng, targetJizhan.lat, targetJizhan.height,
+            targetJizhan.heading, targetJizhan.pitch, targetJizhan.roll, JIZHAN_TOP_OFFSET
+          );
+          return [startPos, jizhanTop];
+        }, false),
         width: 3.5,
+        arcType: Cesium.ArcType.NONE, // 强制直线
         material: new DynamicFlowMaterialProperty({ color: Cesium.Color.CHARTREUSE, speed: 4.5, repeat: 6.0 })
       }
     });
@@ -12017,19 +12032,42 @@ async function triggerRescueMultiAgent() {
   position: absolute;
   top: 80px;
   left: 20px;
-  width: 340px;
+  width: 420px; /* 宽度保持 420px */
   background: rgba(6, 14, 28, 0.85);
   border: 1px solid rgba(0, 229, 255, 0.4);
   border-radius: 8px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 229, 255, 0.15);
   backdrop-filter: blur(12px);
-  z-index: 900; /* 层级设置合理，避免遮挡最重要的弹窗 */
+  z-index: 900; 
   color: #fff;
   font-family: -apple-system, sans-serif;
+  font-size: 20px; /* 🚨 新增：整体基础字体放大到 16px */
+  line-height: 1.6; /* 🚨 新增：增加行高，让大文字阅读更舒适 */
   overflow: hidden;
   pointer-events: auto;
 }
+/* 🚨 暴力/精准覆盖：强制放大面板内部的各种文字元素 */
 
+/* 1. 放大普通文本、标签和数值 */
+.sensor-fusion-panel span,
+.sensor-fusion-panel p,
+.sensor-fusion-panel div {
+  font-size: 18px !important; /* 使用 !important 强制打破原有的较小字号限制 */
+}
+
+/* 2. 单独把标题放得更大，拉开视觉层次 */
+.sensor-fusion-panel .title,
+.sensor-fusion-panel h3,
+.sensor-fusion-panel h4 {
+  font-size: 22px !important;
+  font-weight: bold;
+}
+
+/* 3. 如果里面有数据高亮（比如你环境监测阵列的 TVOC、CO 数值），可以单独微调 */
+.sensor-fusion-panel .value,
+.sensor-fusion-panel .text-cyan {
+  font-size: 20px !important;
+}
 .fusion-header {
   display: flex;
   align-items: center;
