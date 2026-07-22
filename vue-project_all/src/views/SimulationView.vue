@@ -861,21 +861,12 @@ function get2DParticleConfig(phaseIndex) {
     if (phaseIndex <= 1) { // 仿真开始/正常行驶
       config.smoke.emissionRate = 0
       config.fire.emissionRate = 0
-    } else if (phaseIndex === 2) { // 事故发生
-      config.smoke.emissionRate = 25
-      config.smoke.imageWidth = 12
-      config.smoke.imageHeight = 12
+    } else if (phaseIndex >= 2 && phaseIndex <= 4) { // 事故发生 / 无人机出动 / 无人机侦察 (暂无大范围烟雾与火焰)
+      config.smoke.emissionRate = 0
       config.fire.emissionRate = 0
-    } else if (phaseIndex === 3 || phaseIndex === 4) { // 无人机出动 / 无人机侦察
-      config.smoke.emissionRate = 55
-      config.smoke.imageWidth = 20
-      config.smoke.imageHeight = 20
-      config.fire.emissionRate = 10
-      config.fire.imageWidth = 12
-      config.fire.imageHeight = 12
-    } else if (phaseIndex === 5) { // 次生灾害（起火）
+    } else if (phaseIndex === 5) { // 次生灾害（烟雾）
       config.smoke.emissionRate = 70
-      config.fire.emissionRate = 35
+      config.fire.emissionRate = 0
     } else if (phaseIndex === 6) { // 次生灾害（大火）
       config.smoke.emissionRate = 110
       config.smoke.imageWidth = 32
@@ -904,15 +895,9 @@ function get2DParticleConfig(phaseIndex) {
     // 油罐车泄漏扩散
     if (phaseIndex <= 1) {
       config.diffusion.emissionRate = 0
-    } else if (phaseIndex === 2) { // 事故发生（侧翻）
-      config.diffusion.emissionRate = 15
-      config.diffusion.imageWidth = 6
-      config.diffusion.imageHeight = 6
-    } else if (phaseIndex === 3 || phaseIndex === 4) { // 无人机出动 / 次生灾害（泄露）
-      config.diffusion.emissionRate = 45
-      config.diffusion.imageWidth = 8
-      config.diffusion.imageHeight = 8
-    } else if (phaseIndex === 5) { // 次生灾害（弥漫）
+    } else if (phaseIndex >= 2 && phaseIndex <= 4) { // 事故发生 / 无人机出动 / 无人机侦察 (暂无泄露扩散)
+      config.diffusion.emissionRate = 0
+    } else if (phaseIndex === 5) { // 次生灾害（泄露）
       config.diffusion.emissionRate = 90
       config.diffusion.imageWidth = 14
       config.diffusion.imageHeight = 14
@@ -1091,10 +1076,10 @@ watch([activePhaseIndex, activeScene], ([phaseIdx, scene]) => {
   // 2. 同步更新 3D 粒子和 3D 模型
   if (viewer) {
     update3DModelsVisibility()
-    // 同步更新 3D 粒子的可见性
-    if (smokeParticle) smokeParticle.show = (currentCity.value === 'xiantao' && phaseIdx >= 2)
-    if (fireParticle) fireParticle.show = (currentCity.value === 'xiantao' && phaseIdx >= 4)
-    if (diffusionParticle) diffusionParticle.show = (currentCity.value === 'huanggang' && phaseIdx >= 2)
+    // 同步更新 3D 粒子的可见性：烟雾与泄露在阶段 >= 5 (次生灾害烟雾/泄露) 才显示；火焰在阶段 >= 6 (次生灾害起火) 显示
+    if (smokeParticle) smokeParticle.show = (currentCity.value === 'xiantao' && phaseIdx >= 5)
+    if (fireParticle) fireParticle.show = (currentCity.value === 'xiantao' && phaseIdx >= 6)
+    if (diffusionParticle) diffusionParticle.show = (currentCity.value === 'huanggang' && phaseIdx >= 5)
     
     // 同步更新 CZML 实体可见性
     if (currentCzmlDataSource) {
@@ -1104,6 +1089,10 @@ watch([activePhaseIndex, activeScene], ([phaseIdx, scene]) => {
         if (id && multiAgentPrefixes.some(prefix => id.startsWith(prefix))) {
             const shouldShow = (Number(phaseIdx) >= 10);
             entity.show = shouldShow;
+        } else if (id === 'Car_Path' || id === 'Car_Path_glow' || id === 'Car') {
+            entity.show = (Number(phaseIdx) >= 7);
+        } else if (id === 'UAV_Path' || id === 'UAV_Path_glow' || id === 'UAV') {
+            entity.show = (Number(phaseIdx) >= 3);
         } else {
             entity.show = (Number(phaseIdx) !== 6);
         }
@@ -1185,6 +1174,10 @@ const loadMission = async () => {
       const id = entity.id;
       if (id && multiAgentPrefixes.some(prefix => id.startsWith(prefix))) {
           entity.show = (Number(activePhaseIndex.value) >= 10);
+      } else if (id === 'Car_Path' || id === 'Car_Path_glow' || id === 'Car') {
+          entity.show = (Number(activePhaseIndex.value) >= 7);
+      } else if (id === 'UAV_Path' || id === 'UAV_Path_glow' || id === 'UAV') {
+          entity.show = (Number(activePhaseIndex.value) >= 3);
       } else {
           entity.show = (Number(activePhaseIndex.value) !== 6);
       }
