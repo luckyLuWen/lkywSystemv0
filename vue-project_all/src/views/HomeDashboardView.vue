@@ -678,6 +678,7 @@ const accidentPoints = [
       { id: 't-start', time: '14:00', shortLabel: '仿真开始', title: '仿真推演开始', systems: ['总系统首页'], focusPoint: 'accident_blue' },
       { id: 't-normal', time: '14:05', shortLabel: '正常行驶', title: '车辆正常行驶阶段', systems: ['边缘网关'], focusPoint: 'accident_blue' },
       { id: 't-accident', time: '14:12', shortLabel: '事故发生', title: '货车追尾事故瞬间', systems: ['实时检测'], focusPoint: 'detection' },
+      { id: 't-uav-dispatch', time: '14:14', shortLabel: '无人机出动', title: '无人机出动', systems: ['协同响应'], focusPoint: 'accident_blue' },
       { id: 't-uav-recon', time: '14:15', shortLabel: '无人机侦察', title: '无人机快速出动侦察', systems: ['协同响应'], focusPoint: 'accident_blue' },
       { id: 't-smoke', time: '14:18', shortLabel: '次生灾害（烟雾）', title: '事故现场产生大量烟雾', systems: ['协同响应'], focusPoint: 'command' },
       { id: 't-fire', time: '14:26', shortLabel: '次生灾害（起火）', title: '事故车辆开始起火', systems: ['实时检测', '协同响应'], focusPoint: 'response' },
@@ -696,6 +697,7 @@ const accidentPoints = [
       { id: 'l-start', time: '15:00', shortLabel: '仿真开始', title: '油罐车仿真推演开始', systems: ['总系统首页'], focusPoint: 'accident_red' },
       { id: 'l-normal', time: '15:05', shortLabel: '正常行驶', title: '油罐车正常行驶阶段', systems: ['边缘网关'], focusPoint: 'accident_red' },
       { id: 'l-accident', time: '15:12', shortLabel: '事故发生（侧翻）', title: '油罐车发生侧翻事故', systems: ['实时检测'], focusPoint: 'accident_red' },
+      { id: 'l-uav-dispatch', time: '15:14', shortLabel: '无人机出动', title: '无人机出动', systems: ['协同响应'], focusPoint: 'accident_red' },
       { id: 'l-uav-recon', time: '15:15', shortLabel: '无人机侦察', title: '无人机快速出动侦察', systems: ['协同响应'], focusPoint: 'accident_red' },
       { id: 'l-leak', time: '15:20', shortLabel: '次生灾害（泄露）', title: '罐体受损开始发生化学品泄露', systems: ['实时检测', '协同响应'], focusPoint: 'accident_red' },
       { id: 'l-fill', time: '15:35', shortLabel: '次生灾害（弥漫）', title: '泄露液体开始向四周大面积弥漫', systems: ['协同响应'], focusPoint: 'accident_red' },
@@ -714,12 +716,12 @@ const timelinePhases = computed(() => {
 
 const phaseToModelMap = {
   1: 'model_normal', 2: 'model_accident', 3: 'model_accident', 4: 'model_accident', 5: 'model_accident', 
-  6: 'model_accident', 7: 'model_accident', 8: 'model_accident', 9: 'model_accident', 10: 'model_accident'
+  6: 'model_accident', 7: 'model_accident', 8: 'model_accident', 9: 'model_accident', 10: 'model_accident', 11: 'model_accident'
 }
 
 const tankerPhaseToModelMap = {
   1: 'tanker_normal', 2: 'tanker_accident', 3: 'tanker_accident', 4: 'tanker_accident', 5: 'tanker_accident', 
-  6: 'tanker_accident', 7: 'tanker_accident', 8: 'tanker_accident', 9: 'tanker_accident', 10: 'tanker_accident'
+  6: 'tanker_accident', 7: 'tanker_accident', 8: 'tanker_accident', 9: 'tanker_accident', 10: 'tanker_accident', 11: 'tanker_accident'
 }
 
 const phasesReady = computed(() => {
