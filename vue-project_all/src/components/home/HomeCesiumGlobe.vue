@@ -2314,7 +2314,7 @@ const sensorFusionState = computed(() => {
   return {
     // 1. 车端节点状态
     car: {
-      text: phase >= 2 ? (isTanker ? '检测到侧翻倾角异常' : '检测到异常冲击') : '平稳运行，各项数据正常',
+      text: phase >= 2 ? (isTanker ? '检测到侧翻倾角异常' : '检测到                                                                                   异常冲击') : '平稳运行，各项数据正常',
       statusClass: phase >= 2 ? 'alert' : 'normal'
     },
     // 2. 路侧节点状态
@@ -14373,7 +14373,7 @@ async function triggerRescueMultiAgent() {
   50% { opacity: 0.4; transform: scale(0.7); }
 }
 
-/* 救援装备出动面板 入场/退场过渡动画 */
+/* 救援装备面板 入场/退场过渡动画 */
 .rescue-panel-slide-enter-active,
 .rescue-panel-slide-leave-active {
   transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
