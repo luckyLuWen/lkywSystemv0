@@ -15,8 +15,8 @@ Chinese (Simplified)<template>
         backgroundImage: `url(${photo.src})`
       }"
     ></div>
-    <!-- 阶段九：传感网原型放大镜悬浮窗 -->
-<div v-if="activePhaseIndex === 8 && showMagnifier" class="prototype-magnifier-popup">
+    <!-- 阶段十：传感网原型放大镜悬浮窗 -->
+<div v-if="activePhaseIndex === 9 && showMagnifier" class="prototype-magnifier-popup">
   <div class="popup-header">
     <span class="icon">🔍</span>
     <span class="title">立体组网传感网原型解析</span>
@@ -2314,7 +2314,7 @@ const sensorFusionState = computed(() => {
   return {
     // 1. 车端节点状态
     car: {
-      text: phase >= 2 ? (isTanker ? '检测到侧翻倾角异常' : '检测到                                                                                   异常冲击') : '平稳运行，各项数据正常',
+      text: phase >= 2 ? (isTanker ? '检测到侧翻倾角异常' : '检测到异常冲击') : '平稳运行，各项数据正常',
       statusClass: phase >= 2 ? 'alert' : 'normal'
     },
     // 2. 路侧节点状态
@@ -2329,11 +2329,11 @@ const sensorFusionState = computed(() => {
     },
     // 4. 地基节点 (无人车) 状态
     ugv: {
-      text: phase >= 8 ? '已切入核心区，五合一嗅探中' : (phase >= 6 ? '地面行进中...' : '基地待命'),
-      statusClass: phase >= 8 ? 'active' : (phase >= 6 ? 'moving' : 'waiting')
+      text: phase >= 10 ? '已切入核心区，五合一嗅探中' : (phase >= 8 ? '地面行进中...' : '基地待命'),
+      statusClass: phase >= 10 ? 'active' : (phase >= 8 ? 'moving' : 'waiting')
     },
     // 5. 综合研判结果
-    resultText: phase >= 8 
+    resultText: phase >= 10 
       ? (isTanker ? '油罐侧翻特大泄露 (空地协同确证)' : '货车追尾引发大火 (空地协同确证)') 
       : (phase >= 2 ? '疑似交通事故 (单节点报警)' : '全域路网安全'),
     confidence: phase >= 8 ? '98.5%' : (phase >= 4 ? '76.2%' : (phase >= 2 ? '45.0%' : '--'))
@@ -2427,7 +2427,7 @@ watch(
   () => props.activePhaseIndex, // 如果是当前组件内的 ref，直接写 () => activePhaseIndex.value
   (newIndex) => {
     // 阶段九的数组索引为 8
-    if (newIndex === 8) {
+    if (newIndex === 9) {
       // 进入阶段九时，自动弹出悬浮窗
       showMagnifier.value = true;
       
@@ -7232,8 +7232,8 @@ function addEventEntities() {
           positions: new Cesium.CallbackProperty((time) => {
             const lightTop = getModelTopPosition(l.lng, l.lat, l.height, l.heading, l.pitch, l.roll, LIGHT_TOP_OFFSET);
 
-            // 🚨 故事点十 (阶段 9)：信号干扰，基站断联，链路物理转移至 1 号无人车
-            if (Number(props.activePhaseIndex) >= 9) {
+            // 🚨 故事点十 (阶段 10)：信号干扰，基站断联，链路物理转移至 1 号无人车
+            if (Number(props.activePhaseIndex) >= 10) {
               const targetUgv = isTruckLight ? rescueCarEntities[0] : tankerRescueCarEntities[0];
               if (targetUgv) {
                 const ugvPos = targetUgv.position.getValue(time);
@@ -7998,21 +7998,53 @@ const currentLng = circleCenterLng + radiusLng * Math.cos(angle);
     });
 
     const UAV_DEBUG_MODE = true; 
+   // 🚨 动态分配起始阶段：第一架(index 0)在阶段5连线，其余的在阶段9连线
+   // 只要判断这架无人机的 ID 是不是数组里的第一个即可。
+// 请看看你第一架无人机的 config.id 是什么，比如是 'uav-1'
+// 🚨 只要 ID 是 'uav_model' 或者 'uav_model_move'，就是第一架无人机，阶段 5 连线，其余阶段 9 连线
+// 🚨 1. 判断是否是第一架无人机 (名字里不带 _2 和 _3)
+    const isFirstUAV = !config.id.includes('_2') && !config.id.includes('_3');
+
     viewer.entities.add({
       id: `line-link-uav-${config.id}-to-jizhan`, // 保持原有 ID 方便清理
       name: `无人机数据链路`,
-      show: new Cesium.CallbackProperty(() => {
-        // 只要到了阶段 8 及以上，并且实体自身可见，就允许显示连线
-        return Number(props.activePhaseIndex) >= 8 && entity.show;
+      show: new Cesium.CallbackProperty((time) => {
+        let isEntityShowing = false;
+        if (entity.show !== undefined) {
+          isEntityShowing = typeof entity.show.getValue === 'function' ? entity.show.getValue(time) : !!entity.show;
+        }
+        
+        const phase = Number(props.activePhaseIndex);
+        
+        // 🚨 2. 精准定义连线时机
+        let isLineActive = false;
+        if (isFirstUAV) {
+          // 第一架无人机：仅在 5, 6, 9及以上 连线。(7, 8 强制断开)
+          isLineActive = (phase === 5 || phase === 6 || phase >= 9);
+        } else {
+          // 其余增援无人机：阶段 9 及以上才连线
+          isLineActive = phase >= 9;
+        }
+
+        return isLineActive && isEntityShowing;
       }, false),
       polyline: {
         positions: new Cesium.CallbackProperty((time) => {
-          if (Number(props.activePhaseIndex) < 4) return [];
+          const phase = Number(props.activePhaseIndex);
+
+          // 🚨 3. 与上面保持一致的防御性校验，不该连线的阶段直接返回空坐标
+          let isLineActive = false;
+          if (isFirstUAV) {
+            isLineActive = (phase === 5 || phase === 6 || phase >= 9);
+          } else {
+            isLineActive = phase >= 9;
+          }
+          if (!isLineActive) return [];
           const pos = entity.position.getValue(time);
           if (!pos) return [];
 
-          // 🚨 故事点十 (阶段 9)：信号干扰，直接通过 WebSocket 将数据下发至地面 1 号无人车
-          if (Number(props.activePhaseIndex) >= 9) {
+          // 🚨 故事点十 (阶段 10)：信号受干扰，全部切断基站，将数据直连至地面 1 号无人车
+          if (phase >= 10) {
             const targetUgv = rescueCarEntities[0];
             if (targetUgv) {
               const ugvPos = targetUgv.position.getValue(time);
@@ -8021,7 +8053,7 @@ const currentLng = circleCenterLng + radiusLng * Math.cos(angle);
             return [];
           }
           
-          // 🌟 常规阶段 (阶段 8)：正常连向 5G 基站
+          // 🌟 常规连线阶段 (5, 6, 9)：正常连向 5G 基站
           const jizhanTop = getModelTopPosition(
             jizhanAdjust.lng, jizhanAdjust.lat, jizhanAdjust.height,
             jizhanAdjust.heading, jizhanAdjust.pitch, jizhanAdjust.roll, JIZHAN_TOP_OFFSET
@@ -8033,7 +8065,6 @@ const currentLng = circleCenterLng + radiusLng * Math.cos(angle);
         material: new DynamicFlowMaterialProperty({ color: Cesium.Color.ORANGE, speed: 5.5, repeat: 5.0 })
       }
     });
-    
     uavEntities.push(entity);
     if (config.id === 'uav_model') {
       sharedTruckUavPosition = uavPosition;
@@ -8649,16 +8680,16 @@ if (props.activePhaseIndex === 3 || props.activePhaseIndex === 7) {
         if (entity.show !== undefined) {
           isEntityShowing = typeof entity.show.getValue === 'function' ? entity.show.getValue(time) : !!entity.show;
         }
-        return Number(props.activePhaseIndex) >= 8 && isEntityShowing && currentScene.value === 'tanker';
+        return Number(props.activePhaseIndex) >= 9 && isEntityShowing && currentScene.value === 'tanker';
       }, false),
       polyline: {
         positions: new Cesium.CallbackProperty((time) => {
-          if (Number(props.activePhaseIndex) < 8 || currentScene.value !== 'tanker') return [];
+          if (Number(props.activePhaseIndex) < 9 || currentScene.value !== 'tanker') return [];
           const pos = entity.position.getValue(time);
           if (!pos) return [];
 
           // 🚨 故事点十 (阶段 9)：信号干扰，连向油罐车现场 1 号无人车
-          if (Number(props.activePhaseIndex) >= 9) {
+          if (Number(props.activePhaseIndex) >= 10) {
              const targetUgv = tankerRescueCarEntities[0];
              if (targetUgv) {
                 const ugvPos = targetUgv.position.getValue(time);
@@ -8984,7 +9015,7 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
   // ==========================================
   // (2) 车辆终端状态面板 (阶段8常态 / 阶段9中继)
   // ==========================================
-  viewer.entities.add({
+ viewer.entities.add({
     id: `network-label-car${modelIndex + 1}`, // 保持原有 ID
     position: new Cesium.CallbackProperty((time) => {
       const carPos = carEntity.position.getValue(time);
@@ -8993,21 +9024,22 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       return Cesium.Cartesian3.fromDegrees(Cesium.Math.toDegrees(carto.longitude), Cesium.Math.toDegrees(carto.latitude), carto.height + 3.5);
     }, false),
     show: new Cesium.CallbackProperty((time) => {
-      if (isPhase8Ready() && isCarVisible(time)) return true;
+      // 🚨 修正：阶段 9 开始显示终端面板
+      if (Number(props.activePhaseIndex) >= 9 && isCarVisible(time)) return true;
       carEntity._netTime = null; 
       return false;
     }, false),
     label: {
       text: new Cesium.CallbackProperty(() => {
-        if (Number(props.activePhaseIndex) < 8) return '';
+        if (Number(props.activePhaseIndex) < 9) return ''; // 🚨 修正：小于 9 不显示
         
-        // 🚨 故事点十 (阶段 9)：启用无人车中继
-        if (Number(props.activePhaseIndex) >= 9) {
+        // 🚨 故事点十 (阶段 10)：信号受干扰，启用 1 号无人车中继
+        if (Number(props.activePhaseIndex) >= 10) {
            if (modelIndex === 0) return `[RELAY] 启用临时通信中继\n▶ 核心链路: 已接管\n▶ 延迟: 8ms`;
            return `▶ 环境数据流: ACTIVE\n▶ 上传至中继: 稳定`;
         }
 
-        // 🌟 故事点九 (阶段 8)：正常连向 5G 基站
+        // 🌟 故事点九 (阶段 9)：正常连向 5G 基站
         if (!carEntity._netTime) carEntity._netTime = Date.now();
         const elapsed = (Date.now() - carEntity._netTime) / 1000.0;
         if (elapsed < 1.5) return `[SYS] 扫描 5G 信号...`;
@@ -9016,8 +9048,8 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       }, false),
       font: '14px monospace',
       style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-      // 阶段 9 时，1号车变为金色，体现其核心中继地位
-      fillColor: new Cesium.CallbackProperty(() => (Number(props.activePhaseIndex) >= 9 && modelIndex === 0) ? Cesium.Color.GOLD : Cesium.Color.LIME, false),
+      // 🚨 修正：阶段 10 时，1号车才变为金色
+      fillColor: new Cesium.CallbackProperty(() => (Number(props.activePhaseIndex) >= 10 && modelIndex === 0) ? Cesium.Color.GOLD : Cesium.Color.LIME, false),
       outlineColor: Cesium.Color.BLACK,
       outlineWidth: 2,
       showBackground: true,
@@ -9038,17 +9070,19 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       id: `line-link-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-real`, // 保持原有 ID
       name: `动态中心数据链路`,
       show: new Cesium.CallbackProperty((time) => {
-        // 🚨 阶段 9 时，1 号车作为汇聚中心，不再向外发射数据线
-        if (Number(props.activePhaseIndex) >= 9 && modelIndex === 0) return false;
+        // 🚨 修正：阶段 10 时，1 号车作为汇聚中心，不再向外发射数据线
+        if (Number(props.activePhaseIndex) >= 10 && modelIndex === 0) return false;
         
-        if (isPhase8Ready() && isCarVisible(time) && carEntity._netTime) {
+        // 🚨 修正：阶段 9 满足条件开始显示数据线
+        if (Number(props.activePhaseIndex) >= 9 && isCarVisible(time) && carEntity._netTime) {
            return ((Date.now() - carEntity._netTime) / 1000.0) >= 3.5; 
         }
         return false; 
       }, false),
       polyline: {
         positions: new Cesium.CallbackProperty((time) => {
-          if (!isPhase8Ready()) return [];
+          // 🚨 修正：小于阶段 9 绝对不连线
+          if (Number(props.activePhaseIndex) < 9) return [];
           const carCartesian = carEntity.position.getValue(time);
           const carOrientation = carEntity.orientation.getValue(time);
           if (!carCartesian || !carOrientation) return [];
@@ -9059,8 +9093,8 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
           const worldOffset = Cesium.Matrix3.multiplyByVector(rotationMatrix, localOffset, new Cesium.Cartesian3());
           const startPos = Cesium.Cartesian3.add(carCartesian, worldOffset, new Cesium.Cartesian3());
 
-          // 🚨 故事点十 (阶段 9)：其他车辆连向 1 号中继车
-          if (Number(props.activePhaseIndex) >= 9) {
+          // 🚨 故事点十 (阶段 10)：其他车辆连向 1 号中继车
+          if (Number(props.activePhaseIndex) >= 10) {
             if (modelIndex === 0) return []; // 1号车自身不连向外部
             
             // 自动判断场景，抓取正确的 1 号车作为终点
@@ -9072,7 +9106,7 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
             return [];
           }
 
-          // 🌟 故事点九 (阶段 8)：全部正常连向基站
+          // 🌟 故事点九 (阶段 9)：全部正常连向基站
           const targetJizhan = currentScene.value === 'truck' ? jizhanAdjust : tankerJizhanAdjust;
           if (!targetJizhan.show) return []; // 如果基站未显示则不连
 
@@ -9088,7 +9122,7 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       }
     });
   });
-});
+ });
 // ==========================================
 
   viewer.screenSpaceEventHandler.setInputAction((movement) => {
