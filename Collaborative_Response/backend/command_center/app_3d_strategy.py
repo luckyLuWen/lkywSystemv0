@@ -1024,7 +1024,8 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
     
 
     # 动态对象（包含 UAV/Car）
-    if True:
+    #if True:
+    if not multi_agent_data:
         uav_pos = []
         for _, r in uav_df.iterrows(): uav_pos.extend([format_timestamp(r['timestamp']), r['lon'], r['lat'], r['alt']])
         czml.append({
@@ -1046,7 +1047,8 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
         })
 
     # 3D 路径进度检查点（透明底色 HUD 标签）
-    if True:
+    #if True:
+    if not multi_agent_data:
         car_total_dist = car_df['dist'].sum() / 1000 if 'dist' in car_df.columns else 0
         car_eta_min = car_df['time_s'].iloc[-1] / 60 if len(car_df) > 0 else 0
         uav_eta_min = (uav_df['time_s'].iloc[-1] - delay) / 60 if len(uav_df) > 0 else 0
