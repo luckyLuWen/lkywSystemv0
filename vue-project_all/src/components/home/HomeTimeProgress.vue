@@ -118,6 +118,7 @@ const TRUCK_PHASE_DESC = [
   { shortLabel: '仿真推演开始', time: '14:00', description: '系统完成初始化，开始对货车追尾事故场景进行数字孪生仿真推演，全域感知网络进入就绪状态。' },
   { shortLabel: '车辆正常行驶', time: '14:05', description: '事故发生前，两辆货车在高速公路上正常行驶，车载边缘网关实时采集并上传行驶状态数据。' },
   { shortLabel: '事故发生', time: '14:12', description: '后车未保持安全距离，发生追尾碰撞。传感网络检测到异常冲击振动，自动触发事故告警并上报指挥中心。' },
+  { shortLabel: '无人机出动', time: '14:14', description: '指挥中心下达指令，无人机从消防站快速起飞出动，沿预定路线前往事故现场。' },
   { shortLabel: '无人机侦察', time: '14:15', description: '无人机从消防站快速出动，前往事故现场进行低空侦察，实时回传现场画面，辅助指挥中心研判灾情。' },
   { shortLabel: '次生灾害·烟雾', time: '14:18', description: '碰撞导致货物起火，现场产生大量浓烟。烟雾传感器浓度超过预警阈值，系统推送疏散建议。' },
   { shortLabel: '次生灾害·起火', time: '14:26', description: '发动机舱引燃，车辆开始明显燃烧。温度传感器数据急剧上升，协同响应系统推送消防出警指令。' },
@@ -132,6 +133,7 @@ const TANKER_PHASE_DESC = [
   { shortLabel: '仿真推演开始', time: '15:00', description: '系统完成初始化，开始对油罐车侧翻泄露事故场景进行数字孪生仿真推演，全域感知网络进入就绪状态。' },
   { shortLabel: '车辆正常行驶', time: '15:05', description: '油罐车在省道上满载运输危化品，车载传感器实时监测罐体压力、温度及行驶姿态，一切正常。' },
   { shortLabel: '事故发生·侧翻', time: '15:12', description: '车辆在弯道处发生侧翻，冲击传感器触发一级告警，指挥中心立即启动危化品事故应急响应流程。' },
+  { shortLabel: '无人机出动', time: '15:14', description: '指挥中心下达指令，无人机从消防站快速起飞出动，沿预定路线前往事故现场。' },
   { shortLabel: '无人机侦察', time: '15:15', description: '无人机从消防站快速出动，前往事故现场进行低空侦察，实时回传现场画面，辅助指挥中心研判灾情。' },
   { shortLabel: '次生灾害·泄露', time: '15:20', description: '罐体受碰撞损坏，化学品开始向外泄露。TVOC传感器浓度迅速攀升，系统推送危险区域隔离指令。' },
   { shortLabel: '次生灾害·弥漫', time: '15:35', description: '泄露液体扩散至路面并开始挥发，大面积有毒气体向四周弥漫，系统推送周边1公里疏散建议。' },
@@ -148,21 +150,22 @@ const currentPhaseDesc = computed(() => {
   return phaseData[props.modelValue]?.description || ''
 })
 
-// 只要有任何阶段（除了第一个）还没准备好，就认为场景未就绪
+// 只要当前阶段的模型已准备好（或全部就绪/超时），即认为场景就绪
 const isScenarioReady = computed(() => {
   if (forceReady.value) return true
   if (!props.phasesReady.length) return false
+  const currentReady = props.phasesReady[props.modelValue]
+  if (currentReady) return true
   return props.phasesReady.every(r => r === true)
 })
 
-// 5秒超时自动解锁，防止加载状态卡死
+// 1秒超时自动解锁，防止因为未显示阶段的后台模型加载而阻塞用户操作
 watch(() => props.phasesReady, (newVal) => {
   if (loadTimeout) clearTimeout(loadTimeout)
   if (newVal.length > 0 && !newVal.every(r => r === true)) {
     loadTimeout = setTimeout(() => {
-      console.warn('模型加载超时，强制开启仿真控制')
       forceReady.value = true
-    }, 5000)
+    }, 1000)
   } else {
     forceReady.value = false
   }
@@ -229,12 +232,12 @@ watch([isPlaying, () => props.modelValue], ([playing, currentIdx]) => {
     } else if (isTruck) {
       // 货车专属逻辑 (保持用户原有设置)
       if (currentIdx === 1 || currentIdx === 2) duration = 3000
-      else if (currentIdx >= 3 && currentIdx <= 5) duration = 3000 // 烟火灾害改为 3 秒
-      else if (currentIdx === 7) duration = 7000 // 无人感知部署阶段设为 7 秒，保证 6 秒飞行及停靠动画完整播放
-      else if (currentIdx >= 6) duration = 3000 // 其他无人机阶段 3 秒
+      else if (currentIdx >= 4 && currentIdx <= 6) duration = 3000 // 烟火灾害改为 3 秒
+      else if (currentIdx === 8) duration = 7000 // 无人感知部署阶段设为 7 秒，保证 6 秒飞行及停靠动画完整播放
+      else if (currentIdx >= 7) duration = 3000 // 其他无人机阶段 3 秒
     } else {
       // 油罐车专属逻辑 (完全分离)
-      if (currentIdx === 7) duration = 7000 // 无人感知部署阶段设为 7 秒
+      if (currentIdx === 8) duration = 7000 // 无人感知部署阶段设为 7 秒
       else duration = 3000
     }
 
