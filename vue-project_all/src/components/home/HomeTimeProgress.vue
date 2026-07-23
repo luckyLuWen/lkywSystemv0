@@ -150,21 +150,22 @@ const currentPhaseDesc = computed(() => {
   return phaseData[props.modelValue]?.description || ''
 })
 
-// 只要有任何阶段（除了第一个）还没准备好，就认为场景未就绪
+// 只要当前阶段的模型已准备好（或全部就绪/超时），即认为场景就绪
 const isScenarioReady = computed(() => {
   if (forceReady.value) return true
   if (!props.phasesReady.length) return false
+  const currentReady = props.phasesReady[props.modelValue]
+  if (currentReady) return true
   return props.phasesReady.every(r => r === true)
 })
 
-// 5秒超时自动解锁，防止加载状态卡死
+// 1秒超时自动解锁，防止因为未显示阶段的后台模型加载而阻塞用户操作
 watch(() => props.phasesReady, (newVal) => {
   if (loadTimeout) clearTimeout(loadTimeout)
   if (newVal.length > 0 && !newVal.every(r => r === true)) {
     loadTimeout = setTimeout(() => {
-      console.warn('模型加载超时，强制开启仿真控制')
       forceReady.value = true
-    }, 5000)
+    }, 1000)
   } else {
     forceReady.value = false
   }
