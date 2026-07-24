@@ -14435,11 +14435,145 @@ async function triggerRescueMultiAgent() {
   transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
   pointer-events: none;
 }
+
 /* ==========================================
    阶段 9：传感网原型解析悬浮窗 (图片版)
 ========================================== */
 /* 弹窗整体容器 */
 .prototype-magnifier-popup {
+position: absolute; 
+  
+  /* 🚨 同时减小 top 和 left 的值 */
+  top: 40px;    /* 比刚才的 70px 更靠上 */
+  left: 80px;  /* 比刚才的 380px 更靠左 */
+  
+  transform: none; 
+
+  /* ------ 保持原有样式 ------ */
+  background: rgba(10, 20, 35, 0.9);
+  border: 1px solid rgba(0, 229, 255, 0.5);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
+  border-radius: 8px;
+  width: 800px;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+}
+
+/* 头部标题区域 */
+.prototype-magnifier-popup .popup-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(45, 183, 245, 0.3);
+  background: linear-gradient(90deg, rgba(45, 183, 245, 0.15) 0%, transparent 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #2db7f5;
+}
+
+.prototype-magnifier-popup .popup-header .icon {
+  font-size: 18px;
+  margin-right: 8px;
+}
+
+.prototype-magnifier-popup .popup-header .title {
+  font-size: 16px;
+  font-weight: bold;
+  flex: 1;
+  letter-spacing: 1px;
+}
+
+.prototype-magnifier-popup .close-btn {
+  background: none;
+  border: none;
+  color: #8fa5c0;
+  font-size: 22px;
+  cursor: pointer;
+  transition: color 0.3s;
+  line-height: 1;
+}
+
+.prototype-magnifier-popup .close-btn:hover {
+  color: #ff4d4f;
+}
+
+/* 主体内容布局 */
+.prototype-magnifier-popup .popup-body {
+  display: flex;
+  padding: 24px;
+  gap: 24px;
+  align-items: center; /* 垂直居中对齐 */
+}
+
+/* 左侧图片容器 */
+.prototype-magnifier-popup .prototype-image-container {
+  width: 280px; /* 控制图片区域的宽度 */
+  height: 200px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(16, 40, 70, 0.4);
+  border: 1px dashed rgba(45, 183, 245, 0.4);
+  border-radius: 6px;
+  padding: 10px;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+/* 自定义抠图样式 */
+.prototype-magnifier-popup .custom-prototype-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  /* 给透明底的抠图加上赛博发光轮廓，自动捕捉你抠图的边缘 */
+  filter: drop-shadow(0 0 6px rgba(45, 183, 245, 0.6));
+}
+
+/* 右侧文本介绍样式 */
+.prototype-magnifier-popup .prototype-desc {
+  flex: 1;
+  color: #a0d8ef; /* 柔和的科技蓝白 */
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.prototype-magnifier-popup .desc-title {
+  color: #00e5ff;
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  border-left: 3px solid #00e5ff;
+  padding-left: 8px;
+}
+
+.prototype-magnifier-popup .desc-list {
+  padding-left: 16px;
+  margin: 0;
+  list-style-type: none; /* 使用自定义的发光圆点 */
+}
+
+.prototype-magnifier-popup .desc-list li {
+  margin-bottom: 12px;
+  position: relative;
+}
+
+/* 列表自定义发光圆点 */
+.prototype-magnifier-popup .desc-list li::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  top: 6px;
+  width: 5px;
+  height: 5px;
+  background: #2db7f5;
+  border-radius: 50%;
+  box-shadow: 0 0 5px #2db7f5;
+}
+
+.prototype-magnifier-popup .desc-list strong {
+  color: #fff;
+}
+.phase-desc-card {
   position: absolute;
   top: 50%;
   left: 50%;
