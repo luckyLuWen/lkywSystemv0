@@ -1,7 +1,12 @@
 import json
 from collections import Counter
 from flask import Blueprint, jsonify
-from database import get_db, get_stats as db_get_stats, normalize_model_name
+from database import (
+    get_db,
+    get_stats as db_get_stats,
+    normalize_detection_label,
+    normalize_model_name,
+)
 
 stats_bp = Blueprint('stats', __name__)
 
@@ -18,9 +23,16 @@ def get_statistics():
     for row in rows:
         if not normalize_model_name(row['model_name']):
             continue
-        dets = json.loads(row['detections_json'])
+        try:
+            dets = json.loads(row['detections_json'] or '[]')
+        except (TypeError, json.JSONDecodeError):
+            continue
         for d in dets:
-            class_counter[d['class']] += 1
+            if not isinstance(d, dict):
+                continue
+            label = normalize_detection_label(d.get('class', ''))
+            if label:
+                class_counter[label] += 1
 
     base_stats['class_distribution'] = dict(class_counter)
     return jsonify({'success': True, 'stats': base_stats})

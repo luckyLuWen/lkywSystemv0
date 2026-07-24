@@ -15,6 +15,14 @@
           <option v-for="label in labelOptions" :key="label" :value="label">{{ label }}</option>
         </select>
       </div>
+      <div class="filter-field source-field">
+        <label>检测类型</label>
+        <select v-model="filters.sourceType">
+          <option value="">全部类型</option>
+          <option value="image">image</option>
+          <option value="video">video</option>
+        </select>
+      </div>
       <div class="filter-actions">
         <button class="btn-filter primary" @click="loadRecords">查询</button>
         <button class="btn-filter" @click="resetFilters">重置</button>
@@ -51,8 +59,13 @@
         <div class="record-info">
           <div class="record-time">{{ formatTime(rec.timestamp) }}</div>
           <div class="record-meta">
-            <span class="meta-tag">{{ rec.model_name }}</span>
-            <span class="meta-tag">{{ rec.source_type }}</span>
+            <span class="meta-tag task-tag">{{ displayTaskLabel(rec) }}</span>
+            <span
+              v-for="model in displayModelNames(rec)"
+              :key="`${rec.id}-${model}`"
+              class="meta-tag model-tag"
+            >{{ model }}</span>
+            <span class="meta-tag source-tag">{{ rec.source_type }}</span>
           </div>
           <div class="record-labels" v-if="rec.labels && rec.labels.length">
             <span v-for="label in rec.labels" :key="label" class="label-chip">{{ label }}</span>
@@ -68,60 +81,129 @@
     </div>
 
     <!-- Detail Modal -->
-    <div v-if="detail" class="modal-overlay" @click.self="detail = null">
+    <div v-if="detail" class="modal-overlay" @click.self="closeDetail">
       <div class="modal-container">
         <div class="modal-header">
           <h2>检测详情</h2>
-          <button class="btn-close" @click="detail = null">&times;</button>
+          <button class="btn-close" @click="closeDetail">&times;</button>
         </div>
         <div class="modal-body">
-          <div class="image-comparison">
-            <div class="image-panel">
-              <div class="panel-label">原图</div>
-              <div class="image-wrapper">
-                <img :src="`${apiUrl}/api/uploads/${detail.saved_filename}`" class="compare-image">
+          <template v-if="isVideoDetail">
+            <div class="video-detail-layout">
+              <div class="video-source-panel">
+                <div class="panel-label">原视频</div>
+                <video :src="`${apiUrl}/api/uploads/${detail.saved_filename}`" controls class="detail-video"></video>
+              </div>
+              <div class="video-frames-panel">
+                <div class="panel-label">检测到目标的帧</div>
+                <div v-if="videoFrameGroups.length" class="video-frame-grid">
+                  <button
+                    v-for="frame in videoFrameGroups"
+                    :key="frame.key"
+                    type="button"
+                    class="video-frame-card"
+                    @click="selectedVideoFrame = frame"
+                  >
+                    <img :src="`${apiUrl}/api/results/${frame.filename}`" class="video-frame-image">
+                    <div class="frame-card-meta">
+                      <strong>{{ frame.title }}</strong>
+                      <span>{{ formatFrameTime(frame.time_s) }}</span>
+                    </div>
+                    <div class="frame-labels">
+                      <span v-for="(det, i) in frame.detections" :key="`${frame.key}-${i}`" class="frame-label-chip">
+                        {{ det.class }} {{ formatConfidence(det.confidence) }}
+                      </span>
+                    </div>
+                  </button>
+                </div>
+                <div v-else class="no-detection video-empty">未发现可疑目标帧</div>
               </div>
             </div>
-            <div class="image-panel">
-              <div class="panel-label">检测结果</div>
-              <div class="image-wrapper">
-                <img :src="`${apiUrl}/api/results/${detail.result_filename}`" class="compare-image">
-              </div>
-            </div>
-          </div>
 
-          <div class="metrics-bar">
-            <div class="metric-badge">
-              <span class="metric-label">检测数量</span>
-              <span class="metric-value cyan">{{ detail.detection_count }}</span>
-            </div>
-            <div class="metric-badge">
-              <span class="metric-label">推理时间</span>
-              <span class="metric-value">{{ detail.inference_time_s }} s</span>
-            </div>
-            <div class="metric-badge">
-              <span class="metric-label">模型</span>
-              <span class="metric-value small">{{ detail.model_name }}</span>
-            </div>
-          </div>
-
-          <div v-if="detail.detections.length > 0" class="detection-results">
-            <div class="section-title">识别详情</div>
-            <div class="detection-grid">
-              <div v-for="(det, i) in detail.detections" :key="i" class="detection-chip">
-                <span class="chip-class">{{ det.class }}</span>
-                <span class="chip-conf">{{ (det.confidence * 100).toFixed(1) }}%</span>
+            <div class="metrics-bar video-metrics">
+              <div class="metric-badge">
+                <span class="metric-label">推理时间</span>
+                <span class="metric-value">{{ detail.inference_time_s }} s</span>
+              </div>
+              <div class="metric-badge">
+                <span class="metric-label">检测任务</span>
+                <span class="metric-value small">{{ displayTaskLabel(detail) }}</span>
+              </div>
+              <div class="metric-badge">
+                <span class="metric-label">模型</span>
+                <span class="metric-value small model-list-text">{{ displayModelNames(detail).join(' / ') }}</span>
               </div>
             </div>
-          </div>
-          <div v-else class="no-detection">未发现可疑目标</div>
+          </template>
+
+          <template v-else>
+            <div class="image-comparison">
+              <div class="image-panel">
+                <div class="panel-label">原图</div>
+                <div class="image-wrapper">
+                  <img :src="`${apiUrl}/api/uploads/${detail.saved_filename}`" class="compare-image">
+                </div>
+              </div>
+              <div class="image-panel">
+                <div class="panel-label">检测结果</div>
+                <div class="image-wrapper">
+                  <img :src="`${apiUrl}/api/results/${detail.result_filename}`" class="compare-image">
+                </div>
+              </div>
+            </div>
+
+            <div class="metrics-bar">
+              <div class="metric-badge">
+                <span class="metric-label">检测数量</span>
+                <span class="metric-value cyan">{{ detail.detection_count }}</span>
+              </div>
+              <div class="metric-badge">
+                <span class="metric-label">推理时间</span>
+                <span class="metric-value">{{ detail.inference_time_s }} s</span>
+              </div>
+              <div class="metric-badge">
+                <span class="metric-label">检测任务</span>
+                <span class="metric-value small">{{ displayTaskLabel(detail) }}</span>
+              </div>
+              <div class="metric-badge">
+                <span class="metric-label">模型</span>
+                <span class="metric-value small model-list-text">{{ displayModelNames(detail).join(' / ') }}</span>
+              </div>
+            </div>
+
+            <div v-if="detail.detections.length > 0" class="detection-results">
+              <div class="section-title">识别详情</div>
+              <div class="detection-grid">
+                <div v-for="(det, i) in detail.detections" :key="i" class="detection-chip">
+                  <span class="chip-class">{{ det.class }}</span>
+                  <span class="chip-conf">{{ formatConfidence(det.confidence) }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="no-detection">未发现可疑目标</div>
+          </template>
         </div>
+        <div v-if="selectedVideoFrame" class="frame-zoom-overlay" @click.self="selectedVideoFrame = null">
+          <div class="frame-zoom-panel">
+            <div class="frame-zoom-head">
+              <strong>{{ selectedVideoFrame.title }} · {{ formatFrameTime(selectedVideoFrame.time_s) }}</strong>
+              <button class="btn-close small" @click="selectedVideoFrame = null">&times;</button>
+            </div>
+            <img :src="`${apiUrl}/api/results/${selectedVideoFrame.filename}`" class="frame-zoom-image">
+            <div class="frame-labels zoom-labels">
+              <span v-for="(det, i) in selectedVideoFrame.detections" :key="`zoom-${i}`" class="frame-label-chip">
+                {{ det.class }} {{ formatConfidence(det.confidence) }}
+              </span>
+            </div>
+          </div>
+        </div>
+
         <div class="modal-footer">
           <ExportButtons
             :resultImageUrl="`${apiUrl}/api/results/${detail.result_filename}`"
             :detections="detail.detections"
           />
-          <button class="btn-confirm" @click="detail = null">确认</button>
+          <button class="btn-confirm" @click="closeDetail">确认</button>
         </div>
       </div>
     </div>
@@ -140,25 +222,99 @@ const props = defineProps({
 const loading = ref(false)
 const records = ref([])
 const detail = ref(null)
+const selectedVideoFrame = ref(null)
 
-const modelOptions = ['SFGA-YOLO26M', 'YOLO26M', 'YOLO11M']
-const labelOptions = ['car_fire', 'lkyw_fire', 'car_nofire', 'lkyw_nofire']
+const modelOptions = [
+  'SFGA-YOLO26M', 'YOLO26M', 'YOLO11M',
+  'LCA-YOLO26N', 'YOLO26N', 'YOLO11N'
+]
+const labelOptions = ['car_fire', 'lkyw_fire', 'car_nofire', 'lkyw_nofire', 'leak', 'noleak']
 const filters = reactive({
   model: '',
-  label: ''
+  label: '',
+  sourceType: ''
 })
 
-const hasActiveFilters = computed(() => Boolean(filters.model || filters.label))
+const hasActiveFilters = computed(() => Boolean(filters.model || filters.label || filters.sourceType))
 
 const formatTime = (ts) => {
   if (!ts) return ''
   return ts.replace('T', ' ').substring(0, 19)
 }
 
+const COMPOSITE_MODEL_PARTS = {
+  'SFGA-YOLO26M+LCA-YOLO26N': ['SFGA-YOLO26M', 'LCA-YOLO26N'],
+  '综合事故检测': ['SFGA-YOLO26M', 'LCA-YOLO26N']
+}
+
+const displayModelNames = (record) => {
+  if (Array.isArray(record?.model_names) && record.model_names.length) return record.model_names
+  const modelName = record?.model_name || ''
+  if (COMPOSITE_MODEL_PARTS[modelName]) return COMPOSITE_MODEL_PARTS[modelName]
+  return modelName ? [modelName] : ['未知模型']
+}
+
+const displayModelName = (record) => displayModelNames(record).join(' / ')
+
+const displayTaskLabel = (record) => {
+  if (record?.task_label && record.task_label !== '检测任务') return record.task_label
+  const modelNames = displayModelNames(record)
+  if (modelNames.includes('SFGA-YOLO26M') && modelNames.includes('LCA-YOLO26N')) return '综合事故检测'
+  if (modelNames.some(name => ['LCA-YOLO26N', 'YOLO26N', 'YOLO11N'].includes(name))) return '油罐车泄露现场'
+  if (modelNames.some(name => ['SFGA-YOLO26M', 'YOLO26M', 'YOLO11M'].includes(name))) return '货车追尾现场'
+  return '检测任务'
+}
+
+const isVideoDetail = computed(() => detail.value?.source_type === 'video')
+
+const formatConfidence = (value) => `${(Number(value || 0) * 100).toFixed(1)}%`
+
+const formatFrameTime = (value) => {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? `${numeric.toFixed(2)} s` : '--'
+}
+
+const inferFrameFilename = (detection) => {
+  if (detection?.frame_filename) return detection.frame_filename
+  if (detection?.result_filename) return detection.result_filename
+  const frameNumber = detection?.frame_number
+  const prefix = String(detail.value?.saved_filename || '').match(/^(\d{8}_\d{6})/)?.[1]
+  if (prefix && frameNumber !== undefined && frameNumber !== null) return `frame_${prefix}_${frameNumber}.jpg`
+  return detail.value?.result_filename || ''
+}
+
+const videoFrameGroups = computed(() => {
+  if (!isVideoDetail.value) return []
+  const groups = new Map()
+  for (const detection of detail.value?.detections || []) {
+    const frameNumber = detection.frame_number ?? 'unknown'
+    const filename = inferFrameFilename(detection)
+    const key = `${frameNumber}-${filename}`
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        frame_number: frameNumber,
+        time_s: detection.time_s,
+        filename,
+        title: frameNumber === 'unknown' ? '检测帧' : `第 ${frameNumber} 帧`,
+        detections: []
+      })
+    }
+    groups.get(key).detections.push(detection)
+  }
+  return Array.from(groups.values()).filter(frame => frame.filename)
+})
+
+const closeDetail = () => {
+  detail.value = null
+  selectedVideoFrame.value = null
+}
+
 const buildHistoryQuery = () => {
   const params = new URLSearchParams({ limit: '50' })
   if (filters.model) params.set('model', filters.model)
   if (filters.label) params.set('label', filters.label)
+  if (filters.sourceType) params.set('source_type', filters.sourceType)
   return params.toString()
 }
 
@@ -177,10 +333,12 @@ const loadRecords = async () => {
 const resetFilters = () => {
   filters.model = ''
   filters.label = ''
+  filters.sourceType = ''
   loadRecords()
 }
 
 const openDetail = async (id) => {
+  selectedVideoFrame.value = null
   try {
     const data = await props.safeFetch(`/api/history/${id}`)
     if (data.success) detail.value = data.record
@@ -213,7 +371,7 @@ onMounted(loadRecords)
 
 .history-toolbar {
   display: grid;
-  grid-template-columns: 260px minmax(280px, 1fr) auto;
+  grid-template-columns: 260px minmax(240px, 1fr) 180px auto;
   gap: 18px;
   align-items: end;
   padding: 18px 22px;
@@ -328,12 +486,13 @@ onMounted(loadRecords)
 }
 
 .label-chip {
-  font-size: 18px;
+  font-size: 22px;
   color: var(--accent-amber);
   border: 1px solid rgba(255, 193, 7, 0.28);
   background: rgba(255, 193, 7, 0.08);
-  padding: 4px 10px;
+  padding: 6px 13px;
   border-radius: 999px;
+  font-weight: 700;
 }
 
 .meta-tag {
@@ -342,6 +501,24 @@ onMounted(loadRecords)
   background: rgba(0, 229, 255, 0.08);
   padding: 5px 12px;
   border-radius: 3px;
+}
+
+.meta-tag.model-tag {
+  color: var(--text-main);
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta-tag.task-tag {
+  color: var(--accent-amber);
+  border: 1px solid rgba(255, 193, 7, 0.24);
+  background: rgba(255, 193, 7, 0.08);
+}
+
+.meta-tag.source-tag {
+  font-size: 24px;
 }
 
 .record-stats {
@@ -479,6 +656,160 @@ onMounted(loadRecords)
   max-width: 100%;
   max-height: 40vh;
   object-fit: contain;
+}
+
+.video-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.95fr) minmax(520px, 1.35fr);
+  gap: 22px;
+  margin-bottom: 22px;
+}
+
+.video-source-panel,
+.video-frames-panel {
+  min-width: 0;
+}
+
+.detail-video {
+  width: 100%;
+  max-height: 340px;
+  background: #000;
+  border: 1px solid rgba(0, 229, 255, 0.18);
+  border-radius: 6px;
+}
+
+.video-frame-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(172px, 1fr));
+  gap: 12px;
+  max-height: 430px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.video-frame-card {
+  border: 1px solid rgba(0, 229, 255, 0.22);
+  background: rgba(0, 229, 255, 0.045);
+  border-radius: 6px;
+  padding: 8px;
+  color: var(--text-main);
+  text-align: left;
+  cursor: pointer;
+}
+
+.video-frame-card:hover {
+  border-color: var(--primary-cyan);
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.16);
+}
+
+.video-frame-image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #000;
+  display: block;
+}
+
+.frame-card-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  font-family: monospace;
+}
+
+.frame-card-meta strong {
+  color: var(--primary-cyan);
+  font-size: 15px;
+}
+
+.frame-card-meta span {
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.frame-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.frame-label-chip {
+  color: var(--accent-amber);
+  border: 1px solid rgba(255, 193, 7, 0.28);
+  background: rgba(255, 193, 7, 0.08);
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.video-empty {
+  min-height: 260px;
+}
+
+.video-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.frame-zoom-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 34px;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(3px);
+}
+
+.frame-zoom-panel {
+  width: min(1180px, 92vw);
+  max-height: 90vh;
+  border: 1px solid var(--border-cyan);
+  border-radius: 8px;
+  background: rgba(2, 12, 24, 0.96);
+  padding: 18px;
+  overflow: auto;
+}
+
+.frame-zoom-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 14px;
+  color: var(--primary-cyan);
+  font-size: 22px;
+}
+
+.btn-close.small {
+  width: 36px;
+  height: 36px;
+  font-size: 22px;
+}
+
+.frame-zoom-image {
+  width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  background: #000;
+  border-radius: 6px;
+  display: block;
+}
+
+.zoom-labels {
+  margin-top: 14px;
+}
+
+.zoom-labels .frame-label-chip {
+  font-size: 20px;
+  padding: 6px 12px;
 }
 
 .metrics-bar {

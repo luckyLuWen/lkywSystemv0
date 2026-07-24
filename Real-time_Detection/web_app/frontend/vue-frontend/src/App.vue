@@ -62,9 +62,29 @@
               <span class="label">推理模型状态</span>
               <span class="value model-status-value" :class="{ online: sysInfo.model_loaded }">{{ sysInfo.model_loaded ? formatLoadedModelName(sysInfo.model_name) : '待加载' }}</span>
             </div>
-            <div class="status-item">
-              <span class="label">今日检测次数</span>
-              <span class="value cyan">{{ sysInfo.total_detections_today }}</span>
+          </div>
+          <div class="detection-summary">
+            <div class="summary-head">
+              <span>检测结果摘要</span>
+              <strong>RESULT</strong>
+            </div>
+            <div class="summary-grid">
+              <div class="summary-item">
+                <span>累计检测次数</span>
+                <strong class="cyan">{{ formatCount(detectionStats.total_detections) }}</strong>
+              </div>
+              <div class="summary-item">
+                <span>今日检测次数</span>
+                <strong class="amber">{{ formatCount(todayDetectionCount) }}</strong>
+              </div>
+              <div class="summary-item">
+                <span>平均推理时间</span>
+                <strong>{{ formatInferenceTime(detectionStats.avg_inference_time_s) }}</strong>
+              </div>
+              <div class="summary-item">
+                <span>已加载模型数</span>
+                <strong class="cyan">{{ loadedModelCount }}</strong>
+              </div>
             </div>
           </div>
           <div class="telemetry-trends">
@@ -73,8 +93,10 @@
                 <span>显存占用实时折线图</span>
                 <strong>{{ sysInfo.vram_used_gb || 0 }} / {{ sysInfo.vram_total_gb || 0 }} GB</strong>
               </div>
-              <svg class="trend-chart" viewBox="0 0 120 44" preserveAspectRatio="none">
-                <polyline class="trend-grid-line" points="0,22 120,22" />
+              <svg class="trend-chart" viewBox="0 0 140 88" preserveAspectRatio="none">
+                <line class="trend-axis" x1="12" y1="10" x2="12" y2="74" />
+                <line class="trend-axis" x1="12" y1="74" x2="134" y2="74" />
+                <line class="trend-grid-line" x1="12" y1="42" x2="134" y2="42" />
                 <polyline class="trend-line vram" :points="buildTrendPoints(telemetryHistory.vram, 0.4)" />
               </svg>
             </div>
@@ -84,8 +106,10 @@
                 <span>GPU负载实时波动曲线</span>
                 <strong>{{ sysInfo.gpu_util || 0 }}%</strong>
               </div>
-              <svg class="trend-chart" viewBox="0 0 120 44" preserveAspectRatio="none">
-                <polyline class="trend-grid-line" points="0,22 120,22" />
+              <svg class="trend-chart" viewBox="0 0 140 88" preserveAspectRatio="none">
+                <line class="trend-axis" x1="12" y1="10" x2="12" y2="74" />
+                <line class="trend-axis" x1="12" y1="74" x2="134" y2="74" />
+                <line class="trend-grid-line" x1="12" y1="42" x2="134" y2="42" />
                 <polyline class="trend-line util" :points="buildTrendPoints(telemetryHistory.util, 18)" />
               </svg>
             </div>
@@ -95,8 +119,10 @@
                 <span>温度实时波动曲线</span>
                 <strong>{{ sysInfo.gpu_temp || '--' }}°C</strong>
               </div>
-              <svg class="trend-chart" viewBox="0 0 120 44" preserveAspectRatio="none">
-                <polyline class="trend-grid-line" points="0,22 120,22" />
+              <svg class="trend-chart" viewBox="0 0 140 88" preserveAspectRatio="none">
+                <line class="trend-axis" x1="12" y1="10" x2="12" y2="74" />
+                <line class="trend-axis" x1="12" y1="74" x2="134" y2="74" />
+                <line class="trend-grid-line" x1="12" y1="42" x2="134" y2="42" />
                 <polyline class="trend-line temp" :points="buildTrendPoints(telemetryHistory.temp, 6)" />
               </svg>
             </div>
@@ -113,7 +139,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import Header from './components/Header.vue'
 import DetectionSettings from './components/DetectionSettings.vue'
 import ModelMetricsPanel from './components/ModelMetricsPanel.vue'
@@ -132,6 +158,14 @@ const sysInfo = reactive({
   gpu_temp: 0, gpu_util: 0, model_loaded: false, model_name: '',
   total_detections_today: 0
 })
+
+const detectionStats = reactive({
+  total_detections: null,
+  today_detections: null,
+  avg_inference_time_s: null
+})
+
+const loadedModelCount = 6
 
 const MAX_HISTORY_POINTS = 36
 const telemetryHistory = reactive({
@@ -157,11 +191,18 @@ const buildTrendPoints = (series, minSpan = 10) => {
   const axisMin = center - span / 2
   const axisMax = center + span / 2
   const lastIndex = Math.max(1, values.length - 1)
+  const left = 12
+  const right = 134
+  const top = 10
+  const bottom = 74
+  const chartWidth = right - left
+  const chartHeight = bottom - top
 
   return values.map((value, index) => {
-    const x = (index / lastIndex) * 120
+    const x = left + (index / lastIndex) * chartWidth
     const normalized = axisMax === axisMin ? 0.5 : (value - axisMin) / (axisMax - axisMin)
-    const y = 39 - Math.max(0, Math.min(1, normalized)) * 32
+    const clamped = Math.max(0, Math.min(1, normalized))
+    const y = bottom - clamped * chartHeight
     return `${x.toFixed(2)},${y.toFixed(2)}`
   }).join(' ')
 }
@@ -170,6 +211,21 @@ const formatLoadedModelName = (name) => {
   if (!name) return ''
   return String(name).replace(/（.*?）|\(.*?\)/g, '')
 }
+
+const formatCount = (value) => {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric.toLocaleString('zh-CN') : '--'
+}
+
+const formatInferenceTime = (value) => {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return '--'
+  return `${numeric.toFixed(numeric >= 1 ? 2 : 3)} s`
+}
+
+const todayDetectionCount = computed(() => (
+  detectionStats.today_detections ?? sysInfo.total_detections_today
+))
 
 const fetchSystemInfo = async () => {
   try {
@@ -183,7 +239,33 @@ const fetchSystemInfo = async () => {
   } catch (e) { /* silently fail */ }
 }
 
-onMounted(() => { fetchSystemInfo(); setInterval(fetchSystemInfo, 2500) })
+const fetchDetectionStats = async () => {
+  try {
+    const data = await safeFetch('/api/stats')
+    if (data.success && data.stats) {
+      Object.assign(detectionStats, {
+        total_detections: data.stats.total_detections,
+        today_detections: data.stats.today_detections,
+        avg_inference_time_s: data.stats.avg_inference_time_s
+      })
+    }
+  } catch (e) { /* silently fail */ }
+}
+
+let systemTimer = null
+let statsTimer = null
+
+onMounted(() => {
+  fetchSystemInfo()
+  fetchDetectionStats()
+  systemTimer = setInterval(fetchSystemInfo, 2500)
+  statsTimer = setInterval(fetchDetectionStats, 5000)
+})
+
+onUnmounted(() => {
+  if (systemTimer) clearInterval(systemTimer)
+  if (statsTimer) clearInterval(statsTimer)
+})
 </script>
 
 <style>
@@ -309,14 +391,95 @@ onMounted(() => { fetchSystemInfo(); setInterval(fetchSystemInfo, 2500) })
   font-size: 20px;
 }
 
+.detection-summary {
+  margin-top: 18px;
+  padding: 16px 14px;
+  border: 1px solid rgba(0, 229, 255, 0.22);
+  background:
+    linear-gradient(135deg, rgba(0, 229, 255, 0.1), rgba(255, 193, 7, 0.045)),
+    rgba(0, 229, 255, 0.045);
+}
+
+.summary-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+  font-family: monospace;
+}
+
+.summary-head span {
+  color: var(--primary-cyan);
+  font-size: 19px;
+  font-weight: 800;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.45);
+}
+
+.summary-head strong {
+  color: rgba(255, 193, 7, 0.9);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.summary-item {
+  min-height: 72px;
+  padding: 12px 10px;
+  border: 1px solid rgba(0, 229, 255, 0.12);
+  background: rgba(2, 16, 30, 0.45);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.summary-item.wide {
+  grid-column: 1 / -1;
+}
+
+.summary-item span {
+  color: var(--text-dim);
+  font-family: monospace;
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.summary-item strong {
+  color: #fff3bf;
+  font-family: monospace;
+  font-size: 28px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.summary-item strong.cyan {
+  color: var(--primary-cyan);
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
+}
+
+.summary-item strong.amber {
+  color: var(--primary-yellow);
+  text-shadow: 0 0 8px rgba(255, 193, 7, 0.42);
+}
+
 .telemetry-trends {
   display: grid;
-  gap: 14px;
-  margin-top: 18px;
+  gap: 12px;
+  margin-top: 16px;
 }
 
 .trend-card {
-  padding: 14px 14px 12px;
+  min-height: 124px;
+  padding: 14px 14px 10px;
   border: 1px solid rgba(0, 229, 255, 0.18);
   background: rgba(0, 229, 255, 0.045);
 }
@@ -326,7 +489,7 @@ onMounted(() => { fetchSystemInfo(); setInterval(fetchSystemInfo, 2500) })
   justify-content: space-between;
   align-items: center;
   gap: 14px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   font-family: monospace;
 }
 
@@ -344,7 +507,7 @@ onMounted(() => { fetchSystemInfo(); setInterval(fetchSystemInfo, 2500) })
 
 .trend-chart {
   width: 100%;
-  height: 66px;
+  height: 76px;
   overflow: visible;
 }
 
@@ -353,6 +516,12 @@ onMounted(() => { fetchSystemInfo(); setInterval(fetchSystemInfo, 2500) })
   stroke: rgba(255, 255, 255, 0.12);
   stroke-width: 0.7;
   stroke-dasharray: 3 4;
+}
+
+.trend-axis {
+  fill: none;
+  stroke: rgba(0, 229, 255, 0.28);
+  stroke-width: 1;
 }
 
 .trend-line {

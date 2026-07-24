@@ -1,8 +1,6 @@
 <template>
   <div class="card">
-    <h3>🎬 视频抽帧检测</h3>
-    <ModelMetricsPanel :settings="props.settings" :availableModels="props.availableModels" />
-    
+    <h3 class="panel-title">🎬 视频抽帧检测 <span class="scene-badge">{{ pageModeLabel }}</span></h3>
     <div class="upload-area" @click="fileInput.click()">
       <div class="upload-icon">🎥</div>
       <p style="font-size: 18px; margin-bottom: 10px;">点击上传视频文件</p>
@@ -86,9 +84,9 @@
               v-for="(det, detIdx) in frame.detections" 
               :key="detIdx" 
               class="detection-badge"
-              :style="getClassStyle(det.class)"
+              :style="getClassStyle(primaryClass(det))"
             >
-              {{ det.class }} ({{ (det.confidence * 100).toFixed(1) }}%)
+              {{ formatDetectionLabel(det) }}
             </span>
           </div>
           <p v-else class="no-detection">未检测到目标</p>
@@ -122,6 +120,24 @@ const normalizedInterval = computed(() => {
   const value = Number(frameInterval.value) || 30
   return Math.min(Math.max(Math.floor(value), 1), 600)
 })
+
+const pageModeLabel = computed(() => {
+  if (props.settings?.detectionMode === 'composite') return '综合事故检测'
+  return props.settings?.taskType === 'hazmat' ? '油罐车泄露现场' : '货车追尾现场'
+})
+
+const displayLabels = (det) => {
+  if (Array.isArray(det?.merged_labels) && det.merged_labels.length) return det.merged_labels
+  return [{ class: det?.class || '', confidence: det?.confidence || 0 }]
+}
+
+const primaryClass = (det) => det?.class || displayLabels(det)[0]?.class || ''
+
+const formatDetectionLabel = (det) => {
+  return displayLabels(det)
+    .map(label => `${label.class} (${(Number(label.confidence || 0) * 100).toFixed(1)}%)`)
+    .join(' / ')
+}
 
 const totalDetections = computed(() => {
   if (!result.value) return 0
@@ -157,6 +173,8 @@ const startDetection = async () => {
   const formData = new FormData()
   formData.append('file', pendingVideoFile.value)
   formData.append('model', props.settings.model)
+  formData.append('detection_mode', props.settings.detectionMode || 'single')
+  formData.append('task_type', props.settings.taskType || 'collision')
   formData.append('conf', props.settings.conf)
   formData.append('iou', props.settings.iou)
   formData.append('interval', normalizedInterval.value)
@@ -343,4 +361,24 @@ const startDetection = async () => {
   color: #cbd5e0;
   margin-bottom: 15px;
 }
+
+.panel-title {
+  font-size: 24px;
+  line-height: 1.2;
+  margin-bottom: 18px;
+}
+
+.panel-title .scene-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  margin-left: 14px;
+  padding: 0 14px;
+  border: 1px solid rgba(0, 229, 255, 0.42);
+  color: var(--primary-cyan);
+  font-size: 22px;
+  font-weight: 900;
+  vertical-align: middle;
+}
+
 </style>
