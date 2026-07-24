@@ -125,6 +125,9 @@ def save_multi_agent_result(scenario: str, results: dict) -> Path:
             "losers": val.get("losers", [])
         }
     result_path = BASE_DIR / "multi_agent_result.json"
+    scenario_path = BASE_DIR / f"multi_agent_result_{scenario}.json"
     with open(result_path, "w", encoding="utf-8") as f:
+        json.dump(output, f, ensure_ascii=False, indent=2)
+    with open(scenario_path, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
     return result_path

@@ -447,7 +447,7 @@
 
             <div v-else-if="activeRightTab === 'planning'" class="planning-data-panel">
               <div class="sensor-section-title">协同响应规划</div>
-              <CollaborativeResponseCard />
+              <CollaborativeResponseCard :scenario="currentAccidentId === 'rear-end' ? 'crash' : 'leak'" />
             </div>
           </div>
         </div>
@@ -838,6 +838,12 @@ onBeforeUnmount(() => {
 })
 
 watch(activeAccidentIndex, () => { currentFocusedPoint.value = '' })
+watch(() => activePhaseIndex.value, (newVal) => {
+  if (Number(newVal) === 11) {
+    activeRightTab.value = 'planning';
+    isRightCollapsed.value = false;
+  }
+}, { immediate: true })
 watch(
   () => route.fullPath,
   () => {
