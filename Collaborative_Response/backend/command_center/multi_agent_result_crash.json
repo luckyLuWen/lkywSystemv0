@@ -1,0 +1,140 @@
+{
+  "scenario": "crash",
+  "agents": {
+    "medical": {
+      "label": "医疗急救",
+      "color": "#22c55e",
+      "icon": "plus",
+      "poi": {
+        "name": "三伏潭镇卫生院",
+        "lat": 30.3272,
+        "lon": 113.2018,
+        "dist_km": 11.34,
+        "net_dist_km": 23.39
+      },
+      "has_path": true,
+      "losers": [
+        {
+          "name": "胡场镇卫生院",
+          "euclidean_km": 10.58,
+          "net_dist_km": 34.34,
+          "reason": "空间直线距离虽近，但路网绕行达 34.34 km (优选方案仅 23.39 km)"
+        },
+        {
+          "name": "仙桃西高速急救站",
+          "euclidean_km": 0.74,
+          "net_dist_km": 43.71,
+          "reason": "空间直线距离虽近，但路网绕行达 43.71 km (优选方案仅 23.39 km)"
+        }
+      ]
+    },
+    "fire": {
+      "label": "消防灭火",
+      "color": "#f97316",
+      "icon": "fire",
+      "poi": {
+        "name": "三伏潭镇专职消防队",
+        "lat": 30.3263,
+        "lon": 113.2041,
+        "dist_km": 11.58,
+        "net_dist_km": 23.63
+      },
+      "has_path": true,
+      "losers": [
+        {
+          "name": "胡场镇消防执勤点",
+          "euclidean_km": 10.81,
+          "net_dist_km": 34.34,
+          "reason": "空间直线距离虽近，但路网绕行达 34.34 km (优选方案仅 23.63 km)"
+        },
+        {
+          "name": "仙桃西高速消防执勤点",
+          "euclidean_km": 0.63,
+          "net_dist_km": 43.99,
+          "reason": "空间直线距离虽近，但路网绕行达 43.99 km (优选方案仅 23.63 km)"
+        }
+      ]
+    },
+    "police": {
+      "label": "公安交警",
+      "color": "#3b82f6",
+      "icon": "flag",
+      "poi": {
+        "name": "仙桃市交警高速大队三伏潭中队",
+        "lat": 30.3582,
+        "lon": 113.1984,
+        "dist_km": 9.49,
+        "net_dist_km": 19.2
+      },
+      "has_path": true,
+      "losers": [
+        {
+          "name": "仙桃市胡场派出所",
+          "euclidean_km": 10.47,
+          "net_dist_km": 20.2,
+          "reason": "路网距离较远 (20.2 km > 19.2 km)"
+        },
+        {
+          "name": "仙桃高速交警巡逻车",
+          "euclidean_km": 1.16,
+          "net_dist_km": 43.37,
+          "reason": "空间直线距离虽近，但路网绕行达 43.37 km (优选方案仅 19.2 km)"
+        }
+      ]
+    },
+    "hazmat": {
+      "label": "防化部队",
+      "color": "#a855f7",
+      "icon": "flash",
+      "poi": {
+        "name": "三伏潭镇应急管理站",
+        "lat": 30.3281,
+        "lon": 113.2012,
+        "dist_km": 11.24,
+        "net_dist_km": 23.39
+      },
+      "has_path": true,
+      "losers": [
+        {
+          "name": "胡场镇安全生产监督管理站",
+          "euclidean_km": 10.51,
+          "net_dist_km": 34.34,
+          "reason": "空间直线距离虽近，但路网绕行达 34.34 km (优选方案仅 23.39 km)"
+        },
+        {
+          "name": "仙桃西应急物资储备点",
+          "euclidean_km": 0.36,
+          "net_dist_km": 43.99,
+          "reason": "空间直线距离虽近，但路网绕行达 43.99 km (优选方案仅 23.39 km)"
+        }
+      ]
+    },
+    "road": {
+      "label": "交通路政",
+      "color": "#94a3b8",
+      "icon": "wrench",
+      "poi": {
+        "name": "湖北高速路政仙桃西支队",
+        "lat": 30.3563,
+        "lon": 113.1952,
+        "dist_km": 9.27,
+        "net_dist_km": 20.2
+      },
+      "has_path": true,
+      "losers": [
+        {
+          "name": "仙桃市公路局三伏潭道班",
+          "euclidean_km": 11.22,
+          "net_dist_km": 24.05,
+          "reason": "路网距离较远 (24.05 km > 20.2 km)"
+        },
+        {
+          "name": "沪渝高速仙桃段路政执勤点",
+          "euclidean_km": 0.77,
+          "net_dist_km": 43.71,
+          "reason": "空间直线距离虽近，但路网绕行达 43.71 km (优选方案仅 20.2 km)"
+        }
+      ]
+    }
+  }
+}

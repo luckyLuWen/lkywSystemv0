@@ -95,7 +95,7 @@ def run_script(script_name: str, *extra_args: str) -> subprocess.CompletedProces
     )
 
 
-def load_strategy_metrics() -> dict[str, Any]:
+def load_strategy_metrics(scenario: str = None) -> dict[str, Any]:
     if not PATH_RESULT_PATH.exists():
         return {
             "available": False,
@@ -107,7 +107,13 @@ def load_strategy_metrics() -> dict[str, Any]:
         payload = json.load(file)
         
     multi_agent_data = None
-    if MULTI_AGENT_RESULT_PATH.exists():
+    if scenario:
+        scenario_path = BASE_DIR / f"multi_agent_result_{scenario}.json"
+        if scenario_path.exists():
+            with scenario_path.open("r", encoding="utf-8") as f:
+                multi_agent_data = json.load(f)
+    
+    if not multi_agent_data and MULTI_AGENT_RESULT_PATH.exists():
         with MULTI_AGENT_RESULT_PATH.open("r", encoding="utf-8") as f:
             multi_agent_data = json.load(f)
 
@@ -443,8 +449,8 @@ class ServiceManager:
 manager = ServiceManager()
 
 
-def build_health_payload() -> dict[str, Any]:
-    metrics = load_strategy_metrics()
+def build_health_payload(scenario: str = None) -> dict[str, Any]:
+    metrics = load_strategy_metrics(scenario)
     full_status = manager.get_status()
     return {
         "ok": True,
@@ -546,17 +552,20 @@ def serve_cesium_assets(filename: str):
 
 @app.route("/api/health")
 def health():
-    return jsonify(build_health_payload())
+    scenario = request.args.get("scenario")
+    return jsonify(build_health_payload(scenario))
 
 
 @app.route("/api/status")
 def status():
-    return jsonify(build_health_payload())
+    scenario = request.args.get("scenario")
+    return jsonify(build_health_payload(scenario))
 
 
 @app.route("/api/strategy_metrics")
 def strategy_metrics():
-    return jsonify(load_strategy_metrics())
+    scenario = request.args.get("scenario")
+    return jsonify(load_strategy_metrics(scenario))
 
 
 @app.route("/api/run_2d")

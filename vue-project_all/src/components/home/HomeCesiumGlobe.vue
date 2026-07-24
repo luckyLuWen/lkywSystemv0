@@ -233,7 +233,7 @@ Chinese (Simplified)<template>
           <!-- Tab 选项卡标签页导航（包含 0-1 ~ 0-4 4辆车的独立通道及 🛣️ 路线微调） -->
           <div class="vehicle-tab-container" style="display: flex; gap: 4px; margin-bottom: 14px; background: rgba(0, 242, 254, 0.08); padding: 4px; border-radius: 6px; border: 1px solid rgba(0, 242, 254, 0.2);">
             <button 
-              v-for="(car, idx) in startStageVehicleAdjust.cars" 
+              v-for="(car, idx) in activeCars" 
               :key="idx"
               class="v-tab-btn" 
               :style="startStageVehicleAdjust.activeTab === 'car' + (idx + 1) ? 'flex: 1; padding: 6px 0; font-size: 12px; border: 1px solid #00f2fe; background: rgba(0, 242, 254, 0.25); color: #00f2fe; font-weight: bold; border-radius: 4px; cursor: pointer;' : 'flex: 1; padding: 6px 0; font-size: 12px; border: 1px solid transparent; background: transparent; color: #a0aec0; cursor: pointer; border-radius: 4px;'"
@@ -251,7 +251,7 @@ Chinese (Simplified)<template>
           </div>
 
           <!-- 🚗 0-1.glb ~ 0-4.glb 4辆车各自独立的控制参数块 -->
-          <template v-for="(car, idx) in startStageVehicleAdjust.cars" :key="idx">
+          <template v-for="(car, idx) in activeCars" :key="idx">
             <div v-if="startStageVehicleAdjust.activeTab === 'car' + (idx + 1)">
               <div style="font-size: 13px; color: #00f2fe; margin-bottom: 12px; font-weight: bold; display: flex; align-items: center; gap: 6px;">
                 <span>🚘</span>
@@ -1489,7 +1489,6 @@ Chinese (Simplified)<template>
     <div 
       class="hubei-map-legend" 
       :style="{ right: legendRightOffset }"
-      v-if="activeHudTab === 'overview'"
     >
       <div class="legend-header">
         <span class="legend-title">两客一危 运行图例</span>
@@ -3803,29 +3802,47 @@ const startStageVehicleAdjust = reactive({
   selectedTankerRouteIndex: 0, // 油罐车路线选择 (0: 路线1 南北, 1: 路线2 东西)
   loopDurationSec:6,     // 单圈时长(s)
   
-  // 4 辆车的独立缩放、航向及经纬度参数（默认沿着真实沥青公路中线行驶）
-  cars: [
-    { name: '0-1.glb (车辆01)', scale: 0.60, lngOffset: -0.00010, latOffset: 0.0, heading: -166 },
-    { name: '0-2.glb (车辆02)', scale: 1.60, lngOffset: 0.0, latOffset: 0.0, heading: -92 },
-    { name: '0-3.glb (车辆03)', scale: 7.55, lngOffset: -0.00010, latOffset: 0.0, heading: -92 },
-    { name: '0-4.glb (车辆04)', scale: 4.65, lngOffset: 0.0, latOffset: 0.0, heading: -88 }
+  // 🚚 货车追尾现场 - 4 辆车的独立缩放、航向及经纬度参数
+  carsTruck: [
+    { name: '0-1.glb (车辆01)', scale: 0.40, lngOffset: 0.0, latOffset: 0.0, heading: -166 },
+    { name: '0-2.glb (车辆02)', scale: 1.00, lngOffset: -0.00010, latOffset: 0.0, heading: -92 },
+    { name: '0-3.glb (车辆03)', scale: 4.30, lngOffset: 0.00020, latOffset: 0.0, heading: -92 },
+    { name: '0-4.glb (车辆04)', scale: 2.45, lngOffset: 0.0, latOffset: 0.0, heading: -88 }
+  ],
+  // ⛽ 油罐车泄露现场 - 4 辆车的独立缩放、航向及经纬度参数
+  carsTanker: [
+    { name: '0-1.glb (车辆01)', scale: 0.60, lngOffset: 0.0001, latOffset: 0.0, heading: -166 },
+    { name: '0-2.glb (车辆02)', scale: 1.50, lngOffset: -0.00010, latOffset: 0.0, heading: -92 },
+    { name: '0-3.glb (车辆03)', scale: 6.65, lngOffset: 0.00010, latOffset: 0.0, heading: -92 },
+    { name: '0-4.glb (车辆04)', scale: 5.10, lngOffset: -0.00020, latOffset: 0.0, heading: -88 }
   ],
   
   copiedMsg: ''
 })
 
-
+// 根据当前场景返回对应的 cars 数组
+const activeCars = computed(() =>
+  currentScene.value === 'tanker' ? startStageVehicleAdjust.carsTanker : startStageVehicleAdjust.carsTruck
+)
 
 function resetStartStageVehicleAdjust() {
   startStageVehicleAdjust.isPaused = true;
   startStageVehicleAdjust.loopDurationSec = 18;
   startStageVehicleRunningTimeMs = 0;
   startStageVehicleLastFrameTime = Date.now();
-  if (startStageVehicleAdjust.cars) {
-    startStageVehicleAdjust.cars[0].scale = 0.60; startStageVehicleAdjust.cars[0].lngOffset = -0.00010; startStageVehicleAdjust.cars[0].latOffset = 0.0; startStageVehicleAdjust.cars[0].heading = -166;
-    startStageVehicleAdjust.cars[1].scale = 1.60; startStageVehicleAdjust.cars[1].lngOffset = 0.0; startStageVehicleAdjust.cars[1].latOffset = 0.0; startStageVehicleAdjust.cars[1].heading = -92;
-    startStageVehicleAdjust.cars[2].scale = 8.55; startStageVehicleAdjust.cars[2].lngOffset = -0.00010; startStageVehicleAdjust.cars[2].latOffset = 0.0; startStageVehicleAdjust.cars[2].heading = -92;
-    startStageVehicleAdjust.cars[3].scale = 4.65; startStageVehicleAdjust.cars[3].lngOffset = 0.0; startStageVehicleAdjust.cars[3].latOffset = 0.0; startStageVehicleAdjust.cars[3].heading = -88;
+  const cars = activeCars.value
+  if (cars) {
+    if (currentScene.value === 'tanker') {
+      cars[0].scale = 0.60; cars[0].lngOffset = 0.0002; cars[0].latOffset = 0.0; cars[0].heading = -166;
+      cars[1].scale = 1.50; cars[1].lngOffset = -0.00010; cars[1].latOffset = 0.0; cars[1].heading = -92;
+      cars[2].scale = 6.65; cars[2].lngOffset = 0.00010; cars[2].latOffset = 0.0; cars[2].heading = -92;
+      cars[3].scale = 5.10; cars[3].lngOffset = -0.00020; cars[3].latOffset = 0.0; cars[3].heading = -88;
+    } else {
+      cars[0].scale = 0.60; cars[0].lngOffset = 0.0; cars[0].latOffset = 0.0; cars[0].heading = -166;
+      cars[1].scale = 1.50; cars[1].lngOffset = -0.00010; cars[1].latOffset = 0.0; cars[1].heading = -92;
+      cars[2].scale = 7.30; cars[2].lngOffset = 0.00020; cars[2].latOffset = 0.0; cars[2].heading = -92;
+      cars[3].scale = 3.45; cars[3].lngOffset = 0.0; cars[3].latOffset = 0.0; cars[3].heading = -88;
+    }
   }
 }
 
@@ -3901,8 +3918,9 @@ function getStartStageVehiclePosAndOrient(index, overrideDelay) {
     startStageVehicleRunningTimeMs += delta
   }
 
-  const carParam = (startStageVehicleAdjust.cars && startStageVehicleAdjust.cars[index])
-    ? startStageVehicleAdjust.cars[index]
+  const carsArr = activeCars.value
+  const carParam = (carsArr && carsArr[index])
+    ? carsArr[index]
     : { scale: 1.0, lngOffset: 0, latOffset: 0, heading: 0 }
 
   const totalLngOffset = carParam.lngOffset || 0
@@ -7723,8 +7741,9 @@ function addEventEntities() {
           if ((currentScene.value !== 'truck' && currentScene.value !== 'tanker') || props.activePhaseIndex !== 0) {
             return 0;
           }
-          const carParam = (startStageVehicleAdjust.cars && startStageVehicleAdjust.cars[index])
-            ? startStageVehicleAdjust.cars[index]
+          const carsArr = activeCars.value
+          const carParam = (carsArr && carsArr[index])
+            ? carsArr[index]
             : { scale: 1.0 }
           return carParam.scale || 1.0
         }, false),
@@ -9572,7 +9591,7 @@ function updatePhaseScene(index, animate = false) {
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
       rescuePopup.show = true;
       ugvPopup.show = true;
-    } else if (isTruckScene && index === 10) {
+    } else if (isTruckScene && index === 11) {
       rescuePopup.title = '救援车出动';
       rescuePopup.model = '多维救援协同';
       rescuePopup.altitude = '--';
@@ -9620,7 +9639,7 @@ function updatePhaseScene(index, animate = false) {
       if (rescueMarkerEntity) rescueMarkerEntity.show = true;
       rescuePopup.show = true;
       ugvPopup.show = true;
-    } else if (isTankerScene && index === 10) {
+    } else if (isTankerScene && index === 11) {
       rescuePopup.title = '救援车出动';
       rescuePopup.model = '多维救援协同';
       rescuePopup.altitude = '--';
@@ -9765,9 +9784,9 @@ function updatePhaseScene(index, animate = false) {
             let isTarget = false;
             if (index >= 3 && index <= 6) {
               isTarget = (entity.id === 'uav_model' || entity.id === 'uav_model_move');
-            } else if (index === 7) {
+            } else if (index === 7 || index === 8) {
               isTarget = (entity.id === 'uav_model_move');
-            } else if (index >= 8) {
+            } else if (index >= 9) {
               isTarget = entity.id.includes('move');
             }
 
@@ -9798,9 +9817,9 @@ function updatePhaseScene(index, animate = false) {
             let isTarget = false;
             if (index >= 3 && index <= 6) {
               isTarget = (entity.id === 'uav_model_tanker' || entity.id === 'uav_model_move_tanker');
-            } else if (index === 7) {
+            } else if (index === 7 || index === 8) {
               isTarget = (entity.id === 'uav_model_move_tanker');
-            } else if (index >= 8) {
+            } else if (index >= 9) {
               isTarget = entity.id.includes('move');
             }
 

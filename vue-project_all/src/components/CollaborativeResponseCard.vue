@@ -193,6 +193,13 @@ import {
   getCollaborativeControllerBaseUrl,
 } from '../config/subsystems'
 
+const props = defineProps({
+  scenario: {
+    type: String,
+    default: 'leak'
+  }
+})
+
 const controllerBaseUrl = ref(getCollaborativeControllerBaseUrl())
 const lastError = ref('')
 const strategyMetrics = ref(null)
@@ -231,7 +238,7 @@ const updateTimeStr = computed(() => {
 async function refreshStatus() {
   try {
     const response = await fetch(
-      buildCollaborativeApiUrl('api/health', controllerBaseUrl.value),
+      buildCollaborativeApiUrl(`api/health?scenario=${props.scenario}`, controllerBaseUrl.value),
       { cache: 'no-store' }
     )
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
