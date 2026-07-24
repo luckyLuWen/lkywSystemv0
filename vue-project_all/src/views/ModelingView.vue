@@ -45,6 +45,28 @@
           </div>
         </div>
 
+        <!-- Section: View Settings -->
+        <div class="panel-section">
+          <div class="section-header">
+            <span class="section-icon">🛠</span>
+            <h3>显示设置 (Viewer Settings)</h3>
+          </div>
+          <div class="setting-item">
+            <span class="setting-label">环境光强度 (Exposure)</span>
+            <input 
+              type="range" 
+              min="0.4" 
+              max="2.0" 
+              step="0.1" 
+              v-model.number="exposure" 
+              class="slider-full"
+            />
+          </div>
+          <p class="mode-description">
+            实验室精细分析模式：已过滤外部地理底图，提供统一棚拍式无偏光源，辅助三维构件形变深度与破损裂隙的视觉定量分析。
+          </p>
+        </div>
+
         <!-- Section: Model Metadata -->
         <div class="panel-section flex-1">
           <div class="section-header">
@@ -116,20 +138,6 @@
             @load="onModelLoad"
             style="width: 100%; height: 100%; background: transparent;"
           >
-            <!-- Interactive 3D Hotspots on Model Surface -->
-            <button 
-              v-for="item in activeHotspots" 
-              :key="item.id"
-              class="hotspot-pin"
-              :slot="'hotspot-' + item.id"
-              :data-position="item.position"
-              :data-normal="item.normal"
-              :class="{ active: selectedHotspotId === item.id }"
-              @click="selectHotspot(item)"
-            >
-              <div class="hotspot-dot"></div>
-              <div class="hotspot-tooltip">{{ item.label }}</div>
-            </button>
           </model-viewer>
         </div>
 
@@ -181,55 +189,6 @@
           </div>
         </div>
       </main>
-
-      <!-- Right Sidebar: Interactive Controls & Hotspots -->
-      <aside class="sidebar right-sidebar">
-        <!-- Section: View Settings -->
-        <div class="panel-section">
-          <div class="section-header">
-            <span class="section-icon">🛠</span>
-            <h3>显示设置 (Viewer Settings)</h3>
-          </div>
-          <div class="setting-item">
-            <span class="setting-label">环境光强度 (Exposure)</span>
-            <input 
-              type="range" 
-              min="0.4" 
-              max="2.0" 
-              step="0.1" 
-              v-model.number="exposure" 
-              class="slider-full"
-            />
-          </div>
-          <p class="mode-description">
-            实验室精细分析模式：已过滤外部地理底图，提供统一棚拍式无偏光源，辅助三维构件形变深度与破损裂隙的视觉定量分析。
-          </p>
-        </div>
-
-        <!-- Section: Detail Hotspots -->
-        <div class="panel-section flex-1">
-          <div class="section-header">
-            <span class="section-icon">🔍</span>
-            <h3>高精细细节检查 (Hotspots)</h3>
-          </div>
-          <div class="hotspots-list">
-            <div 
-              v-for="item in activeHotspots" 
-              :key="item.id"
-              class="hotspot-item"
-              :class="{ active: selectedHotspotId === item.id }"
-              @click="selectHotspot(item)"
-            >
-              <div class="hotspot-header">
-                <span class="hotspot-tag">{{ item.tag }}</span>
-                <h4>{{ item.label }}</h4>
-              </div>
-              <p class="hotspot-desc">{{ item.desc }}</p>
-              <div class="click-to-fly">查看定位 🔎</div>
-            </div>
-          </div>
-        </div>
-      </aside>
     </div>
   </div>
 </template>
@@ -261,86 +220,17 @@ const sceneConfigs = {
   }
 }
 
-// Hotspots list with precise surface placements and orbit targets
-const truckHotspots = [
-  {
-    id: 'cabin_impact',
-    label: '车头撞击受损点',
-    tag: 'Zone A',
-    desc: '货车驾驶室前半部在高速冲撞下产生向内溃缩，A柱严重弯折，形变深度达1.2米。',
-    position: '0.2m 1.3m 3.3m',
-    normal: '0m 0.2m 1m',
-    cameraOrbit: '40deg 75deg 4.5m',
-    cameraTarget: '0.2m 1.3m 3.3m'
-  },
-  {
-    id: 'chassis_beam',
-    label: '防撞钢梁形变',
-    tag: 'Zone B',
-    desc: '前防撞梁中段凹陷开裂，吸能盒吸能完全，两侧车架大梁轻微扭曲。',
-    position: '0m 0.5m 3.7m',
-    normal: '0m -0.1m 1m',
-    cameraOrbit: '15deg 85deg 3m',
-    cameraTarget: '0m 0.5m 3.7m'
-  },
-  {
-    id: 'rear_impact',
-    label: '后侧挂车追尾面',
-    tag: 'Zone C',
-    desc: '被追尾挂车防撞网完全断裂，车尾大梁右侧开裂弯曲，钣金表面凹坑深度达24cm。',
-    position: '0m 1.0m -3.2m',
-    normal: '0m 0.1m -1m',
-    cameraOrbit: '195deg 75deg 4.5m',
-    cameraTarget: '0m 1.0m -3.2m'
-  }
-]
-
-const tankerHotspots = [
-  {
-    id: 'leak_valve',
-    label: '破损泄露法兰阀',
-    tag: 'Zone A',
-    desc: '罐体后侧下排料阀法兰处破裂，阀门把手变形断裂，液体沿罐体表面流淌。',
-    position: '0m 0.7m -4.0m',
-    normal: '0m 0m -1m',
-    cameraOrbit: '170deg 78deg 3.5m',
-    cameraTarget: '0m 0.7m -4.0m'
-  },
-  {
-    id: 'support_point',
-    label: '侧翻受力支撑点',
-    tag: 'Zone B',
-    desc: '罐体与护栏撞击受压支撑面，防波板焊缝受力挤压局部产生2mm微裂纹。',
-    position: '-1.1m 0.4m 0.5m',
-    normal: '-1m 0m 0.2m',
-    cameraOrbit: '-110deg 82deg 3.8m',
-    cameraTarget: '-1.1m 0.4m 0.5m'
-  },
-  {
-    id: 'tank_seam',
-    label: '罐体防波板焊缝',
-    tag: 'Zone C',
-    desc: '中后段焊缝表面漆层剥落，超声波检测显示内部受撞击拉力延伸变形1.8%。',
-    position: '0m 1.8m 1.0m',
-    normal: '0m 1m 0m',
-    cameraOrbit: '45deg 55deg 4.5m',
-    cameraTarget: '0m 1.8m 1.0m'
-  }
-]
-
 // State vars
 const activeTab = ref('truck')
 const autoRotate = ref(true)
 const rotateSpeed = ref(1.5)
 const exposure = ref(1.1)
-const selectedHotspotId = ref(null)
 const scriptLoaded = ref(false)
 
 const cameraOrbit = ref('45deg 75deg auto')
 const cameraTarget = ref('auto auto auto')
 
 const currentModel = computed(() => sceneConfigs[activeTab.value])
-const activeHotspots = computed(() => activeTab.value === 'truck' ? truckHotspots : tankerHotspots)
 
 // Real Dynamic Metadata States
 const parsedMetadata = ref(null)
@@ -477,7 +367,6 @@ const loadModelViewerScript = () => {
 
 // Reset Camera Focus
 const resetCamera = () => {
-  selectedHotspotId.value = null
   cameraOrbit.value = '45deg 75deg auto'
   cameraTarget.value = 'auto auto auto'
   autoRotate.value = true
@@ -490,14 +379,6 @@ const switchScene = (key) => {
   isFrozen.value = true
   resetCamera()
   loadMetadata()
-}
-
-// Select/Focus Hotspot
-const selectHotspot = (item) => {
-  selectedHotspotId.value = item.id
-  autoRotate.value = false
-  cameraOrbit.value = item.cameraOrbit
-  cameraTarget.value = item.cameraTarget
 }
 
 // Toggle Auto Rotate
@@ -1159,142 +1040,7 @@ onMounted(() => {
   text-align: justify;
 }
 
-/* Hotspots on model-viewer */
-.hotspot-pin {
-  background: rgba(0, 255, 216, 0.22);
-  border: 2px solid #00ffd8;
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  padding: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  box-shadow: 0 0 10px rgba(0, 255, 216, 0.6);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  outline: none;
-}
 
-.hotspot-pin:hover, .hotspot-pin.active {
-  background: #00ffd8;
-  box-shadow: 0 0 15px #00ffd8;
-  transform: scale(1.2);
-}
-
-.hotspot-dot {
-  width: 5px;
-  height: 5px;
-  background: #ffffff;
-  border-radius: 50%;
-}
-
-.hotspot-tooltip {
-  position: absolute;
-  bottom: 26px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(4, 14, 28, 0.95);
-  border: 1px solid rgba(0, 255, 216, 0.5);
-  color: #ffffff;
-  font-size: 11px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-}
-
-.hotspot-pin:hover .hotspot-tooltip, .hotspot-pin.active .hotspot-tooltip {
-  opacity: 1;
-}
-
-/* Hotspots list */
-.hotspots-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow-y: auto;
-}
-
-.hotspot-item {
-  background: rgba(2, 10, 20, 0.4);
-  border: 1px solid rgba(0, 229, 255, 0.08);
-  border-radius: 8px;
-  padding: 12px;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-}
-
-.hotspot-item:hover {
-  background: rgba(0, 229, 255, 0.04);
-  border-color: rgba(0, 229, 255, 0.25);
-  transform: translateY(-2px);
-}
-
-.hotspot-item.active {
-  background: rgba(0, 229, 255, 0.08);
-  border-color: #00ffd8;
-  box-shadow: 0 4px 15px rgba(0, 255, 216, 0.08);
-}
-
-.hotspot-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.hotspot-tag {
-  background: rgba(0, 255, 216, 0.15);
-  border: 1px solid rgba(0, 255, 216, 0.35);
-  color: #00ffd8;
-  font-size: 9px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  text-transform: uppercase;
-}
-
-.hotspot-header h4 {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.hotspot-desc {
-  margin: 0;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.55);
-  line-height: 1.5;
-  text-align: justify;
-}
-
-.click-to-fly {
-  position: absolute;
-  right: 12px;
-  top: 12px;
-  font-size: 10px;
-  color: rgba(0, 229, 255, 0.7);
-  opacity: 0;
-  transform: translateX(5px);
-  transition: all 0.2s ease;
-}
-
-.hotspot-item:hover .click-to-fly {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.hotspot-item.active .click-to-fly {
-  color: #00ffd8;
-}
 
 /* Animations */
 @keyframes pulse-glow {

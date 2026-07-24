@@ -15,6 +15,10 @@
     </button>
 
     <section class="timeline-shell">
+      <!-- 固定描述文本 -->
+      <div v-if="currentPhaseDesc" class="timeline-phase-desc">
+        {{ currentPhaseDesc }}
+      </div>
       <div class="accident-header">
         <span class="accident-kicker">事故点</span>
 
@@ -60,8 +64,8 @@
             <div class="progress-fill" :style="{ width: fillWidth }"></div>
           </div>
           
-          <!-- 游标指示器 -->
-          <div class="timeline-cursor" :style="{ left: cursorOffset }">
+          <!-- 游标指示器（仅在点击激活有效阶段 modelValue >= 0 时出现，未点击/未开始时不出现） -->
+          <div v-if="modelValue >= 0" class="timeline-cursor" :style="{ left: cursorOffset }">
             <div class="cursor-arrow">
               <svg viewBox="0 0 24 24" width="24" height="24" fill="#8cf7c5">
                 <path d="M7 10l5 5 5-5z" />
@@ -110,22 +114,7 @@ const isCollapsed = ref(false)
 let playbackTimer = null
 let loadTimeout = null
 
-<<<<<<< Updated upstream
 // 只要有任何阶段（除了第一个）还没准备好，就认为场景未就绪
-=======
-const TRUCK_PHASE_DESC = [
-  { shortLabel: '仿真推演开始', time: '14:00', description: '系统完成初始化，开始对货车追尾事故场景进行数字孪生仿真推演，全域感知网络进入就绪状态。' },
-  { shortLabel: '车辆正常行驶', time: '14:05', description: '事故发生前，两辆货车在高速公路上正常行驶，车载边缘网关实时采集并上传行驶状态数据。' },
-  { shortLabel: '事故发生', time: '14:12', description: '后车未保持安全距离，发生追尾碰撞。附近监控摄像头监测到异常情况，发送即时影像给数据处理中心。' },
-  { shortLabel: '无人机出动', time: '14:14', description: '指挥中心下达指令，无人机从消防站快速起飞出动，沿预定路线前往事故现场。' },
-  { shortLabel: '无人机侦察', time: '14:15', description: '无人机从消防站快速出动，前往事故现场进行低空侦察，实时回传现场画面，辅助指挥中心研判灾情。' },
-  { shortLabel: '次生灾害·烟雾', time: '14:18', description: '碰撞导致货物起火，现场产生大量浓烟。烟雾传感器浓度超过预警阈值，系统推送疏散建议。' },
-  { shortLabel: '次生灾害·起火', time: '14:26', description: '发动机舱引燃，车辆开始明显燃烧。温度传感器数据急剧上升，协同响应系统推送消防出警指令。' },
-  { shortLabel: '无人装备出动', time: '14:30', description: '无人车与无人机从消防站协同出发。无人车沿蓝线地面路径先行，无人机走到一半时起飞，两者同时抵达救援点。' },
-  { shortLabel: '无人感知部署', time: '14:35', description: '无人装备到达事故现场，按预规划坐标完成传感节点的自动布设，形成现场多维感知覆盖网络：包括地面监测节点，空域监测节点与固定摄像监测点。' },
-  { shortLabel: '无人感知执行', time: '14:40', description: '无人机与无人车到达指定点，基站发出提供信号，设备接受信号并形成组网，同时无人机，无人车，固定监控，基站构成一个传感网原型。' },
-  { shortLabel: '信号干扰', time: '14:45', description: '现场环境复杂，收到信号干扰导致基站不能正常发射信号，此时网络路由需要改变：基站发出信号—>无人车jetson搭载信号发送与接收作为移动基站。' },
-  { shortLabel: '救援装备出动', time: '14:50', description: '指挥中心根据感知数据研判灾情，专业救援队伍携带重型装备出动，进入最终处置阶段。' },
 ]
 
 const TANKER_PHASE_DESC = [
@@ -138,9 +127,9 @@ const TANKER_PHASE_DESC = [
   { shortLabel: '次生灾害·弥漫', time: '15:35', description: '泄露液体扩散至路面并开始挥发，大面积有毒气体向四周弥漫，系统推送周边1公里疏散建议。' },
   { shortLabel: '无人装备出动', time: '15:40', description: '无人车与无人机从黄州区路口镇消防站协同出发。无人车先行，无人机在其走到一半时起飞追赶，同时到达现场。' },
   { shortLabel: '无人感知部署', time: '15:45', description: '无人装备抵达现场，自动规避高浓度危险区域，在安全边界内按预规划坐标完成TVOC、CO等传感节点的精准布设，形成现场多维感知覆盖网络。' },
-  { shortLabel: '无人感知执行', time: '15:50', description: '无人机在安全高度执行现场侦察，实时回传画面；无人车持续采集地面气体数据，辅助研判扩散态势。' },
+  { shortLabel: '无人感知执行', time: '15:50', description: '无人机在安全高度执行现场侦察，实时回传画面；无人车持续采集地面气体数据，辅助研判扩散态势。基站发出提供信号，设备接受信号并形成组网，同时无人机，无人车，固定监控，基站构成一个传感网原型。信号干扰：现场环境复杂，收到信号干扰导致基站不能正常发射信号，此时网络路由需要改变：基站发出信号—>无人车jetson搭载信号发送与接收作为移动基站。' },
   { shortLabel: '信号干扰', time: '15:55', description: '现场电磁环境复杂，通信信号受到干扰，数据传输出现断续。系统启动抗干扰机制，切换备用通信链路：基站发出信号—>无人车jetson搭载信号发送与接收作为移动基站。' },
-  { shortLabel: '救援装备出动', time: '16:00', description: '指挥中心根据感知数据确认现场态势，专业危化品处置队伍携带防护装备出动，进行最终封堵处置。' },
+  { shortLabel: '救援装备出动', time: '16:00', description: '指挥中心根据感知数据确认现场态势，专业危化品处置队伍携带防护装备出动，进行最终封堵处置。触发多智能体并发决策，基于真实 OSM 拓扑路网运行 Dijkstra 加权寻优算法，动态剔除路网阻断与远距绕行节点，精确定位并联动五类救援站点（消防、医疗、公安、防化、路政）协同出动。' },
 ]
 
 const currentPhaseDesc = computed(() => {
@@ -149,22 +138,21 @@ const currentPhaseDesc = computed(() => {
   return phaseData[props.modelValue]?.description || ''
 })
 
-// 只要当前阶段的模型已准备好（或全部就绪/超时），即认为场景就绪
->>>>>>> Stashed changes
 const isScenarioReady = computed(() => {
   if (forceReady.value) return true
   if (!props.phasesReady.length) return false
+  const currentReady = props.phasesReady[props.modelValue]
+  if (currentReady) return true
   return props.phasesReady.every(r => r === true)
 })
 
-// 5秒超时自动解锁，防止加载状态卡死
+// 1秒超时自动解锁，防止因为未显示阶段的后台模型加载而阻塞用户操作
 watch(() => props.phasesReady, (newVal) => {
   if (loadTimeout) clearTimeout(loadTimeout)
   if (newVal.length > 0 && !newVal.every(r => r === true)) {
     loadTimeout = setTimeout(() => {
-      console.warn('模型加载超时，强制开启仿真控制')
       forceReady.value = true
-    }, 5000)
+    }, 1000)
   } else {
     forceReady.value = false
   }
@@ -177,21 +165,21 @@ const cursorOffset = computed(() => {
 
 // 计算已播放部分的进度条宽度
 const fillWidth = computed(() => {
-  if (!props.phases.length) return '0%'
+  if (!props.phases.length || props.modelValue < 0) return '0%'
   if (props.phases.length === 1) return '0%'
   const percent = (props.modelValue / (props.phases.length - 1)) * 100
   return `${percent}%`
 })
 
 function getPhaseOffset(index) {
-  if (!props.phases.length) return '40px'
+  if (!props.phases.length || index < 0) return '40px'
   if (props.phases.length === 1) return '50%'
   const percent = (index / (props.phases.length - 1)) * 100
   return `calc(40px + (100% - 80px) * ${percent / 100})`
 }
 
 function selectPhase(index) {
-  isPlaying.value = false // 手动切换时停止自动播放
+  isPlaying.value = false // 点击任意阶段节点（含【仿真开始】）均为手动切换该节点，不自动推进时间轴
   emit('update:modelValue', index)
 }
 
@@ -231,12 +219,12 @@ watch([isPlaying, () => props.modelValue], ([playing, currentIdx]) => {
     } else if (isTruck) {
       // 货车专属逻辑 (保持用户原有设置)
       if (currentIdx === 1 || currentIdx === 2) duration = 3000
-      else if (currentIdx >= 3 && currentIdx <= 5) duration = 3000 // 烟火灾害改为 3 秒
-      else if (currentIdx === 7) duration = 7000 // 无人感知部署阶段设为 7 秒，保证 6 秒飞行及停靠动画完整播放
-      else if (currentIdx >= 6) duration = 3000 // 其他无人机阶段 3 秒
+      else if (currentIdx >= 4 && currentIdx <= 6) duration = 3000 // 烟火灾害改为 3 秒
+      else if (currentIdx === 8) duration = 7000 // 无人感知部署阶段设为 7 秒，保证 6 秒飞行及停靠动画完整播放
+      else if (currentIdx >= 7) duration = 3000 // 其他无人机阶段 3 秒
     } else {
       // 油罐车专属逻辑 (完全分离)
-      if (currentIdx === 7) duration = 7000 // 无人感知部署阶段设为 7 秒
+      if (currentIdx === 8) duration = 7000 // 无人感知部署阶段设为 7 秒
       else duration = 3000
     }
 
@@ -316,10 +304,23 @@ onBeforeUnmount(() => {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
 }
 
+.timeline-phase-desc {
+  width: 100%;
+  padding: 4px 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 12px;
+  color: rgba(186, 230, 253, 0.95);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  line-height: 1.6;
+  text-align: left;
+}
+
 .accident-header {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
   margin-bottom: 12px; /* 显著减小间距 */
 }
 

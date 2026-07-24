@@ -20,9 +20,55 @@ MODEL_DISPLAY_NAMES = {
 ACTIVE_MODEL_DISPLAY_NAMES = {'SFGA-YOLO26M', 'YOLO26M', 'YOLO11M'}
 
 
+LABEL_ALIASES = {
+    'car_fire': ['car_fire', 'carFire'],
+    'lkyw_fire': ['lkyw_fire', 'lkywFire'],
+    'car_nofire': ['car_nofire', 'carNofire', 'car_normal', 'carNormal'],
+    'lkyw_nofire': ['lkyw_nofire', 'lkywNofire', 'lkyw_normal', 'lkywNormal'],
+}
+
+LABEL_CANONICAL = {
+    alias.lower().replace('-', '_').replace(' ', '_'): canonical
+    for canonical, aliases in LABEL_ALIASES.items()
+    for alias in aliases
+}
+
+
+def normalize_detection_label(label):
+    raw_label = str(label or '').strip()
+    if not raw_label:
+        return ''
+    normalized_key = raw_label.lower().replace('-', '_').replace(' ', '_')
+    return LABEL_CANONICAL.get(normalized_key, raw_label)
+
+
+def get_label_query_names(label):
+    canonical_label = normalize_detection_label(label)
+    aliases = LABEL_ALIASES.get(canonical_label, [canonical_label])
+    names = []
+    for alias in aliases + [canonical_label, str(label or '').strip()]:
+        if alias and alias not in names:
+            names.append(alias)
+    return names
+
+
 def normalize_model_name(model_name):
     display_name = MODEL_DISPLAY_NAMES.get(str(model_name or '').strip())
     return display_name if display_name in ACTIVE_MODEL_DISPLAY_NAMES else None
+
+
+def get_model_query_names(model_name):
+    normalized_name = normalize_model_name(model_name)
+    if not normalized_name:
+        return []
+    names = [
+        raw_name
+        for raw_name, display_name in MODEL_DISPLAY_NAMES.items()
+        if display_name == normalized_name
+    ]
+    if normalized_name not in names:
+        names.append(normalized_name)
+    return names
 
 
 def normalize_detection_record(record):
@@ -45,7 +91,7 @@ def extract_detection_labels(detections_json):
 
     labels = []
     for item in detections:
-        label = str(item.get('class', '')).strip()
+        label = normalize_detection_label(item.get('class', ''))
         if label and label not in labels:
             labels.append(label)
     return labels
@@ -231,12 +277,23 @@ def get_detections(limit=50, offset=0, model_name=None, label=None):
     params = []
 
     if model_name:
-        where_clauses.append('model_name = ?')
-        params.append(model_name)
+        model_query_names = get_model_query_names(model_name)
+        if not model_query_names:
+            conn.close()
+            return []
+        placeholders = ','.join('?' for _ in model_query_names)
+        where_clauses.append(f'model_name IN ({placeholders})')
+        params.extend(model_query_names)
 
     if label:
-        where_clauses.append('detections_json LIKE ?')
-        params.append(f'%"class": "{label}"%')
+        label_query_names = get_label_query_names(label)
+        label_clauses = []
+        for label_name in label_query_names:
+            label_clauses.append('detections_json LIKE ?')
+            params.append(f'%"class": "{label_name}"%')
+            label_clauses.append('detections_json LIKE ?')
+            params.append(f'%"class":"{label_name}"%')
+        where_clauses.append('(' + ' OR '.join(label_clauses) + ')')
 
     if where_clauses:
         query += ' WHERE ' + ' AND '.join(where_clauses)

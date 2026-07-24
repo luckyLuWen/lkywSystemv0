@@ -556,36 +556,54 @@ const isWsConnected = ref(false)
 let socket = null
 let reconnectTimer = null
 
+let wsReconnectAttempts = 0
+const MAX_WS_RECONNECT_ATTEMPTS = 2
+
 function connectWS() {
+  if (wsReconnectAttempts >= MAX_WS_RECONNECT_ATTEMPTS) {
+    return
+  }
   if (socket) {
-    try { socket.close() } catch(e){}
-  }
-  const base = getSensorGatewayBaseUrl()
-  const wsUrl = base.replace(/^http/i, 'ws') + '/ws'
-  socket = new WebSocket(wsUrl)
-  
-  socket.onopen = () => {
-    isWsConnected.value = true
-  }
-  
-  socket.onmessage = (event) => {
     try {
-      const parsed = JSON.parse(event.data)
-      if (parsed && (parsed.node1 || parsed.node3)) {
-        wsData.value = parsed
-      }
-    } catch (e) {
-      console.error('Error parsing WS data:', e)
+      socket.onopen = null
+      socket.onmessage = null
+      socket.onclose = null
+      socket.onerror = null
+      socket.close()
+    } catch(e){}
+  }
+  try {
+    const base = getSensorGatewayBaseUrl()
+    const wsUrl = base.replace(/^http/i, 'ws') + '/ws'
+    socket = new WebSocket(wsUrl)
+    
+    socket.onopen = () => {
+      isWsConnected.value = true
+      wsReconnectAttempts = 0
     }
-  }
-  
-  socket.onclose = () => {
+    
+    socket.onmessage = (event) => {
+      try {
+        const parsed = JSON.parse(event.data)
+        if (parsed && (parsed.node1 || parsed.node3)) {
+          wsData.value = parsed
+        }
+      } catch (e) {}
+    }
+    
+    socket.onclose = () => {
+      isWsConnected.value = false
+      wsReconnectAttempts++
+      if (wsReconnectAttempts < MAX_WS_RECONNECT_ATTEMPTS) {
+        reconnectTimer = setTimeout(connectWS, 10000)
+      }
+    }
+    
+    socket.onerror = () => {
+      isWsConnected.value = false
+    }
+  } catch (e) {
     isWsConnected.value = false
-    reconnectTimer = setTimeout(connectWS, 4000)
-  }
-  
-  socket.onerror = () => {
-    socket.close()
   }
 }
 
@@ -641,8 +659,8 @@ const timelineBottom = ref(18)
 const activeRightTab = ref('sensor')
 
 const accidentPhaseIndices = ref({
-  'rear-end': 0,
-  'leakage': 0
+  'rear-end': -1,
+  'leakage': -1
 })
 
 const currentAccidentId = computed(() => {
@@ -678,13 +696,15 @@ const accidentPoints = [
       { id: 't-start', time: '14:00', shortLabel: '仿真开始', title: '仿真推演开始', systems: ['总系统首页'], focusPoint: 'accident_blue' },
       { id: 't-normal', time: '14:05', shortLabel: '正常行驶', title: '车辆正常行驶阶段', systems: ['边缘网关'], focusPoint: 'accident_blue' },
       { id: 't-accident', time: '14:12', shortLabel: '事故发生', title: '货车追尾事故瞬间', systems: ['实时检测'], focusPoint: 'detection' },
-      { id: 't-smoke', time: '14:18', shortLabel: '次生灾害（烟雾）', title: '事故现场产生大量烟雾', systems: ['协同响应'], focusPoint: 'command' },
-      { id: 't-fire', time: '14:26', shortLabel: '次生灾害（起火）', title: '事故车辆开始起火', systems: ['实时检测', '协同响应'], focusPoint: 'response' },
-      { id: 't-spread', time: '14:40', shortLabel: '次生灾害（大火）', title: '火势进一步扩大蔓延', systems: ['总系统首页'], focusPoint: 'gateway' },
-      { id: 't-uav-start', time: '14:45', shortLabel: '无人装备出动', title: '无人装备协同出动', systems: ['协同响应'], focusPoint: 'accident_blue' },
-      { id: 't-uav-deploy', time: '14:50', shortLabel: '无人感知部署', title: '无人感知节点部署', systems: ['实时检测'], focusPoint: 'accident_blue' },
-      { id: 't-uav-exec', time: '14:55', shortLabel: '无人感知执行', title: '无人感知任务执行', systems: ['协同响应'], focusPoint: 'accident_blue' },
-      { id: 't-rescue-start', time: '15:00', shortLabel: '救援装备出动', title: '专业救援装备协同出动', systems: ['协同响应'], focusPoint: 'accident_blue' },
+      { id: 't-uav-dispatch', time: '14:14', shortLabel: '无人机出动', title: '无人机出动', systems: ['协同响应'], focusPoint: 'accident_blue' },
+      { id: 't-uav-recon', time: '14:15', shortLabel: '无人机侦察', title: '无人机快速出动侦察', systems: ['协同响应'], focusPoint: 'accident_blue' },
+      { id: 't-smoke', time: '14:18', shortLabel: '次生灾害（烟雾）', title: '事故现场产生大量烟雾', systems: ['协同响应'], focusPoint: 'accident_blue' },
+      { id: 't-fire', time: '14:26', shortLabel: '次生灾害（起火）', title: '事故车辆开始起火', systems: ['实时检测', '协同响应'], focusPoint: 'accident_blue' },
+      { id: 't-uav-start', time: '14:30', shortLabel: '无人装备出动', title: '无人装备协同出动', systems: ['协同响应'], focusPoint: 'accident_blue' },
+      { id: 't-uav-deploy', time: '14:35', shortLabel: '无人感知部署', title: '无人感知节点部署', systems: ['实时检测'], focusPoint: 'accident_blue' },
+      { id: 't-uav-exec', time: '14:40', shortLabel: '无人感知执行', title: '无人感知任务执行', systems: ['协同响应'], focusPoint: 'accident_blue' },
+      { id: 't-signal', time: '14:45', shortLabel: '信号干扰', title: '通信信号受到干扰', systems: ['协同响应'], focusPoint: 'accident_blue' },
+      { id: 't-rescue-start', time: '14:50', shortLabel: '救援装备出动', title: '专业救援装备协同出动', systems: ['协同响应'], focusPoint: 'accident_blue' },
     ]
   },
   {
@@ -695,13 +715,15 @@ const accidentPoints = [
       { id: 'l-start', time: '15:00', shortLabel: '仿真开始', title: '油罐车仿真推演开始', systems: ['总系统首页'], focusPoint: 'accident_red' },
       { id: 'l-normal', time: '15:05', shortLabel: '正常行驶', title: '油罐车正常行驶阶段', systems: ['边缘网关'], focusPoint: 'accident_red' },
       { id: 'l-accident', time: '15:12', shortLabel: '事故发生（侧翻）', title: '油罐车发生侧翻事故', systems: ['实时检测'], focusPoint: 'accident_red' },
+      { id: 'l-uav-dispatch', time: '15:14', shortLabel: '无人机出动', title: '无人机出动', systems: ['协同响应'], focusPoint: 'accident_red' },
+      { id: 'l-uav-recon', time: '15:15', shortLabel: '无人机侦察', title: '无人机快速出动侦察', systems: ['协同响应'], focusPoint: 'accident_red' },
       { id: 'l-leak', time: '15:20', shortLabel: '次生灾害（泄露）', title: '罐体受损开始发生化学品泄露', systems: ['实时检测', '协同响应'], focusPoint: 'accident_red' },
       { id: 'l-fill', time: '15:35', shortLabel: '次生灾害（弥漫）', title: '泄露液体开始向四周大面积弥漫', systems: ['协同响应'], focusPoint: 'accident_red' },
-      { id: 'l-spread', time: '15:50', shortLabel: '次生灾害（扩散）', title: '挥发气体随风向周边区域扩散', systems: ['总系统首页', '协同响应'], focusPoint: 'accident_red' },
-      { id: 'l-uav-start', time: '15:55', shortLabel: '无人装备出动', title: '无人装备协同出动', systems: ['协同响应'], focusPoint: 'accident_red' },
-      { id: 'l-uav-deploy', time: '16:00', shortLabel: '无人感知部署', title: '无人感知节点部署', systems: ['实时检测'], focusPoint: 'accident_red' },
-      { id: 'l-uav-exec', time: '16:05', shortLabel: '无人感知执行', title: '无人感知任务执行', systems: ['协同响应'], focusPoint: 'accident_red' },
-      { id: 'l-rescue-start', time: '16:10', shortLabel: '救援装备出动', title: '专业救援装备协同出动', systems: ['协同响应'], focusPoint: 'accident_red' },
+      { id: 'l-uav-start', time: '15:40', shortLabel: '无人装备出动', title: '无人装备协同出动', systems: ['协同响应'], focusPoint: 'accident_red' },
+      { id: 'l-uav-deploy', time: '15:45', shortLabel: '无人感知部署', title: '无人感知节点部署', systems: ['实时检测'], focusPoint: 'accident_red' },
+      { id: 'l-uav-exec', time: '15:50', shortLabel: '无人感知执行', title: '无人感知任务执行', systems: ['协同响应'], focusPoint: 'accident_red' },
+      { id: 'l-signal', time: '15:55', shortLabel: '信号干扰', title: '通信信号受到干扰', systems: ['协同响应'], focusPoint: 'accident_red' },
+      { id: 'l-rescue-start', time: '16:00', shortLabel: '救援装备出动', title: '专业救援装备协同出动', systems: ['协同响应'], focusPoint: 'accident_red' },
     ]
   },
 ]
@@ -712,12 +734,12 @@ const timelinePhases = computed(() => {
 
 const phaseToModelMap = {
   1: 'model_normal', 2: 'model_accident', 3: 'model_accident', 4: 'model_accident', 5: 'model_accident', 
-  6: 'model_accident', 7: 'model_accident', 8: 'model_accident', 9: 'model_accident', 10: 'model_accident'
+  6: 'model_accident', 7: 'model_accident', 8: 'model_accident', 9: 'model_accident', 10: 'model_accident', 11: 'model_accident'
 }
 
 const tankerPhaseToModelMap = {
   1: 'tanker_normal', 2: 'tanker_accident', 3: 'tanker_accident', 4: 'tanker_accident', 5: 'tanker_accident', 
-  6: 'tanker_accident', 7: 'tanker_accident', 8: 'tanker_accident', 9: 'tanker_accident', 10: 'tanker_accident'
+  6: 'tanker_accident', 7: 'tanker_accident', 8: 'tanker_accident', 9: 'tanker_accident', 10: 'tanker_accident', 11: 'tanker_accident'
 }
 
 const phasesReady = computed(() => {
@@ -736,7 +758,7 @@ function goTo(item) {
     if (globeRef.value) globeRef.value.resetView()
     currentFocusedPoint.value = ''
     activeServiceId.value = ''
-    accidentPhaseIndices.value = { 'rear-end': 0, 'leakage': 0 }
+    accidentPhaseIndices.value = { 'rear-end': -1, 'leakage': -1 }
   }
   activeMenuKey.value = item.key
   router.push(item.path)
@@ -1024,7 +1046,7 @@ watch(
 /* Left & Right Sidebars Overhaul */
 .left-sidebar,
 .right-sidebar {
-  width: 420px;
+  width: 500px;
   height: calc(100% - 32px);
   background: rgba(10, 19, 35, 0.82);
   backdrop-filter: blur(20px) saturate(140%);

@@ -42,11 +42,26 @@
 
       <!-- Charts Row -->
       <div class="charts-row">
-        <div class="card chart-card">
+        <div class="card chart-card distribution-card">
           <div class="card-title">类别分布</div>
-          <div class="chart-wrapper">
-            <Doughnut v-if="doughnutData" :data="doughnutData" :options="doughnutOptions" />
-            <div v-else class="empty-chart">暂无数据</div>
+          <div v-if="doughnutData" class="distribution-body">
+            <div class="chart-wrapper doughnut-wrapper">
+              <Doughnut :data="doughnutData" :options="doughnutOptions" />
+            </div>
+            <div class="distribution-legend">
+              <div
+                v-for="item in classDistributionItems"
+                :key="item.label"
+                class="legend-row"
+              >
+                <span class="legend-color" :style="{ backgroundColor: item.color }"></span>
+                <span class="legend-label">{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </div>
+            </div>
+          </div>
+          <div v-else class="chart-wrapper">
+            <div class="empty-chart">暂无数据</div>
           </div>
         </div>
         <div class="card chart-card">
@@ -132,14 +147,22 @@ const doughnutData = computed(() => {
   }
 })
 
+const classDistributionItems = computed(() => {
+  const dist = stats.value?.class_distribution || {}
+  _colorIdx = 0
+  return Object.entries(dist).map(([label, value]) => ({
+    label,
+    value,
+    color: CLASS_COLORS_MAP[label] || getFallbackColor()
+  }))
+})
+
 const doughnutOptions = {
   responsive: true,
   maintainAspectRatio: false,
+  cutout: '58%',
   plugins: {
-    legend: {
-      position: 'bottom',
-      labels: { color: '#b0bec5', padding: 16, font: { size: 19 } }
-    }
+    legend: { display: false }
   }
 }
 
@@ -259,7 +282,7 @@ onMounted(fetchStats)
 
 .charts-row {
   display: grid;
-  grid-template-columns: 1fr 2fr;
+  grid-template-columns: minmax(320px, 0.95fr) minmax(520px, 1.65fr);
   gap: 20px;
   margin-bottom: 24px;
 }
@@ -282,6 +305,62 @@ onMounted(fetchStats)
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.distribution-card {
+  min-width: 0;
+}
+
+.distribution-body {
+  min-height: 450px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.doughnut-wrapper {
+  width: 100%;
+  height: 270px;
+}
+
+.distribution-legend {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.legend-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid rgba(0, 229, 255, 0.14);
+  background: rgba(0, 229, 255, 0.04);
+}
+
+.legend-color {
+  width: 18px;
+  height: 18px;
+  border-radius: 2px;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.legend-label {
+  color: var(--text-main);
+  font-size: 17px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legend-row strong {
+  color: var(--primary-cyan);
+  font-size: 19px;
+  font-family: monospace;
 }
 
 .empty-chart {
@@ -350,8 +429,12 @@ onMounted(fetchStats)
   to { opacity: 1; transform: translateY(0); }
 }
 
+@media (max-width: 1100px) {
+  .charts-row { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 900px) {
   .stat-cards-row { grid-template-columns: repeat(2, 1fr); }
-  .charts-row { grid-template-columns: 1fr; }
+  .distribution-body { grid-template-columns: 1fr; }
 }
 </style>

@@ -387,13 +387,15 @@ const accidentPoints = [
       { id: 't-start', time: '14:00', shortLabel: '仿真开始', title: '仿真推演开始' },
       { id: 't-normal', time: '14:05', shortLabel: '正常行驶', title: '车辆正常行驶阶段' },
       { id: 't-accident', time: '14:12', shortLabel: '事故发生', title: '货车追尾事故瞬间' },
+      { id: 't-uav-dispatch', time: '14:14', shortLabel: '无人机出动', title: '无人机出动' },
+      { id: 't-uav-recon', time: '14:15', shortLabel: '无人机侦察', title: '无人机快速出动侦察' },
       { id: 't-smoke', time: '14:18', shortLabel: '次生灾害（烟雾）', title: '事故现场产生大量烟雾' },
       { id: 't-fire', time: '14:26', shortLabel: '次生灾害（起火）', title: '事故车辆开始起火' },
-      { id: 't-spread', time: '14:40', shortLabel: '次生灾害（大火）', title: '火势进一步扩大蔓延' },
-      { id: 't-uav-start', time: '14:45', shortLabel: '无人装备出动', title: '无人装备协同出动' },
-      { id: 't-uav-deploy', time: '14:50', shortLabel: '无人感知部署', title: '无人感知节点部署' },
-      { id: 't-uav-exec', time: '14:55', shortLabel: '无人感知执行', title: '无人感知任务执行' },
-      { id: 't-rescue-start', time: '15:00', shortLabel: '救援装备出动', title: '专业救援装备协同出动' },
+      { id: 't-uav-start', time: '14:30', shortLabel: '无人装备出动', title: '无人装备协同出动' },
+      { id: 't-uav-deploy', time: '14:35', shortLabel: '无人感知部署', title: '无人感知节点部署' },
+      { id: 't-uav-exec', time: '14:40', shortLabel: '无人感知执行', title: '无人感知任务执行' },
+      { id: 't-signal', time: '14:45', shortLabel: '信号干扰', title: '通信信号受到干扰' },
+      { id: 't-rescue-start', time: '14:50', shortLabel: '救援装备出动', title: '专业救援装备协同出动' },
     ]
   },
   {
@@ -403,13 +405,15 @@ const accidentPoints = [
       { id: 'l-start', time: '15:00', shortLabel: '仿真开始', title: '油罐车仿真推演开始' },
       { id: 'l-normal', time: '15:05', shortLabel: '正常行驶', title: '油罐车正常行驶阶段' },
       { id: 'l-accident', time: '15:12', shortLabel: '事故发生（侧翻）', title: '油罐车发生侧翻事故' },
+      { id: 'l-uav-dispatch', time: '15:14', shortLabel: '无人机出动', title: '无人机出动' },
+      { id: 'l-uav-recon', time: '15:15', shortLabel: '无人机侦察', title: '无人机快速出动侦察' },
       { id: 'l-leak', time: '15:20', shortLabel: '次生灾害（泄露）', title: '罐体受损开始发生化学品泄露' },
       { id: 'l-fill', time: '15:35', shortLabel: '次生灾害（弥漫）', title: '泄露液体开始向四周大面积弥漫' },
-      { id: 'l-spread', time: '15:50', shortLabel: '次生灾害（扩散）', title: '挥发气体随风向周边区域扩散' },
-      { id: 'l-uav-start', time: '15:55', shortLabel: '无人装备出动', title: '无人装备协同出动' },
-      { id: 'l-uav-deploy', time: '16:00', shortLabel: '无人感知部署', title: '无人感知节点部署' },
-      { id: 'l-uav-exec', time: '16:05', shortLabel: '无人感知执行', title: '无人感知任务执行' },
-      { id: 'l-rescue-start', time: '16:10', shortLabel: '救援装备出动', title: '专业救援装备协同出动' },
+      { id: 'l-uav-start', time: '15:40', shortLabel: '无人装备出动', title: '无人装备协同出动' },
+      { id: 'l-uav-deploy', time: '15:45', shortLabel: '无人感知部署', title: '无人感知节点部署' },
+      { id: 'l-uav-exec', time: '15:50', shortLabel: '无人感知执行', title: '无人感知任务执行' },
+      { id: 'l-signal', time: '15:55', shortLabel: '信号干扰', title: '通信信号受到干扰' },
+      { id: 'l-rescue-start', time: '16:00', shortLabel: '救援装备出动', title: '专业救援装备协同出动' },
     ]
   }
 ]
@@ -543,7 +547,8 @@ function selectPhase(phaseIndex) {
         fireAdjust.emissionRate = 0;
         if (smokeParticle) smokeParticle.show = true;
         if (fireParticle) fireParticle.show = false;
-      } else if (phaseIndex === 4) { // 初期爆发
+      } else if (phaseIndex === 3 || phaseIndex === 4) { // 无人机出动 / 无人机侦察 (use accident effects, maybe keep same as phase 3/4)
+      } else if (phaseIndex === 5) { // 初期爆发
         smokeAdjust.imageWidth = 25;
         smokeAdjust.imageHeight = 25;
         smokeAdjust.emissionRate = 70;
@@ -565,7 +570,7 @@ function selectPhase(phaseIndex) {
         fireAdjust.windDirection = 60.0;
         if (smokeParticle) smokeParticle.show = true;
         if (fireParticle) fireParticle.show = true;
-      } else if (phaseIndex === 5) { // 剧烈燃烧
+      } else if (phaseIndex === 6) { // 剧烈燃烧
         smokeAdjust.imageWidth = 38;
         smokeAdjust.imageHeight = 38;
         smokeAdjust.emissionRate = 110;
@@ -587,7 +592,7 @@ function selectPhase(phaseIndex) {
         fireAdjust.windDirection = 90.0;
         if (smokeParticle) smokeParticle.show = true;
         if (fireParticle) fireParticle.show = true;
-      } else if (phaseIndex === 6) { // 控制减弱
+      } else if (phaseIndex === 7) { // 控制减弱
         smokeAdjust.imageWidth = 15;
         smokeAdjust.imageHeight = 15;
         smokeAdjust.emissionRate = 20;
@@ -612,7 +617,7 @@ function selectPhase(phaseIndex) {
       }
     } else {
       // 黄冈市泄露扩散 (货车追尾引发的泄露/起火等扩散)
-      if (phaseIndex === 3) {
+      if (phaseIndex === 3 || phaseIndex === 4) {
         diffusionAdjust.imageWidth = 6;
         diffusionAdjust.imageHeight = 6;
         diffusionAdjust.emissionRate = 30;
@@ -622,7 +627,7 @@ function selectPhase(phaseIndex) {
         diffusionAdjust.drag = 0.98;
         diffusionAdjust.windSpeed = 3.0;
         diffusionAdjust.windDirection = 45.0;
-      } else if (phaseIndex === 4) {
+      } else if (phaseIndex === 5) {
         diffusionAdjust.imageWidth = 9;
         diffusionAdjust.imageHeight = 9;
         diffusionAdjust.emissionRate = 75;
@@ -632,7 +637,7 @@ function selectPhase(phaseIndex) {
         diffusionAdjust.drag = 0.96;
         diffusionAdjust.windSpeed = 5.0;
         diffusionAdjust.windDirection = 60.0;
-      } else if (phaseIndex === 5) {
+      } else if (phaseIndex === 6) {
         diffusionAdjust.imageWidth = 15;
         diffusionAdjust.imageHeight = 15;
         diffusionAdjust.emissionRate = 135;
@@ -642,7 +647,7 @@ function selectPhase(phaseIndex) {
         diffusionAdjust.drag = 0.94;
         diffusionAdjust.windSpeed = 10.0;
         diffusionAdjust.windDirection = 90.0;
-      } else if (phaseIndex === 6) {
+      } else if (phaseIndex === 7) {
         diffusionAdjust.imageWidth = 5;
         diffusionAdjust.imageHeight = 5;
         diffusionAdjust.emissionRate = 15;
@@ -658,7 +663,7 @@ function selectPhase(phaseIndex) {
     // 事故线B：油罐车泄露现场
     if (currentCity.value === 'xiantao') {
       // 仙桃市发生油罐车泄露，引发流淌火灾和剧烈烟雾
-      if (phaseIndex === 3) {
+      if (phaseIndex === 3 || phaseIndex === 4) {
         smokeAdjust.imageWidth = 15;
         smokeAdjust.imageHeight = 15;
         smokeAdjust.emissionRate = 35;
@@ -672,7 +677,7 @@ function selectPhase(phaseIndex) {
         fireAdjust.emissionRate = 0;
         if (smokeParticle) smokeParticle.show = true;
         if (fireParticle) fireParticle.show = false;
-      } else if (phaseIndex === 4) {
+      } else if (phaseIndex === 5) {
         smokeAdjust.imageWidth = 22;
         smokeAdjust.imageHeight = 22;
         smokeAdjust.emissionRate = 60;
@@ -694,7 +699,7 @@ function selectPhase(phaseIndex) {
         fireAdjust.windDirection = 240.0;
         if (smokeParticle) smokeParticle.show = true;
         if (fireParticle) fireParticle.show = true;
-      } else if (phaseIndex === 5) {
+      } else if (phaseIndex === 6) {
         smokeAdjust.imageWidth = 32;
         smokeAdjust.imageHeight = 32;
         smokeAdjust.emissionRate = 85;
@@ -716,7 +721,7 @@ function selectPhase(phaseIndex) {
         fireAdjust.windDirection = 210.0;
         if (smokeParticle) smokeParticle.show = true;
         if (fireParticle) fireParticle.show = true;
-      } else if (phaseIndex === 6) {
+      } else if (phaseIndex === 7) {
         smokeAdjust.imageWidth = 10;
         smokeAdjust.imageHeight = 10;
         smokeAdjust.emissionRate = 12;
@@ -733,7 +738,7 @@ function selectPhase(phaseIndex) {
       }
     } else {
       // 黄冈市泄露扩散 (油罐车气体大量扩散)
-      if (phaseIndex === 3) {
+      if (phaseIndex === 3 || phaseIndex === 4) {
         diffusionAdjust.imageWidth = 8;
         diffusionAdjust.imageHeight = 8;
         diffusionAdjust.emissionRate = 35;
@@ -743,7 +748,7 @@ function selectPhase(phaseIndex) {
         diffusionAdjust.drag = 0.98;
         diffusionAdjust.windSpeed = 1.5;
         diffusionAdjust.windDirection = 270.0;
-      } else if (phaseIndex === 4) {
+      } else if (phaseIndex === 5) {
         diffusionAdjust.imageWidth = 12;
         diffusionAdjust.imageHeight = 12;
         diffusionAdjust.emissionRate = 80;
@@ -753,7 +758,7 @@ function selectPhase(phaseIndex) {
         diffusionAdjust.drag = 0.96;
         diffusionAdjust.windSpeed = 4.5;
         diffusionAdjust.windDirection = 240.0;
-      } else if (phaseIndex === 5) {
+      } else if (phaseIndex === 6) {
         diffusionAdjust.imageWidth = 22;
         diffusionAdjust.imageHeight = 22;
         diffusionAdjust.emissionRate = 180;
@@ -763,7 +768,7 @@ function selectPhase(phaseIndex) {
         diffusionAdjust.drag = 0.93;
         diffusionAdjust.windSpeed = 12.0; // 强气流风速，有毒气云迅速推开
         diffusionAdjust.windDirection = 210.0;
-      } else if (phaseIndex === 6) {
+      } else if (phaseIndex === 7) {
         diffusionAdjust.imageWidth = 6;
         diffusionAdjust.imageHeight = 6;
         diffusionAdjust.emissionRate = 15;
@@ -856,38 +861,29 @@ function get2DParticleConfig(phaseIndex) {
     if (phaseIndex <= 1) { // 仿真开始/正常行驶
       config.smoke.emissionRate = 0
       config.fire.emissionRate = 0
-    } else if (phaseIndex === 2) { // 事故发生
-      config.smoke.emissionRate = 25
-      config.smoke.imageWidth = 12
-      config.smoke.imageHeight = 12
+    } else if (phaseIndex >= 2 && phaseIndex <= 4) { // 事故发生 / 无人机出动 / 无人机侦察 (暂无大范围烟雾与火焰)
+      config.smoke.emissionRate = 0
       config.fire.emissionRate = 0
-    } else if (phaseIndex === 3) { // 次生灾害（烟雾）
-      config.smoke.emissionRate = 55
-      config.smoke.imageWidth = 20
-      config.smoke.imageHeight = 20
-      config.fire.emissionRate = 10
-      config.fire.imageWidth = 12
-      config.fire.imageHeight = 12
-    } else if (phaseIndex === 4) { // 次生灾害（起火）
+    } else if (phaseIndex === 5) { // 次生灾害（烟雾）
       config.smoke.emissionRate = 70
-      config.fire.emissionRate = 35
-    } else if (phaseIndex === 5) { // 次生灾害（大火）
+      config.fire.emissionRate = 0
+    } else if (phaseIndex === 6) { // 次生灾害（大火）
       config.smoke.emissionRate = 110
       config.smoke.imageWidth = 32
       config.smoke.imageHeight = 32
       config.fire.emissionRate = 95
       config.fire.imageWidth = 30
       config.fire.imageHeight = 30
-    } else if (phaseIndex === 6) { // 无人装备出动
+    } else if (phaseIndex === 7) { // 无人装备出动
       config.smoke.emissionRate = 90
       config.fire.emissionRate = 80
-    } else if (phaseIndex === 7) { // 无人感知部署
+    } else if (phaseIndex === 8) { // 无人感知部署
       config.smoke.emissionRate = 70
       config.fire.emissionRate = 60
-    } else if (phaseIndex === 8) { // 无人感知执行
+    } else if (phaseIndex === 9) { // 无人感知执行
       config.smoke.emissionRate = 50
       config.fire.emissionRate = 45
-    } else if (phaseIndex === 9) { // 救援装备出动
+    } else if (phaseIndex === 10) { // 救援装备出动
       config.smoke.emissionRate = 15
       config.fire.emissionRate = 8
       config.smoke.imageWidth = 10
@@ -899,35 +895,29 @@ function get2DParticleConfig(phaseIndex) {
     // 油罐车泄漏扩散
     if (phaseIndex <= 1) {
       config.diffusion.emissionRate = 0
-    } else if (phaseIndex === 2) { // 事故发生（侧翻）
-      config.diffusion.emissionRate = 15
-      config.diffusion.imageWidth = 6
-      config.diffusion.imageHeight = 6
-    } else if (phaseIndex === 3) { // 次生灾害（泄露）
-      config.diffusion.emissionRate = 45
-      config.diffusion.imageWidth = 8
-      config.diffusion.imageHeight = 8
-    } else if (phaseIndex === 4) { // 次生灾害（弥漫）
+    } else if (phaseIndex >= 2 && phaseIndex <= 4) { // 事故发生 / 无人机出动 / 无人机侦察 (暂无泄露扩散)
+      config.diffusion.emissionRate = 0
+    } else if (phaseIndex === 5) { // 次生灾害（泄露）
       config.diffusion.emissionRate = 90
       config.diffusion.imageWidth = 14
       config.diffusion.imageHeight = 14
-    } else if (phaseIndex === 5) { // 次生灾害（扩散）
+    } else if (phaseIndex === 6) { // 次生灾害（扩散）
       config.diffusion.emissionRate = 180
       config.diffusion.imageWidth = 24
       config.diffusion.imageHeight = 24
-    } else if (phaseIndex === 6) { // 无人装备出动
+    } else if (phaseIndex === 7) { // 无人装备出动
       config.diffusion.emissionRate = 130
       config.diffusion.imageWidth = 20
       config.diffusion.imageHeight = 20
-    } else if (phaseIndex === 7) { // 无人感知部署
+    } else if (phaseIndex === 8) { // 无人感知部署
       config.diffusion.emissionRate = 95
       config.diffusion.imageWidth = 15
       config.diffusion.imageHeight = 15
-    } else if (phaseIndex === 8) { // 无人感知执行
+    } else if (phaseIndex === 9) { // 无人感知执行
       config.diffusion.emissionRate = 65
       config.diffusion.imageWidth = 10
       config.diffusion.imageHeight = 10
-    } else if (phaseIndex === 9) { // 救援装备出动
+    } else if (phaseIndex === 10) { // 救援装备出动
       config.diffusion.emissionRate = 20
       config.diffusion.imageWidth = 5
       config.diffusion.imageHeight = 5
@@ -1086,15 +1076,26 @@ watch([activePhaseIndex, activeScene], ([phaseIdx, scene]) => {
   // 2. 同步更新 3D 粒子和 3D 模型
   if (viewer) {
     update3DModelsVisibility()
-    // 同步更新 3D 粒子的可见性
-    if (smokeParticle) smokeParticle.show = (currentCity.value === 'xiantao' && phaseIdx >= 2)
-    if (fireParticle) fireParticle.show = (currentCity.value === 'xiantao' && phaseIdx >= 4)
-    if (diffusionParticle) diffusionParticle.show = (currentCity.value === 'huanggang' && phaseIdx >= 2)
+    // 同步更新 3D 粒子的可见性：烟雾与泄露在阶段 >= 5 (次生灾害烟雾/泄露) 才显示；火焰在阶段 >= 6 (次生灾害起火) 显示
+    if (smokeParticle) smokeParticle.show = (currentCity.value === 'xiantao' && phaseIdx >= 5)
+    if (fireParticle) fireParticle.show = (currentCity.value === 'xiantao' && phaseIdx >= 6)
+    if (diffusionParticle) diffusionParticle.show = (currentCity.value === 'huanggang' && phaseIdx >= 5)
     
-    // 同步更新 CZML 实体可见性，如果是第6阶段（无人装备出动），场景中只需要有粒子效果，隐藏所有CZML模型和规划路线
+    // 同步更新 CZML 实体可见性
     if (currentCzmlDataSource) {
+      const multiAgentPrefixes = ['Agent_', 'AgentPath_', 'AgentPOI_', 'AgentCP_'];
       currentCzmlDataSource.entities.values.forEach(entity => {
-        entity.show = (Number(phaseIdx) !== 6);
+        const id = entity.id;
+        if (id && multiAgentPrefixes.some(prefix => id.startsWith(prefix))) {
+            const shouldShow = (Number(phaseIdx) >= 10);
+            entity.show = shouldShow;
+        } else if (id === 'Car_Path' || id === 'Car_Path_glow' || id === 'Car') {
+            entity.show = (Number(phaseIdx) >= 7);
+        } else if (id === 'UAV_Path' || id === 'UAV_Path_glow' || id === 'UAV') {
+            entity.show = (Number(phaseIdx) >= 3);
+        } else {
+            entity.show = (Number(phaseIdx) !== 6);
+        }
       });
     }
   }
@@ -1166,10 +1167,20 @@ const loadMission = async () => {
     if (!viewer) return
     currentCzmlDataSource = dataSource
     
-    // Clear availability and hide in phase 6
+    // Clear availability and handle visibility
+    const multiAgentPrefixes = ['Agent_', 'AgentPath_', 'AgentPOI_', 'AgentCP_'];
     dataSource.entities.values.forEach(entity => {
       entity.availability = undefined;
-      entity.show = (Number(activePhaseIndex.value) !== 6);
+      const id = entity.id;
+      if (id && multiAgentPrefixes.some(prefix => id.startsWith(prefix))) {
+          entity.show = (Number(activePhaseIndex.value) >= 10);
+      } else if (id === 'Car_Path' || id === 'Car_Path_glow' || id === 'Car') {
+          entity.show = (Number(activePhaseIndex.value) >= 7);
+      } else if (id === 'UAV_Path' || id === 'UAV_Path_glow' || id === 'UAV') {
+          entity.show = (Number(activePhaseIndex.value) >= 3);
+      } else {
+          entity.show = (Number(activePhaseIndex.value) !== 6);
+      }
     });
 
     viewer.dataSources.add(dataSource)
@@ -1195,7 +1206,8 @@ const generate2DDeduction = async (city) => {
   errorMessage.value = ''
   const baseUrl = getCollaborativeCommandCenterBaseUrl()
   try {
-    const response = await fetch(`${baseUrl}/api/run_3d_strategy?end_point=${endpoint}`)
+    // 使用 run_multi_agent 确保二维和三维推演始终带有协同救援的路径
+    const response = await fetch(`${baseUrl}/api/run_multi_agent?end_point=${endpoint}`)
     if (!response.ok) {
       console.warn('后端生成策略返回非200状态码，将启用本地/历史二维推演缓存显示。')
     }
@@ -1297,7 +1309,6 @@ async function initCityRegionsAndLabels() {
   persistentCityEntities = [];
 
   const citiesConfig = [
-    { name: '武汉市', file: 'wuhan.json', color: '#00ffd8', center: [114.30, 30.59] },
     { name: '黄冈市', file: 'huanggang.json', color: '#ffd700', center: [114.87, 30.61] },
     { name: '仙桃市', file: 'xiantao.json', color: '#ff007f', center: [113.43, 30.29] }
   ];
@@ -1432,7 +1443,7 @@ const flyToCity = async (city) => {
       });
     } else if (city === 'huanggang') {
       viewer.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(114.90, 30.70, 380000), // 黄冈+武汉：中心微调以同时容纳并看清两市及救援路径
+        destination: Cesium.Cartesian3.fromDegrees(114.87, 30.61, 150000), // 黄冈视角：高度适中
         duration: 2.0
       });
     }

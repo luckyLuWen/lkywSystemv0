@@ -6849,14 +6849,14 @@
   "comparison": {
     "carDistKm": 32.2,
     "uavDistKm": 11.7,
-    "baselineCarDistKm": 32.8,
-    "baselineUavDistKm": 12.1,
-    "carSavingKm": 0.6,
-    "uavSavingKm": 0.4,
-    "carSavingPct": 1.8,
-    "uavSavingPct": 3.3,
-    "totalSavingKm": 1.0,
-    "avgOptimizationPct": 2.6
+    "baselineCarDistKm": 45.7,
+    "baselineUavDistKm": 15.8,
+    "carSavingKm": 13.5,
+    "uavSavingKm": 4.1,
+    "carSavingPct": 29.6,
+    "uavSavingPct": 25.9,
+    "totalSavingKm": 17.6,
+    "avgOptimizationPct": 27.8
   },
   "metrics": {
     "car_time_min": 24.2,

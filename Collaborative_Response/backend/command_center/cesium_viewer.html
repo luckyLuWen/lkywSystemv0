@@ -5,9 +5,56 @@
     <title>三维态势地图</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        html, body, #cesiumContainer {
-            width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
-            background: #020617;
+        html, body, #cesiumContainer { width:100%; height:100%; margin:0; padding:0; overflow:hidden; background:#020617; }
+        .overlay {
+            position:absolute; top:16px; left:16px; z-index:10;
+            background:rgba(10,18,32,0.85); color:#e2e8f0; padding:10px 14px; border-radius:8px;
+            font:12px/1.6 "Microsoft YaHei",sans-serif; border:1px solid rgba(96,165,250,0.2);
+            backdrop-filter:blur(8px); min-width:200px;
+        }
+        .overlay .val { color:#60a5fa; font-weight:700; }
+        .track-btns { position:absolute; top:110px; left:16px; z-index:10; display:flex; gap:6px; }
+        .track-btn {
+            padding:5px 12px; border-radius:5px; border:1px solid rgba(96,165,250,0.25);
+            background:rgba(10,18,32,0.75); color:#94a3b8; font-size:11px;
+            cursor:pointer; font-family:"Microsoft YaHei",sans-serif; transition:all 0.2s;
+        }
+        .track-btn.active { color:#60a5fa; border-color:#60a5fa; background:rgba(96,165,250,0.12); }
+        .track-btn:hover { border-color:#60a5fa; color:#e2e8f0; }
+ 
+        /* Premium Sci-Fi Map Legend */
+        .legend-panel {
+            position: absolute; top: 56px; right: 16px; z-index: 10;
+            background: rgba(10, 18, 32, 0.85); color: #e2e8f0; padding: 12px 16px; border-radius: 8px;
+            font: 11px/1.6 "Microsoft YaHei", sans-serif; border: 1px solid rgba(96, 165, 250, 0.25);
+            backdrop-filter: blur(8px); min-width: 170px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            pointer-events: none;
+        }
+        .legend-title {
+            font-size: 12px; font-weight: 700; color: #60a5fa; margin-bottom: 8px;
+            border-bottom: 1px solid rgba(96, 165, 250, 0.25); padding-bottom: 4px;
+            letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px;
+        }
+        .legend-section {
+            margin-bottom: 8px;
+        }
+        .legend-section:last-child {
+            margin-bottom: 0;
+        }
+        .legend-section-title {
+            font-size: 9px; color: #64748b; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.5px;
+        }
+        .legend-item {
+            display: flex; align-items: center; gap: 8px; margin: 4px 0; color: #cbd5e1;
+        }
+        .legend-color-dot {
+            width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0;
+        }
+        .legend-color-line {
+            width: 14px; height: 3px; display: inline-block; flex-shrink: 0; border-radius: 1px;
+        }
+        .legend-color-box {
+            width: 12px; height: 8px; display: inline-block; flex-shrink: 0; border-radius: 1px;
         }
     </style>
     <script>window.CESIUM_BASE_URL = "/Cesium/";</script>
@@ -16,15 +63,86 @@
 </head>
 <body>
     <div id="cesiumContainer"></div>
+ 
+    <div class="overlay" id="info-panel">
+        <div>⏱ 播放时间 <span class="val" id="disp-time">--:--:--</span></div>
+        <div>🚗 无人车 <span class="val" id="disp-car">--</span></div>
+        <div>🛸 无人机 <span class="val" id="disp-uav">--</span></div>
+    </div>
+ 
+    <div class="track-btns">
+        <button class="track-btn active" onclick="trackEntity('UAV')">跟踪无人机</button>
+        <button class="track-btn" onclick="trackEntity('Car')">跟踪无人车</button>
+        <button class="track-btn" onclick="trackEntity(null)">自由视角</button>
+    </div>
+ 
+    <!-- Map Legend -->
+    <div class="legend-panel" id="legend-panel">
+        <div class="legend-title">🗺️ 地图要素图例</div>
+        
+        <div class="legend-section">
+            <div class="legend-section-title">五类救援智体 (POI)</div>
+            <div class="legend-item">
+                <span class="legend-color-dot" style="background: rgb(249, 115, 22); box-shadow: 0 0 6px rgb(249, 115, 22);"></span>
+                <span>消防灭火 (Fire)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color-dot" style="background: rgb(59, 130, 246); box-shadow: 0 0 6px rgb(59, 130, 246);"></span>
+                <span>公安交警 (Police)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color-dot" style="background: rgb(34, 197, 94); box-shadow: 0 0 6px rgb(34, 197, 94);"></span>
+                <span>医疗急救 (Medical)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color-dot" style="background: rgb(168, 85, 247); box-shadow: 0 0 6px rgb(168, 85, 247);"></span>
+                <span>防化部队 (Hazmat)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color-dot" style="background: rgb(148, 163, 184); box-shadow: 0 0 6px rgb(148, 163, 184);"></span>
+                <span>交通路政 (Road)</span>
+            </div>
+        </div>
+ 
+        <div class="legend-section">
+            <div class="legend-section-title">寻优路线</div>
+            <div class="legend-item">
+                <span class="legend-color-line" style="background: rgb(255, 0, 0); box-shadow: 0 0 4px rgb(255, 0, 0);"></span>
+                <span>无人机路径 (UAV)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color-line" style="background: rgb(0, 0, 255); box-shadow: 0 0 4px rgb(0, 0, 255);"></span>
+                <span>无人车路径 (UGV)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color-dot" style="background: transparent; border: 1.5px solid #fff; box-shadow: 0 0 4px #fff; width: 6px; height: 6px;"></span>
+                <span>★ 优选推荐站点</span>
+            </div>
+        </div>
+ 
+        <div class="legend-section">
+            <div class="legend-section-title">态势要素</div>
+            <div class="legend-item">
+                <span class="legend-color-box" style="background: rgba(255, 165, 0, 0.4); border: 1px solid rgb(255, 165, 0);"></span>
+                <span>动态路阻禁行区</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color-box" style="background: rgba(0, 0, 255, 0.25); border: 1px solid rgba(0, 0, 255, 0.65);"></span>
+                <span>常态化拥堵区域</span>
+            </div>
+        </div>
+    </div>
+ 
     <script>
         Cesium.Ion.defaultAccessToken =
             "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyYTUwYmE4Zi01ZjZlLTQ0MjAtYWMwNS0yYjBkZGFiM2RmOTUiLCJpZCI6MzU4MzQ0LCJpYXQiOjE3NjI1Nzc2NjR9.q9QoG-_99QZ2R2TlUYjiWGhn0-S5I22FFGuou_NAE3Q";
-
+ 
         const viewer = new Cesium.Viewer("cesiumContainer", {
             animation: true, timeline: true,
             baseLayerPicker: false, geocoder: false,
-            sceneModePicker: false, navigationHelpButton: false, infoBox: true,
+            sceneModePicker: false, navigationHelpButton: false, infoBox: false,
         });
+        viewer.clock.multiplier = 1.0;
         viewer.cesiumWidget.creditContainer.style.display = "none";
 
         async function addBuildings() {
@@ -35,12 +153,73 @@
             } catch (e) { console.warn("建筑加载失败", e); }
         }
 
+        let missionDs = null;
         async function loadMission() {
-            const ds = await Cesium.CzmlDataSource.load("/mission.czml?t=" + Date.now());
+            missionDs = await Cesium.CzmlDataSource.load("/mission.czml?t=" + Date.now());
             viewer.dataSources.removeAll();
-            viewer.dataSources.add(ds);
-            await viewer.flyTo(ds, { offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-30), 1600) });
+            viewer.dataSources.add(missionDs);
+            // 默认飞行到一个宽广的俯瞰视角，刚好能同时看到起点和终点
+            await viewer.flyTo(missionDs, { 
+                offset: new Cesium.HeadingPitchRange(
+                    Cesium.Math.toRadians(0), 
+                    Cesium.Math.toRadians(-45), 
+                    13500
+                ) 
+            });
+            // 默认保持自由视角观测全局
+            setTimeout(() => {
+                viewer.trackedEntity = undefined;
+                document.querySelectorAll('.track-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.track-btn')[2].classList.add('active'); // 选中自由视角
+            }, 500);
         }
+
+        // 跟踪模式
+        function trackEntity(id) {
+            document.querySelectorAll('.track-btn').forEach(b => b.classList.remove('active'));
+            if (id) {
+                viewer.trackedEntity = viewer.entities.getById(id) || null;
+                event.target.classList.add('active');
+            } else {
+                viewer.trackedEntity = undefined;
+                event.target.classList.add('active');
+            }
+        }
+
+        // 实时信息更新
+        viewer.clock.onTick.addEventListener(function(clock) {
+            const t = clock.currentTime;
+            const d = Cesium.JulianDate.toDate(t);
+            document.getElementById('disp-time').textContent =
+                d.getUTCHours().toString().padStart(2,'0')+':'+
+                d.getUTCMinutes().toString().padStart(2,'0')+':'+
+                d.getUTCSeconds().toString().padStart(2,'0');
+
+            if (missionDs && missionDs.entities) {
+                // 查找 Car 和 UAV 实体，计算距终点的剩余距离
+                const carE = missionDs.entities.getById('Car');
+                const uavE = missionDs.entities.getById('UAV');
+                if (carE && carE.position) {
+                    const pos = carE.position.getValue(clock.currentTime);
+                    if (pos) {
+                        const cart = Cesium.Cartographic.fromCartesian(pos);
+                        document.getElementById('disp-car').textContent =
+                            (Cesium.Math.toDegrees(cart.longitude)).toFixed(4)+'°E '+
+                            (Cesium.Math.toDegrees(cart.latitude)).toFixed(4)+'°N';
+                    }
+                }
+                if (uavE && uavE.position) {
+                    const pos = uavE.position.getValue(clock.currentTime);
+                    if (pos) {
+                        const cart = Cesium.Cartographic.fromCartesian(pos);
+                        document.getElementById('disp-uav').textContent =
+                            (Cesium.Math.toDegrees(cart.longitude)).toFixed(4)+'°E '+
+                            (Cesium.Math.toDegrees(cart.latitude)).toFixed(4)+'°N  '+
+                            cart.height.toFixed(0)+'m';
+                    }
+                }
+            }
+        });
 
         addBuildings();
         loadMission().catch(e => console.error("CZML 加载失败", e));
