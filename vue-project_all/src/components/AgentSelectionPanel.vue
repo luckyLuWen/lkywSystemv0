@@ -5,15 +5,15 @@
         <h3 class="card-title">多智能体全局寻优决策日志</h3>
         <p class="card-subtitle">Global Optimization Log</p>
       </div>
-      <span class="status-badge computing pulse">系统决策中</span>
+      <span class="status-badge settled">决策已锚定</span>
     </div>
 
     <div class="scroll-container log-container">
       <!-- 终端打字效果区 -->
       <div class="terminal-logs">
-        <div class="log-line" style="animation-delay: 0.1s;"><span>[SYS]</span> 启动多智能体并发寻优... 正在抽取区域 OSM 路网拓扑图谱...</div>
+        <div class="log-line" style="animation-delay: 0.1s;"><span>[SYS]</span> 启动多智能体并发寻优... 正在获取区域 OSM 路网拓扑...</div>
         <div class="log-line" style="animation-delay: 0.6s;"><span>[SYS]</span> Dijkstra 加权算法启动，执行动态路阻因子剔除...</div>
-        <div class="log-line" style="animation-delay: 1.2s;"><span>[SYS]</span> 对比空间欧氏距离与真实拓扑路网距离，多目标决策已锁定最优解。</div>
+        <div class="log-line" style="animation-delay: 1.2s;"><span>[SYS]</span> 真实拓扑加权寻优比对完成，决策结果已落地。</div>
       </div>
 
       <!-- 五路决策矩阵 -->
@@ -84,6 +84,7 @@ const props = defineProps({
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
   margin-top: 16px;
   animation: slideInRight 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
 }
 
 @keyframes slideInRight {
@@ -124,6 +125,11 @@ const props = defineProps({
   background: rgba(14, 165, 233, 0.15);
   color: #38bdf8;
   border: 1px solid rgba(56, 189, 248, 0.3);
+}
+.status-badge.settled {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 .pulse {
   animation: pulse-border 1.5s infinite;

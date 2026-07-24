@@ -1,0 +1,140 @@
+{
+  "scenario": "leak",
+  "agents": {
+    "medical": {
+      "label": "医疗急救",
+      "color": "#22c55e",
+      "icon": "plus",
+      "poi": {
+        "name": "团风县中医医院",
+        "lat": 30.6423,
+        "lon": 114.8735,
+        "dist_km": 2.18,
+        "net_dist_km": 3.47
+      },
+      "has_path": true,
+      "losers": [
+        {
+          "name": "团风县人民医院",
+          "euclidean_km": 2.71,
+          "net_dist_km": 3.48,
+          "reason": "路网距离较远 (3.48 km > 3.47 km)"
+        },
+        {
+          "name": "黄冈市黄州区人民医院",
+          "euclidean_km": 19.99,
+          "net_dist_km": 21.36,
+          "reason": "路网距离较远 (21.36 km > 3.47 km)"
+        }
+      ]
+    },
+    "fire": {
+      "label": "消防灭火",
+      "color": "#f97316",
+      "icon": "fire",
+      "poi": {
+        "name": "团风县公安消防大队",
+        "lat": 30.6426,
+        "lon": 114.8751,
+        "dist_km": 2.07,
+        "net_dist_km": 3.72
+      },
+      "has_path": true,
+      "losers": [
+        {
+          "name": "黄冈市黄州区路口镇专职消防队",
+          "euclidean_km": 13.13,
+          "net_dist_km": 17.12,
+          "reason": "路网距离较远 (17.12 km > 3.72 km)"
+        },
+        {
+          "name": "黄冈市消防救援支队特勤站",
+          "euclidean_km": 19.71,
+          "net_dist_km": 21.78,
+          "reason": "路网距离较远 (21.78 km > 3.72 km)"
+        }
+      ]
+    },
+    "police": {
+      "label": "公安交警",
+      "color": "#3b82f6",
+      "icon": "flag",
+      "poi": {
+        "name": "团风县公安局交警大队",
+        "lat": 30.6391,
+        "lon": 114.8716,
+        "dist_km": 2.16,
+        "net_dist_km": 3.03
+      },
+      "has_path": true,
+      "losers": [
+        {
+          "name": "团风县团风水陆派出所",
+          "euclidean_km": 2.39,
+          "net_dist_km": 3.2,
+          "reason": "路网距离较远 (3.2 km > 3.03 km)"
+        },
+        {
+          "name": "黄冈市公安局黄州分局",
+          "euclidean_km": 20.13,
+          "net_dist_km": 21.49,
+          "reason": "路网距离较远 (21.49 km > 3.03 km)"
+        }
+      ]
+    },
+    "hazmat": {
+      "label": "防化部队",
+      "color": "#a855f7",
+      "icon": "flash",
+      "poi": {
+        "name": "团风县应急管理局",
+        "lat": 30.6405,
+        "lon": 114.8738,
+        "dist_km": 2.04,
+        "net_dist_km": 2.67
+      },
+      "has_path": true,
+      "losers": [
+        {
+          "name": "团风县消防特勤防化站",
+          "euclidean_km": 2.91,
+          "net_dist_km": 3.68,
+          "reason": "路网距离较远 (3.68 km > 2.67 km)"
+        },
+        {
+          "name": "黄冈市应急管理局",
+          "euclidean_km": 19.87,
+          "net_dist_km": 21.12,
+          "reason": "路网距离较远 (21.12 km > 2.67 km)"
+        }
+      ]
+    },
+    "road": {
+      "label": "交通路政",
+      "color": "#94a3b8",
+      "icon": "wrench",
+      "poi": {
+        "name": "团风县路政管理大队",
+        "lat": 30.6412,
+        "lon": 114.878,
+        "dist_km": 1.76,
+        "net_dist_km": 2.35
+      },
+      "has_path": true,
+      "losers": [
+        {
+          "name": "团风县交通运输局",
+          "euclidean_km": 1.9,
+          "net_dist_km": 2.74,
+          "reason": "路网距离较远 (2.74 km > 2.35 km)"
+        },
+        {
+          "name": "黄冈市公路管理局",
+          "euclidean_km": 20.03,
+          "net_dist_km": 21.58,
+          "reason": "路网距离较远 (21.58 km > 2.35 km)"
+        }
+      ]
+    }
+  }
+}
