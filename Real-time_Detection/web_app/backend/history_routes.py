@@ -11,7 +11,14 @@ def list_history():
     offset = request.args.get('offset', 0, type=int)
     model_name = request.args.get('model', '').strip() or None
     label = request.args.get('label', '').strip() or None
-    records = get_detections(limit=limit, offset=offset, model_name=model_name, label=label)
+    source_type = request.args.get('source_type', '').strip() or None
+    records = get_detections(
+        limit=limit,
+        offset=offset,
+        model_name=model_name,
+        label=label,
+        source_type=source_type,
+    )
     return jsonify({'success': True, 'records': records})
 
 

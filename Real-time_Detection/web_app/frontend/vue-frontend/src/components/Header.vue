@@ -1,7 +1,7 @@
 <template>
   <header class="header">
     <div class="platform-title">
-      <strong>[ 两客一危交通事故检测 ]</strong>
+      <strong>[ 两客一危交通事故智能检测 ]</strong>
       
     </div>
 
