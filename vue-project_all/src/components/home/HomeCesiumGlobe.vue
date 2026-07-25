@@ -4346,8 +4346,8 @@ const currentStoryDetectionScenario = computed(() => {
 function updateStoryDetectionPopupPosition() {
   const canvas = viewer?.scene?.canvas
   const width = canvas?.clientWidth || window.innerWidth || 1200
-  detectionPopup.x = width * 0.5
-  detectionPopup.y = 76
+  detectionPopup.x = width * 0.7
+  detectionPopup.y = 190
 }
 
 function isTruckStoryline() {
@@ -4595,11 +4595,14 @@ const loadMission = async (isMultiAgent = false) => {
     currentMissionDataSource = dataSource;
 
     const phaseIdx = Number(props.activePhaseIndex);
+    // 第 12 阶段是“救援装备出动”：此时只显示多智能体救援路线，不能复用无人装备阶段的路径。
+    const showAutonomousUavRoute = phaseIdx >= 3 && phaseIdx < 11 && !isMultiAgent;
+    const showAutonomousUgvRoute = phaseIdx >= 7 && phaseIdx < 11 && !isMultiAgent;
 
     // 让 CZML 的 UAV 和 Car 实体位置与自定义 3D 模型位置完全对齐，避免分叉
     const czmlCar = dataSource.entities.getById('Car');
     if (czmlCar) {
-      czmlCar.show = (phaseIdx >= 7);
+      czmlCar.show = showAutonomousUgvRoute;
       czmlCar.path = undefined; // 必须将 path 设为 undefined，否则 CallbackProperty 导致 Cesium PathVisualizer 在更新轨迹线时崩溃
       if (!czmlCar.originalPosition) {
         czmlCar.originalPosition = czmlCar.position;
@@ -4616,7 +4619,7 @@ const loadMission = async (isMultiAgent = false) => {
     
     const czmlUav = dataSource.entities.getById('UAV');
     if (czmlUav) {
-      czmlUav.show = (phaseIdx >= 3);
+      czmlUav.show = showAutonomousUavRoute;
       czmlUav.path = undefined; // 必须将 path 设为 undefined，否则 CallbackProperty 导致 Cesium PathVisualizer 在更新轨迹线时崩溃
       if (!czmlUav.originalPosition) {
         czmlUav.originalPosition = czmlUav.position;
@@ -4634,26 +4637,26 @@ const loadMission = async (isMultiAgent = false) => {
     // 确保从 CZML 加载的规划路线实体在地图上根据阶段可见
     const uavPath = dataSource.entities.getById('UAV_Path');
     if (uavPath) {
-      uavPath.show = (phaseIdx >= 3);
-      if (uavPath.polyline) uavPath.polyline.show = (phaseIdx >= 3);
+      uavPath.show = showAutonomousUavRoute;
+      if (uavPath.polyline) uavPath.polyline.show = showAutonomousUavRoute;
     }
     const uavPathGlow = dataSource.entities.getById('UAV_Path_glow');
     if (uavPathGlow) {
-      uavPathGlow.show = (phaseIdx >= 3);
-      if (uavPathGlow.polyline) uavPathGlow.polyline.show = (phaseIdx >= 3);
+      uavPathGlow.show = showAutonomousUavRoute;
+      if (uavPathGlow.polyline) uavPathGlow.polyline.show = showAutonomousUavRoute;
     }
     const carPath = dataSource.entities.getById('Car_Path');
     if (carPath) {
-      carPath.show = (phaseIdx >= 7);
+      carPath.show = showAutonomousUgvRoute;
       if (carPath.polyline) {
-        carPath.polyline.show = (phaseIdx >= 7);
+        carPath.polyline.show = showAutonomousUgvRoute;
       }
     }
     const carPathGlow = dataSource.entities.getById('Car_Path_glow');
     if (carPathGlow) {
-      carPathGlow.show = (phaseIdx >= 7);
+      carPathGlow.show = showAutonomousUgvRoute;
       if (carPathGlow.polyline) {
-        carPathGlow.polyline.show = (phaseIdx >= 7);
+        carPathGlow.polyline.show = showAutonomousUgvRoute;
       }
     }
 
@@ -7034,11 +7037,11 @@ function updateTankerSequence(phaseIndex, pointId = '') {
         entity.show = !modelsReadyStatus[entity.id]
       }
     })
-    const entity = tankerEntities.find(e => e.id === targetModelId)
-    if (entity) {
-      const durationMap = { 1: 3, 2: 2, 3: 3, 4: 3, 5: 3, 6: 3 }
-      const duration = durationMap[phaseIndex] || 3
-      playEntityAnimation(entity, false, duration)
+      const entity = tankerEntities.find(e => e.id === targetModelId)
+      if (entity) {
+        const durationMap = { 1: 3, 2: 2, 3: 3, 4: 3, 5: 3, 6: 3 }
+        const duration = durationMap[phaseIndex] || 3
+        playEntityAnimation(entity, false, duration)
     }
   } else if (!targetModelId) {
     // 阶段0（仿真开始）：对于未加载就绪的模型，保持 show = true 允许 Cesium 静默预加载 GLB
@@ -9856,51 +9859,54 @@ function updatePhaseScene(index, animate = false) {
 } else {
         // 同事的补丁：如果数据源已加载，显式确保规划路线可见，防止 Bug 导致线段丢失
         if (currentMissionDataSource) {
+            // 第 12 阶段仅保留多智能体救援路线，避免等待救援规划时残留无人装备路线。
+            const showAutonomousUavRoute = index >= 3 && index < 11;
+            const showAutonomousUgvRoute = index >= 7 && index < 11;
             const uavPath = currentMissionDataSource.entities.getById('UAV_Path');
             if (uavPath) {
-              uavPath.show = (index >= 3);
-              if (uavPath.polyline) uavPath.polyline.show = (index >= 3);
+              uavPath.show = showAutonomousUavRoute;
+              if (uavPath.polyline) uavPath.polyline.show = showAutonomousUavRoute;
             }
             const uavPathGlow = currentMissionDataSource.entities.getById('UAV_Path_glow');
             if (uavPathGlow) {
-              uavPathGlow.show = (index >= 3);
-              if (uavPathGlow.polyline) uavPathGlow.polyline.show = (index >= 3);
+              uavPathGlow.show = showAutonomousUavRoute;
+              if (uavPathGlow.polyline) uavPathGlow.polyline.show = showAutonomousUavRoute;
             }
 
             const carPath = currentMissionDataSource.entities.getById('Car_Path');
             if (carPath) {
-              carPath.show = (index >= 7);
-              if (carPath.polyline) carPath.polyline.show = (index >= 7);
+              carPath.show = showAutonomousUgvRoute;
+              if (carPath.polyline) carPath.polyline.show = showAutonomousUgvRoute;
             }
             const carPathGlow = currentMissionDataSource.entities.getById('Car_Path_glow');
             if (carPathGlow) {
-              carPathGlow.show = (index >= 7);
-              if (carPathGlow.polyline) carPathGlow.polyline.show = (index >= 7);
+              carPathGlow.show = showAutonomousUgvRoute;
+              if (carPathGlow.polyline) carPathGlow.polyline.show = showAutonomousUgvRoute;
             }
             const czmlCar = currentMissionDataSource.entities.getById('Car');
             if (czmlCar) {
-              czmlCar.show = (index >= 7);
+              czmlCar.show = showAutonomousUgvRoute;
             }
             if (highlightPathEntity) {
-              highlightPathEntity.show = (index >= 7);
-              if (highlightPathEntity.polyline) highlightPathEntity.polyline.show = (index >= 7);
+              highlightPathEntity.show = showAutonomousUgvRoute;
+              if (highlightPathEntity.polyline) highlightPathEntity.polyline.show = showAutonomousUgvRoute;
             }
             const highlightPath = viewer && viewer.entities ? viewer.entities.getById('Car_Path_Highlight') : null;
             if (highlightPath) {
-              highlightPath.show = (index >= 7);
-              if (highlightPath.polyline) highlightPath.polyline.show = (index >= 7);
+              highlightPath.show = showAutonomousUgvRoute;
+              if (highlightPath.polyline) highlightPath.polyline.show = showAutonomousUgvRoute;
             }
             const czmlUav = currentMissionDataSource.entities.getById('UAV');
             if (czmlUav) {
-              czmlUav.show = (index >= 3);
+              czmlUav.show = showAutonomousUavRoute;
             }
 
-            // 多智能体路径显示逻辑：只有到达第 10 阶段（救援装备出动）才显示
+            // 多智能体路径仅在第 12 阶段“救援装备出动”显示。
             const multiAgentPrefixes = ['Agent_', 'AgentPath_', 'AgentPOI_', 'AgentCP_'];
             currentMissionDataSource.entities.values.forEach(entity => {
                 const id = entity.id;
                 if (id && multiAgentPrefixes.some(prefix => id.startsWith(prefix))) {
-                    const shouldShow = (index >= 10);
+                    const shouldShow = (index >= 11);
                     entity.show = shouldShow;
                 }
             });
