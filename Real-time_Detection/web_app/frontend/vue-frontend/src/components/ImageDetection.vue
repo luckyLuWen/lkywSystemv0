@@ -1,7 +1,7 @@
 <template>
   <div class="image-detection-container">
     <div class="card image-detection-card">
-      <h3>📷 图片检测</h3>
+      <h3 style="font-size: 35px;">📷 图片检测 <span class="scene-badge">{{ pageModeLabel }}</span></h3>
 
       <!-- Upload Area -->
     <div v-if="!result && !loading" class="upload-center">
@@ -67,12 +67,26 @@
               <span class="metric-value">{{ result.inference_time }} s</span>
             </div>
           </div>
+          <div v-if="hasModelBreakdown" class="model-breakdown">
+            <div v-for="modelResult in result.models" :key="modelResult.model" class="model-breakdown-card">
+              <div class="model-breakdown-head">
+                <span>{{ modelResult.task_label }}</span>
+                <strong>{{ modelResult.model_display_name }}</strong>
+              </div>
+              <div class="model-breakdown-meta">
+                <span>{{ modelResult.count }} 个目标</span>
+                <span>{{ modelResult.inference_time }} s</span>
+              </div>
+            </div>
+          </div>
           <div v-if="result.detections.length > 0" class="detection-results">
             <div class="section-title">识别详情</div>
             <div class="detection-grid">
-              <div v-for="(det, i) in result.detections" :key="i" class="detection-chip" :style="getClassStyle(det.class)">
-                <span class="chip-class">{{ det.class }}</span>
-                <span class="chip-conf">{{ (det.confidence * 100).toFixed(1) }}%</span>
+              <div v-for="(det, i) in result.detections" :key="i" class="detection-chip" :style="getClassStyle(primaryClass(det))">
+                <div v-for="(label, labelIdx) in displayLabels(det)" :key="labelIdx" class="chip-row">
+                  <span class="chip-class">{{ label.class }}</span>
+                  <span class="chip-conf">{{ formatConfidence(label.confidence) }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -142,9 +156,11 @@
           <div v-if="batchDetail.detections.length > 0" class="detection-results">
             <div class="section-title">识别详情</div>
             <div class="detection-grid">
-              <div v-for="(det, j) in batchDetail.detections" :key="j" class="detection-chip" :style="getClassStyle(det.class)">
-                <span class="chip-class">{{ det.class }}</span>
-                <span class="chip-conf">{{ (det.confidence * 100).toFixed(1) }}%</span>
+              <div v-for="(det, j) in result.detections" :key="j" class="detection-chip" :style="getClassStyle(primaryClass(det))">
+                <div v-for="(label, labelIdx) in displayLabels(det)" :key="labelIdx" class="chip-row">
+                  <span class="chip-class">{{ label.class }}</span>
+                  <span class="chip-conf">{{ formatConfidence(label.confidence) }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -187,7 +203,21 @@ const totalCount = ref(0)
 const batchDetail = ref(null)
 
 const isBatchResult = computed(() => result.value && result.value.total_files !== undefined && result.value.total_files > 1)
+const hasModelBreakdown = computed(() => Array.isArray(result.value?.models) && result.value.models.length > 1)
+const pageModeLabel = computed(() => {
+  if (props.settings?.detectionMode === 'composite') return '综合事故检测'
+  return props.settings?.taskType === 'hazmat' ? '油罐车泄露现场' : '货车追尾现场'
+})
 const progressText = computed(() => totalCount.value ? `${processedCount.value}/${totalCount.value}` : '')
+
+const displayLabels = (det) => {
+  if (Array.isArray(det?.merged_labels) && det.merged_labels.length) return det.merged_labels
+  return [{ class: det?.class || '', confidence: det?.confidence || 0 }]
+}
+
+const primaryClass = (det) => det?.class || displayLabels(det)[0]?.class || ''
+
+const formatConfidence = (confidence) => `${(Number(confidence || 0) * 100).toFixed(1)}%`
 
 const handleFileChange = (e) => {
   const files = Array.from(e.target.files || [])
@@ -232,6 +262,8 @@ const processFiles = async (files) => {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('model', props.settings.model)
+    formData.append('detection_mode', props.settings.detectionMode || 'single')
+    formData.append('task_type', props.settings.taskType || 'collision')
     formData.append('conf', props.settings.conf)
     formData.append('iou', props.settings.iou)
 
@@ -256,6 +288,8 @@ const processFiles = async (files) => {
     const formData = new FormData()
     files.forEach(f => formData.append('files', f))
     formData.append('model', props.settings.model)
+    formData.append('detection_mode', props.settings.detectionMode || 'single')
+    formData.append('task_type', props.settings.taskType || 'collision')
     formData.append('conf', props.settings.conf)
     formData.append('iou', props.settings.iou)
 
@@ -286,6 +320,18 @@ const processFiles = async (files) => {
 .image-detection-card > h3 {
   font-size: 24px;
   margin-bottom: 18px;
+}
+.scene-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  margin-left: 14px;
+  padding: 0 14px;
+  border: 1px solid rgba(0, 229, 255, 0.42);
+  color: var(--primary-cyan);
+  font-size: 22px;
+  font-weight: 900;
+  vertical-align: middle;
 }
 .upload-center {
   display: flex;
@@ -374,8 +420,9 @@ const processFiles = async (files) => {
   background: rgba(255, 193, 7, 0.08);
   border: 1px solid rgba(255, 193, 7, 0.25);
   border-radius: 8px; padding: 14px 24px;
-  display: flex; align-items: center; gap: 14px;
+  display: flex; flex-direction: column; align-items: stretch; gap: 8px;
 }
+.chip-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .chip-class { color: inherit; font-size: 22px; font-weight: 700; }
 .chip-conf { color: inherit; opacity: 0.9; font-size: 19px; font-family: monospace; }
 .no-detection { text-align: center; color: var(--text-dim); padding: 36px; font-size: 22px; }

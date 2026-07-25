@@ -13,8 +13,10 @@ import cv2
 import numpy as np
 import torch
 from sfga_compat import register_sfga_modules
+from lca_compat import register_lca_modules
 
 register_sfga_modules()
+register_lca_modules()
 
 from ultralytics import YOLO
 from datetime import datetime
@@ -109,11 +111,29 @@ MODELS = {}
 
 WEIGHTS_DIR = Path('../../LKYWDataset_weights')
 PRIMARY_MODEL_NAME = 'SFGA-YOLO26M'
+HAZMAT_PRIMARY_MODEL_NAME = 'LCA-YOLO26N'
+
+MODEL_TASKS = {
+    'collision': '货车追尾现场',
+    'hazmat': '油罐车泄露现场',
+}
 
 MODEL_DISPLAY_NAMES = {
-    PRIMARY_MODEL_NAME: 'SFGA-YOLO26M（改进模型）',
+    PRIMARY_MODEL_NAME: 'SFGA-YOLO26M',
     'yolo26M': 'YOLO26M',
     'yolo11M': 'YOLO11M',
+    HAZMAT_PRIMARY_MODEL_NAME: 'LCA-YOLO26N',
+    'yolo26N': 'YOLO26N',
+    'yolo11N': 'YOLO11N',
+}
+
+MODEL_TASK_TYPES = {
+    PRIMARY_MODEL_NAME: 'collision',
+    'yolo26M': 'collision',
+    'yolo11M': 'collision',
+    HAZMAT_PRIMARY_MODEL_NAME: 'hazmat',
+    'yolo26N': 'hazmat',
+    'yolo11N': 'hazmat',
 }
 
 MODEL_PERFORMANCE = {
@@ -141,14 +161,42 @@ MODEL_PERFORMANCE = {
         'precision': 0.8745,
         'test_set': 'LKYWDetection Test set',
     },
+    HAZMAT_PRIMARY_MODEL_NAME: {
+        'model_name': 'LCA-YOLO26N',
+        'map50': 0.87568,
+        'map50_95': 0.55490,
+        'recall': 0.83146,
+        'precision': 0.88100,
+        'test_set': 'TankTruckLeak Test set',
+    },
+    'yolo26N': {
+        'model_name': 'YOLO26N',
+        'map50': 0.85038,
+        'map50_95': 0.50797,
+        'recall': 0.79832,
+        'precision': 0.88877,
+        'test_set': 'TankTruckLeak Test set',
+    },
+    'yolo11N': {
+        'model_name': 'YOLO11N',
+        'map50': 0.83507,
+        'map50_95': 0.53197,
+        'recall': 0.76058,
+        'precision': 0.87308,
+        'test_set': 'TankTruckLeak Test set',
+    },
 }
 
 ALLOWED_MODEL_NAMES = set(MODEL_DISPLAY_NAMES)
+COMPOSITE_MODEL_NAMES = [PRIMARY_MODEL_NAME, HAZMAT_PRIMARY_MODEL_NAME]
 
 MODEL_WEIGHT_FOLDERS = {
     PRIMARY_MODEL_NAME: 'yolo26m_BestPt_1',
     'yolo26M': PRIMARY_MODEL_NAME,
     'yolo11M': 'yolo11m_BestPt_0',
+    HAZMAT_PRIMARY_MODEL_NAME: HAZMAT_PRIMARY_MODEL_NAME,
+    'yolo26N': 'yolo26n_BestPt_0',
+    'yolo11N': 'yolo11n_BestPt_0',
 }
 
 
@@ -159,26 +207,25 @@ def get_model_display_name(model_name):
 
 
 def get_model_sort_key(model_name):
-    if model_name == PRIMARY_MODEL_NAME:
-        return (0, model_name.lower())
-    if model_name.startswith('yolo26'):
-        return (1, model_name.lower())
-    if model_name.startswith('yolo11'):
-        return (2, model_name.lower())
-    return (3, model_name.lower())
+    task_rank = 0 if MODEL_TASK_TYPES.get(model_name) == 'collision' else 10
+    if model_name in (PRIMARY_MODEL_NAME, HAZMAT_PRIMARY_MODEL_NAME):
+        return (task_rank, 0, model_name.lower())
+    if model_name.lower().startswith('yolo26'):
+        return (task_rank, 1, model_name.lower())
+    if model_name.lower().startswith('yolo11'):
+        return (task_rank, 2, model_name.lower())
+    return (task_rank, 3, model_name.lower())
 
 
 def get_available_models():
     models_config = {}
-    weights_dir = (BASE_DIR / WEIGHTS_DIR).resolve()
-    if weights_dir.exists():
-        model_names = sorted(ALLOWED_MODEL_NAMES, key=get_model_sort_key)
-        for model_name in model_names:
-            weight_folder_name = MODEL_WEIGHT_FOLDERS.get(model_name, model_name)
-            relative_weight_file = WEIGHTS_DIR / weight_folder_name / 'best.pt'
-            weight_file = (BASE_DIR / relative_weight_file).resolve()
-            if weight_file.exists():
-                models_config[model_name] = relative_weight_file.as_posix()
+    model_names = sorted(ALLOWED_MODEL_NAMES, key=get_model_sort_key)
+    for model_name in model_names:
+        weight_folder_name = MODEL_WEIGHT_FOLDERS.get(model_name, model_name)
+        relative_weight_file = WEIGHTS_DIR / weight_folder_name / 'best.pt'
+        weight_file = (BASE_DIR / relative_weight_file).resolve()
+        if weight_file.exists():
+            models_config[model_name] = relative_weight_file.as_posix()
     return models_config
 
 MODEL_PATHS = get_available_models()
@@ -197,6 +244,10 @@ CLASS_COLORS = {
     'lkyw_nofire': (0, 140, 251),    # 橙色 - 两客一危无火
     'car_normal': (53, 216, 253),
     'lkyw_normal': (0, 140, 251),
+    'normal': (233, 165, 14),         # 蓝色 - 油罐车正常/未泄露
+    'accident': (46, 67, 168),        # 红褐色 - 油罐车泄露事故
+    'hazmat_leak': (233, 165, 14),    # 蓝色 - 油罐车泄露相关
+    'tank_leak': (46, 67, 168),       # 红褐色 - 油罐车泄露相关
 }
 
 
@@ -210,9 +261,12 @@ def get_class_color(class_name):
     if normalized_name in CLASS_COLORS:
         return CLASS_COLORS[normalized_name]
 
+    leak_markers = ("leak", "hazmat", "tank", "泄露", "泄漏", "危化")
     nofire_markers = ("nofire", "no_fire", "non_fire", "normal", "无火", "未起火", "正常")
     fire_markers = ("fire", "起火", "火灾", "着火")
 
+    if any(marker in normalized_name for marker in leak_markers):
+        return (178, 145, 8)
     if any(marker in normalized_name for marker in nofire_markers):
         return (53, 216, 253)
     if any(marker in normalized_name for marker in fire_markers):
@@ -223,9 +277,12 @@ def get_class_color(class_name):
 
 def is_fire_class(class_name):
     normalized_name = str(class_name or "").strip().lower().replace("-", "_").replace(" ", "_")
+    leak_markers = ("leak", "hazmat", "tank", "泄露", "泄漏", "危化")
     nofire_markers = ("nofire", "no_fire", "non_fire", "normal", "无火", "未起火", "正常")
     fire_markers = ("fire", "起火", "火灾", "着火")
 
+    if any(marker in normalized_name for marker in leak_markers):
+        return False
     if any(marker in normalized_name for marker in nofire_markers):
         return False
     return any(marker in normalized_name for marker in fire_markers)
@@ -406,104 +463,288 @@ def get_models():
                 'display_name': get_model_display_name(name),
                 'path': raw_path,
                 'size': model_path.stat().st_size / (1024 * 1024),  # Size in MB
-                'is_primary': name == PRIMARY_MODEL_NAME,
+                'is_primary': name in (PRIMARY_MODEL_NAME, HAZMAT_PRIMARY_MODEL_NAME),
+                'task_type': MODEL_TASK_TYPES.get(name, 'collision'),
+                'task_label': MODEL_TASKS.get(MODEL_TASK_TYPES.get(name, 'collision'), '货车追尾现场'),
                 'performance': MODEL_PERFORMANCE.get(name),
             })
     return jsonify({'models': available_models})
 
+def run_image_detection_for_model(model_name, filepath, img, conf_threshold, iou_threshold):
+    import time
+
+    model = load_model(model_name)
+    start_time = time.time()
+    results = model.predict(
+        source=filepath,
+        conf=conf_threshold,
+        iou=iou_threshold,
+        save=False
+    )
+    inference_time = time.time() - start_time
+
+    result = results[0]
+    detections = []
+    task_type = MODEL_TASK_TYPES.get(model_name, 'collision')
+    task_label = MODEL_TASKS.get(task_type, '货车追尾现场')
+    model_display_name = get_model_display_name(model_name)
+
+    for box in result.boxes:
+        x1, y1, x2, y2 = map(int, box.xyxy[0])
+        conf = float(box.conf[0])
+        cls = int(box.cls[0])
+        class_name = result.names[cls]
+        detections.append({
+            'class': class_name,
+            'confidence': conf,
+            'bbox': [x1, y1, x2, y2],
+            'model': model_name,
+            'model_display_name': model_display_name,
+            'task_type': task_type,
+            'task_label': task_label
+        })
+
+    return {
+        'model': model_name,
+        'model_display_name': model_display_name,
+        'task_type': task_type,
+        'task_label': task_label,
+        'detections': detections,
+        'count': len(detections),
+        'inference_time': round(inference_time, 3)
+    }
+
+
+def run_frame_detection_for_model(model_name, frame, conf_threshold, iou_threshold):
+    import time
+
+    model = load_model(model_name)
+    start_time = time.time()
+    results = model.predict(
+        source=frame,
+        conf=conf_threshold,
+        iou=iou_threshold,
+        save=False,
+        verbose=False
+    )
+    inference_time = time.time() - start_time
+
+    result = results[0]
+    detections = []
+    task_type = MODEL_TASK_TYPES.get(model_name, 'collision')
+    task_label = MODEL_TASKS.get(task_type, '货车追尾现场')
+    model_display_name = get_model_display_name(model_name)
+
+    for box in result.boxes:
+        x1, y1, x2, y2 = map(int, box.xyxy[0])
+        conf = float(box.conf[0])
+        cls = int(box.cls[0])
+        class_name = result.names[cls]
+
+        detections.append({
+            'class': class_name,
+            'confidence': conf,
+            'bbox': [x1, y1, x2, y2],
+            'model': model_name,
+            'model_display_name': model_display_name,
+            'task_type': task_type,
+            'task_label': task_label
+        })
+
+    return {
+        'model': model_name,
+        'model_display_name': model_display_name,
+        'task_type': task_type,
+        'task_label': task_label,
+        'detections': detections,
+        'count': len(detections),
+        'inference_time': round(inference_time, 3)
+    }
+
+
+def bbox_area(bbox):
+    x1, y1, x2, y2 = bbox
+    return max(0, x2 - x1) * max(0, y2 - y1)
+
+
+def bbox_overlap_score(box_a, box_b):
+    ax1, ay1, ax2, ay2 = box_a
+    bx1, by1, bx2, by2 = box_b
+    inter_w = max(0, min(ax2, bx2) - max(ax1, bx1))
+    inter_h = max(0, min(ay2, by2) - max(ay1, by1))
+    inter_area = inter_w * inter_h
+    if inter_area <= 0:
+        return 0.0
+
+    area_a = bbox_area(box_a)
+    area_b = bbox_area(box_b)
+    if area_a <= 0 or area_b <= 0:
+        return 0.0
+
+    union = area_a + area_b - inter_area
+    iou = inter_area / union if union > 0 else 0.0
+    cover = inter_area / min(area_a, area_b)
+    return max(iou, cover)
+
+
+def detection_label_entry(det):
+    return {
+        'class': det.get('class', ''),
+        'confidence': float(det.get('confidence', 0.0) or 0.0),
+        'model': det.get('model', ''),
+        'model_display_name': det.get('model_display_name', ''),
+        'task_type': det.get('task_type', ''),
+        'task_label': det.get('task_label', ''),
+    }
+
+
+def ensure_merged_labels(det):
+    if 'merged_labels' not in det or not det['merged_labels']:
+        det['merged_labels'] = [detection_label_entry(det)]
+    return det['merged_labels']
+
+
+def add_merged_labels(target, source):
+    target_labels = ensure_merged_labels(target)
+    source_labels = source.get('merged_labels') or [detection_label_entry(source)]
+    seen = {(item.get('class'), item.get('model')) for item in target_labels}
+
+    for item in source_labels:
+        key = (item.get('class'), item.get('model'))
+        if key not in seen:
+            target_labels.append(item)
+            seen.add(key)
+
+
+def merge_detections(detections, threshold=0.8, same_class_only=True, prefer='confidence'):
+    if not detections:
+        return []
+
+    def sort_key(det):
+        area = bbox_area(det['bbox'])
+        confidence = float(det.get('confidence', 0.0) or 0.0)
+        return (-confidence, -area) if prefer == 'confidence' else (-area, -confidence)
+
+    ordered = sorted((dict(det) for det in detections), key=sort_key)
+    kept = []
+
+    for det in ordered:
+        matched = False
+        for existing in kept:
+            if same_class_only and det.get('class') != existing.get('class'):
+                continue
+            if bbox_overlap_score(det['bbox'], existing['bbox']) >= threshold:
+                matched = True
+                if not same_class_only:
+                    add_merged_labels(existing, det)
+                break
+        if not matched:
+            kept.append(det)
+
+    return kept
+
+
+def draw_detections_on_image(image, detections):
+    for det in detections:
+        x1, y1, x2, y2 = map(int, det['bbox'])
+        class_name = det.get('class', '')
+        color = get_class_color(class_name)
+        cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
+
+        labels = det.get('merged_labels') or [detection_label_entry(det)]
+        label_y = y1 - 10
+        if label_y - (len(labels) - 1) * 18 < 12:
+            label_y = y1 + 18
+
+        for index, item in enumerate(labels):
+            label_class = item.get('class', '')
+            conf = float(item.get('confidence', 0.0) or 0.0)
+            label = f"{label_class} {conf:.2f}"
+            y = label_y + index * 18
+            cv2.putText(image, label, (x1, y),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, get_class_color(label_class), 2)
+
+
 @app.route('/api/detect/image', methods=['POST'])
 def detect_image():
-    """Detect objects in uploaded image"""
+    """Detect objects in uploaded image."""
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'No file provided'}), 400
-        
+
         file = request.files['file']
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
-        
+
         if not allowed_file(file.filename):
             return jsonify({'error': 'Invalid file type'}), 400
-        
-        # Get parameters
+
         available_models = list(MODEL_PATHS.keys())
         default_model = available_models[0] if available_models else 'yolo11n'
+        detection_mode = request.form.get('detection_mode', 'single')
         model_name = request.form.get('model', default_model)
-        
+
         if model_name not in MODEL_PATHS:
             model_name = default_model
         conf_threshold = float(request.form.get('conf', 0.25))
         iou_threshold = float(request.form.get('iou', 0.45))
-        
-        # Save uploaded file
+
         filename = build_safe_upload_name(file.filename)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         unique_filename = f"{timestamp}_{filename}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
         file.save(filepath)
         image_hash = calculate_sha256(filepath)
-        
-        # Load model and perform detection
-        import time
-        start_time = time.time()
-        
-        model = load_model(model_name)
-        results = model.predict(
-            source=filepath,
-            conf=conf_threshold,
-            iou=iou_threshold,
-            save=False
-        )
-        
-        inference_time = time.time() - start_time
-        
-        # Process results
-        result = results[0]
+
         img = cv2.imread(filepath)
-        
-        # Draw bounding boxes
-        detections = []
-        for box in result.boxes:
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-            conf = float(box.conf[0])
-            cls = int(box.cls[0])
-            class_name = result.names[cls]
-            
-            # 根据类别选择颜色
-            color = get_class_color(class_name)
-            
-            # Draw on image
-            cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
-            label = f"{class_name} {conf:.2f}"
-            cv2.putText(img, label, (x1, y1 - 10), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-            
-            detections.append({
-                'class': class_name,
-                'confidence': conf,
-                'bbox': [x1, y1, x2, y2]
-            })
-        
-        # Save result image
+        if img is None:
+            return jsonify({'error': 'Failed to read uploaded image'}), 400
+
+        selected_models = [model_name]
+        if detection_mode == 'composite':
+            selected_models = [name for name in COMPOSITE_MODEL_NAMES if name in MODEL_PATHS]
+            if not selected_models:
+                selected_models = [model_name]
+
+        model_results = []
+        all_detections = []
+        total_inference_time = 0.0
+        for current_model_name in selected_models:
+            model_result = run_image_detection_for_model(
+                current_model_name,
+                filepath,
+                img,
+                conf_threshold,
+                iou_threshold
+            )
+            model_results.append(model_result)
+            all_detections.extend(model_result['detections'])
+            total_inference_time += model_result['inference_time']
+
+        if detection_mode == 'composite':
+            final_detections = merge_detections(all_detections, threshold=0.7, same_class_only=False, prefer='area')
+        else:
+            final_detections = merge_detections(all_detections, threshold=0.8, same_class_only=True, prefer='confidence')
+        draw_detections_on_image(img, final_detections)
+
         result_filename = f"result_{unique_filename}"
         result_path = os.path.join(app.config['RESULT_FOLDER'], result_filename)
         cv2.imwrite(result_path, img)
 
-        # Convert to base64 for response
         _, buffer = cv2.imencode('.jpg', img)
         img_base64 = base64.b64encode(buffer).decode('utf-8')
 
-        # Save to detection history
+        history_model_name = model_name if detection_mode != 'composite' else '+'.join(selected_models)
         try:
             save_detection(
                 timestamp=datetime.now().isoformat(),
-                model_name=model_name,
+                model_name=history_model_name,
                 original_filename=filename,
                 saved_filename=unique_filename,
                 result_filename=result_filename,
-                detection_count=len(detections),
-                detections_json=json.dumps(detections),
-                inference_time_s=round(inference_time, 3),
+                detection_count=len(final_detections),
+                detections_json=json.dumps(final_detections),
+                inference_time_s=round(total_inference_time, 3),
                 conf_threshold=conf_threshold,
                 iou_threshold=iou_threshold,
                 source_type='image',
@@ -514,13 +755,16 @@ def detect_image():
 
         return jsonify({
             'success': True,
-            'detections': detections,
-            'count': len(detections),
+            'detection_mode': detection_mode,
+            'models': model_results,
+            'detections': final_detections,
+            'count': len(final_detections),
             'image': f"data:image/jpeg;base64,{img_base64}",
             'result_file': result_filename,
-            'inference_time': round(inference_time, 3)
+            'inference_time': round(total_inference_time, 3),
+            'model': history_model_name
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -578,15 +822,13 @@ def detect_batch():
                     conf = float(box.conf[0])
                     cls = int(box.cls[0])
                     class_name = result.names[cls]
-                    color = get_class_color(class_name)
-                    cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
-                    label = f"{class_name} {conf:.2f}"
-                    cv2.putText(img, label, (x1, y1 - 10),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
                     detections.append({
                         'class': class_name, 'confidence': conf,
                         'bbox': [x1, y1, x2, y2]
                     })
+
+                detections = merge_detections(detections, threshold=0.8, same_class_only=True, prefer='confidence')
+                draw_detections_on_image(img, detections)
 
                 result_filename = f"result_{unique_filename}"
                 result_path = os.path.join(app.config['RESULT_FOLDER'], result_filename)
@@ -656,9 +898,15 @@ def detect_video():
         available_models = list(MODEL_PATHS.keys())
         default_model = available_models[0] if available_models else 'yolo11n'
         model_name = request.form.get('model', default_model)
+        detection_mode = request.form.get('detection_mode', 'single')
         
         if model_name not in MODEL_PATHS:
             model_name = default_model
+        selected_models = [model_name]
+        if detection_mode == 'composite':
+            selected_models = [name for name in COMPOSITE_MODEL_NAMES if name in MODEL_PATHS]
+            if not selected_models:
+                selected_models = [model_name]
         conf_threshold = float(request.form.get('conf', 0.25))
         iou_threshold = float(request.form.get('iou', 0.45))
         frame_interval = int(request.form.get('interval', 30))
@@ -671,9 +919,7 @@ def detect_video():
         unique_filename = f"{timestamp}_{filename}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
         file.save(filepath)
-        
-        # Load model
-        model = load_model(model_name)
+        video_hash = calculate_sha256(filepath)
         
         # 朴素抽帧检测：从第 0 帧开始，按固定帧间隔逐帧取样。
         cap = cv2.VideoCapture(filepath)
@@ -698,6 +944,7 @@ def detect_video():
         
         frame_count = start_frame
         sampled_frames = []
+        history_detections = []
         
         while cap.isOpened():
             ret, frame = cap.read()
@@ -707,41 +954,25 @@ def detect_video():
             should_detect = (frame_count - start_frame) % frame_interval == 0
             
             if should_detect:
-                # Perform detection
-                frame_start_time = time.time()
-                results = model.predict(
-                    source=frame,
-                    conf=conf_threshold,
-                    iou=iou_threshold,
-                    save=False,
-                    verbose=False
-                )
-                frame_inference_time = time.time() - frame_start_time
-                total_inference_time += frame_inference_time
-                
-                result = results[0]
                 frame_detections = []
-                
-                # Draw bounding boxes
-                for box in result.boxes:
-                    x1, y1, x2, y2 = map(int, box.xyxy[0])
-                    conf = float(box.conf[0])
-                    cls = int(box.cls[0])
-                    class_name = result.names[cls]
-                    
-                    color = get_class_color(class_name)
-                    
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                    label = f"{class_name} {conf:.2f}"
-                    cv2.putText(frame, label, (x1, y1 - 10),
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-                    
-                    frame_detections.append({
-                        'class': class_name,
-                        'confidence': conf,
-                        'bbox': [x1, y1, x2, y2]
-                    })
-                
+                model_results = []
+                for current_model_name in selected_models:
+                    model_result = run_frame_detection_for_model(
+                        current_model_name,
+                        frame,
+                        conf_threshold,
+                        iou_threshold
+                    )
+                    total_inference_time += model_result['inference_time']
+                    frame_detections.extend(model_result['detections'])
+                    model_results.append(model_result)
+
+                if detection_mode == 'composite':
+                    frame_detections = merge_detections(frame_detections, threshold=0.7, same_class_only=False, prefer='area')
+                else:
+                    frame_detections = merge_detections(frame_detections, threshold=0.8, same_class_only=True, prefer='confidence')
+                draw_detections_on_image(frame, frame_detections)
+
                 # 保存检测结果帧
                 frame_filename = f"frame_{timestamp}_{frame_count}.jpg"
                 frame_path = os.path.join(app.config['RESULT_FOLDER'], frame_filename)
@@ -751,12 +982,21 @@ def detect_video():
                 _, buffer = cv2.imencode('.jpg', frame)
                 img_base64 = base64.b64encode(buffer).decode('utf-8')
                 
+                frame_time_s = round(frame_count / fps, 3)
+                for detection in frame_detections:
+                    history_item = dict(detection)
+                    history_item['frame_number'] = frame_count
+                    history_item['time_s'] = frame_time_s
+                    history_item['frame_filename'] = frame_filename
+                    history_detections.append(history_item)
+
                 sampled_frames.append({
                     'frame_number': frame_count,
                     'time': f"{frame_count / fps:.2f}s",
-                    'time_s': round(frame_count / fps, 3),
+                    'time_s': frame_time_s,
                     'detections': frame_detections,
                     'detection_count': len(frame_detections),
+                    'models': model_results,
                     'image': f"data:image/jpeg;base64,{img_base64}",
                     'filename': frame_filename
                 })
@@ -768,6 +1008,26 @@ def detect_video():
         avg_frame_time = 0
         if len(sampled_frames) > 0:
             avg_frame_time = round(total_inference_time / len(sampled_frames), 3)
+
+        history_model_name = model_name if detection_mode != 'composite' else '+'.join(selected_models)
+        representative_frame = sampled_frames[0]['filename'] if sampled_frames else ''
+        try:
+            save_detection(
+                timestamp=datetime.now().isoformat(),
+                model_name=history_model_name,
+                original_filename=filename,
+                saved_filename=unique_filename,
+                result_filename=representative_frame,
+                detection_count=len(history_detections),
+                detections_json=json.dumps(history_detections),
+                inference_time_s=round(total_inference_time, 3),
+                conf_threshold=conf_threshold,
+                iou_threshold=iou_threshold,
+                source_type='video',
+                image_hash=video_hash
+            )
+        except Exception as e:
+            print(f"Failed to save video detection history: {e}")
         
         return jsonify({
             'success': True,
@@ -775,7 +1035,8 @@ def detect_video():
             'sampled_frames': len(sampled_frames),
             'avg_frame_time': avg_frame_time,
             'fps': round(fps, 3),
-            'model': model_name,
+            'model': model_name if detection_mode != 'composite' else '+'.join(selected_models),
+            'detection_mode': detection_mode,
             'interval': frame_interval,
             'start_time': round(start_time_s, 3),
             'start_frame': start_frame,
@@ -789,64 +1050,65 @@ def detect_video():
 
 @app.route('/api/detect/webcam', methods=['POST'])
 def detect_webcam():
-    """Process webcam frame"""
+    """Process webcam frame."""
     try:
         data = request.get_json()
         image_data = data.get('image')
-        
+
         available_models = list(MODEL_PATHS.keys())
         default_model = available_models[0] if available_models else 'yolo11n'
         model_name = data.get('model', default_model)
-        
+        detection_mode = data.get('detection_mode', 'single')
+
         if model_name not in MODEL_PATHS:
             model_name = default_model
+        selected_models = [model_name]
+        if detection_mode == 'composite':
+            selected_models = [name for name in COMPOSITE_MODEL_NAMES if name in MODEL_PATHS]
+            if not selected_models:
+                selected_models = [model_name]
+
         conf_threshold = float(data.get('conf', 0.25))
         iou_threshold = float(data.get('iou', 0.45))
-        
+
         img_bytes = base64.b64decode(image_data.split(',')[1])
         nparr = np.frombuffer(img_bytes, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
-        model = load_model(model_name)
-        results = model.predict(
-            source=img,
-            conf=conf_threshold,
-            iou=iou_threshold,
-            save=False,
-            verbose=False
-        )
-        
-        result = results[0]
+
         detections = []
-        
-        for box in result.boxes:
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-            conf = float(box.conf[0])
-            cls = int(box.cls[0])
-            class_name = result.names[cls]
-            
-            color = get_class_color(class_name)
-            
-            cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
-            label = f"{class_name} {conf:.2f}"
-            cv2.putText(img, label, (x1, y1 - 10),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-            
-            detections.append({
-                'class': class_name,
-                'confidence': conf,
-                'bbox': [x1, y1, x2, y2]
-            })
-        
+        model_results = []
+        total_inference_time = 0.0
+        for current_model_name in selected_models:
+            model_result = run_frame_detection_for_model(
+                current_model_name,
+                img,
+                conf_threshold,
+                iou_threshold
+            )
+            detections.extend(model_result['detections'])
+            model_results.append(model_result)
+            total_inference_time += model_result['inference_time']
+
+        if detection_mode == 'composite':
+            detections = merge_detections(detections, threshold=0.7, same_class_only=False, prefer='area')
+        else:
+            detections = merge_detections(detections, threshold=0.8, same_class_only=True, prefer='confidence')
+        draw_detections_on_image(img, detections)
+
         _, buffer = cv2.imencode('.jpg', img)
         img_base64 = base64.b64encode(buffer).decode('utf-8')
-        
+
         return jsonify({
             'success': True,
+            'detection_mode': detection_mode,
+            'models': model_results,
+            'model': model_name if detection_mode != 'composite' else '+'.join(selected_models),
             'detections': detections,
+            'count': len(detections),
+            'inference_time': round(total_inference_time, 3),
             'image': f"data:image/jpeg;base64,{img_base64}"
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

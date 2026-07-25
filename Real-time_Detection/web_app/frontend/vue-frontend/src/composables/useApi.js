@@ -10,6 +10,8 @@ export function useApi() {
   const availableModels = ref([])
 
   const settings = reactive({
+    detectionMode: 'single',
+    taskType: 'collision',
     model: '',
     conf: 0.25,
     iou: 0.45
@@ -37,7 +39,8 @@ export function useApi() {
         availableModels.value = data.models
         // Only set default if not already set
         if (!settings.model) {
-          settings.model = data.models[0].name
+          const defaultModel = data.models.find(model => model.task_type === settings.taskType) || data.models[0]
+          settings.model = defaultModel.name
         }
       }
     } catch (error) {

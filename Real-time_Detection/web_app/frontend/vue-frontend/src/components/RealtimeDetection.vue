@@ -1,8 +1,6 @@
 <template>
   <div class="card">
-    <h3>📹 实时检测</h3>
-    <ModelMetricsPanel :settings="props.settings" :availableModels="props.availableModels" />
-    
+    <h3 class="panel-title">📹 实时检测 <span class="scene-badge">{{ pageModeLabel }}</span></h3>
     <!-- Source Selection -->
     <div class="source-selector">
       <label>
@@ -36,9 +34,9 @@
           v-for="(det, index) in webcamDetections"
           :key="index"
           class="detection-badge"
-          :style="getClassStyle(det.class)"
+          :style="getClassStyle(primaryClass(det))"
         >
-          {{ det.class }} ({{ (det.confidence * 100).toFixed(1) }}%)
+          {{ formatDetectionLabel(det) }}
         </span>
       </div>
     </div>
@@ -94,9 +92,9 @@
           v-for="(det, index) in currentRtspDetections" 
           :key="index" 
           class="detection-badge"
-          :style="getClassStyle(det.class)"
+          :style="getClassStyle(primaryClass(det))"
         >
-          {{ det.class }} ({{ (det.confidence * 100).toFixed(1) }}%)
+          {{ formatDetectionLabel(det) }}
         </span>
       </div>
     </div>
@@ -116,6 +114,24 @@ const props = defineProps({
   safeFetch: Function,
   apiUrl: String
 })
+
+const pageModeLabel = computed(() => {
+  if (props.settings?.detectionMode === 'composite') return '综合事故检测'
+  return props.settings?.taskType === 'hazmat' ? '油罐车泄露现场' : '货车追尾现场'
+})
+
+const displayLabels = (det) => {
+  if (Array.isArray(det?.merged_labels) && det.merged_labels.length) return det.merged_labels
+  return [{ class: det?.class || '', confidence: det?.confidence || 0 }]
+}
+
+const primaryClass = (det) => det?.class || displayLabels(det)[0]?.class || ''
+
+const formatDetectionLabel = (det) => {
+  return displayLabels(det)
+    .map(label => `${label.class} (${(Number(label.confidence || 0) * 100).toFixed(1)}%)`)
+    .join(' / ')
+}
 
 const source = ref('webcam')
 const isStreaming = ref(false)
@@ -195,6 +211,8 @@ const detectWebcamFrame = async () => {
       body: JSON.stringify({
         image: imageData,
         model: props.settings.model,
+        detection_mode: props.settings.detectionMode || 'single',
+        task_type: props.settings.taskType || 'collision',
         conf: props.settings.conf,
         iou: props.settings.iou
       })
@@ -220,7 +238,10 @@ const startRTSP = async () => {
       body: JSON.stringify({
         stream_id: RTSP_STREAM_ID,
         rtsp_url: rtspUrl.value,
-        camera_name: 'OBS模拟摄像头'
+        camera_name: 'OBS模拟摄像头',
+        model: props.settings.model,
+        detection_mode: props.settings.detectionMode || 'single',
+        task_type: props.settings.taskType || 'collision'
       })
     })
     
@@ -378,4 +399,24 @@ video, .rtsp-stream {
   border-radius: 20px;
   font-size: 14px;
 }
+
+.panel-title {
+  font-size: 24px;
+  line-height: 1.2;
+  margin-bottom: 18px;
+}
+
+.panel-title .scene-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  margin-left: 14px;
+  padding: 0 14px;
+  border: 1px solid rgba(0, 229, 255, 0.42);
+  color: var(--primary-cyan);
+  font-size: 22px;
+  font-weight: 900;
+  vertical-align: middle;
+}
+
 </style>
