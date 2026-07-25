@@ -15,9 +15,29 @@ MODEL_DISPLAY_NAMES = {
     'SFGA-YOLO26M（改进模型）': 'SFGA-YOLO26M',
     'YOLO26M': 'YOLO26M',
     'YOLO11M': 'YOLO11M',
+    'LCA-YOLO26N': 'LCA-YOLO26N',
+    'yolo26N': 'YOLO26N',
+    'yolo11N': 'YOLO11N',
+    'YOLO26N': 'YOLO26N',
+    'YOLO11N': 'YOLO11N',
+    'SFGA-YOLO26M+LCA-YOLO26N': 'SFGA-YOLO26M+LCA-YOLO26N',
+    '综合事故检测': 'SFGA-YOLO26M+LCA-YOLO26N',
 }
 
-ACTIVE_MODEL_DISPLAY_NAMES = {'SFGA-YOLO26M', 'YOLO26M', 'YOLO11M'}
+ACTIVE_MODEL_DISPLAY_NAMES = {
+    'SFGA-YOLO26M', 'YOLO26M', 'YOLO11M',
+    'LCA-YOLO26N', 'YOLO26N', 'YOLO11N',
+    'SFGA-YOLO26M+LCA-YOLO26N',
+}
+
+STAT_MODEL_NAMES = (
+    'SFGA-YOLO26M', 'YOLO26M', 'YOLO11M',
+    'LCA-YOLO26N', 'YOLO26N', 'YOLO11N',
+)
+
+COMPOSITE_MODEL_COMPONENTS = {
+    'SFGA-YOLO26M+LCA-YOLO26N': ('SFGA-YOLO26M', 'LCA-YOLO26N'),
+}
 
 
 LABEL_ALIASES = {
@@ -25,6 +45,8 @@ LABEL_ALIASES = {
     'lkyw_fire': ['lkyw_fire', 'lkywFire'],
     'car_nofire': ['car_nofire', 'carNofire', 'car_normal', 'carNormal'],
     'lkyw_nofire': ['lkyw_nofire', 'lkywNofire', 'lkyw_normal', 'lkywNormal'],
+    'leak': ['leak', 'accident', 'hazmat_leak', 'tank_leak'],
+    'noleak': ['noleak', 'normal', 'no_leak', 'tank_normal'],
 }
 
 LABEL_CANONICAL = {
@@ -57,17 +79,41 @@ def normalize_model_name(model_name):
     return display_name if display_name in ACTIVE_MODEL_DISPLAY_NAMES else None
 
 
+def get_stat_model_names(model_name):
+    normalized_name = normalize_model_name(model_name)
+    if not normalized_name:
+        return []
+    model_names = COMPOSITE_MODEL_COMPONENTS.get(normalized_name, (normalized_name,))
+    return [name for name in model_names if name in STAT_MODEL_NAMES]
+
+
+def get_task_label_for_model(model_name):
+    normalized_name = normalize_model_name(model_name)
+    if normalized_name == 'SFGA-YOLO26M+LCA-YOLO26N':
+        return '综合事故检测'
+    if normalized_name in {'LCA-YOLO26N', 'YOLO26N', 'YOLO11N'}:
+        return '油罐车泄露现场'
+    if normalized_name in {'SFGA-YOLO26M', 'YOLO26M', 'YOLO11M'}:
+        return '货车追尾现场'
+    return ''
+
+
 def get_model_query_names(model_name):
     normalized_name = normalize_model_name(model_name)
     if not normalized_name:
         return []
-    names = [
-        raw_name
-        for raw_name, display_name in MODEL_DISPLAY_NAMES.items()
-        if display_name == normalized_name
-    ]
-    if normalized_name not in names:
-        names.append(normalized_name)
+    query_display_names = {normalized_name}
+    for composite_name, component_names in COMPOSITE_MODEL_COMPONENTS.items():
+        if normalized_name in component_names:
+            query_display_names.add(composite_name)
+
+    names = []
+    for query_display_name in query_display_names:
+        for raw_name, display_name in MODEL_DISPLAY_NAMES.items():
+            if display_name == query_display_name and raw_name not in names:
+                names.append(raw_name)
+        if query_display_name not in names:
+            names.append(query_display_name)
     return names
 
 
@@ -77,6 +123,8 @@ def normalize_detection_record(record):
         return None
     normalized_record = dict(record)
     normalized_record['model_name'] = normalized_name
+    normalized_record['model_names'] = get_stat_model_names(normalized_name)
+    normalized_record['task_label'] = get_task_label_for_model(normalized_name)
     return normalized_record
 
 
@@ -266,7 +314,7 @@ def save_detection(timestamp, model_name, original_filename, saved_filename,
     return row_id
 
 
-def get_detections(limit=50, offset=0, model_name=None, label=None):
+def get_detections(limit=50, offset=0, model_name=None, label=None, source_type=None):
     conn = get_db()
     query = (
         'SELECT id, timestamp, model_name, original_filename, saved_filename, '
@@ -284,6 +332,17 @@ def get_detections(limit=50, offset=0, model_name=None, label=None):
         placeholders = ','.join('?' for _ in model_query_names)
         where_clauses.append(f'model_name IN ({placeholders})')
         params.extend(model_query_names)
+
+    if source_type:
+        normalized_source_type = str(source_type).strip().lower()
+        if normalized_source_type == 'image':
+            where_clauses.append("source_type IN ('image', 'batch')")
+        elif normalized_source_type == 'video':
+            where_clauses.append('source_type = ?')
+            params.append(normalized_source_type)
+        else:
+            conn.close()
+            return []
 
     if label:
         label_query_names = get_label_query_names(label)
@@ -357,14 +416,14 @@ def get_stats():
             'inference_time_s': row['inference_time_s'] or 0,
         })
 
-    model_usage = {}
+    model_usage = {name: 0 for name in STAT_MODEL_NAMES}
     daily_usage = {}
     total_time = 0
     timed_count = 0
 
     for record in records:
-        model_name = record['model_name']
-        model_usage[model_name] = model_usage.get(model_name, 0) + 1
+        for model_name in get_stat_model_names(record['model_name']):
+            model_usage[model_name] += 1
 
         day = str(record['timestamp'] or '')[:10]
         if day:
@@ -381,11 +440,15 @@ def get_stats():
         for date_key in sorted(daily_usage)
     ][-30:]
 
+    sorted_model_usage = dict(
+        sorted(model_usage.items(), key=lambda item: (-item[1], item[0]))
+    )
+
     return {
         'total_detections': len(records),
         'today_detections': daily_usage.get(today, 0),
         'avg_inference_time_s': round(total_time / timed_count, 3) if timed_count else 0,
-        'model_usage': model_usage,
+        'model_usage': sorted_model_usage,
         'daily_counts': daily_counts,
     }
 

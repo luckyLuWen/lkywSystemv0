@@ -42,13 +42,21 @@ const downloadImage = async () => {
   }
 }
 
+const detectionLabels = (detection) => {
+  if (Array.isArray(detection?.merged_labels) && detection.merged_labels.length) return detection.merged_labels
+  return [{ class: detection?.class || '', confidence: detection?.confidence || 0 }]
+}
+
 const exportCSV = () => {
   const header = 'class,confidence,bbox_x1,bbox_y1,bbox_x2,bbox_y2'
-  const rows = props.detections.map(d => {
+  const rows = props.detections.flatMap(d => {
     const [x1, y1, x2, y2] = d.bbox
-    return `${d.class},${d.confidence.toFixed(4)},${x1},${y1},${x2},${y2}`
+    return detectionLabels(d).map(label => {
+      const confidence = Number(label.confidence || 0)
+      return `${label.class},${confidence.toFixed(4)},${x1},${y1},${x2},${y2}`
+    })
   })
-  const csv = '﻿' + [header, ...rows].join('\n')
+  const csv = '\ufeff' + [header, ...rows].join('\n')
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -57,6 +65,7 @@ const exportCSV = () => {
   a.click()
   URL.revokeObjectURL(url)
 }
+
 </script>
 
 <style scoped>

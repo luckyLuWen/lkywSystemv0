@@ -3750,8 +3750,8 @@ const rescueCarModelConfigs = [
 
 // 油罐车场景救援车配置（同理，一字纵队排开）
 const tankerRescueCarModelConfigs = [
-  { id: 'tanker_rescue_car_model_1', uri: '/Dashboard/models/recure%20car_2.glb', label: '1号油罐救援(前)', stopFactor: 0.40 },
-  { id: 'tanker_rescue_car_model_2', uri: '/Dashboard/models/recure%20car_2.glb', label: '2号油罐救援(后)', stopFactor: 0.34 }
+  { id: 'tanker_rescue_car_model_1', uri: '/Dashboard/models/recure%20car_2.glb', label: '1号油罐救援(前)', stopFactor: 0.78 },
+  { id: 'tanker_rescue_car_model_2', uri: '/Dashboard/models/recure%20car_2.glb', label: '2号油罐救援(后)', stopFactor: 0.72 }
 ]
 
 // 货车追尾现场 - 仿真开始节点贴地行驶车流配置 (0-1.glb, 0-2.glb, 0-3.glb, 0-4.glb)
@@ -7299,14 +7299,15 @@ function addEventEntities() {
   // 接入 6 个 light.glb 3D灯光模型
 
   // 接入 6 个 light.glb 3D灯光模型及相关链路/视场
-  lights.forEach((l) => {
-    // 🚨 动态判断：经度小于114的是货车现场，大于114的是油罐车现场
+ lights.forEach((l) => {
+    // 🚨 动态判断核心：依靠经度物理隔离两个场景（彻底解决重名 ID 问题）
+    // 请确保 114.0 是你用来划分两个场景的正确经度！
     const isTruckLight = Number(l.lng) < 114.0;
+    const isTankerLight = !isTruckLight;
     
     // =====================================
     // 1. 添加感知视场 (排除了 light6 自带路灯)
     // =====================================
-    // 💡 新增了 'light23', 'light24'
     if (['light1', 'light2', 'light3', 'light4', 'light5', 'light8', 'light23', 'light24'].includes(l.id)) {
       const heightOffset = 8.0;
       const pitchAngle = -45;
@@ -7315,22 +7316,21 @@ function addEventEntities() {
       let fovAngle = 22;
       let maxRange = 100;
 
-      // 货车现场
+      // 根据 ID 匹配视场参数（参数不用改，因为是按需微调的）
       if (l.id === 'light1') { headingOffset = 0; fovAngle = 35; maxRange = 250; }
       if (l.id === 'light2') { headingOffset = 0; fovAngle = 35; maxRange = 250; }
       if (l.id === 'light3') { headingOffset = 180; fovAngle = 35; maxRange = 250; }
       if (l.id === 'light8') { headingOffset = 0; fovAngle = 35; maxRange = 250; }
-      
-      // 💡 为新增的 23 和 24 号灯光配置参数（可根据实际场景需要微调 headingOffset）
       if (l.id === 'light23') { headingOffset = -45; fovAngle = 35; maxRange = 250; }
       if (l.id === 'light24') { headingOffset = -225; fovAngle = 35; maxRange = 250; }
-
-      // 油罐车现场
       if (l.id === 'light4') { headingOffset = -25; fovAngle = 30; maxRange = 300; }
       if (l.id === 'light5') { headingOffset = 165; fovAngle = 30; maxRange = 150; }
 
+      // 为 FOV 生成唯一的场景前缀 ID，防止两个场景都有 light1 导致覆盖
+      const fovId = isTruckLight ? `truck-${l.id}-fov` : `tanker-${l.id}-fov`;
+
       createLightFOV(
-        viewer, `${l.id}-fov`,
+        viewer, fovId,
         Number(l.lng), Number(l.lat), Number(l.height) + heightOffset,
         Number(l.heading) + headingOffset, pitchAngle, fovAngle, maxRange,
         () => {
@@ -7346,8 +7346,11 @@ function addEventEntities() {
     // =====================================
     if (l.id === 'light6') return;
 
+    // 模型 ID 也加上场景前缀，彻底解决 Cesium 的 Entity ID 冲突问题
+    const modelEntityId = isTruckLight ? `truck-${l.id}-glb-entity` : `tanker-${l.id}-glb-entity`;
+
     viewer.entities.add({
-      id: `${l.id}-glb-entity`,
+      id: modelEntityId,
       name: `事故现场灯光模型-${l.id}`,
       show: new Cesium.CallbackProperty(() => {
         const isCurrentScene = isTruckLight ? (currentScene.value === 'truck') : (currentScene.value === 'tanker');
@@ -7364,23 +7367,32 @@ function addEventEntities() {
     // =====================================
     // 3. 路灯到对应基站的通信链路
     // =====================================
-    // 💡 新增了 'light23', 'light24'
     if (['light1', 'light2', 'light3', 'light4', 'light5', 'light8', 'light23', 'light24'].includes(l.id)) {
+      
+      // 线条 ID 加上场景前缀
+      const lineId = isTruckLight ? `line-link-from-truck-${l.id}-to-jizhan` : `line-link-from-tanker-${l.id}-to-jizhan`;
+
       viewer.entities.add({
-        id: `line-link-from-${l.id}-to-jizhan`, // 保持你原来的 ID 不变，防止其他地方的清理代码找不到它
+        id: lineId, 
         name: `数据传输链路:${l.id}->动态核心节点`,
         show: new Cesium.CallbackProperty(() => {
-          // 💡 修正 1：剥离对基站 show 属性的依赖，只判断场景和路灯本身
-          // 因为阶段 9 之后基站可能离线，如果这里强制绑定基站状态，线就彻底消失了
+          // 💡 严格判断阵营与场景
           if (isTruckLight) return currentScene.value === 'truck' && l.show;
-          return currentScene.value === 'tanker' && l.show;
+          if (isTankerLight) return currentScene.value === 'tanker' && l.show;
+          return false;
         }, false),
         polyline: {
           positions: new Cesium.CallbackProperty((time) => {
+            // 🚨 最强防御墙：货车的灯在油罐车场景绝对不画，油罐车的灯在货车场景绝对不画！
+            if (isTruckLight && currentScene.value !== 'truck') return [];
+            if (isTankerLight && currentScene.value !== 'tanker') return [];
+
             const lightTop = getModelTopPosition(l.lng, l.lat, l.height, l.heading, l.pitch, l.roll, LIGHT_TOP_OFFSET);
 
-            // 🚨 故事点十 (阶段 10)：信号干扰，基站断联，链路物理转移至 1 号无人车
-            if (Number(props.activePhaseIndex) >= 10) {
+            const phase = Number(props.activePhaseIndex);
+
+            // 🚨 故事点十 (阶段 10)：信号干扰，基站断联，链路物理转移至各自场景的 1 号无人车
+            if (phase >= 10) {
               const targetUgv = isTruckLight ? rescueCarEntities[0] : tankerRescueCarEntities[0];
               if (targetUgv) {
                 const ugvPos = targetUgv.position.getValue(time);
@@ -7389,9 +7401,9 @@ function addEventEntities() {
               return []; // 找不到无人车则返回空（不绘制）
             }
 
-            // 🌟 常规阶段 (阶段 0 到 8)：正常连向 5G 基站
+            // 🌟 常规阶段 (阶段 0 到 8)：正常连向各自专属的 5G 基站
             const targetJizhan = isTruckLight ? jizhanAdjust : tankerJizhanAdjust;
-            if (!targetJizhan.show) return []; // 常规阶段如果基站没出来，就不连线
+            if (!targetJizhan || !targetJizhan.show) return []; // 常规阶段如果基站没出来，就不连线
             
             const jizhanTop = getModelTopPosition(
               targetJizhan.lng, targetJizhan.lat, targetJizhan.height, 
@@ -7400,7 +7412,7 @@ function addEventEntities() {
             return [lightTop, jizhanTop];
           }, false),
           width: 3.0,
-          arcType: Cesium.ArcType.NONE, // 💡 修正 2：必须加上这个，防止线段在切换目标时受地球曲率影响钻进地底
+          arcType: Cesium.ArcType.NONE, 
           material: new DynamicFlowMaterialProperty({ color: Cesium.Color.CYAN, speed: 3.5, repeat: 8.0 })
         }
       });
@@ -8308,6 +8320,7 @@ const currentLng = circleCenterLng + radiusLng * Math.cos(angle);
       }, false),
       polyline: {
         positions: new Cesium.CallbackProperty((time) => {
+          if (currentScene.value !== 'truck') return [];
           const phase = Number(props.activePhaseIndex);
 
           // 🚨 3. 与上面保持一致的防御性校验，不该连线的阶段直接返回空坐标
@@ -8962,38 +8975,70 @@ if (props.activePhaseIndex === 3 || props.activePhaseIndex === 7) {
       }
     });
     // 🚨 新增：油罐车无人机连接到专属基站
+    // 🚨 1. 判断是否是第一架无人机 (ID 名字里不带 _2 和 _3)
+    const isFirstUAV = !config.id.includes('_2') && !config.id.includes('_3');
+
     viewer.entities.add({
-      id: `line-link-tanker-uav-${config.id}-to-jizhan`, // 保持原有 ID 方便清理
+      id: `line-link-tanker-uav-${config.id}-to-jizhan`, // 保持油罐车专属 ID 唯一性
       name: `油罐车场景无人机数据链路`,
       show: new Cesium.CallbackProperty((time) => {
-        // 安全判断无人机自身的显示状态，避免 Cesium 返回 Property 对象报错
+        // 🚨 场景隔离：只有在油罐车场景才显示
+        if (currentScene.value !== 'tanker') return false;
+
         let isEntityShowing = false;
         if (entity.show !== undefined) {
           isEntityShowing = typeof entity.show.getValue === 'function' ? entity.show.getValue(time) : !!entity.show;
         }
-        return Number(props.activePhaseIndex) >= 9 && isEntityShowing && currentScene.value === 'tanker';
+        
+        const phase = Number(props.activePhaseIndex);
+        
+        // 🚨 2. 精准定义连线时机
+        let isLineActive = false;
+        if (isFirstUAV) {
+          // 第一架无人机：仅在 5, 6, 9及以上 连线。(7, 8 强制断开)
+          isLineActive = (phase === 5 || phase === 6 || phase >= 9);
+        } else {
+          // 其余增援无人机：阶段 9 及以上才连线
+          isLineActive = phase >= 9;
+        }
+
+        return isLineActive && isEntityShowing;
       }, false),
       polyline: {
         positions: new Cesium.CallbackProperty((time) => {
-          if (Number(props.activePhaseIndex) < 9 || currentScene.value !== 'tanker') return [];
+          // 🚨 场景校验：不是油罐车场景绝对不计算连线坐标
+          if (currentScene.value !== 'tanker') return [];
+          const phase = Number(props.activePhaseIndex);
+
+          // 🚨 3. 与 show 保持一致的阶段校验
+          let isLineActive = false;
+          if (isFirstUAV) {
+            isLineActive = (phase === 5 || phase === 6 || phase >= 9);
+          } else {
+            isLineActive = phase >= 9;
+          }
+          if (!isLineActive) return [];
+
           const pos = entity.position.getValue(time);
           if (!pos) return [];
 
-          // 🚨 故事点十 (阶段 9)：信号干扰，连向油罐车现场 1 号无人车
-          if (Number(props.activePhaseIndex) >= 10) {
-             const targetUgv = tankerRescueCarEntities[0];
-             if (targetUgv) {
-                const ugvPos = targetUgv.position.getValue(time);
-                if (ugvPos) return [pos, ugvPos];
-             }
-             return [];
+          // 🚨 故事点十 (阶段 10)：信号受干扰，全部切断基站，将数据直连至【油罐车场景】的 1 号无人车
+          if (phase >= 10) {
+            const targetUgv = tankerRescueCarEntities[0]; // 👈 注意：抓取油罐车场景的无人车
+            if (targetUgv) {
+              const ugvPos = targetUgv.position.getValue(time);
+              if (ugvPos) return [pos, ugvPos];
+            }
+            return [];
           }
-
-          // 🌟 常规阶段 (阶段 8)：正常连向 5G 基站
+          
+          // 🌟 常规连线阶段 (5, 6, 9)：正常连向【油罐车场景】的 5G 基站
+          if (!tankerJizhanAdjust) return []; // 防御性判断
           const jizhanTop = getModelTopPosition(
             tankerJizhanAdjust.lng, tankerJizhanAdjust.lat, tankerJizhanAdjust.height,
             tankerJizhanAdjust.heading, tankerJizhanAdjust.pitch, tankerJizhanAdjust.roll, JIZHAN_TOP_OFFSET
-          );
+          ); // 👈 注意：这里抓取的是 tankerJizhanAdjust
+          
           return [pos, jizhanTop];
         }, false),
         width: 3.5,
@@ -9306,8 +9351,14 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
   // ==========================================
   // (2) 车辆终端状态面板 (阶段8常态 / 阶段9中继)
   // ==========================================
- viewer.entities.add({
-    id: `network-label-car${modelIndex + 1}`, // 保持原有 ID
+// ==========================================
+  // (货车场景) 车辆终端状态面板
+  // ==========================================
+ // ==========================================
+  // (货车场景) 车辆终端状态面板
+  // ==========================================
+  viewer.entities.add({
+    id: `network-label-car${modelIndex + 1}`,
     position: new Cesium.CallbackProperty((time) => {
       const carPos = carEntity.position.getValue(time);
       if (!carPos) return undefined;
@@ -9315,22 +9366,19 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       return Cesium.Cartesian3.fromDegrees(Cesium.Math.toDegrees(carto.longitude), Cesium.Math.toDegrees(carto.latitude), carto.height + 3.5);
     }, false),
     show: new Cesium.CallbackProperty((time) => {
-      // 🚨 修正：阶段 9 开始显示终端面板
+      if (currentScene.value !== 'truck') return false; // 🚨 货车专属
       if (Number(props.activePhaseIndex) >= 9 && isCarVisible(time)) return true;
       carEntity._netTime = null; 
       return false;
     }, false),
     label: {
       text: new Cesium.CallbackProperty(() => {
-        if (Number(props.activePhaseIndex) < 9) return ''; // 🚨 修正：小于 9 不显示
-        
-        // 🚨 故事点十 (阶段 10)：信号受干扰，启用 1 号无人车中继
+        if (currentScene.value !== 'truck') return ''; // 🚨 货车专属
+        if (Number(props.activePhaseIndex) < 9) return ''; 
         if (Number(props.activePhaseIndex) >= 10) {
            if (modelIndex === 0) return `[RELAY] 启用临时通信中继\n▶ 核心链路: 已接管\n▶ 延迟: 8ms`;
            return `▶ 环境数据流: ACTIVE\n▶ 上传至中继: 稳定`;
         }
-
-        // 🌟 故事点九 (阶段 9)：正常连向 5G 基站
         if (!carEntity._netTime) carEntity._netTime = Date.now();
         const elapsed = (Date.now() - carEntity._netTime) / 1000.0;
         if (elapsed < 1.5) return `[SYS] 扫描 5G 信号...`;
@@ -9339,7 +9387,6 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       }, false),
       font: '14px monospace',
       style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-      // 🚨 修正：阶段 10 时，1号车才变为金色
       fillColor: new Cesium.CallbackProperty(() => (Number(props.activePhaseIndex) >= 10 && modelIndex === 0) ? Cesium.Color.GOLD : Cesium.Color.LIME, false),
       outlineColor: Cesium.Color.BLACK,
       outlineWidth: 2,
@@ -9354,17 +9401,15 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
   });
 
   // ==========================================
-  // (3) 链路绘制 (基站 / 无人车中继 动态切换)
+  // (货车场景) 链路绘制 
   // ==========================================
   [0, 1].forEach((innerCarIndex) => {
     viewer.entities.add({
-      id: `line-link-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-real`, // 保持原有 ID
-      name: `动态中心数据链路`,
+      id: `line-link-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-real`,
+      name: `货车动态中心数据链路`,
       show: new Cesium.CallbackProperty((time) => {
-        // 🚨 修正：阶段 10 时，1 号车作为汇聚中心，不再向外发射数据线
+        if (currentScene.value !== 'truck') return false; // 🚨 货车专属
         if (Number(props.activePhaseIndex) >= 10 && modelIndex === 0) return false;
-        
-        // 🚨 修正：阶段 9 满足条件开始显示数据线
         if (Number(props.activePhaseIndex) >= 9 && isCarVisible(time) && carEntity._netTime) {
            return ((Date.now() - carEntity._netTime) / 1000.0) >= 3.5; 
         }
@@ -9372,24 +9417,22 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       }, false),
       polyline: {
         positions: new Cesium.CallbackProperty((time) => {
-          // 🚨 修正：小于阶段 9 绝对不连线
+          // 🚨 绝对物理隔离：只要切到油罐车，货车的线瞬间消失！
+          if (currentScene.value !== 'truck') return []; 
           if (Number(props.activePhaseIndex) < 9) return [];
+          
           const carCartesian = carEntity.position.getValue(time);
           const carOrientation = carEntity.orientation.getValue(time);
           if (!carCartesian || !carOrientation) return [];
 
-          // 计算车辆天线发射原点
           const localOffset = new Cesium.Cartesian3(0.0, (innerCarIndex === 0) ? 1.5 : -1.5, 1.6);
           const rotationMatrix = Cesium.Matrix3.fromQuaternion(carOrientation);
           const worldOffset = Cesium.Matrix3.multiplyByVector(rotationMatrix, localOffset, new Cesium.Cartesian3());
           const startPos = Cesium.Cartesian3.add(carCartesian, worldOffset, new Cesium.Cartesian3());
 
-          // 🚨 故事点十 (阶段 10)：其他车辆连向 1 号中继车
           if (Number(props.activePhaseIndex) >= 10) {
-            if (modelIndex === 0) return []; // 1号车自身不连向外部
-            
-            // 自动判断场景，抓取正确的 1 号车作为终点
-            const relayUgv = currentScene.value === 'truck' ? rescueCarEntities[0] : tankerRescueCarEntities[0];
+            if (modelIndex === 0) return []; 
+            const relayUgv = rescueCarEntities[0]; // 🚨 强绑定货车的1号车
             if (relayUgv) {
               const ugv1Pos = relayUgv.position.getValue(time);
               if (ugv1Pos) return [startPos, ugv1Pos];
@@ -9397,20 +9440,160 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
             return [];
           }
 
-          // 🌟 故事点九 (阶段 9)：全部正常连向基站
-          const targetJizhan = currentScene.value === 'truck' ? jizhanAdjust : tankerJizhanAdjust;
-          if (!targetJizhan.show) return []; // 如果基站未显示则不连
-
+          // 🌟 强绑定货车的基站，再也不许找油罐车基站了！
+          if (!jizhanAdjust || !jizhanAdjust.show) return []; 
           const jizhanTop = getModelTopPosition(
-            targetJizhan.lng, targetJizhan.lat, targetJizhan.height,
-            targetJizhan.heading, targetJizhan.pitch, targetJizhan.roll, JIZHAN_TOP_OFFSET
+            jizhanAdjust.lng, jizhanAdjust.lat, jizhanAdjust.height,
+            jizhanAdjust.heading, jizhanAdjust.pitch, jizhanAdjust.roll, JIZHAN_TOP_OFFSET
           );
           return [startPos, jizhanTop];
         }, false),
         width: 3.5,
-        arcType: Cesium.ArcType.NONE, // 强制直线
+        arcType: Cesium.ArcType.NONE,
         material: new DynamicFlowMaterialProperty({ color: Cesium.Color.CHARTREUSE, speed: 4.5, repeat: 6.0 })
       }
+    });
+  });
+  // ==========================================
+  // (油罐车场景) 车辆终端状态面板
+  // ==========================================
+  viewer.entities.add({
+    id: `network-label-tanker-car${modelIndex + 1}`,
+    position: new Cesium.CallbackProperty((time) => {
+      const carPos = carEntity.position.getValue(time);
+      if (!carPos) return undefined;
+      const carto = Cesium.Cartographic.fromCartesian(carPos);
+      return Cesium.Cartesian3.fromDegrees(Cesium.Math.toDegrees(carto.longitude), Cesium.Math.toDegrees(carto.latitude), carto.height + 3.5);
+    }, false),
+    show: new Cesium.CallbackProperty((time) => {
+      if (currentScene.value !== 'tanker') return false; // 🚨 油罐车专属
+      if (Number(props.activePhaseIndex) >= 9 && isCarVisible(time)) return true;
+      carEntity._netTime = null; 
+      return false;
+    }, false),
+    label: {
+      text: new Cesium.CallbackProperty(() => {
+        if (currentScene.value !== 'tanker') return ''; // 🚨 油罐车专属
+        if (Number(props.activePhaseIndex) < 9) return ''; 
+        if (Number(props.activePhaseIndex) >= 10) {
+           if (modelIndex === 0) return `[RELAY] 启用临时通信中继\n▶ 核心链路: 已接管\n▶ 延迟: 8ms`;
+           return `▶ 环境数据流: ACTIVE\n▶ 上传至中继: 稳定`;
+        }
+        if (!carEntity._netTime) carEntity._netTime = Date.now();
+        const elapsed = (Date.now() - carEntity._netTime) / 1000.0;
+        if (elapsed < 1.5) return `[SYS] 扫描 5G 信号...`;
+        if (elapsed < 3.5) return `[NET] 建立 WebSocket 专线...`;
+        return `▶ 环境数据流: ACTIVE\n▶ 延迟: 12ms`;
+      }, false),
+      font: '14px monospace',
+      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      fillColor: new Cesium.CallbackProperty(() => (Number(props.activePhaseIndex) >= 10 && modelIndex === 0) ? Cesium.Color.GOLD : Cesium.Color.LIME, false),
+      outlineColor: Cesium.Color.BLACK,
+      outlineWidth: 2,
+      showBackground: true,
+      backgroundColor: new Cesium.Color(0.1, 0.1, 0.1, 0.8),
+      backgroundPadding: new Cesium.Cartesian2(10, 10),
+      pixelOffset: new Cesium.Cartesian2(0, -30),
+      horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY
+    }
+  });
+
+  // ==========================================
+  // (油罐车场景) 链路绘制 
+  // ==========================================
+  // ==========================================
+  // 💥 终极不死版：油罐车场景无人车连线
+  // (直接放在 mounted 结尾或初始化的空白处，绝对不要包在模型的 forEach 里！)
+  // ==========================================
+  [0, 1].forEach((modelIndex) => {
+    [0, 1].forEach((innerCarIndex) => {
+      viewer.entities.add({
+        // 使用 immortal 后缀防止与旧 ID 冲突报错
+        id: `line-link-tanker-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-immortal`,
+        name: `油罐车动态中心数据链路`,
+        show: new Cesium.CallbackProperty((time) => {
+          // 1. 场景与阶段拦截
+          if (currentScene.value !== 'tanker') return false;
+          const phase = Number(props.activePhaseIndex);
+          if (phase >= 10 && modelIndex === 0) return false;
+          
+          // 动态捕获车辆实体
+          const carList = tankerRescueCarEntities.value || tankerRescueCarEntities;
+          const carEntity = carList[modelIndex];
+          if (!carEntity) return false;
+
+          // 🚨 如果阶段还没到 9，重置建联时间（这样反复拖拽进度条也能生效）
+          if (phase < 9) {
+             carEntity._myNetTime = null;
+             return false;
+          }
+
+          // 2. 🚨 把之前“苛刻”的到达判定加回来！
+          // 判断车是否已经显示/到达（调用你们原来的 isCarVisible 函数）
+          let visible = true;
+          if (typeof isCarVisible === 'function') {
+            visible = isCarVisible(time);
+          } else if (carEntity.show !== undefined) {
+            visible = typeof carEntity.show.getValue === 'function' ? carEntity.show.getValue(time) : !!carEntity.show;
+          }
+
+          if (!visible) {
+             carEntity._myNetTime = null; // 车还没到，或者不可见，时间清零
+             return false;
+          }
+
+          // 3. 🌟 模拟车停稳后，扫描 5G 信号并建立 WebSockets 的 3.5 秒延迟
+          if (!carEntity._myNetTime) {
+            carEntity._myNetTime = Date.now();
+          }
+          return ((Date.now() - carEntity._myNetTime) / 1000.0) >= 3.5; 
+        }, false),
+        polyline: {
+          positions: new Cesium.CallbackProperty((time) => {
+            if (currentScene.value !== 'tanker') return [];
+            const phase = Number(props.activePhaseIndex);
+            if (phase < 9) return [];
+
+            // 动态捕获车辆实体
+            const carList = tankerRescueCarEntities.value || tankerRescueCarEntities;
+            const carEntity = carList[modelIndex];
+            if (!carEntity || !carEntity.position) return [];
+
+            // 获取车坐标（为了防止天线计算报错，这里直接从车的正中心连线）
+            const carCartesian = carEntity.position.getValue(time);
+            if (!carCartesian) return [];
+            const startPos = carCartesian; 
+
+            // 🚨 阶段 10：全部连向 1 号车
+            if (phase >= 10) {
+              if (modelIndex === 0) return []; 
+              const relayUgv = carList[0];
+              if (relayUgv && relayUgv.position) {
+                const ugvPos = relayUgv.position.getValue(time);
+                if (ugvPos) return [startPos, ugvPos];
+              }
+              return [];
+            }
+
+            // 🌟 阶段 9：找油罐车基站
+            const targetJizhan = tankerJizhanAdjust.value || tankerJizhanAdjust;
+            if (!targetJizhan || !targetJizhan.show) return [];
+
+            const jizhanTop = getModelTopPosition(
+              targetJizhan.lng, targetJizhan.lat, targetJizhan.height,
+              targetJizhan.heading, targetJizhan.pitch, targetJizhan.roll, 10.0 // 暂时写死 10，防止变量缺失
+            );
+            
+            return [startPos, jizhanTop];
+          }, false),
+          width: 4.0,
+          arcType: Cesium.ArcType.NONE,
+          // 醒目的黄绿色
+          material: new DynamicFlowMaterialProperty({ color: Cesium.Color.CHARTREUSE, speed: 4.5, repeat: 6.0 })
+        }
+      });
     });
   });
  });

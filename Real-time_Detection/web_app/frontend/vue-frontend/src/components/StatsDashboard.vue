@@ -77,12 +77,12 @@
       <div v-if="Object.keys(stats.model_usage || {}).length > 0" class="card model-usage-card">
         <div class="card-title">模型使用分布</div>
         <div class="model-bars">
-          <div v-for="(cnt, name) in stats.model_usage" :key="name" class="model-bar-item">
-            <span class="model-name">{{ name }}</span>
+          <div v-for="item in sortedModelUsageItems" :key="item.name" class="model-bar-item">
+            <span class="model-name">{{ item.name }}</span>
             <div class="bar-track">
-              <div class="bar-fill" :style="{ width: barPct(name, cnt) }"></div>
+              <div class="bar-fill" :style="{ width: barPct(item.value) }"></div>
             </div>
-            <span class="model-cnt">{{ cnt }}</span>
+            <span class="model-cnt">{{ item.value }}</span>
           </div>
         </div>
       </div>
@@ -114,6 +114,8 @@ const CLASS_COLORS_MAP = {
   lkyw_fire: '#C2185B',
   car_nofire: '#FDD835',
   lkyw_nofire: '#FB8C00',
+  leak: '#EA80FC',
+  noleak: '#B2FF59',
   car_normal: '#FDD835',
   lkyw_normal: '#FB8C00'
 }
@@ -124,6 +126,39 @@ const FALLBACK_COLORS = [
   '#40C4FF', '#FF80AB', '#CCFF90', '#84FFFF'
 ]
 
+const CLASS_LABEL_ALIASES = {
+  accident: 'leak',
+  normal: 'noleak',
+  hazmat_leak: 'leak',
+  tank_leak: 'leak',
+  no_leak: 'noleak',
+  tank_normal: 'noleak',
+  carFire: 'car_fire',
+  lkywFire: 'lkyw_fire',
+  carNofire: 'car_nofire',
+  lkywNofire: 'lkyw_nofire',
+  car_normal: 'car_nofire',
+  lkyw_normal: 'lkyw_nofire'
+}
+
+const normalizeClassLabel = (label) => {
+  const raw = String(label || '').trim()
+  if (!raw) return ''
+  const normalized = raw.replace(/[-\s]/g, '_')
+  return CLASS_LABEL_ALIASES[raw] || CLASS_LABEL_ALIASES[normalized] || normalized
+}
+
+const normalizedClassDistribution = computed(() => {
+  const dist = stats.value?.class_distribution || {}
+  return Object.entries(dist).reduce((acc, [label, value]) => {
+    const normalized = normalizeClassLabel(label)
+    if (!normalized) return acc
+    acc[normalized] = (acc[normalized] || 0) + Number(value || 0)
+    return acc
+  }, {})
+})
+
+
 let _colorIdx = 0
 const getFallbackColor = () => {
   const c = FALLBACK_COLORS[_colorIdx % FALLBACK_COLORS.length]
@@ -132,7 +167,7 @@ const getFallbackColor = () => {
 }
 
 const doughnutData = computed(() => {
-  const dist = stats.value?.class_distribution
+  const dist = normalizedClassDistribution.value
   if (!dist || Object.keys(dist).length === 0) return null
   _colorIdx = 0
   const labels = Object.keys(dist)
@@ -148,7 +183,7 @@ const doughnutData = computed(() => {
 })
 
 const classDistributionItems = computed(() => {
-  const dist = stats.value?.class_distribution || {}
+  const dist = normalizedClassDistribution.value
   _colorIdx = 0
   return Object.entries(dist).map(([label, value]) => ({
     label,
@@ -201,12 +236,18 @@ const barOptions = {
   }
 }
 
-const maxModelCount = computed(() => {
+const sortedModelUsageItems = computed(() => {
   const usage = stats.value?.model_usage || {}
-  return Math.max(1, ...Object.values(usage))
+  return Object.entries(usage)
+    .map(([name, value]) => ({ name, value: Number(value || 0) }))
+    .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name))
 })
 
-const barPct = (name, cnt) => {
+const maxModelCount = computed(() => {
+  return Math.max(1, ...sortedModelUsageItems.value.map(item => item.value))
+})
+
+const barPct = (cnt) => {
   return (cnt / maxModelCount.value * 100).toFixed(0) + '%'
 }
 
