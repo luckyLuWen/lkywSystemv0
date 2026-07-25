@@ -66,7 +66,7 @@ Chinese (Simplified)<template>
               </div>
             </div>
             
-            <div class="slider-row" v-if="Number(activePhaseIndex) === 7">
+            <div class="slider-row" v-if="Number(activePhaseIndex) === 7 && currentScene !== 'truck'">
               <div class="slider-header">
                 <span class="slider-label">无人车出动耗时 (秒)</span>
                 <span class="val-tag gold-tag">{{ agentSpeedConfig.ugvDuration.toFixed(1) }}s</span>
@@ -4168,7 +4168,7 @@ function getUgvLast200mPosition(currentSceneName, activePhaseIndex, phaseStartTi
     }
     const actualStartTime = currentSceneName === 'truck' ? phase6StartTime : tankerPhase6StartTime;
     const elapsed = Date.now() - actualStartTime;
-    const duration = 10000;
+    const duration = currentSceneName === 'truck' ? agentSpeedConfig.uavDuration * 1000 : 10000;
     const t = Math.min(elapsed / duration, 1.0);
     
     if (t >= 1.0) {
