@@ -1145,11 +1145,12 @@ def system_info():
     info = {
         'gpu_name': 'N/A',
         'cuda_version': 'N/A',
-        'vram_total_gb': 0,
-        'vram_used_gb': 0,
-        'vram_free_gb': 0,
-        'gpu_temp': 0,
-        'gpu_util': 0,
+        'vram_total_gb': None,
+        'vram_used_gb': None,
+        'vram_free_gb': None,
+        'gpu_temp': None,
+        'gpu_util': None,
+        'gpu_error': '',
         'model_loaded': False,
         'model_name': '',
         'total_detections_today': 0,
@@ -1157,7 +1158,7 @@ def system_info():
         'python_version': '',
     }
     try:
-        # GPU info via nvidia-smi
+        # GPU info via nvidia-smi. This provides temperature/utilization that torch cannot expose.
         result = subprocess.run([
             'nvidia-smi', '--query-gpu=name,temperature.gpu,utilization.gpu,memory.total,memory.used,memory.free',
             '--format=csv,noheader,nounits'
@@ -1171,8 +1172,27 @@ def system_info():
                 info['vram_total_gb'] = round(int(parts[3]) / 1024, 1)
                 info['vram_used_gb'] = round(int(parts[4]) / 1024, 1)
                 info['vram_free_gb'] = round(int(parts[5]) / 1024, 1)
-    except Exception:
-        pass
+        else:
+            info['gpu_error'] = (result.stderr or result.stdout or 'nvidia-smi unavailable').strip()
+    except Exception as exc:
+        info['gpu_error'] = str(exc)
+
+    if info['gpu_name'] == 'N/A':
+        try:
+            if torch.cuda.is_available():
+                device_index = torch.cuda.current_device()
+                props = torch.cuda.get_device_properties(device_index)
+                total_gb = props.total_memory / (1024 ** 3)
+                reserved_gb = torch.cuda.memory_reserved(device_index) / (1024 ** 3)
+                allocated_gb = torch.cuda.memory_allocated(device_index) / (1024 ** 3)
+                used_gb = max(reserved_gb, allocated_gb)
+                info['gpu_name'] = torch.cuda.get_device_name(device_index)
+                info['vram_total_gb'] = round(total_gb, 1)
+                info['vram_used_gb'] = round(used_gb, 1)
+                info['vram_free_gb'] = round(max(total_gb - used_gb, 0), 1)
+        except Exception as exc:
+            if not info['gpu_error']:
+                info['gpu_error'] = str(exc)
 
     try:
         info['cuda_version'] = torch.version.cuda or 'N/A'
