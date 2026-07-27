@@ -660,6 +660,32 @@ def run_3d_cesium():
     )
 
 
+@app.route("/api/pois")
+def api_get_pois():
+    scenario = request.args.get("scenario", "leak")
+    from rescue_points import get_all_pois_full
+    pois = get_all_pois_full(scenario)
+    return jsonify({"ok": True, "scenario": scenario, "pois": pois})
+
+
+@app.route("/api/update_pois", methods=["POST"])
+def api_update_pois():
+    payload = request.get_json(force=True, silent=True) or {}
+    scenario = payload.get("scenario", "leak")
+    pois = payload.get("pois", [])
+    if not pois:
+        return error_response("未提供需更新的 POI 列表", 400)
+    
+    from rescue_points import update_poi_locations
+    update_poi_locations(scenario, pois)
+    
+    # 重新解算以刷新推演与 3D CZML 态势地图
+    run_script("app_3d_strategy.py", "--end_point", scenario, "--multi_agent", "1")
+    
+    return success_response("POI 坐标位置已成功更新并重新解算路径", scenario=scenario)
+
+
+
 # ── Service management API routes ─────────────────────────────────────
 
 @app.route("/api/services")

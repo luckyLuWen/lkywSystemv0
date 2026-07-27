@@ -957,6 +957,7 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
             color = [120, 120, 120, 160]; prefix = p['label'] + ': '; size = 8
         czml.append({
             "id": f"AgentPOI_{p['agent_key']}_{p['name']}",
+            "name": p['name'],
             "position": {"cartographicDegrees": [pos_lon, pos_lat, 0]},
             "point": {"pixelSize": size, "color": {"rgba": color},
                       "outlineColor": {"rgba": [255,255,255,200] if is_sel or not multi_agent_data else [0,0,0,0]},

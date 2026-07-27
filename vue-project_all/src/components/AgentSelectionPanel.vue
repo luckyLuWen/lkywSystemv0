@@ -102,19 +102,19 @@ const props = defineProps({
 }
 .card-title {
   margin: 0;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: #f1f5f9;
   letter-spacing: 0.5px;
 }
 .card-subtitle {
   margin: 2px 0 0;
-  font-size: 11px;
+  font-size: 12.5px;
   color: #94a3b8;
   font-family: 'Courier New', Courier, monospace;
 }
 .status-badge {
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 600;
   padding: 4px 8px;
   border-radius: 4px;
@@ -145,18 +145,19 @@ const props = defineProps({
 
 .terminal-logs {
   font-family: 'Courier New', Courier, monospace;
-  font-size: 11px;
-  color: #94a3b8;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 10px;
+  font-size: 12.5px;
+  color: #cbd5e1;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 10px 12px;
   border-radius: 6px;
   margin-bottom: 16px;
-  border-left: 2px solid #38bdf8;
+  border-left: 3px solid #38bdf8;
 }
 .log-line {
   margin-bottom: 4px;
   opacity: 0;
   animation: fadeInLog 0.3s forwards;
+  line-height: 1.5;
 }
 .log-line span {
   color: #38bdf8;
@@ -185,27 +186,27 @@ const props = defineProps({
   margin-bottom: 10px;
 }
 .agent-label {
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--agent-color);
 }
 .agent-winner-name {
-  font-size: 13px;
+  font-size: 14.5px;
   font-weight: 600;
   color: #e2e8f0;
 }
 .winner-stats {
   background: rgba(0, 0, 0, 0.2);
   border-radius: 4px;
-  padding: 8px;
+  padding: 8px 10px;
   margin-bottom: 10px;
 }
 .stat-row {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 12.5px;
   color: #cbd5e1;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
 }
 .stat-row:last-child { margin-bottom: 0; }
 .stat-row.highlight {
@@ -217,20 +218,20 @@ const props = defineProps({
   padding-top: 8px;
 }
 .losers-title {
-  font-size: 10px;
-  color: #64748b;
+  font-size: 11.5px;
+  color: #94a3b8;
   margin-bottom: 6px;
 }
 .loser-item {
   margin-bottom: 6px;
 }
 .loser-name {
-  font-size: 11px;
-  color: #94a3b8;
+  font-size: 12.5px;
+  color: #cbd5e1;
   font-weight: 500;
 }
 .loser-reason {
-  font-size: 10px;
+  font-size: 11.5px;
   color: #f87171;
   margin-left: 14px;
   margin-top: 2px;
