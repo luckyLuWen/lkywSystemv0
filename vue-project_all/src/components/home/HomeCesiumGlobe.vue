@@ -9026,254 +9026,142 @@ if (props.activePhaseIndex === 3 || props.activePhaseIndex === 7) {
   // 初始化油罐车场景的救援车（并排编队 + 丝滑物理转向）
   // 初始化油罐车场景的救援车（并排编队 + 丝滑物理转向）
   // 初始化油罐车场景的救援车（一字编队行驶 + 到达后驻停）
-  // ==========================================
-// 🚨 油罐车场景无人车引擎：平滑进场 + 巡逻
-// ==========================================
-tankerRescueCarModelConfigs.forEach((config, index) => {
-  let tankerBaseStartLng = Number(tankerRescueCarAdjust.lng) || 114.895791;
-  let tankerBaseStartLat = Number(tankerRescueCarAdjust.lat) || 30.631361;
-  let tankerBaseTargetLng = Number(tankerPointAdjust.lng) || 114.8945;
-  let tankerBaseTargetLat = Number(tankerPointAdjust.lat) || 30.632161;
-  const tankerStartHeight = Number(tankerRescueCarAdjust.height) || -1.5;
+  tankerRescueCarModelConfigs.forEach((config, index) => {
+    console.log(`[Cesium] 正在初始化油罐车场景救援车实体: ${config.id}, 路径: ${config.uri}`);
 
-  // 空间错开：防止两辆车重叠
-  if (index === 1) {
-     tankerBaseStartLng += 0.000035; tankerBaseStartLat -= 0.000025;
-     tankerBaseTargetLng += 0.000035; tankerBaseTargetLat -= 0.000025;
-  }
+    let phase7StartJulian = undefined;
+    let lastLocalPhase = -1;
 
-  const tankerFactor = config.stopFactor || 0.40;
-  const tankerActualTargetLng = tankerBaseStartLng + tankerFactor * (tankerBaseTargetLng - tankerBaseStartLng);
-  const tankerActualTargetLat = tankerBaseStartLat + tankerFactor * (tankerBaseTargetLat - tankerBaseStartLat);
-
-  let tankerPhase7StartJulian = null;
-  let tankerLastLocalPhase = -1;
-
-  const tankerRescueCarPosition = new Cesium.CallbackProperty((time) => {
-    const phase = Number(props.activePhaseIndex);
-    if (tankerLastLocalPhase !== phase) {
-      tankerPhase7StartJulian = Cesium.JulianDate.clone(time);
-      tankerLastLocalPhase = phase;
-    }
-
-    if (phase < 7) {
-      return Cesium.Cartesian3.fromDegrees(tankerBaseStartLng, tankerBaseStartLat, tankerStartHeight);
-    } else if (phase === 7 || phase === 8) {
-      // 阶段 7~8：平滑进场
-      const elapsed = Math.max(0, Cesium.JulianDate.secondsDifference(time, tankerPhase7StartJulian));
-      const duration = 10.0;
-      const t = Math.min(elapsed / duration, 1.0);
-      const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-      const lng = tankerBaseStartLng + (tankerActualTargetLng - tankerBaseStartLng) * easeT;
-      const lat = tankerBaseStartLat + (tankerActualTargetLat - tankerBaseStartLat) * easeT;
-      return Cesium.Cartesian3.fromDegrees(lng, lat, tankerStartHeight);
-    } else {
-      // 阶段 9 及以上：巡逻
-      const patrolSpeed = 0.4;
-      const patrolDistance = 0.00008;
-      const roadAngleRad = Cesium.Math.toRadians(90);
-      const wave = Math.sin((Date.now() / 1000.0) * patrolSpeed + (index * Math.PI));
-      const curLng = tankerActualTargetLng + wave * patrolDistance * Math.cos(roadAngleRad);
-      const curLat = tankerActualTargetLat + wave * patrolDistance * Math.sin(roadAngleRad);
-      return Cesium.Cartesian3.fromDegrees(curLng, curLat, tankerStartHeight);
-    }
-  }, false);
-
-  const tankerRescueCarOrientation = new Cesium.CallbackProperty((time) => {
-    const phase = Number(props.activePhaseIndex);
-    const pos = tankerRescueCarPosition.getValue(time);
-    if (!pos) return Cesium.Quaternion.IDENTITY;
-
-    // =====================================
-    // 🌟 核心绝招：接入你右下角面板的“航向”滑块！
-    // 拖动滑块，这里的 uiOffsetRad 就会实时改变，车头就会跟着转！
-    // =====================================
-    const uiOffsetRad = Cesium.Math.toRadians(Number(tankerRescueCarAdjust.heading) || 0);
-
-    let headingRad = 0;
-    if (phase < 9) {
-      // 进场时：基础行驶方向 + 滑块偏移角度
-      const dx = tankerActualTargetLng - tankerBaseStartLng;
-      const dy = tankerActualTargetLat - tankerBaseStartLat;
-      headingRad = Math.atan2(dx, dy) + uiOffsetRad;
-    } else {
-      // 巡逻时：基础巡逻方向 + 滑块偏移角度 (如果发现巡逻方向反了，可以把 90 改成 0)
-      headingRad = Cesium.Math.toRadians(0) + (index === 0 ? Math.PI : 0) + uiOffsetRad;
-    }
-    
-    const hpr = new Cesium.HeadingPitchRoll(headingRad, 0, 0);
-    return Cesium.Transforms.headingPitchRollQuaternion(pos, hpr);
-  }, false);
-
-  if (index === 0) {
-    sharedTankerRescueCarPosition = tankerRescueCarPosition;
-  }
-
-  const entity = viewer.entities.add({
-    id: config.id,
-    name: config.label + ' (油罐车)',
-    show: false,
-    position: tankerRescueCarPosition,
-    orientation: tankerRescueCarOrientation,
-    model: {
-      uri: config.uri,
-      scale: new Cesium.CallbackProperty(() => Number(tankerRescueCarAdjust.scale) || 1.0, false),
-      minimumPixelSize: 16,
-      heightReference: Cesium.HeightReference.NONE,
-      runAnimations: true,
-      silhouetteColor: Cesium.Color.fromCssColorString('#00ffaa'),
-      silhouetteSize: 2.0
-    }
-  });
-  tankerRescueCarEntities.push(entity);
-});
-
-// ==========================================
-// 📡 油罐车数据链路与面板 (彻底分离防断线)
-// ==========================================
-[0, 1].forEach((modelIndex) => {
-  // 1. 油罐车终端面板
-  viewer.entities.add({
-    id: `network-label-tanker-car${modelIndex + 1}`,
-    position: new Cesium.CallbackProperty((time) => {
-      const carList = tankerRescueCarEntities.value || tankerRescueCarEntities;
-      const carEntity = carList[modelIndex];
-      if (!carEntity) return undefined;
-      const carPos = carEntity.position.getValue(time);
-      if (!carPos) return undefined;
-      const carto = Cesium.Cartographic.fromCartesian(carPos);
-      return Cesium.Cartesian3.fromDegrees(Cesium.Math.toDegrees(carto.longitude), Cesium.Math.toDegrees(carto.latitude), carto.height + 3.5);
-    }, false),
-    show: new Cesium.CallbackProperty((time) => {
-      if (currentScene.value !== 'tanker') return false;
-      const carList = tankerRescueCarEntities.value || tankerRescueCarEntities;
-      const carEntity = carList[modelIndex];
-      if (!carEntity) return false;
-      
-      let visible = true;
-      if (carEntity.show !== undefined) {
-        visible = typeof carEntity.show.getValue === 'function' ? carEntity.show.getValue(time) : !!carEntity.show;
+    const tankerRescueCarPosition = new Cesium.CallbackProperty((time) => {
+      if (lastLocalPhase !== props.activePhaseIndex) {
+        phase7StartJulian = Cesium.JulianDate.clone(time);
+        lastLocalPhase = props.activePhaseIndex;
       }
-      if (Number(props.activePhaseIndex) >= 9 && visible) return true;
-      carEntity._netTime = null;
-      return false;
-    }, false),
-    label: {
-      text: new Cesium.CallbackProperty(() => {
-        if (currentScene.value !== 'tanker') return '';
-        if (Number(props.activePhaseIndex) < 9) return '';
-        if (Number(props.activePhaseIndex) >= 10) {
-           if (modelIndex === 0) return `[RELAY] 启用临时通信中继\n▶ 核心链路: 已接管\n▶ 延迟: 8ms`;
-           return `▶ 环境数据流: ACTIVE\n▶ 上传至中继: 稳定`;
-        }
-        const carList = tankerRescueCarEntities.value || tankerRescueCarEntities;
-        const carEntity = carList[modelIndex];
-        if (!carEntity) return '';
-        if (!carEntity._netTime) carEntity._netTime = Date.now();
-        const elapsed = (Date.now() - carEntity._netTime) / 1000.0;
-        if (elapsed < 1.5) return `[SYS] 扫描 5G 信号...`;
-        if (elapsed < 3.5) return `[NET] 建立 WebSocket 专线...`;
-        return `▶ 环境数据流: ACTIVE\n▶ 延迟: 12ms`;
-      }, false),
-      font: '14px monospace',
-      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-      fillColor: new Cesium.CallbackProperty(() => (Number(props.activePhaseIndex) >= 10 && modelIndex === 0) ? Cesium.Color.GOLD : Cesium.Color.LIME, false),
-      outlineColor: Cesium.Color.BLACK,
-      outlineWidth: 2,
-      showBackground: true,
-      backgroundColor: new Cesium.Color(0.1, 0.1, 0.1, 0.8),
-      backgroundPadding: new Cesium.Cartesian2(10, 10),
-      
-      // =====================================
-      // 🌟 核心修复：双翼展开布局，彻底告别重叠！
-      // =====================================
-      horizontalOrigin: modelIndex === 0 ? Cesium.HorizontalOrigin.RIGHT : Cesium.HorizontalOrigin.LEFT,
-      pixelOffset: new Cesium.Cartesian2(modelIndex === 0 ? -30 : 30, -45),
-      
-      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-      disableDepthTestDistance: Number.POSITIVE_INFINITY
-    }
-  });
 
-  // 2. 油罐车不死版连线
-  [0, 1].forEach((innerCarIndex) => {
-    viewer.entities.add({
-      id: `line-link-tanker-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-immortal`,
-      name: `油罐车动态中心数据链路`,
-      show: new Cesium.CallbackProperty((time) => {
-        if (currentScene.value !== 'tanker') return false;
-        const phase = Number(props.activePhaseIndex);
-        if (phase >= 10 && modelIndex === 0) return false;
+      const baseStartLng = Number(tankerRescueCarAdjust.lng) || 114.895791;
+      const baseStartLat = Number(tankerRescueCarAdjust.lat) || 30.631361;
+      const baseTargetLng = Number(tankerPointAdjust.lng) || 114.8945;
+      const baseTargetLat = Number(tankerPointAdjust.lat) || 30.632161;
+      const startHeight = Number(tankerRescueCarAdjust.height) || -1.5;
 
-        const carList = tankerRescueCarEntities.value || tankerRescueCarEntities;
-        const carEntity = carList[modelIndex];
-        if (!carEntity) return false;
+      const factor = config.stopFactor || 0.40;
+      const actualTargetLng = baseStartLng + factor * (baseTargetLng - baseStartLng);
+      const actualTargetLat = baseStartLat + factor * (baseTargetLat - baseStartLat);
 
-        if (phase < 9) {
-           carEntity._myNetTime = null;
-           return false;
-        }
-
-        let visible = true;
-        if (carEntity.show !== undefined) {
-          visible = typeof carEntity.show.getValue === 'function' ? carEntity.show.getValue(time) : !!carEntity.show;
-        }
-        if (!visible) {
-           carEntity._myNetTime = null;
-           return false;
-        }
-        if (!carEntity._myNetTime) carEntity._myNetTime = Date.now();
-        return ((Date.now() - carEntity._myNetTime) / 1000.0) >= 3.5;
-      }, false),
-      polyline: {
-        positions: new Cesium.CallbackProperty((time) => {
-          if (currentScene.value !== 'tanker') return [];
-          const phase = Number(props.activePhaseIndex);
-          if (phase < 9) return [];
-
-          const carList = tankerRescueCarEntities.value || tankerRescueCarEntities;
-          const carEntity = carList[modelIndex];
-
-          if (!carEntity || !carEntity.position || !carEntity.orientation) return [];
-          const carCartesian = carEntity.position.getValue(time);
-          const carOrientation = carEntity.orientation.getValue(time);
-          if (!carCartesian || !carOrientation) return [];
-
-          const offsetX = 0.0;
-          const offsetY = (innerCarIndex === 0) ? 1.5 : -1.5;
-          const offsetZ = 1.6;
-          const localOffset = new Cesium.Cartesian3(offsetX, offsetY, offsetZ);
-          const rotationMatrix = Cesium.Matrix3.fromQuaternion(carOrientation);
-          const worldOffset = Cesium.Matrix3.multiplyByVector(rotationMatrix, localOffset, new Cesium.Cartesian3());
-          const startPos = Cesium.Cartesian3.add(carCartesian, worldOffset, new Cesium.Cartesian3());
-
-          if (phase >= 10) {
-            if (modelIndex === 0) return [];
-            const relayUgv = carList[0];
-            if (relayUgv && relayUgv.position) {
-              const ugvPos = relayUgv.position.getValue(time);
-              if (ugvPos) return [startPos, ugvPos];
-            }
-            return [];
+      if (props.activePhaseIndex >= 7) {
+        // 使用同事的高级路线平滑和地形贴合逻辑
+        const ugvInfo = getUgvLast200mPosition('tanker', props.activePhaseIndex, tankerPhase7StartTime, viewer.clock.currentTime);
+        if (ugvInfo && ugvInfo.pos) {
+          const carto = Cesium.Cartographic.fromCartesian(ugvInfo.pos);
+          let baseHeight = carto.height;
+          if (viewer && viewer.scene && viewer.scene.globe) {
+            const terrainHeight = viewer.scene.globe.getHeight(carto);
+            if (terrainHeight !== undefined) baseHeight = terrainHeight;
           }
+          carto.height = baseHeight + (Number(tankerRescueCarAdjust.height) || 0.0);
+          return Cesium.Cartographic.toCartesian(carto);
+        }
+        if (currentMissionDataSource) {
+          const entity = currentMissionDataSource.entities.getById('Car');
+          if (entity) {
+            const pos = entity.originalPosition ? entity.originalPosition.getValue(getQueryTime()) : entity.position.getValue(getQueryTime());
+            if (pos) {
+              const carto = Cesium.Cartographic.fromCartesian(pos);
+              let baseHeight = carto.height;
+              if (viewer && viewer.scene && viewer.scene.globe) {
+                const terrainHeight = viewer.scene.globe.getHeight(carto);
+                if (terrainHeight !== undefined) baseHeight = terrainHeight;
+              }
+              carto.height = baseHeight + (Number(tankerRescueCarAdjust.height) || 0.0);
+              return Cesium.Cartographic.toCartesian(carto);
+            }
+          }
+        }
+      }
+      
+      // 第 6 阶段之前（停在起点），保留你的 baseStartLng/Lat 变量体系，兼容同事的 startHeight
+      if (props.activePhaseIndex < 7) {
+        const finalStartLng = typeof baseStartLng !== 'undefined' ? baseStartLng : startLng;
+        const finalStartLat = typeof baseStartLat !== 'undefined' ? baseStartLat : startLat;
+        return Cesium.Cartesian3.fromDegrees(finalStartLng, finalStartLat, startHeight);
+      } else if (props.activePhaseIndex === 8) {
+        // 👆 这里删掉了一个多余的 } 
+        const elapsed = Math.max(0, Cesium.JulianDate.secondsDifference(time, phase7StartJulian));
+        const duration = agentSpeedConfig.ugvDuration;
+        const t = Math.min(elapsed / duration, 1.0);
+        const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
-          const targetJizhan = tankerJizhanAdjust.value || tankerJizhanAdjust;
-          if (!targetJizhan || !targetJizhan.show) return [];
+        const lng = baseStartLng + (actualTargetLng - baseStartLng) * easeT;
+        const lat = baseStartLat + (actualTargetLat - baseStartLat) * easeT;
+        return Cesium.Cartesian3.fromDegrees(lng, lat, startHeight);
+      } else {
+        // 阶段 >= 8：驻停在目标位置
+        return Cesium.Cartesian3.fromDegrees(actualTargetLng, actualTargetLat, startHeight);
+      }
+    }, false);
 
-          const jizhanTop = getModelTopPosition(
-            targetJizhan.lng, targetJizhan.lat, targetJizhan.height,
-            targetJizhan.heading, targetJizhan.pitch, targetJizhan.roll, JIZHAN_TOP_OFFSET
-          );
+    const tankerRescueCarOrientation = new Cesium.CallbackProperty((time) => {
+      const pos = tankerRescueCarPosition.getValue(time);
+      if (!pos) return undefined;
 
-          return [startPos, jizhanTop];
-        }, false),
-        width: 4.0,
-        arcType: Cesium.ArcType.NONE,
-        material: new DynamicFlowMaterialProperty({ color: Cesium.Color.CHARTREUSE, speed: 4.5, repeat: 6.0 })
+      let headingRad;
+      if (props.activePhaseIndex >= 7) {
+        const ugvInfo = getUgvLast200mPosition('tanker', props.activePhaseIndex, tankerPhase7StartTime, viewer.clock.currentTime);
+        if (ugvInfo && ugvInfo.headingRad !== undefined) {
+          // 彻底抛弃路径朝向，全程锁定为你设定的“航向 (Heading)”参数
+          const headingDeg = Number(tankerRescueCarAdjust.heading) || -89;
+          headingRad = Cesium.Math.toRadians(headingDeg);
+        } else if (currentMissionDataSource) {
+          const entity = currentMissionDataSource.entities.getById('Car');
+          if (entity) {
+            const nextTime = Cesium.JulianDate.addSeconds(getQueryTime(), 0.5, new Cesium.JulianDate());
+            const nextPos = entity.position.getValue(nextTime);
+            if (nextPos) {
+              const cartoCur = Cesium.Cartographic.fromCartesian(pos);
+              const cartoNext = Cesium.Cartographic.fromCartesian(nextPos);
+              headingRad = Math.PI / 2 - Math.atan2(
+                Cesium.Math.toDegrees(cartoNext.latitude) - Cesium.Math.toDegrees(cartoCur.latitude),
+                Cesium.Math.toDegrees(cartoNext.longitude) - Cesium.Math.toDegrees(cartoCur.longitude)
+              );
+            } else {
+              headingRad = Cesium.Math.toRadians(Number(tankerRescueCarAdjust.heading) || 215);
+            }
+          } else {
+            headingRad = Cesium.Math.toRadians(Number(tankerRescueCarAdjust.heading) || 215);
+          }
+        } else {
+          headingRad = Cesium.Math.toRadians(Number(tankerRescueCarAdjust.heading) || 215);
+        }
+      } else {
+        headingRad = Cesium.Math.toRadians(Number(tankerRescueCarAdjust.heading) || 215);
+      }
+
+      const hpr = new Cesium.HeadingPitchRoll(headingRad, 0, 0);
+      return Cesium.Transforms.headingPitchRollQuaternion(pos, hpr);
+    }, false);
+
+    if (index === 0) {
+      sharedTankerRescueCarPosition = tankerRescueCarPosition;
+    }
+
+    const entity = viewer.entities.add({
+      id: config.id,
+      name: config.label + ' (油罐车)',
+      show: false,
+      position: tankerRescueCarPosition,
+      orientation: tankerRescueCarOrientation,
+      model: {
+        uri: config.uri,
+        scale: new Cesium.CallbackProperty(() => Number(tankerRescueCarAdjust.scale) || 1.0, false),
+        minimumPixelSize: 16,
+        heightReference: Cesium.HeightReference.NONE,
+        runAnimations: true,
+        silhouetteColor: Cesium.Color.fromCssColorString('#00ffaa'),
+        silhouetteSize: 2.0
       }
     });
+    tankerRescueCarEntities.push(entity);
   });
-});
 // =========================================================
 
 // 1. 货车追尾现场 - 编队无人车链路 (连向 5G 基站)
@@ -9381,97 +9269,9 @@ viewer.entities.add({
     disableDepthTestDistance: Number.POSITIVE_INFINITY
   }
 });
-// ==========================================
-// 🚨 油罐车场景：基站端组网雷达波与调度面板
-// ==========================================
-// 🧹 清理历史残留，防止热更新报错
-['jizhan-broadcast-wave-tanker', 'jizhan-network-panel-tanker'].forEach(id => viewer.entities.removeById(id));
 
-// 专属波纹半径计算器
-let _cachedTankerWaveFrameTime = 0;
-let _cachedTankerWaveRadius = 0.1;
-
-function getTankerJizhanWaveRadius() {
-  if (Number(props.activePhaseIndex) < 8 || currentScene.value !== 'tanker') return 0.1;
-  if (!tankerJizhanAdjust._netTime) tankerJizhanAdjust._netTime = Date.now();
-  const now = Date.now();
-  if (now - _cachedTankerWaveFrameTime > 8) {
-    _cachedTankerWaveFrameTime = now;
-    _cachedTankerWaveRadius = Math.max(0.1, (((now - tankerJizhanAdjust._netTime) / 1000.0) % 2.0) * 40.0);
-  }
-  return _cachedTankerWaveRadius;
-}
-
-// (1) 油罐车基站向外发送的 5G 探测波纹
-viewer.entities.add({
-  id: 'jizhan-broadcast-wave-tanker',
-  name: '油罐车基站广播信号',
-  // 使用 CallbackProperty 让波纹跟随右下角滑块实时移动
-  position: new Cesium.CallbackProperty(() => {
-    return Cesium.Cartesian3.fromDegrees(tankerJizhanAdjust.lng, tankerJizhanAdjust.lat, tankerJizhanAdjust.height);
-  }, false),
-  show: new Cesium.CallbackProperty(() => {
-    // 拦截：阶段不到8，或者当前不是油罐车场景，立即隐藏并清空计时
-    if (Number(props.activePhaseIndex) < 8 || currentScene.value !== 'tanker') {
-      tankerJizhanAdjust._netTime = null; 
-      return false;
-    }
-    return true;
-  }, false),
-  ellipse: {
-    semiMinorAxis: new Cesium.CallbackProperty(getTankerJizhanWaveRadius, false),
-    semiMajorAxis: new Cesium.CallbackProperty(getTankerJizhanWaveRadius, false),
-    material: new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty(() => {
-      if (Number(props.activePhaseIndex) < 8 || currentScene.value !== 'tanker' || !tankerJizhanAdjust._netTime) {
-        return Cesium.Color.TRANSPARENT;
-      }
-      const alpha = Math.max(0, 1.0 - ((((Date.now() - tankerJizhanAdjust._netTime) / 1000.0) % 2.0) / 2.0));
-      return Cesium.Color.CYAN.withAlpha(alpha * 0.6); // 保持科技蓝
-    }, false)),
-    height: new Cesium.CallbackProperty(() => tankerJizhanAdjust.height + 0.1, false),
-  }
-});
-
-// (2) 油罐车基站头顶的主控面板
-viewer.entities.add({
-  id: 'jizhan-network-panel-tanker',
-  position: new Cesium.CallbackProperty(() => {
-    return Cesium.Cartesian3.fromDegrees(tankerJizhanAdjust.lng, tankerJizhanAdjust.lat, tankerJizhanAdjust.height + 6.5);
-  }, false),
-  show: new Cesium.CallbackProperty(() => {
-    if (Number(props.activePhaseIndex) < 8 || currentScene.value !== 'tanker' || !tankerJizhanAdjust.show) {
-       tankerJizhanAdjust._netTime = null; 
-       return false;
-    }
-    return true;
-  }, false),
-  label: {
-    text: new Cesium.CallbackProperty(() => {
-      if (Number(props.activePhaseIndex) < 8 || currentScene.value !== 'tanker' || !tankerJizhanAdjust._netTime) return '';
-      const elapsed = (Date.now() - tankerJizhanAdjust._netTime) / 1000.0;
-      if (elapsed < 1.5) return `[CORE] 5G 核心网激活\n广播探测波纹...`;
-      if (elapsed < 3.5) return `[CORE] 捕获设备握手请求\n分配密钥并开通专线...`;
-      return `[CORE] 星型网络组网完毕\n▶ 主控链路: 稳定\n▶ 上行吞吐: 1.2 Gbps`;
-    }, false),
-    font: '14px monospace',
-    style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-    fillColor: Cesium.Color.CYAN,
-    outlineColor: Cesium.Color.BLACK,
-    outlineWidth: 2,
-    showBackground: true,
-    backgroundColor: new Cesium.Color(0.05, 0.1, 0.2, 0.8),
-    backgroundPadding: new Cesium.Cartesian2(12, 12),
-    pixelOffset: new Cesium.Cartesian2(0, -30),
-    horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
-    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-    disableDepthTestDistance: Number.POSITIVE_INFINITY
-  }
-});
 // ==========================================
 // 2. 无人车端：游走 + 终端面板 + 链路
-// ==========================================
-// ==========================================
-// 还原版：货车场景无人车端（阶段 8 开始游走 + 绿色连线）
 // ==========================================
 const truckRoadAngleRad = Cesium.Math.toRadians(45); 
 const truckPatrolDistance = 0.00005;
@@ -9490,7 +9290,7 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
   const originalPosition = carEntity.position;
   let lastValidPos = undefined;
 
-  // (1) 货车车辆游走
+  // (1) 车辆游走
   carEntity.position = new Cesium.CallbackProperty((time) => {
     if (isPhase8Ready()) {
       const basePos = originalPosition ? originalPosition.getValue(time) : undefined;
@@ -9508,13 +9308,23 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
     return originalPosition ? originalPosition.getValue(time) : undefined;
   }, false);
 
+  // 辅助函数：解析实体自身显隐状态
   const isCarVisible = (time) => {
     let visible = carEntity.show;
     if (visible && typeof visible.getValue === 'function') visible = visible.getValue(time);
     return !!visible;
   };
 
-  // (2) 货车车辆终端状态面板
+  // (2) 车辆终端状态面板
+  // ==========================================
+  // (2) 车辆终端状态面板 (阶段8常态 / 阶段9中继)
+  // ==========================================
+// ==========================================
+  // (货车场景) 车辆终端状态面板
+  // ==========================================
+ // ==========================================
+  // (货车场景) 车辆终端状态面板
+  // ==========================================
   viewer.entities.add({
     id: `network-label-car${modelIndex + 1}`,
     position: new Cesium.CallbackProperty((time) => {
@@ -9524,14 +9334,14 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       return Cesium.Cartesian3.fromDegrees(Cesium.Math.toDegrees(carto.longitude), Cesium.Math.toDegrees(carto.latitude), carto.height + 3.5);
     }, false),
     show: new Cesium.CallbackProperty((time) => {
-      if (currentScene.value !== 'truck') return false; 
+      if (currentScene.value !== 'truck') return false; // 🚨 货车专属
       if (Number(props.activePhaseIndex) >= 9 && isCarVisible(time)) return true;
       carEntity._netTime = null; 
       return false;
     }, false),
     label: {
       text: new Cesium.CallbackProperty(() => {
-        if (currentScene.value !== 'truck') return '';
+        if (currentScene.value !== 'truck') return ''; // 🚨 货车专属
         if (Number(props.activePhaseIndex) < 9) return ''; 
         if (Number(props.activePhaseIndex) >= 10) {
            if (modelIndex === 0) return `[RELAY] 启用临时通信中继\n▶ 核心链路: 已接管\n▶ 延迟: 8ms`;
@@ -9551,25 +9361,22 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       showBackground: true,
       backgroundColor: new Cesium.Color(0.1, 0.1, 0.1, 0.8),
       backgroundPadding: new Cesium.Cartesian2(10, 10),
-      
-      // =====================================
-      // 🌟 核心修复：双翼展开布局，货车面板也不会重叠了！
-      // =====================================
-      horizontalOrigin: modelIndex === 0 ? Cesium.HorizontalOrigin.RIGHT : Cesium.HorizontalOrigin.LEFT,
-      pixelOffset: new Cesium.Cartesian2(modelIndex === 0 ? -30 : 30, -45),
-      
+      pixelOffset: new Cesium.Cartesian2(0, -30),
+      horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
       verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
       disableDepthTestDistance: Number.POSITIVE_INFINITY
     }
   });
 
-  // (3) 货车场景链路绘制 
+  // ==========================================
+  // (货车场景) 链路绘制 
+  // ==========================================
   [0, 1].forEach((innerCarIndex) => {
     viewer.entities.add({
       id: `line-link-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-real`,
       name: `货车动态中心数据链路`,
       show: new Cesium.CallbackProperty((time) => {
-        if (currentScene.value !== 'truck') return false; 
+        if (currentScene.value !== 'truck') return false; // 🚨 货车专属
         if (Number(props.activePhaseIndex) >= 10 && modelIndex === 0) return false;
         if (Number(props.activePhaseIndex) >= 9 && isCarVisible(time) && carEntity._netTime) {
            return ((Date.now() - carEntity._netTime) / 1000.0) >= 3.5; 
@@ -9578,6 +9385,7 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       }, false),
       polyline: {
         positions: new Cesium.CallbackProperty((time) => {
+          // 🚨 绝对物理隔离：只要切到油罐车，货车的线瞬间消失！
           if (currentScene.value !== 'truck') return []; 
           if (Number(props.activePhaseIndex) < 9) return [];
           
@@ -9592,7 +9400,7 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
 
           if (Number(props.activePhaseIndex) >= 10) {
             if (modelIndex === 0) return []; 
-            const relayUgv = rescueCarEntities[0]; 
+            const relayUgv = rescueCarEntities[0]; // 🚨 强绑定货车的1号车
             if (relayUgv) {
               const ugv1Pos = relayUgv.position.getValue(time);
               if (ugv1Pos) return [startPos, ugv1Pos];
@@ -9600,6 +9408,7 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
             return [];
           }
 
+          // 🌟 强绑定货车的基站，再也不许找油罐车基站了！
           if (!jizhanAdjust || !jizhanAdjust.show) return []; 
           const jizhanTop = getModelTopPosition(
             jizhanAdjust.lng, jizhanAdjust.lat, jizhanAdjust.height,
@@ -9613,7 +9422,149 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       }
     });
   });
-});
+  // ==========================================
+  // (油罐车场景) 车辆终端状态面板
+  // ==========================================
+  viewer.entities.add({
+    id: `network-label-tanker-car${modelIndex + 1}`,
+    position: new Cesium.CallbackProperty((time) => {
+      const carPos = carEntity.position.getValue(time);
+      if (!carPos) return undefined;
+      const carto = Cesium.Cartographic.fromCartesian(carPos);
+      return Cesium.Cartesian3.fromDegrees(Cesium.Math.toDegrees(carto.longitude), Cesium.Math.toDegrees(carto.latitude), carto.height + 3.5);
+    }, false),
+    show: new Cesium.CallbackProperty((time) => {
+      if (currentScene.value !== 'tanker') return false; // 🚨 油罐车专属
+      if (Number(props.activePhaseIndex) >= 9 && isCarVisible(time)) return true;
+      carEntity._netTime = null; 
+      return false;
+    }, false),
+    label: {
+      text: new Cesium.CallbackProperty(() => {
+        if (currentScene.value !== 'tanker') return ''; // 🚨 油罐车专属
+        if (Number(props.activePhaseIndex) < 9) return ''; 
+        if (Number(props.activePhaseIndex) >= 10) {
+           if (modelIndex === 0) return `[RELAY] 启用临时通信中继\n▶ 核心链路: 已接管\n▶ 延迟: 8ms`;
+           return `▶ 环境数据流: ACTIVE\n▶ 上传至中继: 稳定`;
+        }
+        if (!carEntity._netTime) carEntity._netTime = Date.now();
+        const elapsed = (Date.now() - carEntity._netTime) / 1000.0;
+        if (elapsed < 1.5) return `[SYS] 扫描 5G 信号...`;
+        if (elapsed < 3.5) return `[NET] 建立 WebSocket 专线...`;
+        return `▶ 环境数据流: ACTIVE\n▶ 延迟: 12ms`;
+      }, false),
+      font: '14px monospace',
+      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      fillColor: new Cesium.CallbackProperty(() => (Number(props.activePhaseIndex) >= 10 && modelIndex === 0) ? Cesium.Color.GOLD : Cesium.Color.LIME, false),
+      outlineColor: Cesium.Color.BLACK,
+      outlineWidth: 2,
+      showBackground: true,
+      backgroundColor: new Cesium.Color(0.1, 0.1, 0.1, 0.8),
+      backgroundPadding: new Cesium.Cartesian2(10, 10),
+      pixelOffset: new Cesium.Cartesian2(0, -30),
+      horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY
+    }
+  });
+
+  // ==========================================
+  // (油罐车场景) 链路绘制 
+  // ==========================================
+  // ==========================================
+  // 💥 终极不死版：油罐车场景无人车连线
+  // (直接放在 mounted 结尾或初始化的空白处，绝对不要包在模型的 forEach 里！)
+  // ==========================================
+  [0, 1].forEach((modelIndex) => {
+    [0, 1].forEach((innerCarIndex) => {
+      viewer.entities.add({
+        // 使用 immortal 后缀防止与旧 ID 冲突报错
+        id: `line-link-tanker-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-immortal`,
+        name: `油罐车动态中心数据链路`,
+        show: new Cesium.CallbackProperty((time) => {
+          // 1. 场景与阶段拦截
+          if (currentScene.value !== 'tanker') return false;
+          const phase = Number(props.activePhaseIndex);
+          if (phase >= 10 && modelIndex === 0) return false;
+          
+          // 动态捕获车辆实体
+          const carList = tankerRescueCarEntities.value || tankerRescueCarEntities;
+          const carEntity = carList[modelIndex];
+          if (!carEntity) return false;
+
+          // 🚨 如果阶段还没到 9，重置建联时间（这样反复拖拽进度条也能生效）
+          if (phase < 9) {
+             carEntity._myNetTime = null;
+             return false;
+          }
+
+          // 2. 🚨 把之前“苛刻”的到达判定加回来！
+          // 判断车是否已经显示/到达（调用你们原来的 isCarVisible 函数）
+          let visible = true;
+          if (typeof isCarVisible === 'function') {
+            visible = isCarVisible(time);
+          } else if (carEntity.show !== undefined) {
+            visible = typeof carEntity.show.getValue === 'function' ? carEntity.show.getValue(time) : !!carEntity.show;
+          }
+
+          if (!visible) {
+             carEntity._myNetTime = null; // 车还没到，或者不可见，时间清零
+             return false;
+          }
+
+          // 3. 🌟 模拟车停稳后，扫描 5G 信号并建立 WebSockets 的 3.5 秒延迟
+          if (!carEntity._myNetTime) {
+            carEntity._myNetTime = Date.now();
+          }
+          return ((Date.now() - carEntity._myNetTime) / 1000.0) >= 3.5; 
+        }, false),
+        polyline: {
+          positions: new Cesium.CallbackProperty((time) => {
+            if (currentScene.value !== 'tanker') return [];
+            const phase = Number(props.activePhaseIndex);
+            if (phase < 9) return [];
+
+            // 动态捕获车辆实体
+            const carList = tankerRescueCarEntities.value || tankerRescueCarEntities;
+            const carEntity = carList[modelIndex];
+            if (!carEntity || !carEntity.position) return [];
+
+            // 获取车坐标（为了防止天线计算报错，这里直接从车的正中心连线）
+            const carCartesian = carEntity.position.getValue(time);
+            if (!carCartesian) return [];
+            const startPos = carCartesian; 
+
+            // 🚨 阶段 10：全部连向 1 号车
+            if (phase >= 10) {
+              if (modelIndex === 0) return []; 
+              const relayUgv = carList[0];
+              if (relayUgv && relayUgv.position) {
+                const ugvPos = relayUgv.position.getValue(time);
+                if (ugvPos) return [startPos, ugvPos];
+              }
+              return [];
+            }
+
+            // 🌟 阶段 9：找油罐车基站
+            const targetJizhan = tankerJizhanAdjust.value || tankerJizhanAdjust;
+            if (!targetJizhan || !targetJizhan.show) return [];
+
+            const jizhanTop = getModelTopPosition(
+              targetJizhan.lng, targetJizhan.lat, targetJizhan.height,
+              targetJizhan.heading, targetJizhan.pitch, targetJizhan.roll, 10.0 // 暂时写死 10，防止变量缺失
+            );
+            
+            return [startPos, jizhanTop];
+          }, false),
+          width: 4.0,
+          arcType: Cesium.ArcType.NONE,
+          // 醒目的黄绿色
+          material: new DynamicFlowMaterialProperty({ color: Cesium.Color.CHARTREUSE, speed: 4.5, repeat: 6.0 })
+        }
+      });
+    });
+  });
+ });
 // ==========================================
 
   viewer.screenSpaceEventHandler.setInputAction((movement) => {
