@@ -9116,21 +9116,21 @@ tankerRescueCarModelConfigs.forEach((config, index) => {
     const pos = tankerRescueCarPosition.getValue(time);
     if (!pos) return Cesium.Quaternion.IDENTITY;
 
-    // =====================================
-    // 🌟 核心绝招：接入你右下角面板的“航向”滑块！
-    // 拖动滑块，这里的 uiOffsetRad 就会实时改变，车头就会跟着转！
-    // =====================================
+    // 🌟 核心：接入你右下角面板的“航向(Heading)”滑块！
     const uiOffsetRad = Cesium.Math.toRadians(Number(tankerRescueCarAdjust.heading) || 0);
+
+    // 🚨 终极绝招：既然两辆车都是反的，直接加 180 度（Math.PI）让它们集体原地掉头！
+    const flip180 = Math.PI; 
 
     let headingRad = 0;
     if (phase < 9) {
-      // 进场时：基础行驶方向 + 滑块偏移角度
+      // 进场时：基础行驶方向 + 180度掉头 + 滑块偏移角度
       const dx = tankerActualTargetLng - tankerBaseStartLng;
       const dy = tankerActualTargetLat - tankerBaseStartLat;
-      headingRad = Math.atan2(dx, dy) + uiOffsetRad;
+      headingRad = Math.atan2(dx, dy) + flip180 + uiOffsetRad;
     } else {
-      // 巡逻时：基础巡逻方向 + 滑块偏移角度 (如果发现巡逻方向反了，可以把 90 改成 0)
-      headingRad = Cesium.Math.toRadians(0) + (index === 0 ? Math.PI : 0) + uiOffsetRad;
+      // 巡逻时：基础巡逻方向 + 180度掉头 + 滑块偏移角度
+      headingRad = Cesium.Math.toRadians(0) + flip180 + uiOffsetRad;
     }
     
     const hpr = new Cesium.HeadingPitchRoll(headingRad, 0, 0);
