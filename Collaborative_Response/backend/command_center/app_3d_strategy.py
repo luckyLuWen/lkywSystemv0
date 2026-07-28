@@ -946,9 +946,9 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
     for p in AGENT_POIS:
         is_sel = p['name'] in selected_start_positions
         rgba = agent_colors_czml.get(p.get('agent_key', ''), [200,200,200,220])
-        # 选中时使用路径起点坐标，未选中时使用DB坐标
-        pos_lon = selected_start_positions[p['name']][1] if p['name'] in selected_start_positions else p['lon']
-        pos_lat = selected_start_positions[p['name']][0] if p['name'] in selected_start_positions else p['lat']
+        # 统一使用真实 POI 坐标，确保图标、Label与地图上的 POI 小圈圈 100% 同步重叠！
+        pos_lon = p['lon']
+        pos_lat = p['lat']
         if not multi_agent_data:
             color = rgba; prefix = p['label'] + ': '; size = 10
         elif is_sel:
@@ -957,6 +957,7 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
             color = [120, 120, 120, 160]; prefix = p['label'] + ': '; size = 8
         czml.append({
             "id": f"AgentPOI_{p['agent_key']}_{p['name']}",
+            "name": p['name'],
             "position": {"cartographicDegrees": [pos_lon, pos_lat, 0]},
             "point": {"pixelSize": size, "color": {"rgba": color},
                       "outlineColor": {"rgba": [255,255,255,200] if is_sel or not multi_agent_data else [0,0,0,0]},

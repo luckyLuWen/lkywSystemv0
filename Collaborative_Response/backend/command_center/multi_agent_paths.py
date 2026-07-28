@@ -53,6 +53,8 @@ def find_agent_paths(scenario: str, end_point: tuple) -> dict:
                 net_dist = nx.shortest_path_length(graph, orig_node, dest_node, weight="length") / 1000.0
                 route = nx.shortest_path(graph, orig_node, dest_node, weight="length")
                 path = [(graph.nodes[n]["y"], graph.nodes[n]["x"]) for n in route]
+                if path and (path[0][0] != p["lat"] or path[0][1] != p["lon"]):
+                    path.insert(0, (p["lat"], p["lon"]))
                 evaluated.append({
                     "poi": p,
                     "net_dist_km": round(net_dist, 2),
