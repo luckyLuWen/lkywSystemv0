@@ -110,14 +110,9 @@
                       <span>{{ formatFrameTime(frame.time_s) }}</span>
                     </div>
                     <div class="frame-labels">
-                      <template v-for="(det, i) in frame.detections" :key="`${frame.key}-${i}`">
-                        <span class="frame-label-chip">
-                          {{ det.class }} {{ formatConfidence(det.confidence) }}
-                        </span>
-                        <span v-if="getClassChinese(det.class)" class="frame-label-chip zh-chip">
-                          {{ getClassChinese(det.class) }}
-                        </span>
-                      </template>
+                      <span v-for="(det, i) in frame.detections" :key="`${frame.key}-${i}`" class="frame-label-chip">
+                        {{ det.class }} {{ formatConfidence(det.confidence) }}
+                      </span>
                     </div>
                   </button>
                 </div>
@@ -179,15 +174,10 @@
             <div v-if="detail.detections.length > 0" class="detection-results">
               <div class="section-title">识别详情</div>
               <div class="detection-grid">
-                <template v-for="(det, i) in detail.detections" :key="i">
-                  <div class="detection-chip">
-                    <span class="chip-class">{{ det.class }}</span>
-                    <span class="chip-conf">{{ formatConfidence(det.confidence) }}</span>
-                  </div>
-                  <div v-if="getClassChinese(det.class)" class="detection-chip zh-chip">
-                    <span class="chip-class">{{ getClassChinese(det.class) }}</span>
-                  </div>
-                </template>
+                <div v-for="(det, i) in detail.detections" :key="i" class="detection-chip">
+                  <span class="chip-class">{{ det.class }}</span>
+                  <span class="chip-conf">{{ formatConfidence(det.confidence) }}</span>
+                </div>
               </div>
             </div>
             <div v-else class="no-detection">未发现可疑目标</div>
@@ -201,14 +191,9 @@
             </div>
             <img :src="`${apiUrl}/api/results/${selectedVideoFrame.filename}`" class="frame-zoom-image">
             <div class="frame-labels zoom-labels">
-              <template v-for="(det, i) in selectedVideoFrame.detections" :key="`zoom-${i}`">
-                <span class="frame-label-chip">
-                  {{ det.class }} {{ formatConfidence(det.confidence) }}
-                </span>
-                <span v-if="getClassChinese(det.class)" class="frame-label-chip zh-chip">
-                  {{ getClassChinese(det.class) }}
-                </span>
-              </template>
+              <span v-for="(det, i) in selectedVideoFrame.detections" :key="`zoom-${i}`" class="frame-label-chip">
+                {{ det.class }} {{ formatConfidence(det.confidence) }}
+              </span>
             </div>
           </div>
         </div>
@@ -228,7 +213,6 @@
 <script setup>
 import { computed, reactive, ref, onMounted } from 'vue'
 import ExportButtons from './ExportButtons.vue'
-import { getClassChinese, formatClassWithChinese } from '../utils/classColors'
 
 const props = defineProps({
   safeFetch: Function,
