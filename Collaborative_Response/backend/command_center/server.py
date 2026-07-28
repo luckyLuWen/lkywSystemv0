@@ -742,13 +742,6 @@ def api_update_pois():
     from rescue_points import update_poi_locations
     update_poi_locations(scenario, pois)
     
-    # 清空对应缓存，强制重新解算
-    cache_dir = BASE_DIR / "cache"
-    if cache_dir.exists():
-        for f in cache_dir.glob("*.czml"):
-            try: f.unlink()
-            except Exception: pass
-
     # 重新解算以刷新推演与 3D CZML 态势地图
     run_script("app_3d_strategy.py", "--end_point", scenario, "--multi_agent", "1")
     
