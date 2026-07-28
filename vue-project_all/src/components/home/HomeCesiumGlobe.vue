@@ -934,10 +934,18 @@
             </div>
 
             <div class="light-control-row">
-              <label class="light-control-label">航向 (Heading)</label>
+              <label class="light-control-label">部署阶段航向 (DeployHeading)</label>
               <div class="light-slider-container">
                 <input type="range" v-model.number="currentRescueCarAdjust.heading" min="-180" max="360" step="1" class="light-slider" />
                 <input type="number" v-model.number="currentRescueCarAdjust.heading" step="1" class="light-slider-input" />
+              </div>
+            </div>
+
+            <div class="light-control-row">
+              <label class="light-control-label">执行阶段航向 (ExecHeading)</label>
+              <div class="light-slider-container">
+                <input type="range" v-model.number="currentRescueCarAdjust.execHeading" min="-180" max="360" step="1" class="light-slider" />
+                <input type="number" v-model.number="currentRescueCarAdjust.execHeading" step="1" class="light-slider-input" />
               </div>
             </div>
 
@@ -4131,7 +4139,8 @@ const tankerUavAdjust = reactive({
 
 const tankerRescueCarAdjust = reactive({
   scale: 250,
-  heading: 88,
+  heading: 88,       // 部署阶段航向（阶段7~8）
+  execHeading: 150,  // 执行阶段航向（阶段9+）
   moveHeading: 0,
   lng: 114.894141,
   lat: 30.631815,
@@ -4161,6 +4170,7 @@ function snapUavUgvToDefault() {
     if (isTanker) {
       tankerRescueCarAdjust.scale = 250;
       tankerRescueCarAdjust.heading = 88;
+      tankerRescueCarAdjust.execHeading = 150;
       tankerRescueCarAdjust.moveHeading = 0;
       tankerRescueCarAdjust.lng = 114.894141;
       tankerRescueCarAdjust.lat = 30.631815;
@@ -4168,6 +4178,7 @@ function snapUavUgvToDefault() {
     } else {
       rescueCarAdjust.scale = 260.7;
       rescueCarAdjust.heading = 195;
+      rescueCarAdjust.execHeading = 195;
       rescueCarAdjust.moveHeading = 0;
       rescueCarAdjust.lng = 113.1073;
       rescueCarAdjust.lat = 30.3849;
@@ -4185,7 +4196,8 @@ function copyUavUgvCoords() {
     : (isTanker ? 'tankerRescueCarAdjust' : 'rescueCarAdjust');
   
   const obj = activeUavUgvTarget.value === 'uav' ? currentUavAdjust.value : currentRescueCarAdjust.value;
-  const params = `// ${prefix} ${targetName} positioning\n${objName}.lng = ${obj.lng.toFixed(6)};\n${objName}.lat = ${obj.lat.toFixed(6)};\n${objName}.height = ${obj.height.toFixed(1)};\n${objName}.scale = ${obj.scale.toFixed(1)};\n${objName}.heading = ${obj.heading};`;
+  const execHeadingLine = activeUavUgvTarget.value === 'ugv' ? `\n${objName}.execHeading = ${obj.execHeading};` : '';
+  const params = `// ${prefix} ${targetName} positioning\n${objName}.lng = ${obj.lng.toFixed(6)};\n${objName}.lat = ${obj.lat.toFixed(6)};\n${objName}.height = ${obj.height.toFixed(1)};\n${objName}.scale = ${obj.scale.toFixed(1)};\n${objName}.heading = ${obj.heading};${execHeadingLine}`;
   
   navigator.clipboard.writeText(params).then(() => {
     uavUgvCopiedMessage.value = `已成功复制当前${targetName}配置参数到剪贴板！`;
@@ -4399,6 +4411,7 @@ const TANKER_STOP_FACTOR = 1.0;
 let tankerUavEntities = []
 let tankerRescueCarEntities = []
 let tankerPhase3StartTime = 0
+let tankerPhase4StartTime = 0
 let tankerPhase6StartTime = 0
 let tankerPhase7StartTime = 0
 let tankerPhase8StartTime = 0
@@ -9022,7 +9035,16 @@ const currentLng = circleCenterLng + radiusLng * Math.cos(angle);
     console.log(`[Cesium] 正在初始化油罐车场景无人机实体: ${config.id}, 路径: ${config.uri}`);
 
     const tankerUavPosition = new Cesium.CallbackProperty(() => {
-const startHeight = Number(tankerUavAdjust.height) || 120.0;
+      if (lastTankerUavPhaseIndex !== props.activePhaseIndex) {
+        tankerPhase3StartTime = 0;
+        tankerPhase4StartTime = 0;
+        tankerPhase6StartTime = 0;
+        tankerPhase7StartTime = 0;
+        tankerPhase8StartTime = 0;
+        tankerUavOrbitStartTime = 0;
+        lastTankerUavPhaseIndex = props.activePhaseIndex;
+      }
+      const startHeight = Number(tankerUavAdjust.height) || 120.0;
       
       // 融合你的偏移量与同事的中心点逻辑
       const baseTargetLng = Number(tankerPointAdjust.lng) || 114.89209;
@@ -9052,22 +9074,22 @@ const startHeight = Number(tankerUavAdjust.height) || 120.0;
 
       if (props.activePhaseIndex === 4) {
         if (!currentMissionDataSource) {
-          return Cesium.Cartesian3.fromDegrees(114.9238 + (config.lonOffset || 0), 30.5158 + (config.latOffset || 0), startHeight);
+          return Cesium.Cartesian3.fromDegrees(114.89209 + (config.lonOffset || 0), 30.63101 + (config.latOffset || 0), startHeight);
         }
         const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
         if (!pathEntity || !pathEntity.polyline || !pathEntity.polyline.positions) {
-          return Cesium.Cartesian3.fromDegrees(114.9238 + (config.lonOffset || 0), 30.5158 + (config.latOffset || 0), startHeight);
+          return Cesium.Cartesian3.fromDegrees(114.89209 + (config.lonOffset || 0), 30.63101 + (config.latOffset || 0), startHeight);
         }
         const rawPositions = pathEntity.polyline.positions.getValue(getQueryTime()) ||
                           pathEntity.polyline.positions.getValue(new Cesium.JulianDate());
         if (!rawPositions || rawPositions.length <= 1) {
-          return Cesium.Cartesian3.fromDegrees(114.9238 + (config.lonOffset || 0), 30.5158 + (config.latOffset || 0), startHeight);
+          return Cesium.Cartesian3.fromDegrees(114.89209 + (config.lonOffset || 0), 30.63101 + (config.latOffset || 0), startHeight);
         }
 
-        if (!tankerPhase6StartTime) {
-          tankerPhase6StartTime = Date.now();
+        if (!tankerPhase4StartTime) {
+          tankerPhase4StartTime = Date.now();
         }
-        const elapsed = Date.now() - tankerPhase6StartTime;
+        const elapsed = Date.now() - tankerPhase4StartTime;
         const duration = 8000;
         
         const t = Math.min(elapsed / duration, 1.0);
@@ -9096,7 +9118,7 @@ const startHeight = Number(tankerUavAdjust.height) || 120.0;
               );
           }
         }
-        return Cesium.Cartesian3.fromDegrees(114.9238 + (config.lonOffset || 0), 30.5158 + (config.latOffset || 0), startHeight);
+        return Cesium.Cartesian3.fromDegrees(114.89209 + (config.lonOffset || 0), 30.63101 + (config.latOffset || 0), startHeight);
 
       } else if (props.activePhaseIndex === 5 || props.activePhaseIndex === 6) {
         if (!tankerUavOrbitStartTime) { tankerUavOrbitStartTime = Date.now(); }
@@ -9532,14 +9554,27 @@ tankerRescueCarModelConfigs.forEach((config, index) => {
       const lat = tankerBaseStartLat + (tankerActualTargetLat - tankerBaseStartLat) * easeT;
       return Cesium.Cartesian3.fromDegrees(lng, lat, tankerStartHeight);
     } else {
-      // 阶段 9 及以上：巡逻
+      // 阶段 9 及以上：巡逻（基于已部署终点或路线终点）
+      let centerLng = tankerActualTargetLng;
+      let centerLat = tankerActualTargetLat;
+      let baseHeight = tankerStartHeight;
+      const ugvInfo = getUgvLast200mPosition('tanker', phase, null, time);
+      if (ugvInfo && ugvInfo.pos) {
+        const carto = Cesium.Cartographic.fromCartesian(ugvInfo.pos);
+        centerLng = Cesium.Math.toDegrees(carto.longitude);
+        centerLat = Cesium.Math.toDegrees(carto.latitude);
+        if (viewer && viewer.scene && viewer.scene.globe) {
+          const terrainHeight = viewer.scene.globe.getHeight(carto);
+          if (terrainHeight !== undefined) baseHeight = terrainHeight + tankerStartHeight;
+        }
+      }
       const patrolSpeed = 0.4;
       const patrolDistance = 0.00008;
       const roadAngleRad = Cesium.Math.toRadians(90);
       const wave = Math.sin((Date.now() / 1000.0) * patrolSpeed + (index * Math.PI));
-      const curLng = tankerActualTargetLng + wave * patrolDistance * Math.cos(roadAngleRad);
-      const curLat = tankerActualTargetLat + wave * patrolDistance * Math.sin(roadAngleRad);
-      return Cesium.Cartesian3.fromDegrees(curLng, curLat, tankerStartHeight);
+      const curLng = centerLng + wave * patrolDistance * Math.cos(roadAngleRad);
+      const curLat = centerLat + wave * patrolDistance * Math.sin(roadAngleRad);
+      return Cesium.Cartesian3.fromDegrees(curLng, curLat, baseHeight);
     }
   }, false);
 
@@ -9548,27 +9583,27 @@ tankerRescueCarModelConfigs.forEach((config, index) => {
     const pos = tankerRescueCarPosition.getValue(time);
     if (!pos) return Cesium.Quaternion.IDENTITY;
 
-    // 🌟 核心：接入你右下角面板的“航向(Heading)”滑块！
-    const uiOffsetRad = Cesium.Math.toRadians(Number(tankerRescueCarAdjust.heading) || 0);
+    // 🌟 部署阶段航向滑块偏移量（阶段 7~8）
+    const deployUiOffsetRad = Cesium.Math.toRadians(Number(tankerRescueCarAdjust.heading) || 0);
+    // 🌟 执行阶段航向滑块偏移量（阶段 9+）
+    const execUiOffsetRad = Cesium.Math.toRadians(Number(tankerRescueCarAdjust.execHeading) || 0);
 
-    // 🚨 终极绝招：既然两辆车都是反的，直接加 180 度（Math.PI）让它们集体原地掉头！
     const flip180 = Math.PI; 
 
     let headingRad = 0;
     if (phase >= 7 && phase < 9) {
-      // 进场时：优先使用路径规划方向
+      // 部署阶段 (7~8)：优先使用路径规划方向 + 部署航向偏移
       const ugvInfo = getUgvLast200mPosition('tanker', phase, null, time);
       if (ugvInfo && ugvInfo.headingRad !== undefined) {
-        headingRad = ugvInfo.headingRad + flip180 + uiOffsetRad;
+        headingRad = ugvInfo.headingRad + flip180 + deployUiOffsetRad;
       } else {
-        // 降级：基础行驶方向（直线方向）
         const dx = tankerActualTargetLng - tankerBaseStartLng;
         const dy = tankerActualTargetLat - tankerBaseStartLat;
-        headingRad = Math.atan2(dx, dy) + flip180 + uiOffsetRad;
+        headingRad = Math.atan2(dx, dy) + flip180 + deployUiOffsetRad;
       }
     } else {
-      // 巡逻时：基础巡逻方向 + 180度掉头 + 滑块偏移角度
-      headingRad = Cesium.Math.toRadians(0) + flip180 + uiOffsetRad;
+      // 执行阶段 (9+)：使用独立配置的执行航向偏移
+      headingRad = Cesium.Math.toRadians(0) + flip180 + execUiOffsetRad;
     }
     
     const hpr = new Cesium.HeadingPitchRoll(headingRad, 0, 0);
