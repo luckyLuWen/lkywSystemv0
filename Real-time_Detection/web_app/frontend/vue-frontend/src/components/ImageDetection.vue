@@ -82,21 +82,12 @@
           <div v-if="result.detections.length > 0" class="detection-results">
             <div class="section-title">识别详情</div>
             <div class="detection-grid">
-              <template v-for="(det, i) in result.detections" :key="i">
-                <template v-for="(label, labelIdx) in displayLabels(det)" :key="labelIdx">
-                  <div class="detection-chip" :style="getClassStyle(primaryClass(det))">
-                    <div class="chip-row">
-                      <span class="chip-class">{{ label.class }}</span>
-                      <span class="chip-conf">{{ formatConfidence(label.confidence) }}</span>
-                    </div>
-                  </div>
-                  <div v-if="getClassChinese(label.class)" class="detection-chip zh-chip" :style="getClassStyle(primaryClass(det))">
-                    <div class="chip-row">
-                      <span class="chip-class">{{ getClassChinese(label.class) }}</span>
-                    </div>
-                  </div>
-                </template>
-              </template>
+              <div v-for="(det, i) in result.detections" :key="i" class="detection-chip" :style="getClassStyle(primaryClass(det))">
+                <div v-for="(label, labelIdx) in displayLabels(det)" :key="labelIdx" class="chip-row">
+                  <span class="chip-class">{{ label.class }}</span>
+                  <span class="chip-conf">{{ formatConfidence(label.confidence) }}</span>
+                </div>
+              </div>
             </div>
           </div>
           <div v-else class="no-detection">未发现可疑目标</div>
@@ -162,24 +153,15 @@
               <span class="metric-value">{{ batchDetail.inference_time }} s</span>
             </div>
           </div>
-          <div v-if="batchDetail.detections && batchDetail.detections.length > 0" class="detection-results">
+          <div v-if="batchDetail.detections.length > 0" class="detection-results">
             <div class="section-title">识别详情</div>
             <div class="detection-grid">
-              <template v-for="(det, j) in batchDetail.detections" :key="j">
-                <template v-for="(label, labelIdx) in displayLabels(det)" :key="labelIdx">
-                  <div class="detection-chip" :style="getClassStyle(primaryClass(det))">
-                    <div class="chip-row">
-                      <span class="chip-class">{{ label.class }}</span>
-                      <span class="chip-conf">{{ formatConfidence(label.confidence) }}</span>
-                    </div>
-                  </div>
-                  <div v-if="getClassChinese(label.class)" class="detection-chip zh-chip" :style="getClassStyle(primaryClass(det))">
-                    <div class="chip-row">
-                      <span class="chip-class">{{ getClassChinese(label.class) }}</span>
-                    </div>
-                  </div>
-                </template>
-              </template>
+              <div v-for="(det, j) in result.detections" :key="j" class="detection-chip" :style="getClassStyle(primaryClass(det))">
+                <div v-for="(label, labelIdx) in displayLabels(det)" :key="labelIdx" class="chip-row">
+                  <span class="chip-class">{{ label.class }}</span>
+                  <span class="chip-conf">{{ formatConfidence(label.confidence) }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -199,7 +181,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import ExportButtons from './ExportButtons.vue'
-import { getClassStyle, getClassChinese, formatClassWithChinese } from '../utils/classColors'
+import { getClassStyle } from '../utils/classColors'
 
 const props = defineProps({
   settings: Object,
@@ -267,48 +249,64 @@ const openBatchDetail = (item) => {
 }
 
 const processFiles = async (files) => {
-  if (!files || files.length === 0) return
+  if (files.length === 0) return
 
-  const isSingleFile = files.length === 1
-  batchMode.value = !isSingleFile
-  loading.value = true
-
-  const formData = new FormData()
-  formData.append('model', props.settings.model)
-  formData.append('detection_mode', props.settings.detectionMode || 'single')
-  formData.append('task_type', props.settings.taskType || 'collision')
-  formData.append('conf', props.settings.conf)
-  formData.append('iou', props.settings.iou)
-
-  if (isSingleFile) {
+  if (files.length === 1) {
+    // Single file — use existing endpoint
     const file = files[0]
     if (originalImage.value) URL.revokeObjectURL(originalImage.value)
     originalImage.value = URL.createObjectURL(file)
+    batchMode.value = false
+
+    loading.value = true
+    const formData = new FormData()
     formData.append('file', file)
+    formData.append('model', props.settings.model)
+    formData.append('detection_mode', props.settings.detectionMode || 'single')
+    formData.append('task_type', props.settings.taskType || 'collision')
+    formData.append('conf', props.settings.conf)
+    formData.append('iou', props.settings.iou)
+
+    try {
+      const data = await props.safeFetch('/api/detect/image', {
+        method: 'POST',
+        body: formData
+      })
+      if (data.success) result.value = data
+    } catch (error) {
+      alert('检测失败: ' + error.message)
+    } finally {
+      loading.value = false
+    }
   } else {
+    // Multiple files — use batch endpoint
+    batchMode.value = true
     totalCount.value = files.length
     processedCount.value = 0
+
+    loading.value = true
+    const formData = new FormData()
     files.forEach(f => formData.append('files', f))
-  }
+    formData.append('model', props.settings.model)
+    formData.append('detection_mode', props.settings.detectionMode || 'single')
+    formData.append('task_type', props.settings.taskType || 'collision')
+    formData.append('conf', props.settings.conf)
+    formData.append('iou', props.settings.iou)
 
-  const endpoint = isSingleFile ? '/api/detect/image' : '/api/detect/batch'
-  const errorMessage = isSingleFile ? '检测失败: ' : '批量检测失败: '
-
-  try {
-    const data = await props.safeFetch(endpoint, {
-      method: 'POST',
-      body: formData
-    })
-    if (data.success) {
-      result.value = data
-      if (!isSingleFile) {
+    try {
+      const data = await props.safeFetch('/api/detect/batch', {
+        method: 'POST',
+        body: formData
+      })
+      if (data.success) {
         processedCount.value = data.total_files
+        result.value = data
       }
+    } catch (error) {
+      alert('批量检测失败: ' + error.message)
+    } finally {
+      loading.value = false
     }
-  } catch (error) {
-    alert(errorMessage + error.message)
-  } finally {
-    loading.value = false
   }
 }
 </script>
