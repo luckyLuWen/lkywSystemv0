@@ -4971,30 +4971,30 @@ function stopAutoRotate() {
   }
 }
 
-// 创建更加逼真的浓烟升腾系统 (放大基础尺寸与扩散体积)
+// 创建更加逼真的烟雾系统
 function createSmokeSystem(lng, lat) {
   return new Cesium.ParticleSystem({
     image: '/Dashboard/images/smoke.png',
-    startColor: new Cesium.Color(0.2, 0.2, 0.2, 0.65), // 初始浓密深灰
-    endColor: new Cesium.Color(0.6, 0.6, 0.6, 0.0),   // 最终淡灰自然扩散完全透明
-    startScale: 1.2, // 初始比例
-    endScale: 9.5,   // 升空后大面积扩散覆盖
-    minimumParticleLife: 3.5, // 延长寿命，形成连贯巨大的浓烟气柱
-    maximumParticleLife: 6.8, 
-    minimumSpeed: 1.5, 
-    maximumSpeed: 3.8, 
-    imageSize: new Cesium.Cartesian2(7.5, 7.5), // 加大至 7.5 米 3D 基础尺寸，增强宏观可见度
-    emissionRate: 28.0, // 充足的发散密度，维持浓烟连贯质感
+    startColor: new Cesium.Color(0.2, 0.2, 0.2, 0.6), // 初始深灰
+    endColor: new Cesium.Color(0.9, 0.9, 0.9, 0.0),   // 最终淡白透明
+    startScale: 1.0,
+    endScale: 6.0, 
+    minimumParticleLife: 2.0,
+    maximumParticleLife: 4.5,
+    minimumSpeed: 2.0,
+    maximumSpeed: 5.0,
+    imageSize: new Cesium.Cartesian2(25, 25), // 增大尺寸
+    emissionRate: 60.0, // 增加密度
     lifetime: 16.0,
-    emitter: new Cesium.SphereEmitter(3.5), // 发射源扩展至 3.5 米球体
+    emitter: new Cesium.SphereEmitter(3.0), // 使用球形发射器增加体积感
     modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(lng, lat, 0.0)),
     sizeInMeters: true,
     show: false,
     updateCallback: (particle, dt) => {
-      // 模拟受热热升力与平缓风向漂移 (局部法线向上归一化向量)
+      // 模拟浮力：烟雾受热向上飘
       const gravityScratch = new Cesium.Cartesian3();
       Cesium.Cartesian3.normalize(particle.position, gravityScratch);
-      Cesium.Cartesian3.multiplyByScalar(gravityScratch, 2.2 * dt, gravityScratch); 
+      Cesium.Cartesian3.multiplyByScalar(gravityScratch, 2.5 * dt, gravityScratch); // 向上力
       Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
     }
   });
@@ -5004,26 +5004,26 @@ function createSmokeSystem(lng, lat) {
 function createFireSystem(lng, lat) {
   return new Cesium.ParticleSystem({
     image: '/Dashboard/images/explosion00.png',
-    startColor: new Cesium.Color(1.0, 0.6, 0.2, 0.8), // 偏橘黄色的火焰，稍微透明一点防止刺眼
-    endColor: new Cesium.Color(0.8, 0.1, 0.0, 0.0),   // 消失时的深红
-    startScale: 1.5, // 与烟雾保持一致
-    endScale: 12.0, // 与烟雾保持一致
-    minimumParticleLife: 4.0, // 与烟雾保持一致
-    maximumParticleLife: 8.0, // 与烟雾保持一致
-    minimumSpeed: 1.0, // 与烟雾保持一致
-    maximumSpeed: 2.5, // 与烟雾保持一致
-    imageSize: new Cesium.Cartesian2(25, 25), // 与烟雾保持一致
-    emissionRate: 25.0, // 与烟雾保持一致
+    startColor: new Cesium.Color(1.0, 0.9, 0.5, 0.8), // 爆炸瞬间的亮黄白
+    endColor: new Cesium.Color(1.0, 0.3, 0.0, 0.0),   // 消失时的深橘红
+    startScale: 1.5,
+    endScale: 4.5, // 爆炸云团膨胀
+    minimumParticleLife: 1.0,
+    maximumParticleLife: 2.5,
+    minimumSpeed: 3.0,
+    maximumSpeed: 7.0,
+    imageSize: new Cesium.Cartesian2(25, 25), // 增大尺寸以匹配爆炸图
+    emissionRate: 65.0, 
     lifetime: 16.0,
-    emitter: new Cesium.SphereEmitter(5.0), // 与烟雾保持一致
+    emitter: new Cesium.SphereEmitter(2.0),
     modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(lng, lat, 0.0)),
     sizeInMeters: true,
     show: false,
     updateCallback: (particle, dt) => {
-      // 与烟雾保持一致
+      // 快速向四周和上方窜升
       const gravityScratch = new Cesium.Cartesian3();
       Cesium.Cartesian3.normalize(particle.position, gravityScratch);
-      Cesium.Cartesian3.multiplyByScalar(gravityScratch, 1.5 * dt, gravityScratch); 
+      Cesium.Cartesian3.multiplyByScalar(gravityScratch, 5.0 * dt, gravityScratch); 
       Cesium.Cartesian3.add(particle.velocity, gravityScratch, particle.velocity);
     }
   });
@@ -6946,8 +6946,40 @@ function updateTruckSequence(phaseIndex, pointId = '') {
   const fireScaleBase = isBigFire ? 1.1 : 0.9;
 
   if (smokeParticle) {
-    // 只有在聚焦该点且阶段 >= 5 时才显示（次生灾害烟雾/起火阶段）
+    // 只有在聚焦该点且阶段 >= 5 时才显示（次生灾害烟雾阶段），无人机出动/侦察阶段(3,4)不显示烟雾
     smokeParticle.show = isTruckFocus && (phaseIndex >= 5);
+    
+    if (phaseIndex >= 8) {
+      // 8 阶段及以后：事故中后期烟雾自动减弱，使用微调参数
+      smokeParticle.startScale = lateSmokeAdjust.startScale * smokeScaleBase;
+      smokeParticle.endScale = lateSmokeAdjust.endScale * smokeScaleBase;
+      smokeParticle.emissionRate = lateSmokeAdjust.emissionRate;
+      smokeParticle.imageSize = new Cesium.Cartesian2(lateSmokeAdjust.imageWidth, lateSmokeAdjust.imageHeight);
+      smokeParticle.minimumSpeed = lateSmokeAdjust.minSpeed;
+      smokeParticle.maximumSpeed = lateSmokeAdjust.maxSpeed;
+      smokeParticle.minimumParticleLife = lateSmokeAdjust.minLife;
+      smokeParticle.maximumParticleLife = lateSmokeAdjust.maxLife;
+      smokeParticle.updateCallback = (particle, dt) => {
+        particle.velocity.z += (lateSmokeAdjust.gravity || 2.0) * dt;
+        const dragFactor = Math.pow(lateSmokeAdjust.drag || 0.98, dt * 60);
+        particle.velocity.x *= dragFactor;
+        particle.velocity.y *= dragFactor;
+        particle.velocity.z *= dragFactor;
+      };
+    } else {
+      // 5, 6, 7 阶段 (次生灾害烟雾/起火) 真实浓烟平滑升腾（无 NaN 抖动闪烁）
+      smokeParticle.startScale = 0.4 * smokeScaleBase;
+      smokeParticle.endScale = 1.6 * smokeScaleBase;
+      smokeParticle.emissionRate = (phaseIndex >= 5) ? smokeEmissionRate : 0.0;
+      smokeParticle.imageSize = new Cesium.Cartesian2(16, 16);
+      smokeParticle.minimumSpeed = 2.5;
+      smokeParticle.maximumSpeed = 6.0;
+      smokeParticle.minimumParticleLife = 1.8;
+      smokeParticle.maximumParticleLife = 3.5;
+      smokeParticle.updateCallback = (particle, dt) => {
+        particle.velocity.z += 3.5 * dt;
+      };
+    }
   }
   if (fireParticle) {
     // 只有在聚焦该点且阶段 >= 6 时才显示（次生灾害起火阶段）
@@ -10334,11 +10366,16 @@ watch(() => props.activePhaseIndex, (next, prev) => {
     diffusionStartTime = 0;
   }
 
-  // 同步 Cesium 时钟时间与动画播放状态（确保 viewer.clock.shouldAnimate 持续开启，且保持 1.0 正常倍速，防止粒子系统因高倍速时间膨胀而爆闪）
+  // 同步 Cesium 时钟时间与动画播放状态（确保 viewer.clock.shouldAnimate 持续开启，防止无人机旋翼冻结）
   if (viewer) {
     viewer.clock.shouldAnimate = true;
-    viewer.clock.multiplier = 1.0;
-    viewer.clock.clockRange = Cesium.ClockRange.UNBOUNDED;
+    if (next === 6 && currentMissionDataSource && currentMissionDataSource.clock) {
+      viewer.clock.currentTime = currentMissionDataSource.clock.startTime;
+      viewer.clock.multiplier = 54.0;
+    } else {
+      viewer.clock.multiplier = 1.0;
+      viewer.clock.clockRange = Cesium.ClockRange.UNBOUNDED;
+    }
   }
 
   // 自动对齐场景并加载该阶段配置
@@ -10509,7 +10546,7 @@ async function triggerRescueMultiAgent() {
   rescueDispatchPending.value = true
   rescueDispatchStatus.value = '救援装备出动中...'
   try {
-
+    // 强制加载包含协同救援规划路线的 CZML，它内部会调用 api/run_multi_agent 接口
     if (typeof loadMission === 'function') {
         await loadMission(true);
     } else {
@@ -10528,6 +10565,7 @@ async function triggerRescueMultiAgent() {
 </script>
 
 <style scoped>
+/* 仿真推演悬浮窗样式 */
 .simulation-popup-panel {
   position: absolute;
   width: 290px;
