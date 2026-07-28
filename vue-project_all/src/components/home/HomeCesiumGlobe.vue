@@ -10921,7 +10921,7 @@ async function triggerRescueMultiAgent() {
   rescueDispatchPending.value = true
   rescueDispatchStatus.value = '救援装备出动中...'
   try {
-
+    // 强制加载包含协同救援规划路线的 CZML，它内部会调用 api/run_multi_agent 接口
     if (typeof loadMission === 'function') {
         await loadMission(true);
     } else {
@@ -10940,6 +10940,7 @@ async function triggerRescueMultiAgent() {
 </script>
 
 <style scoped>
+/* 仿真推演悬浮窗样式 */
 .simulation-popup-panel {
   position: absolute;
   width: 290px;
