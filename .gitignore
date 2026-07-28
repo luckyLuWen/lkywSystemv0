@@ -86,5 +86,6 @@ Collaborative_Response/backend/command_center/2d_deduction.html
 Collaborative_Response/backend/command_center/path_result.json
 Collaborative_Response/backend/command_center/mission.czml
 Collaborative_Response/backend/command_center/multi_agent_result*.json
+!Collaborative_Response/backend/command_center/multi_agent_result_leak.json
 2d_deduction.html
 
