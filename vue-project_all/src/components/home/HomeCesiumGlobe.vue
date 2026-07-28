@@ -1,4 +1,4 @@
-Chinese (Simplified)<template>
+<template>
   <div class="cesium-wrapper">
     <div id="cesiumContainer" ref="containerRef" class="cesium-container"></div>
     <!-- 飞行动画照片 -->
@@ -66,7 +66,7 @@ Chinese (Simplified)<template>
               </div>
             </div>
             
-            <div class="slider-row" v-if="Number(activePhaseIndex) === 7 && currentScene !== 'truck'">
+            <div class="slider-row" v-if="Number(activePhaseIndex) === 7">
               <div class="slider-header">
                 <span class="slider-label">无人车出动耗时 (秒)</span>
                 <span class="val-tag gold-tag">{{ agentSpeedConfig.ugvDuration.toFixed(1) }}s</span>
@@ -1620,7 +1620,7 @@ Chinese (Simplified)<template>
           </svg>
 
           <div v-if="detectionPopup.state === 'detecting'" class="scanning-line"></div>
-          <div v-if="detectionPopup.state === 'detecting'" class="scanning-overlay">SFGA-YOLO26M 图像推理中...</div>
+          <div v-if="detectionPopup.state === 'detecting'" class="scanning-overlay">{{ currentStoryDetectionScenario.model }} 图像推理中...</div>
         </div>
 
         <div class="detection-control-panel story-result-panel">
@@ -1636,7 +1636,7 @@ Chinese (Simplified)<template>
           </div>
           <div class="story-model-row">
             <span>检测模型</span>
-            <strong>SFGA-YOLO26M</strong>
+            <strong>{{ currentStoryDetectionScenario.model }}</strong>
           </div>
           <div v-if="detectionPopup.state === 'detecting'" class="state-detecting-wrap story-detecting-wrap">
             <div class="spinner"></div>
@@ -1658,16 +1658,11 @@ Chinese (Simplified)<template>
               </div>
             </div>
 
-            <div class="detection-items-list story-detection-items">
-              <div
-                v-for="item in currentStoryDetectionScenario.results"
-                :key="item"
-                class="detect-item"
-                :class="currentStoryDetectionScenario.level === 'critical' ? 'fire' : 'warning-event'"
-              >
-                <span class="item-name">{{ item }}</span>
-              </div>
+            <div v-if="detectionPopup.modelClassZh" class="story-zh-banner">
+              <strong>{{ detectionPopup.modelClassZh }}</strong>
             </div>
+
+
 
             <div v-if="detectionPopup.error" class="story-detection-note">{{ detectionPopup.error }}</div>
           </div>
@@ -1683,6 +1678,103 @@ Chinese (Simplified)<template>
       </div>
 
       <div class="detection-popup-arrow"></div>
+    </div>
+
+    <!-- light1 路侧摄像头模拟监控视频 -->
+    <div
+      v-if="cameraStreamPopup.show"
+      class="camera-stream-popup"
+      :style="{ left: cameraStreamPopup.x + 'px', top: cameraStreamPopup.y + 'px' }"
+    >
+      <div class="camera-stream-header">
+        <div class="camera-title-wrap">
+          <span class="camera-live-dot"></span>
+          <span class="camera-stream-title">{{ cameraStreamPopup.title }}</span>
+        </div>
+        <button class="close-btn" @click="cameraStreamPopup.show = false">×</button>
+      </div>
+      <div class="camera-stream-body">
+        <div class="camera-video-wrap">
+          <video
+            ref="cameraStreamVideoRef"
+            class="camera-stream-video"
+            :src="cameraStreamPopup.videoSrc"
+            autoplay
+            muted
+            loop
+            playsinline
+            controls
+            @timeupdate="syncCameraVideoBoxes"
+            @seeking="syncCameraVideoBoxes"
+            @seeked="syncCameraVideoBoxes"
+            @play="syncCameraVideoBoxes"
+            @loadedmetadata="syncCameraVideoBoxes"
+          ></video>
+          <svg
+            v-if="cameraStreamPopup.activeVideoBoxes.length"
+            class="camera-video-overlay"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <g
+              v-for="(box, index) in cameraStreamPopup.activeVideoBoxes"
+              :key="`${box.label}-${index}`"
+            >
+              <rect
+                :x="box.x"
+                :y="box.y"
+                :width="box.width"
+                :height="box.height"
+                :class="['camera-box-rect', box.kind]"
+              />
+              <text
+                :x="box.x"
+                :y="box.labelY"
+                :class="['camera-box-label', box.kind]"
+              >{{ box.label }} {{ box.confidence }}</text>
+            </g>
+          </svg>
+        </div>
+        <div class="camera-info-grid compact">
+          <div class="camera-info-item online">
+            <span>摄像头状态</span>
+            <strong>{{ cameraStreamPopup.status }}</strong>
+          </div>
+          <div class="camera-info-item">
+            <span>当前阶段</span>
+            <strong>{{ props.phases?.[props.activePhaseIndex]?.shortLabel || '--' }}</strong>
+          </div>
+        </div>
+        <div class="camera-detection-panel" :class="`is-${cameraStreamPopup.detectionState}`">
+          <div class="camera-detection-head">
+            <span>{{ cameraStreamPopup.modelName }} 视频检测</span>
+            <strong>{{ cameraStreamPopup.detectionStatus }}</strong>
+          </div>
+          <div class="camera-detection-body">
+            <template v-if="cameraStreamPopup.detectionState === 'done'">
+              <div class="camera-live-result-head">
+                <span>当前画面检测结果</span>
+                <strong>{{ cameraStreamPopup.activeVideoBoxes.length ? '已识别' : '未检测到目标' }}</strong>
+              </div>
+              <div v-if="cameraStreamPopup.activeVideoBoxes.length" class="camera-live-result-list">
+                <div
+                  v-for="(box, index) in cameraStreamPopup.activeVideoBoxes"
+                  :key="`${box.label}-${index}`"
+                  class="camera-live-result-item"
+                  :class="box.kind"
+                >
+                  <span>{{ box.label }}</span>
+                  <strong>{{ box.confidence }}</strong>
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <span>{{ cameraStreamPopup.detectionMessage }}</span>
+            </template>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 仿真推演模块悬浮窗 (无人感知执行阶段 index === 7) -->
@@ -2454,12 +2546,11 @@ const emit = defineEmits(['accident-picked', 'models-ready', 'update:activePhase
 
 const router = useRouter()
 
-const STORY_DETECTION_MODEL = 'SFGA-YOLO26M'
-
 const STORY_DETECTION_SCENARIOS = {
   accident: {
     key: 'accident',
     phaseIndex: 2,
+    model: 'SFGA-YOLO26M',
     level: 'warning',
     title: '事故发生检测告警',
     phaseLabel: '事故发生',
@@ -2478,6 +2569,7 @@ const STORY_DETECTION_SCENARIOS = {
   fire: {
     key: 'fire',
     phaseIndex: 6,
+    model: 'SFGA-YOLO26M',
     level: 'critical',
     title: '次生灾害起火告警',
     phaseLabel: '次生灾害（起火）',
@@ -2496,36 +2588,56 @@ const STORY_DETECTION_SCENARIOS = {
   tankerAccident: {
     key: 'tankerAccident',
     phaseIndex: 2,
+    model: 'SFGA-YOLO26M',
     level: 'warning',
     title: '事故发生检测告警',
     phaseLabel: '事故发生（侧翻）',
     statusBadge: '黄色告警',
-    imageSrc: '/Dashboard/images/tanker_aerial_photo.png',
-    fileName: 'tanker_aerial_photo.png',
-    imageWidth: 1920,
-    imageHeight: 1080,
-    results: ['化学品运输车', '侧翻'],
-    report: '检测到化学品运输车（油罐车）发生侧翻倾斜，目前未见明火与可见泄露，建议立即启动突发化学品监测与应急部署。',
+    imageSrc: '/Dashboard/images/tanker-accident-detection.png',
+    fileName: 'tanker-accident-detection.png',
+    imageWidth: 727,
+    imageHeight: 538,
+    results: ['化学品运输车', '侧翻事故'],
+    report: '检测到油罐车发生侧翻事故，当前画面未识别危化品泄露，建议立即启动事故确认与现场警戒。',
     boxes: [
-      { x: 30, y: 42, width: 36, height: 26, label: '化学品运输车', kind: 'warning' }
+      { x: 25, y: 27, width: 55, height: 42, label: '化学品运输车', kind: 'warning' }
+    ]
+  },
+  tankerLeak: {
+    key: 'tankerLeak',
+    phaseIndex: 5,
+    model: 'LCA-YOLO26N',
+    level: 'critical',
+    title: '次生灾害泄露告警',
+    phaseLabel: '次生灾害（泄露）',
+    statusBadge: '红色告警',
+    imageSrc: '/Dashboard/images/tanker-leak-detection.png',
+    fileName: 'tanker-leak-detection.png',
+    imageWidth: 2852,
+    imageHeight: 1600,
+    results: ['危化品泄露'],
+    report: '检测到油罐车罐体出现危化品泄露迹象，白色烟雾从罐体破损区域持续外逸，建议立即布设空气监测与封控半径。',
+    boxes: [
+      { x: 39, y: 18, width: 30, height: 30, label: '危化品泄露', kind: 'fire' }
     ]
   },
   tankerFill: {
     key: 'tankerFill',
-    phaseIndex: 5,
+    phaseIndex: 6,
+    model: 'LCA-YOLO26N',
     level: 'critical',
     title: '次生灾害弥漫告警',
     phaseLabel: '次生灾害（弥漫）',
     statusBadge: '红色告警',
-    imageSrc: '/Dashboard/images/tanker_aerial_photo.png',
-    fileName: 'tanker_aerial_photo.png',
-    imageWidth: 1920,
-    imageHeight: 1080,
-    results: ['化学品运输车', '气体弥漫'],
-    report: '检测到危化品车辆发生严重泄漏，大量黄绿色毒性气体向四周大面积弥漫并随风向周边区域扩散，建议立即进行交通封控与空气毒性监测。',
+    imageSrc: '/Dashboard/images/tanker-diffusion-detection.png',
+    fileName: 'tanker-diffusion-detection.png',
+    imageWidth: 2197,
+    imageHeight: 1492,
+    results: ['危化品泄露', '气体弥漫'],
+    report: '检测到危化品车辆发生严重泄漏，黄绿色毒性气体向四周大面积弥漫并持续扩散，建议立即进行交通封控与空气毒性监测。',
     boxes: [
-      { x: 30, y: 42, width: 36, height: 26, label: '化学品运输车', kind: 'fire' },
-      { x: 22, y: 22, width: 32, height: 35, label: '气体弥漫', kind: 'fire' }
+      { x: 45, y: 15, width: 35, height: 34, label: '气体弥漫', kind: 'fire' },
+      { x: 43, y: 32, width: 18, height: 20, label: '危化品泄露', kind: 'fire' }
     ]
   }
 }
@@ -3750,8 +3862,8 @@ const rescueCarModelConfigs = [
 
 // 油罐车场景救援车配置（同理，一字纵队排开）
 const tankerRescueCarModelConfigs = [
-  { id: 'tanker_rescue_car_model_1', uri: '/Dashboard/models/recure%20car_2.glb', label: '1号油罐救援(前)', stopFactor: 0.78 },
-  { id: 'tanker_rescue_car_model_2', uri: '/Dashboard/models/recure%20car_2.glb', label: '2号油罐救援(后)', stopFactor: 0.72 }
+  { id: 'tanker_rescue_car_model_1', uri: '/Dashboard/models/recure%20car_2.glb', label: '1号油罐救援(前)', stopFactor: 0.40 },
+  { id: 'tanker_rescue_car_model_2', uri: '/Dashboard/models/recure%20car_2.glb', label: '2号油罐救援(后)', stopFactor: 0.34 }
 ]
 
 // 货车追尾现场 - 仿真开始节点贴地行驶车流配置 (0-1.glb, 0-2.glb, 0-3.glb, 0-4.glb)
@@ -4168,7 +4280,7 @@ function getUgvLast200mPosition(currentSceneName, activePhaseIndex, phaseStartTi
     }
     const actualStartTime = currentSceneName === 'truck' ? phase6StartTime : tankerPhase6StartTime;
     const elapsed = Date.now() - actualStartTime;
-    const duration = currentSceneName === 'truck' ? agentSpeedConfig.uavDuration * 1000 : 10000;
+    const duration = 10000;
     const t = Math.min(elapsed / duration, 1.0);
     
     if (t >= 1.0) {
@@ -4332,12 +4444,236 @@ const detectionPopup = reactive({
   scenarioKey: '',
   confidence: null,
   modelClass: '',
+  modelClassZh: '',
   boxes: [],
+  detectedItems: [],
   error: ''
 })
 
 let detectionTimer = null
 let storyDetectionRequestId = 0
+
+const cameraStreamVideoRef = ref(null)
+
+const CAMERA_STREAM_CONFIGS = {
+  light1: {
+    title: '前方路侧摄像头',
+    location: 'light1 路侧监控点',
+    videoSrc: '/Dashboard/videos/light1-kling3.mp4',
+    videoFileName: 'light1-kling3.mp4',
+    model: 'SFGA-YOLO26M',
+    startTime: '2.2'
+  },
+  light23: {
+    title: '前方路侧摄像头',
+    location: 'light23 路侧监控点',
+    videoSrc: '/Dashboard/videos/light23-kling4.mp4',
+    videoFileName: 'kling4.mp4',
+    model: 'LCA-YOLO26N',
+    startTime: '2.5'
+  }
+}
+
+const cameraStreamPopup = reactive({
+  show: false,
+  x: 0,
+  y: 0,
+  title: '前方路侧摄像头',
+  location: 'light1 路侧监控点',
+  status: '在线',
+  videoSrc: '/Dashboard/videos/light1-kling3.mp4',
+  modelName: 'SFGA-YOLO26M',
+  detectionState: 'idle',
+  detectionStatus: '待检测',
+  detectionMessage: '点击摄像头后自动从视频 2.2s 处开始检测',
+  sampledFrames: 0,
+  detectionCount: 0,
+  bestLabel: '',
+  bestConfidence: '--',
+  videoWidth: 0,
+  videoHeight: 0,
+  videoFrames: [],
+  activeVideoBoxes: []
+})
+let cameraVideoDetectionRequestId = 0
+
+function resetCameraVideoDetectionState(config = CAMERA_STREAM_CONFIGS.light1) {
+  cameraStreamPopup.detectionState = 'detecting'
+  cameraStreamPopup.detectionStatus = '检测中'
+  cameraStreamPopup.detectionMessage = `正在调用 ${config.model}，从视频 ${config.startTime}s 后开始抽帧检测...`
+  cameraStreamPopup.sampledFrames = 0
+  cameraStreamPopup.detectionCount = 0
+  cameraStreamPopup.bestLabel = ''
+  cameraStreamPopup.bestConfidence = '--'
+  cameraStreamPopup.videoWidth = 0
+  cameraStreamPopup.videoHeight = 0
+  cameraStreamPopup.videoFrames = []
+  cameraStreamPopup.activeVideoBoxes = []
+}
+
+function getCameraVideoBoxKind(className) {
+  const key = String(className || '').toLowerCase()
+  if (key.includes('nofire') || key.includes('no_fire') || key.includes('normal') || key.includes('无火') || key.includes('正常')) {
+    return 'nofire'
+  }
+  if (key.includes('fire') || key.includes('火')) return 'fire'
+  return 'default'
+}
+
+function normalizeCameraVideoFrame(frame, videoWidth, videoHeight) {
+  const width = Math.max(Number(videoWidth) || 1, 1)
+  const height = Math.max(Number(videoHeight) || 1, 1)
+  const parsedTime = Number(frame?.time_s)
+  const timeSeconds = Number.isFinite(parsedTime)
+    ? parsedTime
+    : (Number.parseFloat(String(frame?.time || '').replace('s', '')) || 0)
+
+  const boxes = (Array.isArray(frame?.detections) ? frame.detections : [])
+    .map((item) => {
+      const coordinates = Array.isArray(item?.bbox) ? item.bbox.map(Number) : []
+      if (coordinates.length < 4 || coordinates.some((value) => !Number.isFinite(value))) return null
+      const [x1, y1, x2, y2] = coordinates
+      const left = Math.max(0, Math.min(x1, width))
+      const top = Math.max(0, Math.min(y1, height))
+      const right = Math.max(left, Math.min(x2, width))
+      const bottom = Math.max(top, Math.min(y2, height))
+      if (right <= left || bottom <= top) return null
+      const x = (left / width) * 100
+      const y = (top / height) * 100
+      const boxWidth = ((right - left) / width) * 100
+      const boxHeight = ((bottom - top) / height) * 100
+      return {
+        x,
+        y,
+        width: boxWidth,
+        height: boxHeight,
+        labelY: Math.max(4, y - 1),
+        label: item?.class || '目标',
+        confidence: formatDetectionConfidence(item?.confidence),
+        kind: getCameraVideoBoxKind(item?.class)
+      }
+    })
+    .filter(Boolean)
+
+  return { timeSeconds, boxes }
+}
+
+function syncCameraVideoBoxes() {
+  const video = cameraStreamVideoRef.value
+  const frames = cameraStreamPopup.videoFrames
+  const currentTime = Number(video?.currentTime)
+  if (!video || !frames.length || !Number.isFinite(currentTime)) {
+    cameraStreamPopup.activeVideoBoxes = []
+    return
+  }
+
+  let activeFrame = null
+  for (const frame of frames) {
+    if (frame.timeSeconds <= currentTime) {
+      activeFrame = frame
+    } else {
+      break
+    }
+  }
+  cameraStreamPopup.activeVideoBoxes = activeFrame?.boxes || []
+}
+
+function summarizeVideoDetections(frames) {
+  let detectionCount = 0
+  let bestDetection = null
+  ;(frames || []).forEach((frame) => {
+    const detections = Array.isArray(frame.detections) ? frame.detections : []
+    detectionCount += detections.length
+    detections.forEach((item) => {
+      const confidence = Number(item.confidence)
+      if (!Number.isFinite(confidence)) return
+      if (!bestDetection || confidence > Number(bestDetection.confidence)) {
+        bestDetection = item
+      }
+    })
+  })
+  return { detectionCount, bestDetection }
+}
+
+async function runCameraVideoDetection(lightId = 'light1') {
+  const config = CAMERA_STREAM_CONFIGS[lightId] || CAMERA_STREAM_CONFIGS.light1
+  const requestId = ++cameraVideoDetectionRequestId
+  resetCameraVideoDetectionState(config)
+
+  try {
+    const videoResponse = await fetch(cameraStreamPopup.videoSrc, { cache: 'no-store' })
+    if (!videoResponse.ok) throw new Error(`video HTTP ${videoResponse.status}`)
+
+    const videoBlob = await videoResponse.blob()
+    const formData = new FormData()
+    formData.append('file', videoBlob, config.videoFileName)
+    formData.append('model', config.model)
+    formData.append('conf', '0.25')
+    formData.append('iou', '0.45')
+    formData.append('interval', '15')
+    formData.append('start_time', config.startTime)
+
+    const response = await fetch(buildRealtimeDetectionApiUrl('api/detect/video', getRealtimeDetectionBaseUrl()), {
+      method: 'POST',
+      body: formData
+    })
+    if (!response.ok) throw new Error(`detection HTTP ${response.status}`)
+
+    const payload = await response.json()
+    if (requestId !== cameraVideoDetectionRequestId) return
+    if (!payload.success) throw new Error(payload.error || '检测失败')
+
+    const frames = Array.isArray(payload.frames) ? payload.frames : []
+    const videoWidth = Number(payload.video_width) || Number(cameraStreamVideoRef.value?.videoWidth) || 1
+    const videoHeight = Number(payload.video_height) || Number(cameraStreamVideoRef.value?.videoHeight) || 1
+    cameraStreamPopup.videoWidth = videoWidth
+    cameraStreamPopup.videoHeight = videoHeight
+    cameraStreamPopup.videoFrames = frames.map((frame) => (
+      normalizeCameraVideoFrame(frame, videoWidth, videoHeight)
+    ))
+    syncCameraVideoBoxes()
+    const { detectionCount, bestDetection } = summarizeVideoDetections(frames)
+    cameraStreamPopup.detectionState = 'done'
+    cameraStreamPopup.detectionStatus = '完成'
+    cameraStreamPopup.sampledFrames = payload.sampled_frames || frames.length
+    cameraStreamPopup.detectionCount = detectionCount
+    cameraStreamPopup.bestLabel = bestDetection?.class || ''
+    cameraStreamPopup.bestConfidence = bestDetection ? formatDetectionConfidence(bestDetection.confidence) : '--'
+    cameraStreamPopup.detectionMessage = detectionCount ? '检测完成' : '检测完成，未发现目标'
+  } catch (error) {
+    if (requestId !== cameraVideoDetectionRequestId) return
+    cameraStreamPopup.detectionState = 'error'
+    cameraStreamPopup.detectionStatus = '失败'
+    cameraStreamPopup.detectionMessage = `视频检测失败，请确认实时检测后端已启动且 ${config.model} 可用。`
+  }
+}
+
+async function runLight1VideoDetection() {
+  await runCameraVideoDetection('light1')
+}
+
+function openCameraStream(lightId = 'light1', movement) {
+  const config = CAMERA_STREAM_CONFIGS[lightId] || CAMERA_STREAM_CONFIGS.light1
+  cameraStreamPopup.title = config.title
+  cameraStreamPopup.location = config.location
+  cameraStreamPopup.videoSrc = config.videoSrc
+  cameraStreamPopup.modelName = config.model
+
+  const canvas = viewer?.scene?.canvas
+  const width = canvas?.clientWidth || window.innerWidth || 1200
+  const height = canvas?.clientHeight || window.innerHeight || 720
+  const clickX = Number(movement?.position?.x) || width * 0.62
+  const clickY = Number(movement?.position?.y) || height * 0.34
+
+  cameraStreamPopup.x = Math.min(Math.max(clickX + 22, 24), width - 500)
+  cameraStreamPopup.y = Math.min(Math.max(clickY + 72, 118), height - 430)
+  cameraStreamPopup.show = true
+  runCameraVideoDetection(lightId)
+}
+
+function openLight1CameraStream(movement) {
+  openCameraStream('light1', movement)
+}
 
 const currentStoryDetectionScenario = computed(() => {
   return STORY_DETECTION_SCENARIOS[detectionPopup.scenarioKey] || null
@@ -4346,8 +4682,8 @@ const currentStoryDetectionScenario = computed(() => {
 function updateStoryDetectionPopupPosition() {
   const canvas = viewer?.scene?.canvas
   const width = canvas?.clientWidth || window.innerWidth || 1200
-  detectionPopup.x = width * 0.7
-  detectionPopup.y = 190
+  detectionPopup.x = width * 0.5
+  detectionPopup.y = 76
 }
 
 function isTruckStoryline() {
@@ -4371,6 +4707,9 @@ function getStoryDetectionScenario(index) {
     if (phaseId === 'l-accident' || Number(index) === STORY_DETECTION_SCENARIOS.tankerAccident.phaseIndex) {
       return STORY_DETECTION_SCENARIOS.tankerAccident;
     }
+    if (phaseId === 'l-leak' || Number(index) === STORY_DETECTION_SCENARIOS.tankerLeak.phaseIndex) {
+      return STORY_DETECTION_SCENARIOS.tankerLeak;
+    }
     if (phaseId === 'l-fill' || Number(index) === STORY_DETECTION_SCENARIOS.tankerFill.phaseIndex) {
       return STORY_DETECTION_SCENARIOS.tankerFill;
     }
@@ -4385,30 +4724,70 @@ function formatDetectionConfidence(value) {
   return `${(numeric * 100).toFixed(1)}%`
 }
 
+function getStoryDetectionClassZh(className) {
+  if (!className) return ''
+  const key = String(className).trim().toLowerCase().replace(/[-\s]+/g, '_').replace(/_/g, '')
+  const labels = {
+    lkywfire: '两客一危车辆碰撞起火',
+    lkyw_fire: '两客一危车辆碰撞起火',
+    lkywnofire: '两客一危车辆碰撞无火',
+    lkyw_nofire: '两客一危车辆碰撞无火',
+    lkywnormal: '两客一危车辆碰撞无火',
+    lkyw_normal: '两客一危车辆碰撞无火',
+    carfire: '轿车碰撞起火',
+    car_fire: '轿车碰撞起火',
+    carnofire: '轿车碰撞无火',
+    car_nofire: '轿车碰撞无火',
+    carnormal: '轿车碰撞无火',
+    car_normal: '轿车碰撞无火',
+    leak: '危化品泄露',
+    hazmat_leak: '危化品泄露',
+    tank_leak: '危化品泄露',
+    accident: '危化品泄露',
+    noleak: '未发现危化品泄露',
+    no_leak: '未发现危化品泄露',
+    tank_normal: '未发现危化品泄露',
+    normal: '未发现危化品泄露'
+  }
+  return labels[key] || labels[String(className).trim().toLowerCase()] || ''
+}
+
+function getStoryDetectionClassLabel(className) {
+  return className || '检测目标'
+}
+
 function normalizeStoryDetectionBoxes(detections, scenario) {
   if (!Array.isArray(detections) || detections.length === 0) return []
 
   const imageWidth = scenario.imageWidth || 1456
   const imageHeight = scenario.imageHeight || 1024
-  const labels = scenario.results || []
 
-  const visibleDetections = detections.slice(0, Math.max(1, labels.length))
-  const singleDetectionLabel = visibleDetections.length === 1 && labels.length > 1 ? labels.join(' / ') : ''
-
-  return visibleDetections.map((item, index) => {
+  return detections.map((item) => {
     const bbox = Array.isArray(item.bbox) ? item.bbox : []
     const [x1, y1, x2, y2] = bbox.map(Number)
-    if (![x1, y1, x2, y2].every(Number.isFinite)) {
-      return scenario.boxes[index] || scenario.boxes[0]
-    }
+    if (![x1, y1, x2, y2].every(Number.isFinite)) return null
 
     return {
       x: Math.max(0, Math.min(100, (x1 / imageWidth) * 100)),
       y: Math.max(0, Math.min(100, (y1 / imageHeight) * 100)),
       width: Math.max(2, Math.min(100, ((x2 - x1) / imageWidth) * 100)),
       height: Math.max(2, Math.min(100, ((y2 - y1) / imageHeight) * 100)),
-      label: singleDetectionLabel || labels[index] || labels[labels.length - 1] || item.class || '检测目标',
+      label: item.class || '检测目标',
       kind: scenario.level === 'critical' ? 'fire' : 'warning'
+    }
+  }).filter(Boolean)
+}
+
+function normalizeStoryDetectedItems(detections) {
+  if (!Array.isArray(detections)) return []
+  return detections.map((item) => {
+    const rawClass = item.class || item.label || '目标'
+    const zh = getStoryDetectionClassZh(rawClass)
+    return {
+      rawLabel: rawClass,
+      zh: zh,
+      label: rawClass,
+      confidence: formatDetectionConfidence(item.confidence)
     }
   })
 }
@@ -4430,6 +4809,7 @@ async function runStoryDetection(scenario) {
   detectionPopup.confidence = null
   detectionPopup.modelClass = ''
   detectionPopup.boxes = []
+  detectionPopup.detectedItems = []
   detectionPopup.error = ''
 
   detectionTimer = setInterval(() => {
@@ -4443,7 +4823,7 @@ async function runStoryDetection(scenario) {
     const imageBlob = await imageResponse.blob()
     const formData = new FormData()
     formData.append('file', imageBlob, scenario.fileName)
-    formData.append('model', STORY_DETECTION_MODEL)
+    formData.append('model', scenario.model || 'SFGA-YOLO26M')
     formData.append('conf', '0.25')
     formData.append('iou', '0.45')
 
@@ -4455,6 +4835,7 @@ async function runStoryDetection(scenario) {
 
     const payload = await response.json()
     if (requestId !== storyDetectionRequestId) return
+    if (payload.success === false) throw new Error(payload.error || '检测失败')
 
     const detections = Array.isArray(payload.detections) ? payload.detections : []
     const bestDetection = detections.reduce((best, item) => {
@@ -4464,20 +4845,23 @@ async function runStoryDetection(scenario) {
       return best
     }, null)
     detectionPopup.confidence = bestDetection ? Number(bestDetection.confidence) : null
-    detectionPopup.modelClass = bestDetection?.class || ''
+    detectionPopup.modelClass = bestDetection ? (bestDetection.class || bestDetection.label || '') : ''
+    detectionPopup.modelClassZh = bestDetection ? getStoryDetectionClassZh(bestDetection.class) : ''
+    detectionPopup.detectedItems = normalizeStoryDetectedItems(detections)
     detectionPopup.boxes = normalizeStoryDetectionBoxes(detections, scenario)
-    if (!detectionPopup.boxes.length) {
-      // 降级使用本地预定义的高清目标检测框
-      detectionPopup.confidence = 0.88 + Math.random() * 0.08
-      detectionPopup.modelClass = scenario.results?.[0] || '检测目标'
-      detectionPopup.boxes = scenario.boxes.map(box => ({ ...box }))
+    if (!detections.length) {
+      detectionPopup.error = '后端检测完成，当前图像未返回目标。'
+    } else if (!detectionPopup.boxes.length) {
+      detectionPopup.error = '后端检测完成，但返回结果不包含可绘制的 bbox。'
     }
   } catch (error) {
     if (requestId !== storyDetectionRequestId) return
-    // 降级使用本地预定义的高清目标检测框，保证推演的连贯与视觉效果
-    detectionPopup.confidence = 0.88 + Math.random() * 0.08
-    detectionPopup.modelClass = scenario.results?.[0] || '检测目标'
-    detectionPopup.boxes = scenario.boxes.map(box => ({ ...box }))
+    detectionPopup.confidence = null
+    detectionPopup.modelClass = ''
+    detectionPopup.modelClassZh = ''
+    detectionPopup.detectedItems = []
+    detectionPopup.boxes = []
+    detectionPopup.error = `检测失败：${error instanceof Error ? error.message : String(error)}`
   } finally {
     if (requestId === storyDetectionRequestId) {
       clearDetectionTimer()
@@ -4595,14 +4979,11 @@ const loadMission = async (isMultiAgent = false) => {
     currentMissionDataSource = dataSource;
 
     const phaseIdx = Number(props.activePhaseIndex);
-    // 第 12 阶段是“救援装备出动”：此时只显示多智能体救援路线，不能复用无人装备阶段的路径。
-    const showAutonomousUavRoute = phaseIdx >= 3 && phaseIdx < 11 && !isMultiAgent;
-    const showAutonomousUgvRoute = phaseIdx >= 7 && phaseIdx < 11 && !isMultiAgent;
 
     // 让 CZML 的 UAV 和 Car 实体位置与自定义 3D 模型位置完全对齐，避免分叉
     const czmlCar = dataSource.entities.getById('Car');
     if (czmlCar) {
-      czmlCar.show = showAutonomousUgvRoute;
+      czmlCar.show = (phaseIdx >= 7);
       czmlCar.path = undefined; // 必须将 path 设为 undefined，否则 CallbackProperty 导致 Cesium PathVisualizer 在更新轨迹线时崩溃
       if (!czmlCar.originalPosition) {
         czmlCar.originalPosition = czmlCar.position;
@@ -4619,7 +5000,7 @@ const loadMission = async (isMultiAgent = false) => {
     
     const czmlUav = dataSource.entities.getById('UAV');
     if (czmlUav) {
-      czmlUav.show = showAutonomousUavRoute;
+      czmlUav.show = (phaseIdx >= 3);
       czmlUav.path = undefined; // 必须将 path 设为 undefined，否则 CallbackProperty 导致 Cesium PathVisualizer 在更新轨迹线时崩溃
       if (!czmlUav.originalPosition) {
         czmlUav.originalPosition = czmlUav.position;
@@ -4637,26 +5018,26 @@ const loadMission = async (isMultiAgent = false) => {
     // 确保从 CZML 加载的规划路线实体在地图上根据阶段可见
     const uavPath = dataSource.entities.getById('UAV_Path');
     if (uavPath) {
-      uavPath.show = showAutonomousUavRoute;
-      if (uavPath.polyline) uavPath.polyline.show = showAutonomousUavRoute;
+      uavPath.show = (phaseIdx >= 3);
+      if (uavPath.polyline) uavPath.polyline.show = (phaseIdx >= 3);
     }
     const uavPathGlow = dataSource.entities.getById('UAV_Path_glow');
     if (uavPathGlow) {
-      uavPathGlow.show = showAutonomousUavRoute;
-      if (uavPathGlow.polyline) uavPathGlow.polyline.show = showAutonomousUavRoute;
+      uavPathGlow.show = (phaseIdx >= 3);
+      if (uavPathGlow.polyline) uavPathGlow.polyline.show = (phaseIdx >= 3);
     }
     const carPath = dataSource.entities.getById('Car_Path');
     if (carPath) {
-      carPath.show = showAutonomousUgvRoute;
+      carPath.show = (phaseIdx >= 7);
       if (carPath.polyline) {
-        carPath.polyline.show = showAutonomousUgvRoute;
+        carPath.polyline.show = (phaseIdx >= 7);
       }
     }
     const carPathGlow = dataSource.entities.getById('Car_Path_glow');
     if (carPathGlow) {
-      carPathGlow.show = showAutonomousUgvRoute;
+      carPathGlow.show = (phaseIdx >= 7);
       if (carPathGlow.polyline) {
-        carPathGlow.polyline.show = showAutonomousUgvRoute;
+        carPathGlow.polyline.show = (phaseIdx >= 7);
       }
     }
 
@@ -7037,11 +7418,11 @@ function updateTankerSequence(phaseIndex, pointId = '') {
         entity.show = !modelsReadyStatus[entity.id]
       }
     })
-      const entity = tankerEntities.find(e => e.id === targetModelId)
-      if (entity) {
-        const durationMap = { 1: 3, 2: 2, 3: 3, 4: 3, 5: 3, 6: 3 }
-        const duration = durationMap[phaseIndex] || 3
-        playEntityAnimation(entity, false, duration)
+    const entity = tankerEntities.find(e => e.id === targetModelId)
+    if (entity) {
+      const durationMap = { 1: 3, 2: 2, 3: 3, 4: 3, 5: 3, 6: 3 }
+      const duration = durationMap[phaseIndex] || 3
+      playEntityAnimation(entity, false, duration)
     }
   } else if (!targetModelId) {
     // 阶段0（仿真开始）：对于未加载就绪的模型，保持 show = true 允许 Cesium 静默预加载 GLB
@@ -7299,15 +7680,14 @@ function addEventEntities() {
   // 接入 6 个 light.glb 3D灯光模型
 
   // 接入 6 个 light.glb 3D灯光模型及相关链路/视场
- lights.forEach((l) => {
-    // 🚨 动态判断核心：依靠经度物理隔离两个场景（彻底解决重名 ID 问题）
-    // 请确保 114.0 是你用来划分两个场景的正确经度！
+  lights.forEach((l) => {
+    // 🚨 动态判断：经度小于114的是货车现场，大于114的是油罐车现场
     const isTruckLight = Number(l.lng) < 114.0;
-    const isTankerLight = !isTruckLight;
     
     // =====================================
     // 1. 添加感知视场 (排除了 light6 自带路灯)
     // =====================================
+    // 💡 新增了 'light23', 'light24'
     if (['light1', 'light2', 'light3', 'light4', 'light5', 'light8', 'light23', 'light24'].includes(l.id)) {
       const heightOffset = 8.0;
       const pitchAngle = -45;
@@ -7316,21 +7696,22 @@ function addEventEntities() {
       let fovAngle = 22;
       let maxRange = 100;
 
-      // 根据 ID 匹配视场参数（参数不用改，因为是按需微调的）
+      // 货车现场
       if (l.id === 'light1') { headingOffset = 0; fovAngle = 35; maxRange = 250; }
       if (l.id === 'light2') { headingOffset = 0; fovAngle = 35; maxRange = 250; }
       if (l.id === 'light3') { headingOffset = 180; fovAngle = 35; maxRange = 250; }
       if (l.id === 'light8') { headingOffset = 0; fovAngle = 35; maxRange = 250; }
+      
+      // 💡 为新增的 23 和 24 号灯光配置参数（可根据实际场景需要微调 headingOffset）
       if (l.id === 'light23') { headingOffset = -45; fovAngle = 35; maxRange = 250; }
       if (l.id === 'light24') { headingOffset = -225; fovAngle = 35; maxRange = 250; }
+
+      // 油罐车现场
       if (l.id === 'light4') { headingOffset = -25; fovAngle = 30; maxRange = 300; }
       if (l.id === 'light5') { headingOffset = 165; fovAngle = 30; maxRange = 150; }
 
-      // 为 FOV 生成唯一的场景前缀 ID，防止两个场景都有 light1 导致覆盖
-      const fovId = isTruckLight ? `truck-${l.id}-fov` : `tanker-${l.id}-fov`;
-
       createLightFOV(
-        viewer, fovId,
+        viewer, `${l.id}-fov`,
         Number(l.lng), Number(l.lat), Number(l.height) + heightOffset,
         Number(l.heading) + headingOffset, pitchAngle, fovAngle, maxRange,
         () => {
@@ -7346,11 +7727,8 @@ function addEventEntities() {
     // =====================================
     if (l.id === 'light6') return;
 
-    // 模型 ID 也加上场景前缀，彻底解决 Cesium 的 Entity ID 冲突问题
-    const modelEntityId = isTruckLight ? `truck-${l.id}-glb-entity` : `tanker-${l.id}-glb-entity`;
-
     viewer.entities.add({
-      id: modelEntityId,
+      id: `${l.id}-glb-entity`,
       name: `事故现场灯光模型-${l.id}`,
       show: new Cesium.CallbackProperty(() => {
         const isCurrentScene = isTruckLight ? (currentScene.value === 'truck') : (currentScene.value === 'tanker');
@@ -7361,38 +7739,35 @@ function addEventEntities() {
         const hpr = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(Number(l.heading)), Cesium.Math.toRadians(Number(l.pitch)), Cesium.Math.toRadians(Number(l.roll)));
         return Cesium.Transforms.headingPitchRollQuaternion(Cesium.Cartesian3.fromDegrees(Number(l.lng), Number(l.lat), Number(l.height)), hpr);
       }, false),
-      model: { uri: '/Dashboard/models/light.glb', scale: new Cesium.CallbackProperty(() => l.scale, false), heightReference: Cesium.HeightReference.CLAMP_TO_GROUND }
+      model: {
+        uri: '/Dashboard/models/light.glb',
+        scale: new Cesium.CallbackProperty(() => l.scale, false),
+        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+        silhouetteColor: (l.id === 'light1' || l.id === 'light23') ? Cesium.Color.fromCssColorString('#38bdf8') : undefined,
+        silhouetteSize: (l.id === 'light1' || l.id === 'light23') ? 3.0 : 0.0
+      }
     });
 
     // =====================================
     // 3. 路灯到对应基站的通信链路
     // =====================================
+    // 💡 新增了 'light23', 'light24'
     if (['light1', 'light2', 'light3', 'light4', 'light5', 'light8', 'light23', 'light24'].includes(l.id)) {
-      
-      // 线条 ID 加上场景前缀
-      const lineId = isTruckLight ? `line-link-from-truck-${l.id}-to-jizhan` : `line-link-from-tanker-${l.id}-to-jizhan`;
-
       viewer.entities.add({
-        id: lineId, 
+        id: `line-link-from-${l.id}-to-jizhan`, // 保持你原来的 ID 不变，防止其他地方的清理代码找不到它
         name: `数据传输链路:${l.id}->动态核心节点`,
         show: new Cesium.CallbackProperty(() => {
-          // 💡 严格判断阵营与场景
+          // 💡 修正 1：剥离对基站 show 属性的依赖，只判断场景和路灯本身
+          // 因为阶段 9 之后基站可能离线，如果这里强制绑定基站状态，线就彻底消失了
           if (isTruckLight) return currentScene.value === 'truck' && l.show;
-          if (isTankerLight) return currentScene.value === 'tanker' && l.show;
-          return false;
+          return currentScene.value === 'tanker' && l.show;
         }, false),
         polyline: {
           positions: new Cesium.CallbackProperty((time) => {
-            // 🚨 最强防御墙：货车的灯在油罐车场景绝对不画，油罐车的灯在货车场景绝对不画！
-            if (isTruckLight && currentScene.value !== 'truck') return [];
-            if (isTankerLight && currentScene.value !== 'tanker') return [];
-
             const lightTop = getModelTopPosition(l.lng, l.lat, l.height, l.heading, l.pitch, l.roll, LIGHT_TOP_OFFSET);
 
-            const phase = Number(props.activePhaseIndex);
-
-            // 🚨 故事点十 (阶段 10)：信号干扰，基站断联，链路物理转移至各自场景的 1 号无人车
-            if (phase >= 10) {
+            // 🚨 故事点十 (阶段 10)：信号干扰，基站断联，链路物理转移至 1 号无人车
+            if (Number(props.activePhaseIndex) >= 10) {
               const targetUgv = isTruckLight ? rescueCarEntities[0] : tankerRescueCarEntities[0];
               if (targetUgv) {
                 const ugvPos = targetUgv.position.getValue(time);
@@ -7401,9 +7776,9 @@ function addEventEntities() {
               return []; // 找不到无人车则返回空（不绘制）
             }
 
-            // 🌟 常规阶段 (阶段 0 到 8)：正常连向各自专属的 5G 基站
+            // 🌟 常规阶段 (阶段 0 到 8)：正常连向 5G 基站
             const targetJizhan = isTruckLight ? jizhanAdjust : tankerJizhanAdjust;
-            if (!targetJizhan || !targetJizhan.show) return []; // 常规阶段如果基站没出来，就不连线
+            if (!targetJizhan.show) return []; // 常规阶段如果基站没出来，就不连线
             
             const jizhanTop = getModelTopPosition(
               targetJizhan.lng, targetJizhan.lat, targetJizhan.height, 
@@ -7412,12 +7787,74 @@ function addEventEntities() {
             return [lightTop, jizhanTop];
           }, false),
           width: 3.0,
-          arcType: Cesium.ArcType.NONE, 
+          arcType: Cesium.ArcType.NONE, // 💡 修正 2：必须加上这个，防止线段在切换目标时受地球曲率影响钻进地底
           material: new DynamicFlowMaterialProperty({ color: Cesium.Color.CYAN, speed: 3.5, repeat: 8.0 })
         }
       });
     }
   });
+  const light1 = lights.find((item) => item.id === 'light1')
+  if (light1) {
+    viewer.entities.add({
+      id: 'light1-camera-marker',
+      name: '前方路侧摄像头可点击标记',
+      show: new Cesium.CallbackProperty(() => {
+        return currentScene.value === 'truck' && light1.show
+      }, false),
+      position: new Cesium.CallbackProperty(() => {
+        return Cesium.Cartesian3.fromDegrees(Number(light1.lng), Number(light1.lat), Number(light1.height) + 16)
+      }, false),
+      point: {
+        pixelSize: 18,
+        color: Cesium.Color.fromCssColorString('#38bdf8').withAlpha(0.92),
+        outlineColor: Cesium.Color.WHITE,
+        outlineWidth: 2,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY
+      },
+      label: {
+        text: '监控视频',
+        font: '13px sans-serif',
+        fillColor: Cesium.Color.WHITE,
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        pixelOffset: new Cesium.Cartesian2(0, -24),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY
+      }
+    })
+  }
+
+  const light23 = lights.find((item) => item.id === 'light23')
+  if (light23) {
+    viewer.entities.add({
+      id: 'light23-camera-marker',
+      name: '前方路侧摄像头可点击标记',
+      show: new Cesium.CallbackProperty(() => {
+        return currentScene.value === 'tanker' && light23.show
+      }, false),
+      position: new Cesium.CallbackProperty(() => {
+        return Cesium.Cartesian3.fromDegrees(Number(light23.lng), Number(light23.lat), Number(light23.height) + 16)
+      }, false),
+      point: {
+        pixelSize: 18,
+        color: Cesium.Color.fromCssColorString('#38bdf8').withAlpha(0.92),
+        outlineColor: Cesium.Color.WHITE,
+        outlineWidth: 2,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY
+      },
+      label: {
+        text: '监控视频',
+        font: '13px sans-serif',
+        fillColor: Cesium.Color.WHITE,
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        pixelOffset: new Cesium.Cartesian2(0, -24),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY
+      }
+    })
+  }
+
   // 📡 接入 jizhan.glb 3D 5G通信基站模型 (货车追尾事故现场)
   viewer.entities.add({
     id: 'jizhan-glb-entity',
@@ -8320,7 +8757,6 @@ const currentLng = circleCenterLng + radiusLng * Math.cos(angle);
       }, false),
       polyline: {
         positions: new Cesium.CallbackProperty((time) => {
-          if (currentScene.value !== 'truck') return [];
           const phase = Number(props.activePhaseIndex);
 
           // 🚨 3. 与上面保持一致的防御性校验，不该连线的阶段直接返回空坐标
@@ -8975,70 +9411,38 @@ if (props.activePhaseIndex === 3 || props.activePhaseIndex === 7) {
       }
     });
     // 🚨 新增：油罐车无人机连接到专属基站
-    // 🚨 1. 判断是否是第一架无人机 (ID 名字里不带 _2 和 _3)
-    const isFirstUAV = !config.id.includes('_2') && !config.id.includes('_3');
-
     viewer.entities.add({
-      id: `line-link-tanker-uav-${config.id}-to-jizhan`, // 保持油罐车专属 ID 唯一性
+      id: `line-link-tanker-uav-${config.id}-to-jizhan`, // 保持原有 ID 方便清理
       name: `油罐车场景无人机数据链路`,
       show: new Cesium.CallbackProperty((time) => {
-        // 🚨 场景隔离：只有在油罐车场景才显示
-        if (currentScene.value !== 'tanker') return false;
-
+        // 安全判断无人机自身的显示状态，避免 Cesium 返回 Property 对象报错
         let isEntityShowing = false;
         if (entity.show !== undefined) {
           isEntityShowing = typeof entity.show.getValue === 'function' ? entity.show.getValue(time) : !!entity.show;
         }
-        
-        const phase = Number(props.activePhaseIndex);
-        
-        // 🚨 2. 精准定义连线时机
-        let isLineActive = false;
-        if (isFirstUAV) {
-          // 第一架无人机：仅在 5, 6, 9及以上 连线。(7, 8 强制断开)
-          isLineActive = (phase === 5 || phase === 6 || phase >= 9);
-        } else {
-          // 其余增援无人机：阶段 9 及以上才连线
-          isLineActive = phase >= 9;
-        }
-
-        return isLineActive && isEntityShowing;
+        return Number(props.activePhaseIndex) >= 9 && isEntityShowing && currentScene.value === 'tanker';
       }, false),
       polyline: {
         positions: new Cesium.CallbackProperty((time) => {
-          // 🚨 场景校验：不是油罐车场景绝对不计算连线坐标
-          if (currentScene.value !== 'tanker') return [];
-          const phase = Number(props.activePhaseIndex);
-
-          // 🚨 3. 与 show 保持一致的阶段校验
-          let isLineActive = false;
-          if (isFirstUAV) {
-            isLineActive = (phase === 5 || phase === 6 || phase >= 9);
-          } else {
-            isLineActive = phase >= 9;
-          }
-          if (!isLineActive) return [];
-
+          if (Number(props.activePhaseIndex) < 9 || currentScene.value !== 'tanker') return [];
           const pos = entity.position.getValue(time);
           if (!pos) return [];
 
-          // 🚨 故事点十 (阶段 10)：信号受干扰，全部切断基站，将数据直连至【油罐车场景】的 1 号无人车
-          if (phase >= 10) {
-            const targetUgv = tankerRescueCarEntities[0]; // 👈 注意：抓取油罐车场景的无人车
-            if (targetUgv) {
-              const ugvPos = targetUgv.position.getValue(time);
-              if (ugvPos) return [pos, ugvPos];
-            }
-            return [];
+          // 🚨 故事点十 (阶段 9)：信号干扰，连向油罐车现场 1 号无人车
+          if (Number(props.activePhaseIndex) >= 10) {
+             const targetUgv = tankerRescueCarEntities[0];
+             if (targetUgv) {
+                const ugvPos = targetUgv.position.getValue(time);
+                if (ugvPos) return [pos, ugvPos];
+             }
+             return [];
           }
-          
-          // 🌟 常规连线阶段 (5, 6, 9)：正常连向【油罐车场景】的 5G 基站
-          if (!tankerJizhanAdjust) return []; // 防御性判断
+
+          // 🌟 常规阶段 (阶段 8)：正常连向 5G 基站
           const jizhanTop = getModelTopPosition(
             tankerJizhanAdjust.lng, tankerJizhanAdjust.lat, tankerJizhanAdjust.height,
             tankerJizhanAdjust.heading, tankerJizhanAdjust.pitch, tankerJizhanAdjust.roll, JIZHAN_TOP_OFFSET
-          ); // 👈 注意：这里抓取的是 tankerJizhanAdjust
-          
+          );
           return [pos, jizhanTop];
         }, false),
         width: 3.5,
@@ -9351,14 +9755,8 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
   // ==========================================
   // (2) 车辆终端状态面板 (阶段8常态 / 阶段9中继)
   // ==========================================
-// ==========================================
-  // (货车场景) 车辆终端状态面板
-  // ==========================================
- // ==========================================
-  // (货车场景) 车辆终端状态面板
-  // ==========================================
-  viewer.entities.add({
-    id: `network-label-car${modelIndex + 1}`,
+ viewer.entities.add({
+    id: `network-label-car${modelIndex + 1}`, // 保持原有 ID
     position: new Cesium.CallbackProperty((time) => {
       const carPos = carEntity.position.getValue(time);
       if (!carPos) return undefined;
@@ -9366,19 +9764,22 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       return Cesium.Cartesian3.fromDegrees(Cesium.Math.toDegrees(carto.longitude), Cesium.Math.toDegrees(carto.latitude), carto.height + 3.5);
     }, false),
     show: new Cesium.CallbackProperty((time) => {
-      if (currentScene.value !== 'truck') return false; // 🚨 货车专属
+      // 🚨 修正：阶段 9 开始显示终端面板
       if (Number(props.activePhaseIndex) >= 9 && isCarVisible(time)) return true;
       carEntity._netTime = null; 
       return false;
     }, false),
     label: {
       text: new Cesium.CallbackProperty(() => {
-        if (currentScene.value !== 'truck') return ''; // 🚨 货车专属
-        if (Number(props.activePhaseIndex) < 9) return ''; 
+        if (Number(props.activePhaseIndex) < 9) return ''; // 🚨 修正：小于 9 不显示
+        
+        // 🚨 故事点十 (阶段 10)：信号受干扰，启用 1 号无人车中继
         if (Number(props.activePhaseIndex) >= 10) {
            if (modelIndex === 0) return `[RELAY] 启用临时通信中继\n▶ 核心链路: 已接管\n▶ 延迟: 8ms`;
            return `▶ 环境数据流: ACTIVE\n▶ 上传至中继: 稳定`;
         }
+
+        // 🌟 故事点九 (阶段 9)：正常连向 5G 基站
         if (!carEntity._netTime) carEntity._netTime = Date.now();
         const elapsed = (Date.now() - carEntity._netTime) / 1000.0;
         if (elapsed < 1.5) return `[SYS] 扫描 5G 信号...`;
@@ -9387,6 +9788,7 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       }, false),
       font: '14px monospace',
       style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      // 🚨 修正：阶段 10 时，1号车才变为金色
       fillColor: new Cesium.CallbackProperty(() => (Number(props.activePhaseIndex) >= 10 && modelIndex === 0) ? Cesium.Color.GOLD : Cesium.Color.LIME, false),
       outlineColor: Cesium.Color.BLACK,
       outlineWidth: 2,
@@ -9401,15 +9803,17 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
   });
 
   // ==========================================
-  // (货车场景) 链路绘制 
+  // (3) 链路绘制 (基站 / 无人车中继 动态切换)
   // ==========================================
   [0, 1].forEach((innerCarIndex) => {
     viewer.entities.add({
-      id: `line-link-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-real`,
-      name: `货车动态中心数据链路`,
+      id: `line-link-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-real`, // 保持原有 ID
+      name: `动态中心数据链路`,
       show: new Cesium.CallbackProperty((time) => {
-        if (currentScene.value !== 'truck') return false; // 🚨 货车专属
+        // 🚨 修正：阶段 10 时，1 号车作为汇聚中心，不再向外发射数据线
         if (Number(props.activePhaseIndex) >= 10 && modelIndex === 0) return false;
+        
+        // 🚨 修正：阶段 9 满足条件开始显示数据线
         if (Number(props.activePhaseIndex) >= 9 && isCarVisible(time) && carEntity._netTime) {
            return ((Date.now() - carEntity._netTime) / 1000.0) >= 3.5; 
         }
@@ -9417,22 +9821,24 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       }, false),
       polyline: {
         positions: new Cesium.CallbackProperty((time) => {
-          // 🚨 绝对物理隔离：只要切到油罐车，货车的线瞬间消失！
-          if (currentScene.value !== 'truck') return []; 
+          // 🚨 修正：小于阶段 9 绝对不连线
           if (Number(props.activePhaseIndex) < 9) return [];
-          
           const carCartesian = carEntity.position.getValue(time);
           const carOrientation = carEntity.orientation.getValue(time);
           if (!carCartesian || !carOrientation) return [];
 
+          // 计算车辆天线发射原点
           const localOffset = new Cesium.Cartesian3(0.0, (innerCarIndex === 0) ? 1.5 : -1.5, 1.6);
           const rotationMatrix = Cesium.Matrix3.fromQuaternion(carOrientation);
           const worldOffset = Cesium.Matrix3.multiplyByVector(rotationMatrix, localOffset, new Cesium.Cartesian3());
           const startPos = Cesium.Cartesian3.add(carCartesian, worldOffset, new Cesium.Cartesian3());
 
+          // 🚨 故事点十 (阶段 10)：其他车辆连向 1 号中继车
           if (Number(props.activePhaseIndex) >= 10) {
-            if (modelIndex === 0) return []; 
-            const relayUgv = rescueCarEntities[0]; // 🚨 强绑定货车的1号车
+            if (modelIndex === 0) return []; // 1号车自身不连向外部
+            
+            // 自动判断场景，抓取正确的 1 号车作为终点
+            const relayUgv = currentScene.value === 'truck' ? rescueCarEntities[0] : tankerRescueCarEntities[0];
             if (relayUgv) {
               const ugv1Pos = relayUgv.position.getValue(time);
               if (ugv1Pos) return [startPos, ugv1Pos];
@@ -9440,160 +9846,20 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
             return [];
           }
 
-          // 🌟 强绑定货车的基站，再也不许找油罐车基站了！
-          if (!jizhanAdjust || !jizhanAdjust.show) return []; 
+          // 🌟 故事点九 (阶段 9)：全部正常连向基站
+          const targetJizhan = currentScene.value === 'truck' ? jizhanAdjust : tankerJizhanAdjust;
+          if (!targetJizhan.show) return []; // 如果基站未显示则不连
+
           const jizhanTop = getModelTopPosition(
-            jizhanAdjust.lng, jizhanAdjust.lat, jizhanAdjust.height,
-            jizhanAdjust.heading, jizhanAdjust.pitch, jizhanAdjust.roll, JIZHAN_TOP_OFFSET
+            targetJizhan.lng, targetJizhan.lat, targetJizhan.height,
+            targetJizhan.heading, targetJizhan.pitch, targetJizhan.roll, JIZHAN_TOP_OFFSET
           );
           return [startPos, jizhanTop];
         }, false),
         width: 3.5,
-        arcType: Cesium.ArcType.NONE,
+        arcType: Cesium.ArcType.NONE, // 强制直线
         material: new DynamicFlowMaterialProperty({ color: Cesium.Color.CHARTREUSE, speed: 4.5, repeat: 6.0 })
       }
-    });
-  });
-  // ==========================================
-  // (油罐车场景) 车辆终端状态面板
-  // ==========================================
-  viewer.entities.add({
-    id: `network-label-tanker-car${modelIndex + 1}`,
-    position: new Cesium.CallbackProperty((time) => {
-      const carPos = carEntity.position.getValue(time);
-      if (!carPos) return undefined;
-      const carto = Cesium.Cartographic.fromCartesian(carPos);
-      return Cesium.Cartesian3.fromDegrees(Cesium.Math.toDegrees(carto.longitude), Cesium.Math.toDegrees(carto.latitude), carto.height + 3.5);
-    }, false),
-    show: new Cesium.CallbackProperty((time) => {
-      if (currentScene.value !== 'tanker') return false; // 🚨 油罐车专属
-      if (Number(props.activePhaseIndex) >= 9 && isCarVisible(time)) return true;
-      carEntity._netTime = null; 
-      return false;
-    }, false),
-    label: {
-      text: new Cesium.CallbackProperty(() => {
-        if (currentScene.value !== 'tanker') return ''; // 🚨 油罐车专属
-        if (Number(props.activePhaseIndex) < 9) return ''; 
-        if (Number(props.activePhaseIndex) >= 10) {
-           if (modelIndex === 0) return `[RELAY] 启用临时通信中继\n▶ 核心链路: 已接管\n▶ 延迟: 8ms`;
-           return `▶ 环境数据流: ACTIVE\n▶ 上传至中继: 稳定`;
-        }
-        if (!carEntity._netTime) carEntity._netTime = Date.now();
-        const elapsed = (Date.now() - carEntity._netTime) / 1000.0;
-        if (elapsed < 1.5) return `[SYS] 扫描 5G 信号...`;
-        if (elapsed < 3.5) return `[NET] 建立 WebSocket 专线...`;
-        return `▶ 环境数据流: ACTIVE\n▶ 延迟: 12ms`;
-      }, false),
-      font: '14px monospace',
-      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-      fillColor: new Cesium.CallbackProperty(() => (Number(props.activePhaseIndex) >= 10 && modelIndex === 0) ? Cesium.Color.GOLD : Cesium.Color.LIME, false),
-      outlineColor: Cesium.Color.BLACK,
-      outlineWidth: 2,
-      showBackground: true,
-      backgroundColor: new Cesium.Color(0.1, 0.1, 0.1, 0.8),
-      backgroundPadding: new Cesium.Cartesian2(10, 10),
-      pixelOffset: new Cesium.Cartesian2(0, -30),
-      horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
-      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-      disableDepthTestDistance: Number.POSITIVE_INFINITY
-    }
-  });
-
-  // ==========================================
-  // (油罐车场景) 链路绘制 
-  // ==========================================
-  // ==========================================
-  // 💥 终极不死版：油罐车场景无人车连线
-  // (直接放在 mounted 结尾或初始化的空白处，绝对不要包在模型的 forEach 里！)
-  // ==========================================
-  [0, 1].forEach((modelIndex) => {
-    [0, 1].forEach((innerCarIndex) => {
-      viewer.entities.add({
-        // 使用 immortal 后缀防止与旧 ID 冲突报错
-        id: `line-link-tanker-car${modelIndex + 1}-${innerCarIndex + 1}-to-jizhan-immortal`,
-        name: `油罐车动态中心数据链路`,
-        show: new Cesium.CallbackProperty((time) => {
-          // 1. 场景与阶段拦截
-          if (currentScene.value !== 'tanker') return false;
-          const phase = Number(props.activePhaseIndex);
-          if (phase >= 10 && modelIndex === 0) return false;
-          
-          // 动态捕获车辆实体
-          const carList = tankerRescueCarEntities.value || tankerRescueCarEntities;
-          const carEntity = carList[modelIndex];
-          if (!carEntity) return false;
-
-          // 🚨 如果阶段还没到 9，重置建联时间（这样反复拖拽进度条也能生效）
-          if (phase < 9) {
-             carEntity._myNetTime = null;
-             return false;
-          }
-
-          // 2. 🚨 把之前“苛刻”的到达判定加回来！
-          // 判断车是否已经显示/到达（调用你们原来的 isCarVisible 函数）
-          let visible = true;
-          if (typeof isCarVisible === 'function') {
-            visible = isCarVisible(time);
-          } else if (carEntity.show !== undefined) {
-            visible = typeof carEntity.show.getValue === 'function' ? carEntity.show.getValue(time) : !!carEntity.show;
-          }
-
-          if (!visible) {
-             carEntity._myNetTime = null; // 车还没到，或者不可见，时间清零
-             return false;
-          }
-
-          // 3. 🌟 模拟车停稳后，扫描 5G 信号并建立 WebSockets 的 3.5 秒延迟
-          if (!carEntity._myNetTime) {
-            carEntity._myNetTime = Date.now();
-          }
-          return ((Date.now() - carEntity._myNetTime) / 1000.0) >= 3.5; 
-        }, false),
-        polyline: {
-          positions: new Cesium.CallbackProperty((time) => {
-            if (currentScene.value !== 'tanker') return [];
-            const phase = Number(props.activePhaseIndex);
-            if (phase < 9) return [];
-
-            // 动态捕获车辆实体
-            const carList = tankerRescueCarEntities.value || tankerRescueCarEntities;
-            const carEntity = carList[modelIndex];
-            if (!carEntity || !carEntity.position) return [];
-
-            // 获取车坐标（为了防止天线计算报错，这里直接从车的正中心连线）
-            const carCartesian = carEntity.position.getValue(time);
-            if (!carCartesian) return [];
-            const startPos = carCartesian; 
-
-            // 🚨 阶段 10：全部连向 1 号车
-            if (phase >= 10) {
-              if (modelIndex === 0) return []; 
-              const relayUgv = carList[0];
-              if (relayUgv && relayUgv.position) {
-                const ugvPos = relayUgv.position.getValue(time);
-                if (ugvPos) return [startPos, ugvPos];
-              }
-              return [];
-            }
-
-            // 🌟 阶段 9：找油罐车基站
-            const targetJizhan = tankerJizhanAdjust.value || tankerJizhanAdjust;
-            if (!targetJizhan || !targetJizhan.show) return [];
-
-            const jizhanTop = getModelTopPosition(
-              targetJizhan.lng, targetJizhan.lat, targetJizhan.height,
-              targetJizhan.heading, targetJizhan.pitch, targetJizhan.roll, 10.0 // 暂时写死 10，防止变量缺失
-            );
-            
-            return [startPos, jizhanTop];
-          }, false),
-          width: 4.0,
-          arcType: Cesium.ArcType.NONE,
-          // 醒目的黄绿色
-          material: new DynamicFlowMaterialProperty({ color: Cesium.Color.CHARTREUSE, speed: 4.5, repeat: 6.0 })
-        }
-      });
     });
   });
  });
@@ -9606,6 +9872,15 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       const primitive = pickedObject.primitive;
       
       const entityId = entity ? entity.id : null;
+
+      if (entityId === 'light1-glb-entity' || entityId === 'light1-camera-marker') {
+        openCameraStream('light1', movement);
+        return;
+      }
+      if (entityId === 'light23-glb-entity' || entityId === 'light23-camera-marker') {
+        openCameraStream('light23', movement);
+        return;
+      }
       
       // 1. 判断是否点击了烟雾粒子或三维车辆模型，若是且当前是中视角，则拉近到近视角
       const isSmokeClick = (primitive === smokeParticle || primitive === fireParticle || primitive === leakParticle || primitive === diffusionParticle);
@@ -9859,54 +10134,51 @@ function updatePhaseScene(index, animate = false) {
 } else {
         // 同事的补丁：如果数据源已加载，显式确保规划路线可见，防止 Bug 导致线段丢失
         if (currentMissionDataSource) {
-            // 第 12 阶段仅保留多智能体救援路线，避免等待救援规划时残留无人装备路线。
-            const showAutonomousUavRoute = index >= 3 && index < 11;
-            const showAutonomousUgvRoute = index >= 7 && index < 11;
             const uavPath = currentMissionDataSource.entities.getById('UAV_Path');
             if (uavPath) {
-              uavPath.show = showAutonomousUavRoute;
-              if (uavPath.polyline) uavPath.polyline.show = showAutonomousUavRoute;
+              uavPath.show = (index >= 3);
+              if (uavPath.polyline) uavPath.polyline.show = (index >= 3);
             }
             const uavPathGlow = currentMissionDataSource.entities.getById('UAV_Path_glow');
             if (uavPathGlow) {
-              uavPathGlow.show = showAutonomousUavRoute;
-              if (uavPathGlow.polyline) uavPathGlow.polyline.show = showAutonomousUavRoute;
+              uavPathGlow.show = (index >= 3);
+              if (uavPathGlow.polyline) uavPathGlow.polyline.show = (index >= 3);
             }
 
             const carPath = currentMissionDataSource.entities.getById('Car_Path');
             if (carPath) {
-              carPath.show = showAutonomousUgvRoute;
-              if (carPath.polyline) carPath.polyline.show = showAutonomousUgvRoute;
+              carPath.show = (index >= 7);
+              if (carPath.polyline) carPath.polyline.show = (index >= 7);
             }
             const carPathGlow = currentMissionDataSource.entities.getById('Car_Path_glow');
             if (carPathGlow) {
-              carPathGlow.show = showAutonomousUgvRoute;
-              if (carPathGlow.polyline) carPathGlow.polyline.show = showAutonomousUgvRoute;
+              carPathGlow.show = (index >= 7);
+              if (carPathGlow.polyline) carPathGlow.polyline.show = (index >= 7);
             }
             const czmlCar = currentMissionDataSource.entities.getById('Car');
             if (czmlCar) {
-              czmlCar.show = showAutonomousUgvRoute;
+              czmlCar.show = (index >= 7);
             }
             if (highlightPathEntity) {
-              highlightPathEntity.show = showAutonomousUgvRoute;
-              if (highlightPathEntity.polyline) highlightPathEntity.polyline.show = showAutonomousUgvRoute;
+              highlightPathEntity.show = (index >= 7);
+              if (highlightPathEntity.polyline) highlightPathEntity.polyline.show = (index >= 7);
             }
             const highlightPath = viewer && viewer.entities ? viewer.entities.getById('Car_Path_Highlight') : null;
             if (highlightPath) {
-              highlightPath.show = showAutonomousUgvRoute;
-              if (highlightPath.polyline) highlightPath.polyline.show = showAutonomousUgvRoute;
+              highlightPath.show = (index >= 7);
+              if (highlightPath.polyline) highlightPath.polyline.show = (index >= 7);
             }
             const czmlUav = currentMissionDataSource.entities.getById('UAV');
             if (czmlUav) {
-              czmlUav.show = showAutonomousUavRoute;
+              czmlUav.show = (index >= 3);
             }
 
-            // 多智能体路径仅在第 12 阶段“救援装备出动”显示。
+            // 多智能体路径显示逻辑：只有到达第 10 阶段（救援装备出动）才显示
             const multiAgentPrefixes = ['Agent_', 'AgentPath_', 'AgentPOI_', 'AgentCP_'];
             currentMissionDataSource.entities.values.forEach(entity => {
                 const id = entity.id;
                 if (id && multiAgentPrefixes.some(prefix => id.startsWith(prefix))) {
-                    const shouldShow = (index >= 11);
+                    const shouldShow = (index >= 10);
                     entity.show = shouldShow;
                 }
             });
@@ -11045,6 +11317,259 @@ async function triggerRescueMultiAgent() {
 }
 
 
+.camera-stream-popup {
+  position: absolute;
+  width: 460px;
+  border: 1px solid rgba(56, 189, 248, 0.42);
+  border-radius: 8px;
+  background: rgba(3, 7, 18, 0.92);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.62), 0 0 20px rgba(56, 189, 248, 0.16);
+  z-index: 880;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+}
+
+.camera-stream-header {
+  min-height: 42px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.22);
+  background: rgba(14, 165, 233, 0.12);
+}
+
+.camera-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.camera-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 10px #22c55e;
+}
+
+.camera-stream-title {
+  color: #e0f2fe;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.camera-stream-body {
+  padding: 10px;
+}
+
+.camera-video-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #000;
+}
+
+.camera-stream-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  border-radius: 6px;
+  object-fit: fill;
+}
+
+.camera-video-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.camera-box-rect {
+  fill: transparent;
+  stroke-width: 0.8;
+  vector-effect: non-scaling-stroke;
+}
+
+.camera-box-rect.fire {
+  stroke: #ef4444;
+}
+
+.camera-box-rect.nofire {
+  stroke: #f59e0b;
+}
+
+.camera-box-rect.default {
+  stroke: #38bdf8;
+}
+
+.camera-box-label {
+  font-size: 3px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: rgba(2, 6, 23, 0.9);
+  stroke-width: 0.55px;
+  stroke-linejoin: round;
+}
+
+.camera-box-label.fire {
+  fill: #fecaca;
+}
+
+.camera-box-label.nofire {
+  fill: #fde68a;
+}
+
+.camera-box-label.default {
+  fill: #bae6fd;
+}
+
+.camera-info-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.camera-info-item {
+  min-height: 48px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.64);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.camera-info-item span {
+  color: rgba(226, 232, 240, 0.62);
+  font-size: 12px;
+}
+
+.camera-info-item strong {
+  color: #f8fafc;
+  font-size: 15px;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.camera-info-item.online strong {
+  color: #86efac;
+}
+
+.camera-detection-panel {
+  margin-top: 10px;
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 6px;
+  background: rgba(8, 47, 73, 0.28);
+  overflow: hidden;
+}
+
+.camera-detection-panel.is-error {
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(127, 29, 29, 0.22);
+}
+
+.camera-detection-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  color: #e0f2fe;
+  font-size: 13px;
+}
+
+.camera-detection-head strong {
+  color: #67e8f9;
+  white-space: nowrap;
+}
+
+.camera-detection-panel.is-error .camera-detection-head strong {
+  color: #fecaca;
+}
+
+.camera-detection-body {
+  padding: 9px 10px;
+  color: rgba(226, 232, 240, 0.74);
+  font-size: 13px;
+}
+
+.camera-live-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+  color: rgba(226, 232, 240, 0.68);
+}
+
+.camera-live-result-head strong {
+  color: #67e8f9;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.camera-live-result-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.camera-live-result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid rgba(56, 189, 248, 0.24);
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.camera-live-result-item span {
+  min-width: 0;
+  overflow: hidden;
+  color: #e2e8f0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.camera-live-result-item strong {
+  flex: 0 0 auto;
+  color: #bae6fd;
+  font-size: 14px;
+}
+
+.camera-live-result-item.fire {
+  border-color: rgba(239, 68, 68, 0.56);
+  background: rgba(127, 29, 29, 0.22);
+}
+
+.camera-live-result-item.fire strong {
+  color: #fecaca;
+}
+
+.camera-live-result-item.nofire {
+  border-color: rgba(245, 158, 11, 0.56);
+  background: rgba(120, 53, 15, 0.22);
+}
+
+.camera-live-result-item.nofire strong {
+  color: #fde68a;
+}
+
 .story-detection-alert {
   width: 760px;
   max-height: calc(100vh - 96px);
@@ -11202,6 +11727,26 @@ async function triggerRescueMultiAgent() {
   background: rgba(8, 47, 73, 0.5);
 }
 
+.story-zh-banner {
+  margin-top: 8px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: rgba(14, 165, 233, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.story-zh-banner strong {
+  color: #38bdf8;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1.3;
+}
+
 .confidence-label {
   color: rgba(226, 232, 240, 0.72);
   font-size: 15px;
@@ -11244,9 +11789,17 @@ async function triggerRescueMultiAgent() {
 .story-detection-items .detect-item {
   min-height: 28px;
   padding: 5px 8px;
-  font-size: 15px;
-  justify-content: center;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
   white-space: nowrap;
+}
+
+.story-detection-items .detect-item .item-zh {
+  color: #38bdf8;
+  font-weight: 600;
 }
 
 .story-advice-bar {
