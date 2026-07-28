@@ -3,7 +3,7 @@
     <!-- 头部区域 -->
     <div class="card-head">
       <div>
-        <h3 class="card-title">{{ activeScenarioConfig.title }}</h3>
+        <h3 class="card-title">两客一危交通事故检测</h3>
         <p class="card-subtitle">{{ detectionBaseUrl }}</p>
       </div>
       <span class="status-badge" :class="backendOnline ? 'online' : 'offline'">
@@ -13,7 +13,7 @@
 
     <!-- 垂直面板区 -->
     <div class="scroll-container">
-
+      
       <!-- 1. 模型配置 -->
       <div v-if="!onlyControl" class="card-section">
         <div class="section-title-wrapper">
@@ -21,14 +21,14 @@
           <h4 class="section-subtitle-text">模型配置</h4>
           <span class="bracket">]</span>
         </div>
-
+        
         <div class="model-select-group">
           <span class="control-label-text">模型选择</span>
           <select v-model="settings.model" class="cyber-select-compact" :disabled="!backendOnline">
-            <option v-for="model in displayedAvailableModels" :key="model.name" :value="model.name">
+            <option v-for="model in availableModels" :key="model.name" :value="model.name">
               {{ cleanModelName(model.name) }}
             </option>
-            <option v-if="displayedAvailableModels.length === 0" value="">暂无可用模型</option>
+            <option v-if="availableModels.length === 0" value="">暂无可用模型</option>
           </select>
           <div class="tag-row">
             <span class="tag-compact">主模型与对照模型</span>
@@ -40,12 +40,12 @@
             <span>置信度设置</span>
             <span class="slider-val-text">{{ settings.conf }}</span>
           </div>
-          <input
-            type="range"
-            v-model.number="settings.conf"
-            min="0.1"
-            max="0.9"
-            step="0.05"
+          <input 
+            type="range" 
+            v-model.number="settings.conf" 
+            min="0.1" 
+            max="0.9" 
+            step="0.05" 
             class="cyber-range-compact"
             :disabled="!backendOnline"
           />
@@ -56,12 +56,12 @@
             <span>IOU阈值设置</span>
             <span class="slider-val-text">{{ settings.iou }}</span>
           </div>
-          <input
-            type="range"
-            v-model.number="settings.iou"
-            min="0.1"
-            max="0.9"
-            step="0.05"
+          <input 
+            type="range" 
+            v-model.number="settings.iou" 
+            min="0.1" 
+            max="0.9" 
+            step="0.05" 
             class="cyber-range-compact"
             :disabled="!backendOnline"
           />
@@ -145,17 +145,17 @@
 
         <!-- 动态声波装饰跳动条 -->
         <div class="wave-decoration-compact">
-          <div
-            class="wave-bar-compact"
-            v-for="i in 22"
-            :key="i"
+          <div 
+            class="wave-bar-compact" 
+            v-for="i in 22" 
+            :key="i" 
             :style="{ height: getWaveHeight(i) }"
           ></div>
         </div>
       </div>
 
       <!-- 4. 检测数据统计 -->
-      <div v-if="!onlyControl && backendOnline && displayStatsData" class="card-section">
+      <div v-if="!onlyControl && backendOnline && statsData" class="card-section">
         <div class="section-title-wrapper">
           <span class="bracket">[</span>
           <h4 class="section-subtitle-text">检测数据统计</h4>
@@ -165,38 +165,38 @@
         <!-- 三宫格累计指标磁贴 -->
         <div class="mini-metrics-row">
           <div class="metric-block">
-            <span class="metric-val text-cyan-glow">{{ displayStatsData.total_detections }}</span>
+            <span class="metric-val text-cyan-glow">{{ statsData.total_detections }}</span>
             <span class="metric-lbl">累计检测数</span>
           </div>
           <div class="metric-block">
-            <span class="metric-val text-amber-glow">{{ displayStatsData.today_detections }}</span>
+            <span class="metric-val text-amber-glow">{{ statsData.today_detections }}</span>
             <span class="metric-lbl">今日检测</span>
           </div>
           <div class="metric-block">
-            <span class="metric-val">{{ displayStatsData.avg_inference_time_s }}s</span>
+            <span class="metric-val">{{ statsData.avg_inference_time_s }}s</span>
             <span class="metric-lbl">平均推理时间</span>
           </div>
         </div>
 
         <!-- 饼图类别分布 (Conic Gradient) -->
-        <div v-if="Object.keys(displayClassDistribution || {}).length > 0" class="chart-section">
+        <div v-if="Object.keys(statsData.class_distribution || {}).length > 0" class="chart-section">
           <span class="chart-title-label">类别分布</span>
           <div class="doughnut-chart" :style="{ background: doughnutGradient }">
             <div class="doughnut-hole">
-              <span class="total-text">{{ displayClassTotal }}次</span>
+              <span class="total-text">{{ statsData.total_detections }}次</span>
             </div>
           </div>
-
+          
           <!-- 类别图例 -->
           <div class="legends-grid">
-            <div
-              v-for="(count, clsName) in displayClassDistribution"
-              :key="clsName"
+            <div 
+              v-for="(count, clsName) in statsData.class_distribution" 
+              :key="clsName" 
               class="legend-item"
             >
               <span class="legend-name">
                 <span class="legend-dot" :style="{ backgroundColor: getclassColor(clsName) }"></span>
-                {{ clsName }} · {{ getclassLabel(clsName) }}
+                {{ getclassLabel(clsName) }}
               </span>
               <span class="legend-val">{{ count }} 次</span>
             </div>
@@ -204,20 +204,20 @@
         </div>
 
         <!-- 模型使用分布 -->
-        <div v-if="scenarioModelUsage.length > 0" class="chart-section">
+        <div v-if="Object.keys(statsData.model_usage || {}).length > 0" class="chart-section">
           <span class="chart-title-label">模型使用分布</span>
           <div class="model-usage-list">
-            <div
-              v-for="item in scenarioModelUsage"
-              :key="item.modelName"
+            <div 
+              v-for="(count, modelName) in statsData.model_usage" 
+              :key="modelName" 
               class="model-usage-item"
             >
               <div class="usage-label-row">
-                <span class="usage-name">{{ cleanModelName(item.modelName) }}</span>
-                <span class="usage-val">{{ item.count }} 次</span>
+                <span class="usage-name">{{ cleanModelName(modelName) }}</span>
+                <span class="usage-val">{{ count }} 次</span>
               </div>
               <div class="usage-track">
-                <div class="usage-fill" :style="{ width: getModelPct(item.count) + '%' }"></div>
+                <div class="usage-fill" :style="{ width: getModelPct(count) + '%' }"></div>
               </div>
             </div>
           </div>
@@ -235,16 +235,12 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, reactive, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, reactive } from 'vue'
 
 const props = defineProps({
   onlyControl: {
     type: Boolean,
     default: false
-  },
-  scenario: {
-    type: String,
-    default: 'crash'
   }
 })
 import { useRouter } from 'vue-router'
@@ -312,74 +308,16 @@ const MODEL_NAME_MAP = {
   yolo26m_BestPt_1: 'YOLO26M',
   yolo11m_BestPt_0: 'YOLO11M',
   YOLO26M: 'YOLO26M',
-  YOLO11M: 'YOLO11M',
-  'LCA-YOLO26N': 'LCA-YOLO26N',
-  yolo26N: 'YOLO26N',
-  yolo11N: 'YOLO11N',
-  yolo26n_BestPt_0: 'YOLO26N',
-  yolo11n_BestPt_0: 'YOLO11N',
-  YOLO26N: 'YOLO26N',
-  YOLO11N: 'YOLO11N'
-}
-
-const MODEL_PERFORMANCE = {
-  'SFGA-YOLO26M': { model_name: 'SFGA-YOLO26M', map50: 0.9168, precision: 0.8944, recall: 0.8675, test_set: 'LKYW Fire Test set' },
-  YOLO26M: { model_name: 'YOLO26M', map50: 0.9044, precision: 0.8552, recall: 0.8415, test_set: 'LKYW Fire Test set' },
-  YOLO11M: { model_name: 'YOLO11M', map50: 0.9052, precision: 0.8745, recall: 0.8433, test_set: 'LKYW Fire Test set' },
-  'LCA-YOLO26N': { model_name: 'LCA-YOLO26N', map50: 0.87568, precision: 0.88100, recall: 0.83146, test_set: 'LKYW Leak Test set' },
-  YOLO26N: { model_name: 'YOLO26N', map50: 0.85038, precision: 0.88877, recall: 0.79832, test_set: 'LKYW Leak Test set' },
-  YOLO11N: { model_name: 'YOLO11N', map50: 0.83507, precision: 0.87308, recall: 0.76058, test_set: 'LKYW Leak Test set' }
-}
-
-const SCENARIO_DETECTION_CONFIG = {
-  crash: {
-    id: 'crash',
-    title: '货车追尾事故检测',
-    models: ['SFGA-YOLO26M', 'YOLO26M', 'YOLO11M'],
-    modelUsageFallback: { 'SFGA-YOLO26M': 68, YOLO26M: 52, YOLO11M: 41 },
-    classKeys: ['car_fire', 'lkyw_fire', 'car_nofire', 'lkyw_nofire']
-  },
-  leak: {
-    id: 'leak',
-    title: '油罐车碰撞泄露检测',
-    models: ['LCA-YOLO26N', 'YOLO26N', 'YOLO11N'],
-    modelUsageFallback: { 'LCA-YOLO26N': 64, YOLO26N: 49, YOLO11N: 37 },
-    classKeys: ['leak', 'noleak']
-  }
+  YOLO11M: 'YOLO11M'
 }
 
 const cleanModelName = (name) => {
   if (!name) return ''
-  const rawName = String(name).trim().replace(/（.*）$/, '')
-  return MODEL_NAME_MAP[rawName] || rawName
-}
-
-const activeScenarioConfig = computed(() => {
-  return props.scenario === 'leak' ? SCENARIO_DETECTION_CONFIG.leak : SCENARIO_DETECTION_CONFIG.crash
-})
-
-const displayedAvailableModels = computed(() => {
-  const backendModels = Array.isArray(availableModels.value) ? availableModels.value : []
-  return activeScenarioConfig.value.models.map((modelName) => {
-    const backendModel = backendModels.find((model) => cleanModelName(model.name) === modelName || cleanModelName(model.display_name) === modelName)
-    return {
-      ...(backendModel || {}),
-      name: modelName,
-      display_name: modelName,
-      performance: backendModel?.performance || MODEL_PERFORMANCE[modelName]
-    }
-  })
-})
-
-function ensureScenarioModelSelection() {
-  const models = activeScenarioConfig.value.models
-  if (!models.includes(cleanModelName(settings.model))) {
-    settings.model = models[0] || ''
-  }
+  return MODEL_NAME_MAP[name] || String(name).replace(/（.*）$/, '')
 }
 
 const selectedModel = computed(() => {
-  return displayedAvailableModels.value.find(model => cleanModelName(model.name) === cleanModelName(settings.model)) || displayedAvailableModels.value[0] || null
+  return availableModels.value.find(model => model.name === settings.model) || null
 })
 
 const selectedModelLabel = computed(() => {
@@ -389,8 +327,7 @@ const selectedModelLabel = computed(() => {
 })
 
 const selectedModelPerformance = computed(() => {
-  const modelName = cleanModelName(selectedModel.value?.name || settings.model)
-  return selectedModel.value?.performance || MODEL_PERFORMANCE[modelName] || null
+  return selectedModel.value?.performance || null
 })
 
 const formatMetric = (value) => {
@@ -399,45 +336,13 @@ const formatMetric = (value) => {
   return Number.isFinite(numeric) ? numeric.toFixed(4) : String(value)
 }
 
-const displayStatsData = computed(() => statsData.value || null)
-
-function normalizeScenarioClassKey(cls) {
-  const key = normalizeClassKey(cls)
-  if (activeScenarioConfig.value.id !== 'leak') return key
-  const leakClassMap = {
-    accident: 'leak',
-    normal: 'noleak',
-    hazmat_leak: 'leak',
-    tank_leak: 'leak',
-    no_leak: 'noleak',
-    tank_normal: 'noleak'
-  }
-  return leakClassMap[key] || key
-}
-
-const displayClassDistribution = computed(() => {
-  const source = statsData.value?.class_distribution || {}
-  const allowedKeys = new Set(activeScenarioConfig.value.classKeys)
-  const result = {}
-  Object.entries(source).forEach(([rawClassName, rawCount]) => {
-    const key = normalizeScenarioClassKey(rawClassName)
-    if (!allowedKeys.has(key)) return
-    const count = Number(rawCount) || 0
-    result[key] = (result[key] || 0) + count
-  })
-  return result
-})
-
-const displayClassTotal = computed(() => {
-  return Object.values(displayClassDistribution.value).reduce((sum, count) => sum + Number(count || 0), 0)
-})
-
 // 动态生成圆环图的 conic-gradient 渐变值
 const doughnutGradient = computed(() => {
-  const dist = displayClassDistribution.value
+  if (!statsData.value || !statsData.value.class_distribution) return 'transparent'
+  const dist = statsData.value.class_distribution
   const total = Object.values(dist).reduce((a, b) => a + b, 0)
   if (total === 0) return 'transparent'
-
+  
   let currentPct = 0
   const parts = []
   Object.entries(dist).forEach(([cls, cnt]) => {
@@ -457,34 +362,18 @@ const getWaveHeight = (i) => {
 
 const normalizeClassKey = (cls) => String(cls || '').trim().toLowerCase().replace(/[-\s]+/g, '_')
 
+// 分类中文翻译
 const getclassLabel = (cls) => {
-  if (!cls) return ''
-  const rawStr = String(cls).trim()
-  const key = rawStr.toLowerCase().replace(/[-\s]+/g, '_').replace(/_/g, '')
+  const key = normalizeClassKey(cls)
   const CLASS_LABELS_MAP = {
-    lkywfire: '两客一危车辆碰撞起火',
-    lkyw_fire: '两客一危车辆碰撞起火',
-    lkywnofire: '两客一危车辆碰撞无火',
-    lkyw_nofire: '两客一危车辆碰撞无火',
-    lkywnormal: '两客一危车辆碰撞无火',
-    lkyw_normal: '两客一危车辆碰撞无火',
-    carfire: '轿车碰撞起火',
-    car_fire: '轿车碰撞起火',
-    carnofire: '轿车碰撞无火',
-    car_nofire: '轿车碰撞无火',
-    carnormal: '轿车碰撞无火',
-    car_normal: '轿车碰撞无火',
-    leak: '危化品泄露',
-    hazmat_leak: '危化品泄露',
-    tank_leak: '危化品泄露',
-    accident: '危化品泄露',
-    noleak: '未发现危化品泄露',
-    no_leak: '未发现危化品泄露',
-    tank_normal: '未发现危化品泄露',
-    normal: '未发现危化品泄露'
+    car_fire: '普通车辆起火',
+    lkyw_fire: '两客一危车辆起火',
+    car_nofire: '普通车辆未起火',
+    lkyw_nofire: '两客一危车辆未起火',
+    car_normal: '普通车辆未起火',
+    lkyw_normal: '两客一危车辆未起火'
   }
-  const zh = CLASS_LABELS_MAP[key] || CLASS_LABELS_MAP[rawStr.toLowerCase()]
-  return zh || cls
+  return CLASS_LABELS_MAP[key] || cls
 }
 
 // 分类色彩配置
@@ -496,45 +385,23 @@ const getclassColor = (cls) => {
     car_nofire: '#FDD835',
     lkyw_nofire: '#FB8C00',
     car_normal: '#FDD835',
-    lkyw_normal: '#FB8C00',
-    leak: '#EA80FC',
-    noleak: '#B2FF59'
+    lkyw_normal: '#FB8C00'
   }
   if (CLASS_COLORS_MAP[key]) return CLASS_COLORS_MAP[key]
-  if (key.includes('leak')) return key.includes('no') ? '#B2FF59' : '#EA80FC'
   if (key.includes('nofire') || key.includes('normal')) return key.includes('lkyw') ? '#FB8C00' : '#FDD835'
   if (key.includes('fire')) return key.includes('lkyw') ? '#C2185B' : '#E53935'
   return '#cbd5e1'
 }
 
-const scenarioModelUsage = computed(() => {
-  const allowedModels = activeScenarioConfig.value.models
-  const normalizedUsage = {}
-  Object.entries(statsData.value?.model_usage || {}).forEach(([rawModelName, rawCount]) => {
-    const modelName = cleanModelName(rawModelName)
-    if (!allowedModels.includes(modelName)) return
-    normalizedUsage[modelName] = (normalizedUsage[modelName] || 0) + (Number(rawCount) || 0)
-  })
-
-  const hasActualUsage = Object.values(normalizedUsage).some((count) => count > 0)
-  const usageSource = hasActualUsage ? normalizedUsage : activeScenarioConfig.value.modelUsageFallback
-  return allowedModels
-    .map((modelName, index) => ({
-      modelName,
-      count: Number(usageSource[modelName] || 0),
-      order: index
-    }))
-    .sort((a, b) => b.count - a.count || a.order - b.order)
-})
-
 // 模型最大占比计算
 const maxModelCount = computed(() => {
-  const vals = scenarioModelUsage.value.map((item) => item.count)
+  if (!statsData.value || !statsData.value.model_usage) return 1
+  const vals = Object.values(statsData.value.model_usage)
   return Math.max(1, ...vals)
 })
 
 const getModelPct = (count) => {
-  return Math.round((Number(count || 0) / maxModelCount.value) * 100)
+  return Math.round((count / maxModelCount.value) * 100)
 }
 
 // 获取模型列表
@@ -546,10 +413,9 @@ async function fetchModels() {
       if (data.models && data.models.length > 0) {
         availableModels.value = data.models
         if (!settings.model) {
-          ensureScenarioModelSelection()
+          settings.model = data.models[0].name
         }
       }
-      ensureScenarioModelSelection()
     }
   } catch (e) {
     console.warn('Failed to fetch models:', e)
@@ -589,7 +455,7 @@ async function refreshStatus() {
     if (availableModels.value.length === 0) {
       await fetchModels()
     }
-
+    
     try {
       const [statsRes, sysRes] = await Promise.all([
         fetch(buildRealtimeDetectionApiUrl('api/stats', detectionBaseUrl.value), { cache: 'no-store' }),
@@ -681,15 +547,7 @@ function goToRealtimeDetection() {
   router.push('/realtime')
 }
 
-watch(() => props.scenario, () => {
-  ensureScenarioModelSelection()
-  statsData.value = null
-  systemInfoData.value = null
-  if (backendOnline.value) refreshStatus()
-}, { immediate: true })
-
 onMounted(() => {
-  ensureScenarioModelSelection()
   refreshStatus()
   pollingTimer = window.setInterval(refreshStatus, 5000)
 })
