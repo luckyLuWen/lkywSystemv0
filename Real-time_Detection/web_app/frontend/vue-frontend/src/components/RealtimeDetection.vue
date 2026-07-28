@@ -103,7 +103,7 @@
 
 <script setup>
 import { ref, onUnmounted, computed } from 'vue'
-import { getClassStyle } from '../utils/classColors'
+import { getClassStyle, getClassChinese } from '../utils/classColors'
 
 const props = defineProps({
   settings: Object,
@@ -129,7 +129,11 @@ const primaryClass = (det) => det?.class || displayLabels(det)[0]?.class || ''
 
 const formatDetectionLabel = (det) => {
   return displayLabels(det)
-    .map(label => `${label.class} (${(Number(label.confidence || 0) * 100).toFixed(1)}%)`)
+    .map(label => {
+      const zh = getClassChinese(label.class)
+      const zhStr = zh ? ` · ${zh}` : ''
+      return `${label.class}${zhStr} (${(Number(label.confidence || 0) * 100).toFixed(1)}%)`
+    })
     .join(' / ')
 }
 

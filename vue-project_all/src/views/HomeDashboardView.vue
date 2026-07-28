@@ -442,7 +442,7 @@
             </div>
 
             <div v-else-if="activeRightTab === 'detection'" class="detection-data-panel">
-              <RealtimeDetectionCard />
+              <RealtimeDetectionCard :key="currentDetectionScenario" :scenario="currentDetectionScenario" />
             </div>
 
             <div v-else-if="activeRightTab === 'planning'" class="planning-data-panel">
@@ -665,6 +665,10 @@ const accidentPhaseIndices = ref({
 
 const currentAccidentId = computed(() => {
   return accidentPoints[activeAccidentIndex.value]?.id || ''
+})
+
+const currentDetectionScenario = computed(() => {
+  return currentAccidentId.value === 'rear-end' ? 'crash' : 'leak'
 })
 
 const activePhaseIndex = computed({
