@@ -222,7 +222,10 @@ def generate_car_path():
         dest = ox.nearest_nodes(G, END_POINT[1], END_POINT[0])
         route = nx.shortest_path(G, orig, dest, weight='weight')
         path_coords = [(G.nodes[n]['y'], G.nodes[n]['x']) for n in route]
-        if path_coords[0][0] != START_POINT[0]: path_coords.insert(0, START_POINT)
+        if path_coords[0][0] != START_POINT[0]:
+            start_gap = calculate_distance(path_coords[0][0], path_coords[0][1], START_POINT[0], START_POINT[1])
+            if start_gap < 100:
+                path_coords.insert(0, START_POINT)
         end_gap = calculate_distance(path_coords[-1][0], path_coords[-1][1], END_POINT[0], END_POINT[1])
         if 10 < end_gap < 500:
             path_coords.append(END_POINT)
