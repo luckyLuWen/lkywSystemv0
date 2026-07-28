@@ -102,34 +102,34 @@ const props = defineProps({
 }
 .panel-title {
   margin: 0;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
   color: #ffffff;
   letter-spacing: 0.5px;
 }
 .panel-subtitle {
-  margin: 2px 0 0;
-  font-size: 11.5px;
-  color: rgba(255, 255, 255, 0.45);
+  margin: 1px 0 0;
+  font-size: 10px;
+  color: #94a3b8;
   font-family: 'Courier New', Courier, monospace;
 }
 .status-badge {
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 600;
-  padding: 3px 8px;
+  padding: 3px 6px;
   border-radius: 4px;
-  text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 .status-badge.computing {
-  background: rgba(0, 242, 254, 0.12);
+  background: rgba(0, 242, 254, 0.1);
   color: #00f2fe;
   border: 1px solid rgba(0, 242, 254, 0.3);
+  text-shadow: 0 0 5px rgba(0, 242, 254, 0.4);
 }
 .status-badge.ready {
-  background: rgba(52, 211, 153, 0.12);
-  color: #34d399;
-  border: 1px solid rgba(52, 211, 153, 0.3);
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.3);
 }
 .pulse {
   animation: pulse-border 1.5s infinite;
@@ -142,25 +142,33 @@ const props = defineProps({
 
 .terminal-logs {
   font-family: 'Courier New', Courier, monospace;
-  font-size: 12px;
-  color: #cbd5e1;
-  background: rgba(0, 0, 0, 0.35);
-  padding: 10px 12px;
-  border-radius: 4px;
-  margin-bottom: 12px;
+  font-size: 10px;
+  color: #94a3b8;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 10px;
+  margin: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 242, 254, 0.15);
   border-left: 3px solid #00f2fe;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
 }
 .log-line {
   margin-bottom: 4px;
   opacity: 0;
   animation: fadeInLog 0.3s forwards;
-  line-height: 1.5;
+  line-height: 1.4;
+}
+.log-line:last-child {
+  margin-bottom: 0;
 }
 .log-line span {
   font-weight: bold;
 }
-.log-line.text-cyan span { color: #00f2fe; }
-.log-line.text-green span { color: #34d399; }
+.text-cyan { color: #00f2fe; }
+.text-cyan span { color: #008fa7; }
+.text-green { color: #4ade80; }
+.text-green span { color: #22c55e; }
+
 @keyframes fadeInLog {
   to { opacity: 1; }
 }
@@ -169,22 +177,29 @@ const props = defineProps({
   display: flex;
   flex-direction: column;
   gap: 10px;
+  padding: 0 12px 12px;
 }
 .agent-card {
-  background: rgba(10, 19, 35, 0.4);
-  border: 1px solid rgba(0, 242, 254, 0.12);
+  background: rgba(10, 25, 47, 0.25);
+  border: 1px solid rgba(0, 242, 254, 0.1);
   border-left: 3px solid var(--agent-color);
-  border-radius: 4px;
-  padding: 10px 12px;
+  border-radius: 6px;
+  padding: 10px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.agent-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-color: rgba(0, 242, 254, 0.25);
 }
 .agent-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 .agent-label {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--agent-color);
 }
@@ -192,22 +207,22 @@ const props = defineProps({
   margin-right: 2px;
 }
 .agent-winner-name {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: #e2e8f0;
 }
 .winner-stats {
   background: rgba(0, 0, 0, 0.25);
   border-radius: 4px;
-  padding: 8px 10px;
+  padding: 6px 8px;
   margin-bottom: 8px;
 }
 .stat-row {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
-  color: #cbd5e1;
-  margin-bottom: 4px;
+  font-size: 10px;
+  color: #94a3b8;
+  margin-bottom: 3px;
 }
 .stat-row:last-child { margin-bottom: 0; }
 .stat-row.highlight {
@@ -221,8 +236,8 @@ const props = defineProps({
   padding-top: 6px;
 }
 .losers-title {
-  font-size: 11px;
-  color: #94a3b8;
+  font-size: 9px;
+  color: #64748b;
   margin-bottom: 4px;
   font-weight: 600;
 }
@@ -236,15 +251,15 @@ const props = defineProps({
   display: none;
 }
 .loser-name {
-  font-size: 12px;
-  color: #cbd5e1;
+  font-size: 10px;
+  color: #94a3b8;
   font-weight: 500;
 }
 .loser-reason {
-  font-size: 11px;
-  color: #f87171;
+  font-size: 9px;
+  color: #ef4444;
   margin-left: 12px;
-  margin-top: 2px;
-  line-height: 1.4;
+  margin-top: 1px;
+  line-height: 1.3;
 }
 </style>

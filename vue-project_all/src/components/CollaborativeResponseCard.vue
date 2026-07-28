@@ -449,9 +449,9 @@ onBeforeUnmount(() => {
 }
 
 .metric-val small {
-  font-size: 12px;
-  font-weight: 500;
-  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 400;
+  color: #64748b;
 }
 
 .metric-val.text-cyan { color: #60a5fa; }
@@ -459,11 +459,11 @@ onBeforeUnmount(() => {
 .metric-val.text-green { color: #34d399; }
 .metric-val.text-purple { color: #a78bfa; }
 .metric-val.text-pink { color: #f472b6; }
-.metric-val.dim { font-size: 17px; color: #cbd5e1; }
+.metric-val.dim { font-size: 16px; color: #cbd5e1; }
 
 .metric-lbl {
-  font-size: 15px;
-  color: rgba(255, 255, 255, 0.65);
+  font-size: 14.5px;
+  color: rgba(255, 255, 255, 0.5);
   white-space: nowrap;
 }
 
@@ -509,12 +509,12 @@ onBeforeUnmount(() => {
 }
 
 .env-label {
-  font-size: 15px;
-  color: rgba(255, 255, 255, 0.65);
+  font-size: 14.5px;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .env-state {
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 600;
   color: #64748b;
 }
@@ -534,14 +534,14 @@ onBeforeUnmount(() => {
 }
 
 .congestion-name {
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 600;
   color: #93c5fd;
 }
 
 .congestion-detail {
-  font-size: 13.5px;
-  color: rgba(147, 197, 253, 0.8);
+  font-size: 13px;
+  color: rgba(147, 197, 253, 0.7);
 }
 
 /* ===== 候选救援点列表 ===== */
@@ -556,8 +556,8 @@ onBeforeUnmount(() => {
   gap: 8px;
   padding: 7px 8px;
   border-radius: 4px;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.65);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .candidate-row.selected {
@@ -593,7 +593,7 @@ onBeforeUnmount(() => {
 
 .candidate-dist {
   font-family: monospace;
-  font-size: 12px;
+  font-size: 10px;
   color: inherit;
   flex-shrink: 0;
 }
@@ -604,7 +604,7 @@ onBeforeUnmount(() => {
 }
 
 .metric-vs {
-  font-size: 13.5px;
+  font-size: 12px;
   color: #4ade80;
   margin-top: 2px;
   white-space: nowrap;
@@ -622,13 +622,13 @@ onBeforeUnmount(() => {
 
 .empty-icon { font-size: 32px; opacity: 0.4; }
 
-.empty-text { margin: 0; color: #94a3b8; font-size: 14.5px; font-weight: 600; }
+.empty-text { margin: 0; color: #94a3b8; font-size: 14px; font-weight: 600; }
 
-.empty-hint { margin: 0; color: rgba(148, 163, 184, 0.6); font-size: 12.5px; }
+.empty-hint { margin: 0; color: rgba(148, 163, 184, 0.45); font-size: 11px; }
 
 .error-text {
   margin: 0;
-  font-size: 13.5px;
+  font-size: 13px;
   color: #ffb4b4;
   text-align: center;
 }

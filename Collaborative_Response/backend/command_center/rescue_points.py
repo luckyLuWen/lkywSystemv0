@@ -207,50 +207,5 @@ def _agent_poi_seed() -> list[tuple]:
     ]
 
 
-def get_all_pois_full(scenario: str) -> list[dict]:
-    """获取指定场景的所有救援点和五类智能体 POI 的全量信息。"""
-    conn = get_connection()
-    agent_rows = conn.execute(
-        "SELECT id, agent_key, name, lat, lon FROM agent_pois WHERE scenario = ? AND is_active = 1",
-        (scenario,),
-    ).fetchall()
-    conn.close()
-    return [
-        {
-            "id": r["id"],
-            "agent_key": r["agent_key"],
-            "name": r["name"],
-            "lat": r["lat"],
-            "lon": r["lon"],
-            "label": AGENT_CONFIG.get(r["agent_key"], {}).get("label", r["agent_key"]),
-            "color": AGENT_CONFIG.get(r["agent_key"], {}).get("color", "#888"),
-        }
-        for r in agent_rows
-    ]
-
-
-def update_poi_locations(scenario: str, poi_list: list[dict]) -> None:
-    """更新指定场景的 POI 经纬度位置（同步更新 agent_pois 与 rescue_points 表）。"""
-    conn = get_connection()
-    cursor = conn.cursor()
-    for item in poi_list:
-        name = item.get("name")
-        lat = item.get("lat")
-        lon = item.get("lon")
-        if not name or lat is None or lon is None:
-            continue
-        cursor.execute(
-            "UPDATE agent_pois SET lat = ?, lon = ? WHERE scenario = ? AND name = ?",
-            (float(lat), float(lon), scenario, name),
-        )
-        cursor.execute(
-            "UPDATE rescue_points SET lat = ?, lon = ? WHERE scenario = ? AND name = ?",
-            (float(lat), float(lon), scenario, name),
-        )
-    conn.commit()
-    conn.close()
-
-
 if __name__ == "__main__":
     init_db()
-    print("Rescue points database initialized successfully.")
