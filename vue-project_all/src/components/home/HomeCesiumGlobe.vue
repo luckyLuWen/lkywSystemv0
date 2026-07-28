@@ -4019,7 +4019,7 @@ const tankerUavAdjust = reactive({
 
 const tankerRescueCarAdjust = reactive({
   scale: 250,
-  heading: -32,
+  heading: 88,
   moveHeading: 0,
   lng: 114.894141,
   lat: 30.631815,
@@ -4048,7 +4048,7 @@ function snapUavUgvToDefault() {
   } else {
     if (isTanker) {
       tankerRescueCarAdjust.scale = 250;
-      tankerRescueCarAdjust.heading = -32;
+      tankerRescueCarAdjust.heading = 88;
       tankerRescueCarAdjust.moveHeading = 0;
       tankerRescueCarAdjust.lng = 114.894141;
       tankerRescueCarAdjust.lat = 30.631815;
@@ -9059,7 +9059,19 @@ tankerRescueCarModelConfigs.forEach((config, index) => {
     if (phase < 7) {
       return Cesium.Cartesian3.fromDegrees(tankerBaseStartLng, tankerBaseStartLat, tankerStartHeight);
     } else if (phase === 7 || phase === 8) {
-      // 阶段 7~8：平滑进场
+      // 阶段 7~8：沿规划路线行驶（读取 server.py 生成的 Car_Path CZML 路径）
+      const ugvInfo = getUgvLast200mPosition('tanker', phase, null, time);
+      if (ugvInfo && ugvInfo.pos) {
+        const carto = Cesium.Cartographic.fromCartesian(ugvInfo.pos);
+        let baseHeight = carto.height;
+        if (viewer && viewer.scene && viewer.scene.globe) {
+          const terrainHeight = viewer.scene.globe.getHeight(carto);
+          if (terrainHeight !== undefined) baseHeight = terrainHeight;
+        }
+        carto.height = baseHeight + tankerStartHeight;
+        return Cesium.Cartographic.toCartesian(carto);
+      }
+      // 降级：直线插值（当 CZML 尚未加载时）
       const elapsed = Math.max(0, Cesium.JulianDate.secondsDifference(time, tankerPhase7StartJulian));
       const duration = 10.0;
       const t = Math.min(elapsed / duration, 1.0);
@@ -9091,11 +9103,17 @@ tankerRescueCarModelConfigs.forEach((config, index) => {
     const flip180 = Math.PI; 
 
     let headingRad = 0;
-    if (phase < 9) {
-      // 进场时：基础行驶方向 + 180度掉头 + 滑块偏移角度
-      const dx = tankerActualTargetLng - tankerBaseStartLng;
-      const dy = tankerActualTargetLat - tankerBaseStartLat;
-      headingRad = Math.atan2(dx, dy) + flip180 + uiOffsetRad;
+    if (phase >= 7 && phase < 9) {
+      // 进场时：优先使用路径规划方向
+      const ugvInfo = getUgvLast200mPosition('tanker', phase, null, time);
+      if (ugvInfo && ugvInfo.headingRad !== undefined) {
+        headingRad = ugvInfo.headingRad + flip180 + uiOffsetRad;
+      } else {
+        // 降级：基础行驶方向（直线方向）
+        const dx = tankerActualTargetLng - tankerBaseStartLng;
+        const dy = tankerActualTargetLat - tankerBaseStartLat;
+        headingRad = Math.atan2(dx, dy) + flip180 + uiOffsetRad;
+      }
     } else {
       // 巡逻时：基础巡逻方向 + 180度掉头 + 滑块偏移角度
       headingRad = Cesium.Math.toRadians(0) + flip180 + uiOffsetRad;
