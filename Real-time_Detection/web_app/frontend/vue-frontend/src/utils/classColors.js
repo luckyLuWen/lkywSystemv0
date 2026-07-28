@@ -51,41 +51,6 @@ const CLASS_STYLES = {
   }
 }
 
-const CLASS_CHINESE_MAP = {
-  lkywfire: '两客一危车辆碰撞起火',
-  lkyw_fire: '两客一危车辆碰撞起火',
-  lkywnofire: '两客一危车辆碰撞无火',
-  lkyw_nofire: '两客一危车辆碰撞无火',
-  lkywnormal: '两客一危车辆碰撞无火',
-  lkyw_normal: '两客一危车辆碰撞无火',
-  carfire: '轿车碰撞起火',
-  car_fire: '轿车碰撞起火',
-  carnofire: '轿车碰撞无火',
-  car_nofire: '轿车碰撞无火',
-  carnormal: '轿车碰撞无火',
-  car_normal: '轿车碰撞无火',
-  leak: '危化品泄露',
-  hazmat_leak: '危化品泄露',
-  tank_leak: '危化品泄露',
-  accident: '危化品泄露',
-  noleak: '未发现危化品泄露',
-  no_leak: '未发现危化品泄露',
-  tank_normal: '未发现危化品泄露',
-  normal: '未发现危化品泄露'
-}
-
-export const getClassChinese = (className = '') => {
-  if (!className) return ''
-  const key = String(className).trim().toLowerCase().replace(/[-\s]+/g, '_').replace(/_/g, '')
-  return CLASS_CHINESE_MAP[key] || CLASS_CHINESE_MAP[String(className).trim().toLowerCase()] || ''
-}
-
-export const formatClassWithChinese = (className = '') => {
-  if (!className) return ''
-  const zh = getClassChinese(className)
-  return zh || className
-}
-
 export const getClassStyle = (className = '') => {
   const key = String(className).toLowerCase()
   if (CLASS_STYLES[key]) return CLASS_STYLES[key]

@@ -91,7 +91,7 @@
             <div class="trend-card">
               <div class="trend-head">
                 <span>显存占用实时折线图</span>
-                <strong>{{ formatVram(sysInfo.vram_used_gb, sysInfo.vram_total_gb) }}</strong>
+                <strong>{{ sysInfo.vram_used_gb || 0 }} / {{ sysInfo.vram_total_gb || 0 }} GB</strong>
               </div>
               <svg class="trend-chart" viewBox="0 0 140 88" preserveAspectRatio="none">
                 <line class="trend-axis" x1="12" y1="10" x2="12" y2="74" />
@@ -104,7 +104,7 @@
             <div class="trend-card">
               <div class="trend-head">
                 <span>GPU负载实时波动曲线</span>
-                <strong>{{ formatPercentMetric(sysInfo.gpu_util) }}</strong>
+                <strong>{{ sysInfo.gpu_util || 0 }}%</strong>
               </div>
               <svg class="trend-chart" viewBox="0 0 140 88" preserveAspectRatio="none">
                 <line class="trend-axis" x1="12" y1="10" x2="12" y2="74" />
@@ -117,7 +117,7 @@
             <div class="trend-card">
               <div class="trend-head">
                 <span>温度实时波动曲线</span>
-                <strong>{{ formatTemperature(sysInfo.gpu_temp) }}</strong>
+                <strong>{{ sysInfo.gpu_temp || '--' }}°C</strong>
               </div>
               <svg class="trend-chart" viewBox="0 0 140 88" preserveAspectRatio="none">
                 <line class="trend-axis" x1="12" y1="10" x2="12" y2="74" />
@@ -154,8 +154,8 @@ const { apiUrl, isOnline, statusDetail, settings, availableModels, safeFetch } =
 const activeTab = ref('image')
 
 const sysInfo = reactive({
-  gpu_name: '', cuda_version: '', vram_total_gb: null, vram_used_gb: null,
-  gpu_temp: null, gpu_util: null, gpu_error: '', model_loaded: false, model_name: '',
+  gpu_name: '', cuda_version: '', vram_total_gb: 0, vram_used_gb: 0,
+  gpu_temp: 0, gpu_util: 0, model_loaded: false, model_name: '',
   total_detections_today: 0
 })
 
@@ -217,23 +217,6 @@ const formatCount = (value) => {
   return Number.isFinite(numeric) ? numeric.toLocaleString('zh-CN') : '--'
 }
 
-const formatVram = (used, total) => {
-  const usedValue = Number(used)
-  const totalValue = Number(total)
-  if (!Number.isFinite(usedValue) || !Number.isFinite(totalValue) || totalValue <= 0) return 'N/A'
-  return `${usedValue} / ${totalValue} GB`
-}
-
-const formatPercentMetric = (value) => {
-  const numeric = Number(value)
-  return Number.isFinite(numeric) ? `${numeric}%` : 'N/A'
-}
-
-const formatTemperature = (value) => {
-  const numeric = Number(value)
-  return Number.isFinite(numeric) ? `${numeric}°C` : 'N/A'
-}
-
 const formatInferenceTime = (value) => {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) return '--'
@@ -249,9 +232,9 @@ const fetchSystemInfo = async () => {
     const data = await safeFetch('/api/system/info')
     if (data.success) {
       Object.assign(sysInfo, data.info)
-      if (Number.isFinite(Number(data.info.vram_used_gb))) pushTelemetryPoint('vram', data.info.vram_used_gb)
-      if (Number.isFinite(Number(data.info.gpu_util))) pushTelemetryPoint('util', data.info.gpu_util)
-      if (Number.isFinite(Number(data.info.gpu_temp))) pushTelemetryPoint('temp', data.info.gpu_temp)
+      pushTelemetryPoint('vram', data.info.vram_used_gb)
+      pushTelemetryPoint('util', data.info.gpu_util)
+      pushTelemetryPoint('temp', data.info.gpu_temp)
     }
   } catch (e) { /* silently fail */ }
 }
