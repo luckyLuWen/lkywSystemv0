@@ -1495,6 +1495,7 @@
 
     <!-- 🗺️ 湖北省地图车辆运行图例 (位于右上角空白区域，与右侧栏联动) -->
     <div 
+      v-if="!props.focusedPointId"
       class="hubei-map-legend" 
       :style="{ right: legendRightOffset }"
     >
@@ -2742,7 +2743,7 @@ const initialPhaseCameraConfigs = {
     5: { range: 480, pitch: -25, heading: 33 },
     6: { range: 480, pitch: -25, heading: 33 },
     7: { range: 480, pitch: -25, heading: 33 },
-    8: { range: 100000, pitch: -90, heading: -3 },
+    8: { range: 75450, pitch: -88, heading: 3 },
     9: { range: 641, pitch: -26, heading: -25 },
     10: { range: 500, pitch: -21, heading: 28 },
     11: { range: 1440, pitch: -39, heading: -5 },
@@ -4695,8 +4696,9 @@ const currentStoryDetectionScenario = computed(() => {
 function updateStoryDetectionPopupPosition() {
   const canvas = viewer?.scene?.canvas
   const width = canvas?.clientWidth || window.innerWidth || 1200
-  detectionPopup.x = width * 0.7
-  detectionPopup.y = 190
+  detectionPopup.x = width * 0.8 
+  detectionPopup.y = 210
+
 }
 
 function isTruckStoryline() {
@@ -5203,7 +5205,7 @@ function updateModelsReadyStatus() {
                 p.activeAnimations.removeAll();
                 const options = {
                   loop: Cesium.ModelAnimationLoop.REPEAT,
-                  multiplier: 6.0,
+                  multiplier: 150.0,
                   startTime: viewer.clock.currentTime,
                   removeOnStop: false
                 };
@@ -10218,18 +10220,18 @@ function updatePhaseScene(index, animate = false) {
     const phase = props.phases[index] || props.phases[0]
     const pointId = props.focusedPointId || phase.focusPoint || 'gateway'
 
-    // 🗺️ 隐/显盘旋轨迹实体：仅在第5阶段“次生灾害（烟雾）”显现
-    const isSmokePhase = (index === 5);
+    // 🗺️ 隐/显盘旋轨迹实体：仅在第5阶段“次生灾害（烟雾/泄露）”和第6阶段“次生灾害（起火/弥漫）”显现
+    const isSmokeOrFirePhase = (index === 5 || index === 6);
     let isTruckScene = (pointId === 'accident_blue' || pointId === 'gateway' || !props.focusedPointId);
     let isTankerScene = (pointId === 'accident_red');
 
     ['uav-orbit-ring-glow-truck', 'uav-orbit-ring-flow-truck'].forEach(id => {
       const e = viewer.entities.getById(id);
-      if (e) e.show = isTruckScene && isSmokePhase;
+      if (e) e.show = isTruckScene && isSmokeOrFirePhase;
     });
     ['uav-orbit-ring-glow-tanker', 'uav-orbit-ring-flow-tanker'].forEach(id => {
       const e = viewer.entities.getById(id);
-      if (e) e.show = isTankerScene && isSmokePhase;
+      if (e) e.show = isTankerScene && isSmokeOrFirePhase;
     });
     ['uav-orbit-path-truck', 'uav-orbit-path-tanker'].forEach(id => {
       const e = viewer.entities.getById(id);
@@ -10444,29 +10446,7 @@ function updatePhaseScene(index, animate = false) {
         }
       }
 
-      // 根据用户要求，当在货车现场进入"无人装备出动"(阶段7)时，视角飞向大范围侧倾透视视角
-      if (pointId === 'accident_blue' && index === 7) {
-        stopAutoRotate();
-        try {
-          viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
-        } catch (e) {}
-        isFlying = true;
-        viewer.camera.flyTo({
-          destination: Cesium.Cartesian3.fromDegrees(113.26, 29.96, 39000), // 侧倾透视视角，将相机向南平移并微调高度以完整居中路线
-          orientation: {
-            heading: Cesium.Math.toRadians(350.0),
-            pitch: Cesium.Math.toRadians(-35.0),
-            roll: 0.0
-          },
-          duration: 1.8,
-          complete: () => {
-            isFlying = false;
-          },
-          cancel: () => {
-            isFlying = false;
-          }
-        });
-      }
+
     } else {
       if (currentMissionDataSource) {
         viewer.dataSources.remove(currentMissionDataSource);
