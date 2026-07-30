@@ -222,7 +222,10 @@ def generate_car_path():
         dest = ox.nearest_nodes(G, END_POINT[1], END_POINT[0])
         route = nx.shortest_path(G, orig, dest, weight='weight')
         path_coords = [(G.nodes[n]['y'], G.nodes[n]['x']) for n in route]
-        if path_coords[0][0] != START_POINT[0]: path_coords.insert(0, START_POINT)
+        if path_coords[0][0] != START_POINT[0]:
+            start_gap = calculate_distance(path_coords[0][0], path_coords[0][1], START_POINT[0], START_POINT[1])
+            if start_gap < 100:
+                path_coords.insert(0, START_POINT)
         end_gap = calculate_distance(path_coords[-1][0], path_coords[-1][1], END_POINT[0], END_POINT[1])
         if 10 < end_gap < 500:
             path_coords.append(END_POINT)
@@ -897,7 +900,7 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
     start_str = format_timestamp(global_start_time)
     avail = f"{start_str}/{format_timestamp(global_end_time)}"
     
-    czml = [{"id": "document", "version": "1.0", "clock": {"interval": avail, "currentTime": start_str, "multiplier": 1, "range": "LOOP_STOP"}}]
+    czml = [{"id": "document", "version": "1.0", "clock": {"interval": avail, "currentTime": start_str, "multiplier": 20, "range": "LOOP_STOP"}}]
     
     # 静态地标
     czml.append({"id": "StartMarker", "position": {"cartographicDegrees": [START_POINT[1], START_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [0,255,0,255]}}, "label": {"text": START_POINT_NAME, "font": "16px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}, "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 25000.0]}}})
@@ -984,14 +987,27 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
             })
             agent_pos = []
             path_len = len(path)
+            
+            # 使用真实的车辆速度计算耗时，避免短距离救援点被拉长导致极其缓慢
+            # CAR_SPEED 为 22.22 m/s (80 km/h)
+            dist_km = ainfo.get('net_dist_km', 1.0)
+            if dist_km == 0: dist_km = 1.0
+            agent_total_sec = (dist_km * 1000) / CAR_SPEED
+            
             for i, (lat, lon) in enumerate(path):
-                t = global_start_time + pd.Timedelta(seconds=i / max(path_len-1,1) * (global_end_time - global_start_time).total_seconds())
+                t = global_start_time + pd.Timedelta(seconds=i / max(path_len-1,1) * agent_total_sec)
                 agent_pos.extend([t.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z', lon, lat, 8])
+                
+            # 将终点的时间延长到全局结束时间，让模型到达终点后停留在原地，不会消失
+            last_lat, last_lon = path[-1]
+            agent_pos.extend([global_end_time.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z', last_lon, last_lat, 8])
+                
             czml.append({
                 "id": f"Agent_{agent_key}", "name": ainfo['label'],
                 "availability": avail,
                 "position": {"epoch": start_str, "cartographicDegrees": agent_pos,
-                             "interpolationAlgorithm": "LINEAR", "interpolationDegree": 1},
+                             "interpolationAlgorithm": "LINEAR", "interpolationDegree": 1,
+                             "forwardExtrapolationType": "HOLD"},
                 "point": {"pixelSize": 12, "color": {"rgba": rgba},
                           "outlineColor": {"rgba": [255,255,255,230]}, "outlineWidth": 2},
                 "label": {"text": ainfo['label'], "font": "12px Microsoft YaHei",
@@ -999,7 +1015,7 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
                           "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 8000.0]}},
             })
             # 3D 路径耗时检查点（透明底色 HUD 标签 + 小圆点）
-            total_sec = (global_end_time - global_start_time).total_seconds()
+            total_sec = agent_total_sec
             for pct in [0.25, 0.5, 0.75]:
                 pi = int(path_len * pct)
                 if pi >= path_len: pi = path_len - 1

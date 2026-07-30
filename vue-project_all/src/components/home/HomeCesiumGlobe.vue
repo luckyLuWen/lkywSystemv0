@@ -15,32 +15,81 @@
         backgroundImage: `url(${photo.src})`
       }"
     ></div>
-    <!-- 阶段十：传感网原型放大镜悬浮窗 -->
-<div v-if="activePhaseIndex === 9 && showMagnifier" class="prototype-magnifier-popup">
-  <div class="popup-header">
-    <span class="icon">🔍</span>
-    <span class="title">立体组网传感网原型解析</span>
-    <button class="close-btn" @click="showMagnifier = false">×</button>
-  </div>
+    <div style="position: absolute; top: 20px; left: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 20px; align-items: flex-start;">
+      
+      <!-- 1. 上方：立体传感网智能协同矩阵 (增加强制 relative，剥夺其绝对定位权，禁止重叠) -->
+      <div 
+        class="sensor-fusion-panel" 
+        v-if="fusionPanelConfig.show"
+        style="position: relative !important; top: auto !important; left: auto !important; bottom: auto !important; transform: none !important; margin: 0 !important;"
+      >
+        <div class="fusion-header">
+          <span class="icon">🔗</span>
+          <span class="title">立体传感网智能协同矩阵</span>
+          <div class="pulse-indicator"></div>
+        </div>
+        
+        <ul class="fusion-list">
+          <li>
+            <span class="node-name">🚗 车载节点</span>
+            <span class="status-tag" :class="sensorFusionState.car.statusClass">{{ sensorFusionState.car.text }}</span>
+          </li>
+          <li>
+            <span class="node-name">💡 路侧节点</span>
+            <span class="status-tag" :class="sensorFusionState.light.statusClass">{{ sensorFusionState.light.text }}</span>
+          </li>
+          <li>
+            <span class="node-name">🚁 空基节点</span>
+            <span class="status-tag" :class="sensorFusionState.uav.statusClass">{{ sensorFusionState.uav.text }}</span>
+          </li>
+          <li>
+            <span class="node-name">🚙 地基节点</span>
+            <span class="status-tag" :class="sensorFusionState.ugv.statusClass">{{ sensorFusionState.ugv.text }}</span>
+          </li>
+        </ul>
 
-  <div class="popup-body">
-    <!-- 左侧：导入你抠好的传感网原型图片 -->
-    <div class="prototype-image-container">
-      <img src="/Dashboard/images/传感网原型.png" alt="传感网原型" class="custom-prototype-img" />
-    </div>
+        <div class="fusion-footer">
+          <div class="footer-row">
+            <span>综合协同研判:</span>
+            <strong :class="{'text-red': props.activePhaseIndex >= 2}">{{ sensorFusionState.resultText }}</strong>
+          </div>
+          <div class="footer-row">
+            <span>多源融合置信度:</span>
+            <strong class="text-cyan">{{ sensorFusionState.confidence }}</strong>
+          </div>
+        </div>
+      </div>
 
-    <!-- 右侧：原型架构文本说明 (保持之前的设定) -->
-    <div class="prototype-desc">
-      <h4 class="desc-title">多源异构感知架构</h4>
-      <ul class="desc-list">
-        <li><strong>高速通信链路：</strong>核心控制指令通过 WebSocket 协议全双工直达底层节点，确保低延迟。</li>
-        <li><strong>空基巡航层：</strong>无人机搭载红外热成像相机，执行大范围视场唤醒与全局热点追踪。</li>
-        <li><strong>地基监测层：</strong>两台无人车呈非线性包围态势，挂载五类传感器监测阵列抵近核心区采样。</li>
-        <li><strong>泛在基础设施：</strong>智慧路灯与通信基站提供基础环境支撑与边缘计算中继。</li>
-      </ul>
+      <!-- 2. 下方：阶段十 传感网原型放大镜悬浮窗 (同样剥夺绝对定位权，自动排在下方) -->
+      <div 
+        v-if="activePhaseIndex === 9 && showMagnifier" 
+        class="prototype-magnifier-popup"
+        style="position: relative !important; top: auto !important; left: auto !important; bottom: auto !important; transform: none !important; margin: 0 !important;"
+      >
+        <div class="popup-header">
+          <span class="icon">🔍</span>
+          <span class="title">立体组网传感网原型解析</span>
+          <button class="close-btn" @click="showMagnifier = false">×</button>
+        </div>
+
+        <div class="popup-body">
+          <div class="prototype-image-container">
+            < img src="/Dashboard/images/传感网原型.png" alt="传感网原型" class="custom-prototype-img" />
+          </div>
+
+          <div class="prototype-desc">
+            <h4 class="desc-title">多源异构感知架构</h4>
+            <ul class="desc-list">
+              <li><strong>高速通信链路：</strong>核心控制指令通过 WebSocket 协议全双工直达底层节点，确保低延迟。</li>
+              <li><strong>空基巡航层：</strong>无人机搭载红外热成像相机，执行大范围视场唤醒与全局热点追踪。</li>
+              <li><strong>地基监测层：</strong>两台无人车呈非线性包围态势，挂载五类传感器监测阵列抵近核心区采样。</li>
+              <li><strong>泛在基础设施：</strong>智慧路灯与通信基站提供基础环境支撑与边缘计算中继。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
     </div>
-  </div>
-</div>
     <!-- 🛠️ 右下角微调控制台：弹窗面板堆叠容器 -->
     <div class="bottom-right-panels-stack">
       <!-- ⚡ 智能体与救援装备出动速度微调 弹窗面板 -->
@@ -86,8 +135,8 @@
                 <span class="val-tag gold-tag">{{ agentSpeedConfig.multiAgentMultiplier }}x</span>
               </div>
               <div class="slider-control">
-                <input type="range" v-model.number="agentSpeedConfig.multiAgentMultiplier" min="10" max="5000" step="10" class="cyber-range-slider gold-slider" />
-                <input type="number" v-model.number="agentSpeedConfig.multiAgentMultiplier" min="10" max="5000" class="cyber-num-input gold-input" />
+                <input type="range" v-model.number="agentSpeedConfig.multiAgentMultiplier" min="1" max="500" step="0.1" class="cyber-range-slider gold-slider" />
+                <input type="number" v-model.number="agentSpeedConfig.multiAgentMultiplier" min="1" max="500" step="0.1" class="cyber-num-input gold-input" />
               </div>
             </div>
           </template>
@@ -1073,6 +1122,41 @@
         </div>
       </div>
 
+      <!-- 📺 次生灾害悬浮窗微调面板 -->
+      <div v-if="isSecDisasterPopupPanelExpanded" class="light-control-panel simpopup-control-panel">
+        <div class="light-panel-header" @click="toggleSecDisasterPopupPanel">
+          <span class="light-panel-title">📺 视频悬浮窗微调</span>
+          <span class="light-panel-toggle">✕</span>
+        </div>
+
+        <div class="light-panel-body">
+          <div class="light-control-row">
+            <label class="light-control-label">强制显示浮窗</label>
+            <input type="checkbox" v-model="secondaryDisasterVideoPopup.show" class="light-checkbox" />
+          </div>
+
+          <div class="light-control-row">
+            <label class="light-control-label">水平偏移 (X Offset)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="secondaryDisasterVideoPopup.xOffset" min="-1000" max="1000" step="1" class="light-slider" />
+              <input type="number" v-model.number="secondaryDisasterVideoPopup.xOffset" step="1" class="light-slider-input" />
+            </div>
+          </div>
+
+          <div class="light-control-row">
+            <label class="light-control-label">垂直偏移 (Y Offset)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="secondaryDisasterVideoPopup.yOffset" min="-1000" max="1000" step="1" class="light-slider" />
+              <input type="number" v-model.number="secondaryDisasterVideoPopup.yOffset" step="1" class="light-slider-input" />
+            </div>
+          </div>
+          
+          <div class="light-btn-group">
+            <button @click="resetSecondaryDisasterPopupCoords" class="light-btn btn-primary">🔄 重置默认偏移</button>
+          </div>
+        </div>
+      </div>
+
       <!-- 📊 仿真推演悬浮窗微调面板 -->
       <div v-if="isSimulationPopupPanelExpanded" class="light-control-panel simpopup-control-panel">
         <div class="light-panel-header" @click="toggleSimulationPopupPanel">
@@ -1477,6 +1561,13 @@
       >
         机浮窗微调
       </button>
+      <button
+        class="dock-tool-btn secpopup-btn"
+        :class="{ active: isSecDisasterPopupPanelExpanded }"
+        @click="toggleSecDisasterPopupPanel"
+      >
+        视频浮窗微调
+      </button>
       <button 
         class="dock-tool-btn simpopup-btn" 
         :class="{ active: isSimulationPopupPanelExpanded }" 
@@ -1524,44 +1615,6 @@
     </div>
     <div v-if="loading" class="globe-mask">三维地球加载中...</div>
     <div v-else-if="errorMessage" class="globe-mask is-error">{{ errorMessage }}</div>
-<!-- 🌟 多维异构传感网协同矩阵 面板 -->
-    <div class="sensor-fusion-panel" v-if="fusionPanelConfig.show">
-      <div class="fusion-header">
-        <span class="icon">🔗</span>
-        <span class="title">立体传感网智能协同矩阵</span>
-        <div class="pulse-indicator"></div>
-      </div>
-      
-      <ul class="fusion-list">
-        <li>
-          <span class="node-name">🚗 车载节点</span>
-          <span class="status-tag" :class="sensorFusionState.car.statusClass">{{ sensorFusionState.car.text }}</span>
-        </li>
-        <li>
-          <span class="node-name">💡 路侧节点</span>
-          <span class="status-tag" :class="sensorFusionState.light.statusClass">{{ sensorFusionState.light.text }}</span>
-        </li>
-        <li>
-          <span class="node-name">🚁 空基节点</span>
-          <span class="status-tag" :class="sensorFusionState.uav.statusClass">{{ sensorFusionState.uav.text }}</span>
-        </li>
-        <li>
-          <span class="node-name">🚙 地基节点</span>
-          <span class="status-tag" :class="sensorFusionState.ugv.statusClass">{{ sensorFusionState.ugv.text }}</span>
-        </li>
-      </ul>
-
-      <div class="fusion-footer">
-        <div class="footer-row">
-          <span>综合协同研判:</span>
-          <strong :class="{'text-red': props.activePhaseIndex >= 2}">{{ sensorFusionState.resultText }}</strong>
-        </div>
-        <div class="footer-row">
-          <span>多源融合置信度:</span>
-          <strong class="text-cyan">{{ sensorFusionState.confidence }}</strong>
-        </div>
-      </div>
-    </div>
     <!-- 事故现场三级视角：事故详情悬浮窗 -->
     <div 
       v-if="accidentDetailPopup.show && props.focusedPointId" 
@@ -1787,6 +1840,39 @@
     </div>
 
     <!-- 仿真推演模块悬浮窗 (无人感知执行阶段 index === 7) -->
+    <!-- 📺 次生灾害进入精细建模模块悬浮窗 -->
+    <div
+      v-if="secondaryDisasterVideoPopup.show && (Number(props.activePhaseIndex) === 5 || Number(props.activePhaseIndex) === 6)"
+      class="premium-modeling-popup"
+      :style="{ left: secondaryDisasterVideoPopup.x + 'px', top: secondaryDisasterVideoPopup.y + 'px' }"
+    >
+      <div class="glass-bg"></div>
+      <div class="popup-content-wrapper">
+        <div class="popup-header">
+          <span class="title">进入精细建模</span>
+          <button class="close-btn" @click="secondaryDisasterVideoPopup.show = false">×</button>
+        </div>
+        <div class="popup-body" @click="$router.push('/modeling')" style="cursor: pointer;">
+          <div class="video-container">
+            <video
+              :src="currentScene === 'tanker' ? '/Dashboard/videos/油罐车泄露现场.mp4' : '/Dashboard/videos/货车追尾现场.mp4'"
+              autoplay
+              loop
+              muted
+              playsinline
+              style="width: 100%; height: 100%; object-fit: cover; pointer-events: none;"
+            ></video>
+            <div class="video-overlay-text">进入交互式重构模型</div>
+            <div class="ripple-effect"></div>
+          </div>
+        </div>
+        <div class="popup-footer">
+          <span class="footer-item">模型精度: LOD 4</span>
+          <span class="footer-item">空间数据: 实时同步</span>
+        </div>
+      </div>
+    </div>
+
     <div
       v-if="simulationPopup.show && props.activePhaseIndex === 8 && (props.focusedPointId === 'accident_blue' || props.focusedPointId === 'accident_red')" 
       class="simulation-popup-panel"
@@ -2534,7 +2620,7 @@ const showMagnifier = ref(false);
 
 // 2. 监听阶段索引的变化
 watch(
-  () => props.activePhaseIndex, // 如果是当前组件内的 ref，直接写 () => activePhaseIndex.value
+  () => props.activePhaseIndex, // 如果是当前组件内的 ref，直接写 () => props.activePhaseIndex
   (newIndex) => {
     // 阶段九的数组索引为 8
     if (newIndex === 9) {
@@ -2673,7 +2759,7 @@ const cameraAdjust = reactive({
 const agentSpeedConfig = reactive({
   uavDuration: 6.0,         // 无人机出动动画时长 (秒)
   ugvDuration: 6.0,          // 无人车出动动画时长 (秒)
-  multiAgentMultiplier: 100 // 救援装备出动倍速
+  multiAgentMultiplier: 20 // 救援装备出动倍速
 });
 
 watch(() => agentSpeedConfig.multiAgentMultiplier, (newVal) => {
@@ -2752,10 +2838,10 @@ const initialPhaseCameraConfigs = {
   tanker: {
     1: { range: 1000, pitch: -28, heading: -90 },
     2: { range: 950, pitch: -35, heading: -15 },
-    3: { range: 400, pitch: -25, heading: 33 },
+    3: { range: 480, pitch: -25, heading: 33 },
     4: { range: 9000, pitch: -45, heading: 352 },
-    5: { range: 400, pitch: -40, heading: -20 },
-    6: { range: 400, pitch: -40, heading: -20 },
+    5: { range: 480, pitch: -40, heading: -20 },
+    6: { range: 480, pitch: -40, heading: -20 },
     7: { range: 1600, pitch: -45, heading: 0 },
     8: { range: 9000, pitch: -45, heading: 352 },
     9: { range: 600, pitch: -30, heading: -10 },
@@ -3553,6 +3639,24 @@ function triggerPhotoAnimation(index, cartesianPos) {
 
 // 无人机出动状态与坐标
 const rescueCoords = reactive({ lng: 113.10725, lat: 30.38491, height: 24.0 });
+
+const isSecDisasterPopupPanelExpanded = ref(false);
+function toggleSecDisasterPopupPanel() {
+  isSecDisasterPopupPanelExpanded.value = !isSecDisasterPopupPanelExpanded.value;
+}
+function resetSecondaryDisasterPopupCoords() {
+  secondaryDisasterVideoPopup.xOffset = 60;
+  secondaryDisasterVideoPopup.yOffset = -220;
+}
+
+const secondaryDisasterVideoPopup = reactive({
+  show: false,
+  x: 0,
+  y: 0,
+  xOffset: 60,
+  yOffset: -220,
+  title: '次生灾害精细建模',
+});
 
 const rescuePopup = reactive({
   show: true,
@@ -5547,60 +5651,79 @@ function createDiffusionSystem(lng, lat) {
 function updatePopupPosition() {
   if (!viewer) return;
 
-  // 无人机出动阶段：让无人机浮窗严格跟随 UAV 模型位置实时移动，从消防队一路跟随到现场
-  if (rescuePopup.show && Number(props.activePhaseIndex) === 7) {
-    const isTanker = props.focusedPointId === 'accident_red';
-    const uavId = isTanker ? 'uav_model_tanker' : 'uav_model';
-    const uavEntity = viewer.entities.getById(uavId);
-    if (uavEntity) {
-      const pos = uavEntity.position.getValue(viewer.clock.currentTime);
-      if (pos) {
-        const cartographic = Cesium.Cartographic.fromCartesian(pos);
-        rescueCoords.lng = Cesium.Math.toDegrees(cartographic.longitude);
-        rescueCoords.lat = Cesium.Math.toDegrees(cartographic.latitude);
-        rescueCoords.height = cartographic.height + 10.0;
+  // 绑定事故现场红点/蓝点坐标，确保无人机/无人车悬浮窗与红蓝事故点强绑定
+  const targetPointId = currentScene.value === 'truck' ? 'accident_blue' : 'accident_red';
+  const targetPoint = scenarioPoints[targetPointId];
+  const defaultLng = targetPoint ? (targetPoint.longitude || targetPoint.lon) : (currentScene.value === 'truck' ? 113.104833 : 114.8945);
+  const defaultLat = targetPoint ? (targetPoint.latitude || targetPoint.lat) : (currentScene.value === 'truck' ? 30.385469 : 30.632161);
+
+  // 1. 无人机悬浮窗：优先跟随行驶的 3D 无人机，否则强绑定红蓝事故点
+  if (rescuePopup.show) {
+    let bound = false;
+    if (Number(props.activePhaseIndex) === 7) {
+      const isTanker = currentScene.value === 'tanker';
+      const uavId = isTanker ? 'uav_model_tanker' : 'uav_model';
+      const uavEntity = viewer.entities.getById(uavId);
+      if (uavEntity) {
+        const pos = uavEntity.position.getValue(viewer.clock.currentTime);
+        if (pos) {
+          const cartographic = Cesium.Cartographic.fromCartesian(pos);
+          rescueCoords.lng = Cesium.Math.toDegrees(cartographic.longitude);
+          rescueCoords.lat = Cesium.Math.toDegrees(cartographic.latitude);
+          rescueCoords.height = cartographic.height + 10.0;
+          bound = true;
+        }
       }
     }
-  }
+    if (!bound) {
+      rescueCoords.lng = defaultLng;
+      rescueCoords.lat = defaultLat;
+      rescueCoords.height = 10.0;
+    }
 
-  if (rescuePopup.show) {
     const cartesian = Cesium.Cartesian3.fromDegrees(rescueCoords.lng, rescueCoords.lat, rescueCoords.height);
     const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
     if (canvasPosition) {
-      rescuePopup.x = canvasPosition.x + (rescuePopup.xOffset !== undefined ? rescuePopup.xOffset : (rescuePopup.title === '无人机已到达' ? 161 : -10));
-      rescuePopup.y = canvasPosition.y + (rescuePopup.yOffset !== undefined ? rescuePopup.yOffset : (rescuePopup.title === '无人机已到达' ? -62 : 15));
+      rescuePopup.x = canvasPosition.x + (rescuePopup.xOffset !== undefined ? rescuePopup.xOffset : -10);
+      rescuePopup.y = canvasPosition.y + (rescuePopup.yOffset !== undefined ? rescuePopup.yOffset : 15);
     }
   }
 
-  // 无人车出动阶段：让无人车浮窗严格跟随救援车模型位置实时移动，从消防队一路跟随到现场
-  if (ugvPopup.show && Number(props.activePhaseIndex) === 7) {
-    const isTanker = props.focusedPointId === 'accident_red';
-    const carId = isTanker ? 'tanker_rescue_car_model' : 'rescue_car_model';
-    const carEntity = viewer.entities.getById(carId);
-    if (carEntity) {
-      const pos = carEntity.position.getValue(viewer.clock.currentTime);
-      if (pos) {
-        const cartographic = Cesium.Cartographic.fromCartesian(pos);
-        ugvCoords.lng = Cesium.Math.toDegrees(cartographic.longitude);
-        ugvCoords.lat = Cesium.Math.toDegrees(cartographic.latitude);
-        ugvCoords.height = cartographic.height + 10.0;
+  // 2. 无人车悬浮窗：优先跟随行驶的 3D 无人车，否则强绑定红蓝事故点
+  if (ugvPopup.show) {
+    let bound = false;
+    if (Number(props.activePhaseIndex) === 7) {
+      const isTanker = currentScene.value === 'tanker';
+      const carId = isTanker ? 'tanker_rescue_car_model' : 'rescue_car_model';
+      const carEntity = viewer.entities.getById(carId);
+      if (carEntity) {
+        const pos = carEntity.position.getValue(viewer.clock.currentTime);
+        if (pos) {
+          const cartographic = Cesium.Cartographic.fromCartesian(pos);
+          ugvCoords.lng = Cesium.Math.toDegrees(cartographic.longitude);
+          ugvCoords.lat = Cesium.Math.toDegrees(cartographic.latitude);
+          ugvCoords.height = cartographic.height + 10.0;
+          bound = true;
+        }
       }
+    }
+    if (!bound) {
+      ugvCoords.lng = defaultLng;
+      ugvCoords.lat = defaultLat;
+      ugvCoords.height = 10.0;
+    }
+
+    const cartesian = Cesium.Cartesian3.fromDegrees(ugvCoords.lng, ugvCoords.lat, ugvCoords.height);
+    const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
+    if (canvasPosition) {
+      const fallbackX = currentScene.value === 'tanker' ? -2 : -27;
+      const fallbackY = currentScene.value === 'tanker' ? -175 : -133;
+      ugvPopup.x = canvasPosition.x + (ugvPopup.xOffset !== undefined ? ugvPopup.xOffset : fallbackX);
+      ugvPopup.y = canvasPosition.y + (ugvPopup.yOffset !== undefined ? ugvPopup.yOffset : fallbackY);
     }
   }
 
-    if (ugvPopup.show) {
-      const cartesian = Cesium.Cartesian3.fromDegrees(ugvCoords.lng, ugvCoords.lat, ugvCoords.height);
-      const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
-      if (canvasPosition) {
-        const fallbackX = ugvPopup.title === '无人车已就位' ? (currentScene.value === 'tanker' ? -2 : -200) : -27;
-        const fallbackY = ugvPopup.title === '无人车已就位' ? (currentScene.value === 'tanker' ? -175 : 143) : -133;
-        ugvPopup.x = canvasPosition.x + (ugvPopup.xOffset !== undefined ? ugvPopup.xOffset : fallbackX);
-        ugvPopup.y = canvasPosition.y + (ugvPopup.yOffset !== undefined ? ugvPopup.yOffset : fallbackY);
-      }
-    }
-
-    // 更新故事线检测告警浮窗坐标：事故与次生灾害阶段跟随对应事故现场
-    if (detectionPopup.show && currentStoryDetectionScenario.value) {
+  if (detectionPopup.show && currentStoryDetectionScenario.value) {
       updateStoryDetectionPopupPosition();
     }
 
@@ -5618,7 +5741,53 @@ function updatePopupPosition() {
   }
 
   // 更新事故现场图片浮窗坐标
-  if (accidentDetailPopup.show && accidentDetailPopup.pointId) {
+  // 更新次生灾害悬浮窗坐标 (在油罐车场景，阶段 >= 5 时显示，绑定红色点)
+    // 次生灾害精细建模悬浮窗 (在货车追尾与油罐车泄漏两个场景的次生灾害阶段 phase === 5 || phase === 6 时，均能跟随对应的红点/蓝点显示)
+    const pIdxSec = Number(props.activePhaseIndex);
+    if ((pIdxSec === 5 || pIdxSec === 6) && secondaryDisasterVideoPopup.show) {
+      const pointId = currentScene.value === 'truck' ? 'accident_blue' : 'accident_red';
+      const p = scenarioPoints[pointId];
+      if (p) {
+        const lng = p.longitude || p.lon;
+        const lat = p.latitude || p.lat;
+        const c3 = Cesium.Cartesian3.fromDegrees(lng, lat, 10);
+        const cp = viewer.scene.cartesianToCanvasCoordinates(c3);
+        if (cp) {
+          secondaryDisasterVideoPopup.x = cp.x + (secondaryDisasterVideoPopup.xOffset !== undefined ? secondaryDisasterVideoPopup.xOffset : 60);
+          secondaryDisasterVideoPopup.y = cp.y + (secondaryDisasterVideoPopup.yOffset !== undefined ? secondaryDisasterVideoPopup.yOffset : -220);
+        }
+      }
+    }
+
+    // 更新无人机悬浮窗坐标 (绑定蓝色点或红色点，阶段 >= 7 时显示)
+    if (props.activePhaseIndex >= 7 && rescuePopup.show) {
+      const pointId = currentScene.value === 'truck' ? 'accident_blue' : 'accident_red';
+      const p = scenarioPoints[pointId];
+      if (p) {
+        const c3 = Cesium.Cartesian3.fromDegrees((p.longitude || p.lon), (p.latitude || p.lat), 10);
+        const cp = viewer.scene.cartesianToCanvasCoordinates(c3);
+        if (cp) {
+          rescuePopup.x = cp.x + rescuePopup.xOffset;
+          rescuePopup.y = cp.y + rescuePopup.yOffset;
+        }
+      }
+    }
+
+    // 更新无人车悬浮窗坐标 (绑定蓝色点或红色点，阶段 >= 7 时显示)
+    if (props.activePhaseIndex >= 7 && ugvPopup.show) {
+      const pointId = currentScene.value === 'truck' ? 'accident_blue' : 'accident_red';
+      const p = scenarioPoints[pointId];
+      if (p) {
+        const c3 = Cesium.Cartesian3.fromDegrees((p.longitude || p.lon), (p.latitude || p.lat), 10);
+        const cp = viewer.scene.cartesianToCanvasCoordinates(c3);
+        if (cp) {
+          ugvPopup.x = cp.x + ugvPopup.xOffset;
+          ugvPopup.y = cp.y + ugvPopup.yOffset;
+        }
+      }
+    }
+
+    if (accidentDetailPopup.show && accidentDetailPopup.pointId) {
     const point = scenarioPoints[accidentDetailPopup.pointId];
     if (point) {
       let lng = point.longitude, lat = point.latitude;
@@ -10791,14 +10960,18 @@ watch(
 )
 
 watch(() => props.activePhaseIndex, (next, prev) => {
+  if (secondaryDisasterVideoPopup) {
+    secondaryDisasterVideoPopup.show = (next === 5 || next === 6);
+  }
   accidentViewLevel.value = null;
   stopAutoRotate();
   if (next === 4 && prev !== 4) {
     phase6StartTime = Date.now();
     tankerPhase6StartTime = Date.now();
-  } else if ((next === 5 || next === 6) && (prev < 5 || prev > 6)) {
+  } else if (next === 5 || next === 6) {
     uavOrbitStartTime = Date.now();
     tankerUavOrbitStartTime = Date.now();
+    secondaryDisasterVideoPopup.show = true;
   } else if (next === 7 && prev !== 7) {
     phase7StartTime = Date.now();
     tankerPhase7StartTime = Date.now();
@@ -15975,3 +16148,127 @@ position: absolute;
   transform: translateX(30px) scale(0.95);
 }
 </style>
+
+/* 高级毛玻璃悬浮窗样式 */
+.premium-modeling-popup {
+  position: absolute;
+  width: 320px;
+  border-radius: 12px;
+  overflow: hidden;
+  pointer-events: auto;
+  z-index: 9999;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 255, 255, 0.2);
+}
+
+.premium-modeling-popup .glass-bg {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(10, 15, 30, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 1;
+}
+.premium-modeling-popup .popup-content-wrapper {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+}
+.premium-modeling-popup .popup-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, rgba(0,255,255,0.1) 0%, transparent 100%);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.premium-modeling-popup .popup-header .icon {
+  margin-right: 8px;
+  font-size: 1.2rem;
+}
+.premium-modeling-popup .popup-header .title {
+  flex: 1;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+.premium-modeling-popup .popup-header .close-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  font-size: 20px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.premium-modeling-popup .popup-header .close-btn:hover {
+  color: #ff4757;
+}
+.premium-modeling-popup .popup-body {
+  padding: 16px;
+}
+.premium-modeling-popup .video-container {
+  position: relative;
+  width: 100%;
+  height: 160px;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0,255,255,0.2);
+}
+.premium-modeling-popup .video-overlay-text {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  color: rgba(0,255,255,0.8);
+  font-size: 12px;
+  font-weight: bold;
+  z-index: 3;
+  pointer-events: none;
+}
+.premium-modeling-popup .ripple-effect {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(0,255,255,0.1) 0%, transparent 70%);
+  animation: pulse 2s infinite;
+  pointer-events: none;
+}
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 0.5; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.5; }
+}
+.premium-modeling-popup .enter-modeling-btn {
+  position: relative;
+  z-index: 4;
+  padding: 10px 20px;
+  background: rgba(0, 255, 255, 0.15);
+  border: 1px solid rgba(0, 255, 255, 0.4);
+  color: #00ffff;
+  text-decoration: none;
+  border-radius: 20px;
+  font-weight: bold;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.premium-modeling-popup .enter-modeling-btn:hover {
+  background: rgba(0, 255, 255, 0.3);
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+  transform: scale(1.05);
+}
+.premium-modeling-popup .popup-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: rgba(0,0,0,0.3);
+  border-top: 1px solid rgba(255,255,255,0.05);
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+}

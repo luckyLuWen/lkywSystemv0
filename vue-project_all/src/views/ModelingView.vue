@@ -128,7 +128,7 @@
             interaction-prompt="none"
             :auto-rotate="autoRotate"
             :auto-rotate-delay="0"
-            :rotation-speed="rotateSpeed + 'deg'"
+            :rotation-per-second="rotateSpeed + 'rad'"
             :camera-orbit="cameraOrbit"
             :camera-target="cameraTarget"
             shadow-intensity="1.5"
@@ -187,6 +187,21 @@
               class="slider"
             />
           </div>
+          
+          <template v-if="activeTab === 'tanker'">
+            <div class="control-divider"></div>
+            <div class="control-group" style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
+              <span class="control-label">水平中心偏移 (X)</span>
+              <input type="range" min="-15" max="15" step="0.5" v-model.number="tankerOffsetX" class="slider" @input="updateTankerTarget" />
+              <span class="control-label" style="font-size:11px;">当前: {{ tankerOffsetX }}m</span>
+            </div>
+            <div class="control-divider"></div>
+            <div class="control-group" style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
+              <span class="control-label">前后中心偏移 (Z)</span>
+              <input type="range" min="-15" max="15" step="0.5" v-model.number="tankerOffsetZ" class="slider" @input="updateTankerTarget" />
+              <span class="control-label" style="font-size:11px;">当前: {{ tankerOffsetZ }}m</span>
+            </div>
+          </template>
         </div>
       </main>
     </div>
@@ -229,6 +244,14 @@ const scriptLoaded = ref(false)
 
 const cameraOrbit = ref('45deg 75deg auto')
 const cameraTarget = ref('auto auto auto')
+const tankerOffsetX = ref(-4) // 默认向左/后偏移以对准油罐中部
+const tankerOffsetZ = ref(0)
+
+const updateTankerTarget = () => {
+  if (activeTab.value === 'tanker') {
+    cameraTarget.value = `${tankerOffsetX.value}m auto ${tankerOffsetZ.value}m`
+  }
+}
 
 const currentModel = computed(() => sceneConfigs[activeTab.value])
 
@@ -368,7 +391,11 @@ const loadModelViewerScript = () => {
 // Reset Camera Focus
 const resetCamera = () => {
   cameraOrbit.value = '45deg 75deg auto'
-  cameraTarget.value = 'auto auto auto'
+  if (activeTab.value === 'tanker') {
+    updateTankerTarget()
+  } else {
+    cameraTarget.value = 'auto auto auto'
+  }
   autoRotate.value = true
 }
 
@@ -434,7 +461,7 @@ const freezeLastFrame = () => {
             trackNodes.push(node)
           }
         })
-        if (trackNodes.length === 0) {
+        if (trackNodes.length === 0 && activeTab.value !== 'tanker') {
           scene.traverse(node => {
             if (node.isMesh && trackNodes.length === 0) {
               trackNodes.push(node)
@@ -500,7 +527,7 @@ const playCollisionAnimation = () => {
         trackNodes.push(node)
       }
     })
-    if (trackNodes.length === 0) {
+    if (trackNodes.length === 0 && activeTab.value !== 'tanker') {
       scene.traverse(node => {
         if (node.isMesh && trackNodes.length === 0) {
           trackNodes.push(node)
