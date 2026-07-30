@@ -17,7 +17,7 @@ from scipy.interpolate import splprep, splev
 # 忽略警告
 warnings.filterwarnings("ignore")
 
-# ==================== 1. 全局配置 (已修复缺失变量) ====================
+# ==================== 1. 全局配置 (已修复缺失变量)111222 ====================
 CAR_SPEED = 8.33   # 30 km/h
 UAV_SPEED = 20.0   # 20 m/s
 
