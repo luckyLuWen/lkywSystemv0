@@ -1073,6 +1073,41 @@
         </div>
       </div>
 
+      <!-- 📺 次生灾害悬浮窗微调面板 -->
+      <div v-if="isSecDisasterPopupPanelExpanded" class="light-control-panel simpopup-control-panel">
+        <div class="light-panel-header" @click="toggleSecDisasterPopupPanel">
+          <span class="light-panel-title">📺 视频悬浮窗微调</span>
+          <span class="light-panel-toggle">✕</span>
+        </div>
+
+        <div class="light-panel-body">
+          <div class="light-control-row">
+            <label class="light-control-label">强制显示浮窗</label>
+            <input type="checkbox" v-model="secondaryDisasterVideoPopup.show" class="light-checkbox" />
+          </div>
+
+          <div class="light-control-row">
+            <label class="light-control-label">水平偏移 (X Offset)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="secondaryDisasterVideoPopup.xOffset" min="-1000" max="1000" step="1" class="light-slider" />
+              <input type="number" v-model.number="secondaryDisasterVideoPopup.xOffset" step="1" class="light-slider-input" />
+            </div>
+          </div>
+
+          <div class="light-control-row">
+            <label class="light-control-label">垂直偏移 (Y Offset)</label>
+            <div class="light-slider-container">
+              <input type="range" v-model.number="secondaryDisasterVideoPopup.yOffset" min="-1000" max="1000" step="1" class="light-slider" />
+              <input type="number" v-model.number="secondaryDisasterVideoPopup.yOffset" step="1" class="light-slider-input" />
+            </div>
+          </div>
+          
+          <div class="light-panel-buttons">
+            <button @click="resetSecondaryDisasterPopupCoords" class="light-btn btn-primary" style="width: 100%;">🔄 重置默认偏移</button>
+          </div>
+        </div>
+      </div>
+
       <!-- 📊 仿真推演悬浮窗微调面板 -->
       <div v-if="isSimulationPopupPanelExpanded" class="light-control-panel simpopup-control-panel">
         <div class="light-panel-header" @click="toggleSimulationPopupPanel">
@@ -1477,6 +1512,13 @@
       >
         机浮窗微调
       </button>
+      <button
+        class="dock-tool-btn secpopup-btn"
+        :class="{ active: isSecDisasterPopupPanelExpanded }"
+        @click="toggleSecDisasterPopupPanel"
+      >
+        视频浮窗微调
+      </button>
       <button 
         class="dock-tool-btn simpopup-btn" 
         :class="{ active: isSimulationPopupPanelExpanded }" 
@@ -1493,8 +1535,9 @@
       </button>
     </div>
 
-    <!-- 🗺️ 湖北省地图车辆运行图例 (位于右上角空白区域，与右侧栏联动) -->
+    <!-- 🗺️ 湖北省地图车辆运行图例 (仅在未进入故事线时显示，位于右上角空白区域，与右侧栏联动) -->
     <div 
+      v-if="!props.focusedPointId"
       class="hubei-map-legend" 
       :style="{ right: legendRightOffset }"
     >
@@ -1785,6 +1828,57 @@
       </div>
     </div>
 
+    <!-- 📺 次生灾害进入精细建模模块悬浮窗 -->
+    <div
+      v-if="secondaryDisasterVideoPopup.show && (Number(props.activePhaseIndex) === 5 || Number(props.activePhaseIndex) === 6)"
+      class="premium-modeling-popup"
+      :style="{ left: secondaryDisasterVideoPopup.x + 'px', top: secondaryDisasterVideoPopup.y + 'px' }"
+    >
+      <div class="glass-bg"></div>
+      <div class="popup-content-wrapper">
+        <div class="popup-header">
+          <div class="title-wrap">
+            <span class="title">进入精细建模</span>
+            <span class="status-badge"><i></i>重建就绪</span>
+          </div>
+          <button class="close-btn" @click="secondaryDisasterVideoPopup.show = false">×</button>
+        </div>
+        <div class="popup-body" @click="$router.push('/modeling')" style="cursor: pointer;">
+          <div class="video-container">
+            <video
+              :src="currentScene === 'tanker' ? '/Dashboard/videos/油罐车泄露现场.mp4' : '/Dashboard/videos/货车追尾现场.mp4'"
+              autoplay
+              loop
+              muted
+              playsinline
+              style="width: 100%; height: 100%; object-fit: cover; pointer-events: none;"
+            ></video>
+            <div class="scan-line"></div>
+            <div class="video-overlay-text">进入交互式重构模型</div>
+            <div class="ripple-effect"></div>
+            <div class="hover-cta-overlay">
+              <div class="cta-inner">
+                <span class="cta-icon">🖱️</span>
+                <span class="cta-text">双击/点击进入三维精细化交互重建</span>
+              </div>
+            </div>
+          </div>
+          <div class="action-btn-wrap">
+            <button class="cyber-action-btn">
+              <span>进入场景重建控制台</span>
+              <svg class="arrow-svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="popup-footer">
+          <span class="footer-item">模型精度: LOD 4</span>
+          <span class="footer-item">空间数据: 实时同步</span>
+        </div>
+      </div>
+    </div>
+
     <!-- 仿真推演模块悬浮窗 (无人感知执行阶段 index === 7) -->
     <div
       v-if="simulationPopup.show && props.activePhaseIndex === 8 && (props.focusedPointId === 'accident_blue' || props.focusedPointId === 'accident_red')" 
@@ -1793,17 +1887,24 @@
     >
       <div class="simulation-popup-header">
         <div class="header-title-wrap">
-          <span class="simulation-icon">📊</span>
-          <span class="header-title">仿真推演</span>
+          <span class="pulse-indicator"><i></i></span>
+          <span class="header-title">救援路线仿真推演</span>
         </div>
         <button class="close-btn" @click="simulationPopup.show = false">×</button>
       </div>
       
       <div class="simulation-popup-content">
-        <p class="desc-text">感知数据采集完毕，已生成完整的事故现场推演模型与协同应急部署方案。</p>
+        <div class="status-tag-row">
+          <span class="status-tag ready">● 路由就绪</span>
+          <span class="status-tag info">路径规划</span>
+        </div>
+        <p class="desc-text">空地协同感知数据已同步，系统已动态规划最佳救援路径，并生成多智能体协同路线仿真推演方案。</p>
         
-        <button class="enter-sim-btn pulse-button" @click="enterSimulation">
-          <span>进入仿真推演</span> <span class="arrow-icon">→</span>
+        <button class="enter-sim-btn" @click="enterSimulation">
+          <span>开启路线仿真推演</span>
+          <svg class="arrow-svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+          </svg>
         </button>
       </div>
       
@@ -2742,7 +2843,7 @@ const initialPhaseCameraConfigs = {
     5: { range: 480, pitch: -25, heading: 33 },
     6: { range: 480, pitch: -25, heading: 33 },
     7: { range: 480, pitch: -25, heading: 33 },
-    8: { range: 100000, pitch: -90, heading: -3 },
+    8: { range: 70650, pitch: -90, heading: 350 },
     9: { range: 641, pitch: -26, heading: -25 },
     10: { range: 500, pitch: -21, heading: 28 },
     11: { range: 1440, pitch: -39, heading: -5 },
@@ -3166,6 +3267,7 @@ function closeAllPanelsExcept(exceptPanel) {
   if (exceptPanel !== 'uavPopup') isUavPopupPanelExpanded.value = false;
   if (exceptPanel !== 'simulationPopup') isSimulationPopupPanelExpanded.value = false;
   if (exceptPanel !== 'lateFire') isLateFirePanelExpanded.value = false;
+  if (exceptPanel !== 'secPopup') isSecDisasterPopupPanelExpanded.value = false;
 }
 
 function toggleJizhanPanel() {
@@ -3549,6 +3651,26 @@ function triggerPhotoAnimation(index, cartesianPos) {
     }
   }, 900);
 }
+
+const isSecDisasterPopupPanelExpanded = ref(false);
+function toggleSecDisasterPopupPanel() {
+  const nextVal = !isSecDisasterPopupPanelExpanded.value;
+  closeAllPanelsExcept('secPopup');
+  isSecDisasterPopupPanelExpanded.value = nextVal;
+}
+function resetSecondaryDisasterPopupCoords() {
+  secondaryDisasterVideoPopup.xOffset = -575;
+  secondaryDisasterVideoPopup.yOffset = 44;
+}
+
+const secondaryDisasterVideoPopup = reactive({
+  show: true,
+  x: 500,
+  y: 200,
+  xOffset: -575,
+  yOffset: 44,
+  title: '次生灾害精细建模',
+});
 
 // 无人机出动状态与坐标
 const rescueCoords = reactive({ lng: 113.10725, lat: 30.38491, height: 24.0 });
@@ -4695,8 +4817,8 @@ const currentStoryDetectionScenario = computed(() => {
 function updateStoryDetectionPopupPosition() {
   const canvas = viewer?.scene?.canvas
   const width = canvas?.clientWidth || window.innerWidth || 1200
-  detectionPopup.x = width * 0.7
-  detectionPopup.y = 190
+  detectionPopup.x = width * 0.8
+  detectionPopup.y = 210
 }
 
 function isTruckStoryline() {
@@ -4911,7 +5033,7 @@ const simulationPopup = reactive({
   show: false,
   x: 0,
   y: 0,
-  xOffset: -342,
+  xOffset: -580,
   yOffset: -90
 })
 
@@ -5547,7 +5669,7 @@ function updatePopupPosition() {
 
   // 无人机出动阶段：让无人机浮窗严格跟随 UAV 模型位置实时移动，从消防队一路跟随到现场
   if (rescuePopup.show && Number(props.activePhaseIndex) === 7) {
-    const isTanker = props.focusedPointId === 'accident_red';
+    const isTanker = currentScene.value === 'tanker' || props.focusedPointId === 'accident_red';
     const uavId = isTanker ? 'uav_model_tanker' : 'uav_model';
     const uavEntity = viewer.entities.getById(uavId);
     if (uavEntity) {
@@ -5572,8 +5694,8 @@ function updatePopupPosition() {
 
   // 无人车出动阶段：让无人车浮窗严格跟随救援车模型位置实时移动，从消防队一路跟随到现场
   if (ugvPopup.show && Number(props.activePhaseIndex) === 7) {
-    const isTanker = props.focusedPointId === 'accident_red';
-    const carId = isTanker ? 'tanker_rescue_car_model' : 'rescue_car_model';
+    const isTanker = currentScene.value === 'tanker' || props.focusedPointId === 'accident_red';
+    const carId = isTanker ? 'tanker_rescue_car_model_1' : 'rescue_car_model_1';
     const carEntity = viewer.entities.getById(carId);
     if (carEntity) {
       const pos = carEntity.position.getValue(viewer.clock.currentTime);
@@ -5586,16 +5708,16 @@ function updatePopupPosition() {
     }
   }
 
-    if (ugvPopup.show) {
-      const cartesian = Cesium.Cartesian3.fromDegrees(ugvCoords.lng, ugvCoords.lat, ugvCoords.height);
-      const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
-      if (canvasPosition) {
-        const fallbackX = ugvPopup.title === '无人车已就位' ? (currentScene.value === 'tanker' ? -2 : -200) : -27;
-        const fallbackY = ugvPopup.title === '无人车已就位' ? (currentScene.value === 'tanker' ? -175 : 143) : -133;
-        ugvPopup.x = canvasPosition.x + (ugvPopup.xOffset !== undefined ? ugvPopup.xOffset : fallbackX);
-        ugvPopup.y = canvasPosition.y + (ugvPopup.yOffset !== undefined ? ugvPopup.yOffset : fallbackY);
-      }
+  if (ugvPopup.show) {
+    const cartesian = Cesium.Cartesian3.fromDegrees(ugvCoords.lng, ugvCoords.lat, ugvCoords.height);
+    const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(cartesian);
+    if (canvasPosition) {
+      const fallbackX = ugvPopup.title === '无人车已就位' ? (currentScene.value === 'tanker' ? -2 : -200) : -27;
+      const fallbackY = ugvPopup.title === '无人车已就位' ? (currentScene.value === 'tanker' ? -175 : 143) : -133;
+      ugvPopup.x = canvasPosition.x + (ugvPopup.xOffset !== undefined ? ugvPopup.xOffset : fallbackX);
+      ugvPopup.y = canvasPosition.y + (ugvPopup.yOffset !== undefined ? ugvPopup.yOffset : fallbackY);
     }
+  }
 
     // 更新故事线检测告警浮窗坐标：事故与次生灾害阶段跟随对应事故现场
     if (detectionPopup.show && currentStoryDetectionScenario.value) {
@@ -5612,6 +5734,32 @@ function updatePopupPosition() {
     if (canvasPosition) {
       simulationPopup.x = canvasPosition.x + (simulationPopup.xOffset || 0);
       simulationPopup.y = canvasPosition.y + (simulationPopup.yOffset || 0);
+    }
+  }
+
+  // 次生灾害精细建模悬浮窗 (在货车追尾与油罐车泄漏两个场景的次生灾害阶段 phase === 5 || phase === 6 时显示)
+  const pIdxSec = Number(props.activePhaseIndex);
+  if (pIdxSec === 5 || pIdxSec === 6) {
+    secondaryDisasterVideoPopup.show = true;
+    const pointId = currentScene.value === 'truck' ? 'accident_blue' : 'accident_red';
+    const p = scenarioPoints[pointId];
+    let posCalculated = false;
+    if (p) {
+      const lng = p.longitude || p.lon;
+      const lat = p.latitude || p.lat;
+      const c3 = Cesium.Cartesian3.fromDegrees(lng, lat, 10);
+      const cp = viewer.scene.cartesianToCanvasCoordinates(c3);
+        if (cp && cp.x > 0 && cp.y > 0) {
+          secondaryDisasterVideoPopup.x = cp.x + (secondaryDisasterVideoPopup.xOffset !== undefined ? secondaryDisasterVideoPopup.xOffset : -575);
+          secondaryDisasterVideoPopup.y = cp.y + (secondaryDisasterVideoPopup.yOffset !== undefined ? secondaryDisasterVideoPopup.yOffset : 44);
+          posCalculated = true;
+        }
+    }
+    if (!posCalculated) {
+      const canvas = viewer?.scene?.canvas;
+      const width = canvas?.clientWidth || window.innerWidth || 1200;
+      secondaryDisasterVideoPopup.x = width * 0.55;
+      secondaryDisasterVideoPopup.y = 180;
     }
   }
 
@@ -10444,23 +10592,32 @@ function updatePhaseScene(index, animate = false) {
         }
       }
 
-      // 根据用户要求，当在货车现场进入"无人装备出动"(阶段7)时，视角飞向大范围侧倾透视视角
+      // 根据用户要求，当在货车现场进入"无人装备出动"(阶段7)时，视角飞向微调面板中对应的视角，支持动态同步
       if (pointId === 'accident_blue' && index === 7) {
         stopAutoRotate();
         try {
           viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
         } catch (e) {}
         isFlying = true;
-        viewer.camera.flyTo({
-          destination: Cesium.Cartesian3.fromDegrees(113.26, 29.96, 39000), // 侧倾透视视角，将相机向南平移并微调高度以完整居中路线
-          orientation: {
-            heading: Cesium.Math.toRadians(350.0),
-            pitch: Cesium.Math.toRadians(-35.0),
-            roll: 0.0
-          },
+        
+        const cfg = defaultPhaseCameraConfigs['truck'][8];
+        const headingRad = Cesium.Math.toRadians(cfg.heading);
+        const pitchRad = Cesium.Math.toRadians(cfg.pitch);
+        const range = cfg.range;
+        const targetLng = Number(truckAdjust.lng) || 113.104833;
+        const targetLat = Number(truckAdjust.lat) || 30.385469;
+        const targetCartesian = Cesium.Cartesian3.fromDegrees(targetLng, targetLat, 0);
+
+        viewer.camera.flyToBoundingSphere(new Cesium.BoundingSphere(targetCartesian, 0), {
+          offset: new Cesium.HeadingPitchRange(headingRad, pitchRad, range),
           duration: 1.8,
           complete: () => {
             isFlying = false;
+            try {
+              if (viewer && !spinCallback) {
+                viewer.camera.lookAt(targetCartesian, new Cesium.HeadingPitchRange(headingRad, pitchRad, range));
+              }
+            } catch (e) {}
           },
           cancel: () => {
             isFlying = false;
@@ -10811,6 +10968,9 @@ watch(
 )
 
 watch(() => props.activePhaseIndex, (next, prev) => {
+  if (secondaryDisasterVideoPopup) {
+    secondaryDisasterVideoPopup.show = (Number(next) === 5 || Number(next) === 6);
+  }
   accidentViewLevel.value = null;
   stopAutoRotate();
   if (next === 4 && prev !== 4) {
@@ -11045,19 +11205,26 @@ async function triggerRescueMultiAgent() {
 /* 仿真推演悬浮窗样式 */
 .simulation-popup-panel {
   position: absolute;
-  width: 290px;
-  background: rgba(8, 12, 28, 0.94);
-  border: 1px solid rgba(0, 255, 180, 0.5);
-  border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 16px rgba(0, 255, 180, 0.2);
+  width: 320px;
+  background: rgba(10, 18, 30, 0.72);
+  border: 1px solid rgba(0, 255, 180, 0.35);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.65), 0 0 20px rgba(0, 255, 180, 0.15);
   z-index: 1000;
   overflow: hidden;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   pointer-events: auto;
   transform: translate(-50%, -100%);
   animation: simPanelFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  color: #e2e8f0;
+  color: #f8fafc;
+}
+.simulation-popup-panel:hover {
+  border-color: rgba(0, 255, 180, 0.65);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), 0 0 24px rgba(0, 255, 180, 0.28);
+  transform: translate(-50%, -101%) scale(1.01);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 @keyframes simPanelFadeIn {
@@ -11072,23 +11239,47 @@ async function triggerRescueMultiAgent() {
 }
 
 .simulation-popup-header {
-  background: rgba(0, 255, 180, 0.12);
-  border-bottom: 1px solid rgba(0, 255, 180, 0.25);
-  padding: 10px 14px;
+  background: linear-gradient(90deg, rgba(0, 255, 180, 0.15) 0%, transparent 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.simulation-icon {
+.simulation-popup-header .header-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.simulation-popup-header .header-title {
+  color: #fff;
+  font-weight: 600;
   font-size: 14px;
+  letter-spacing: 1px;
+}
+
+.pulse-indicator {
+  width: 6px;
+  height: 6px;
+  background: #00ffb4;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #00ffb4;
+  display: inline-block;
+  animation: header-pulse 1.5s infinite;
+}
+@keyframes header-pulse {
+  0% { transform: scale(0.8); opacity: 0.5; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.8); opacity: 0.5; }
 }
 
 .simulation-popup-panel .close-btn {
   background: transparent;
   border: none;
-  color: #94a3b8;
-  font-size: 18px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 20px;
   cursor: pointer;
   padding: 0;
   line-height: 1;
@@ -11096,51 +11287,74 @@ async function triggerRescueMultiAgent() {
 }
 
 .simulation-popup-panel .close-btn:hover {
-  color: #f1f5f9;
+  color: #ff4757;
 }
 
 .simulation-popup-content {
-  padding: 14px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.enter-sim-btn {
-  width: 100%;
-  padding: 10px 14px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  color: white;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s ease;
+.status-tag-row {
   display: flex;
-  align-items: center;
-  justify-content: center;
   gap: 6px;
 }
 
-.enter-sim-btn:hover {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  border-color: #34d399;
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
-  transform: translateY(-1px);
-}
-
-.enter-sim-btn:active {
-  transform: translateY(0);
-}
-
-.arrow-icon {
+.status-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
   font-weight: bold;
-  transition: transform 0.2s;
+}
+.status-tag.ready {
+  color: #00ffb4;
+  background: rgba(0, 255, 180, 0.1);
+  border: 1px solid rgba(0, 255, 180, 0.2);
+}
+.status-tag.info {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.2);
 }
 
-.enter-sim-btn:hover .arrow-icon {
-  transform: translateX(3px);
+.simulation-popup-content .desc-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.82);
+  margin: 0;
+}
+
+.enter-sim-btn {
+  width: 100%;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(0, 255, 180, 0.15) 0%, rgba(0, 150, 255, 0.15) 100%);
+  border: 1px solid rgba(0, 255, 180, 0.35);
+  color: #00ffcc;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-shadow: 0 0 5px rgba(0, 255, 180, 0.6);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.enter-sim-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 255, 180, 0.28) 0%, rgba(0, 150, 255, 0.28) 100%);
+  border-color: #00ffb4;
+  box-shadow: 0 0 12px rgba(0, 255, 180, 0.4);
+  transform: scale(1.02);
+}
+.enter-sim-btn .arrow-svg {
+  transition: transform 0.3s ease;
+}
+.enter-sim-btn:hover .arrow-svg {
+  transform: translateX(4px);
 }
 
 .simulation-popup-arrow {
@@ -11152,7 +11366,7 @@ async function triggerRescueMultiAgent() {
   height: 0;
   border-left: 10px solid transparent;
   border-right: 10px solid transparent;
-  border-top: 10px solid rgba(8, 12, 28, 0.94);
+  border-top: 10px solid rgba(10, 18, 30, 0.72);
 }
 
 /* 实时视频检测悬浮窗样式 */
@@ -15993,5 +16207,237 @@ position: absolute;
 .rescue-panel-slide-leave-to {
   opacity: 0;
   transform: translateX(30px) scale(0.95);
+}
+
+/* 高级毛玻璃悬浮窗样式 */
+.premium-modeling-popup {
+  position: absolute;
+  width: 320px;
+  border-radius: 12px;
+  overflow: hidden;
+  pointer-events: auto;
+  z-index: 9999;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 255, 255, 0.2);
+}
+.premium-modeling-popup:hover {
+  transform: translateY(-2px) scale(1.01);
+  border-color: rgba(0, 255, 255, 0.6);
+  box-shadow: 0 12px 40px rgba(0, 255, 255, 0.3);
+}
+
+.premium-modeling-popup .glass-bg {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(10, 15, 30, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 1;
+}
+.premium-modeling-popup .popup-content-wrapper {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+}
+.premium-modeling-popup .popup-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, rgba(0,255,255,0.15) 0%, transparent 100%);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.premium-modeling-popup .title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+.premium-modeling-popup .popup-header .title {
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+.premium-modeling-popup .status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #00ffcc;
+  background: rgba(0, 255, 204, 0.1);
+  padding: 2px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 255, 204, 0.2);
+  font-weight: bold;
+}
+.premium-modeling-popup .status-badge i {
+  width: 6px;
+  height: 6px;
+  background: #00ffcc;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #00ffcc;
+  animation: cta-pulse 1.5s infinite;
+}
+@keyframes cta-pulse {
+  0% { transform: scale(0.8); opacity: 0.5; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.8); opacity: 0.5; }
+}
+
+.premium-modeling-popup .popup-header .close-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  font-size: 20px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.premium-modeling-popup .popup-header .close-btn:hover {
+  color: #ff4757;
+}
+.premium-modeling-popup .popup-body {
+  padding: 16px;
+}
+.premium-modeling-popup .video-container {
+  position: relative;
+  width: 100%;
+  height: 150px;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0,255,255,0.25);
+  transition: border-color 0.3s ease;
+}
+.premium-modeling-popup:hover .video-container {
+  border-color: rgba(0, 255, 255, 0.6);
+}
+
+.premium-modeling-popup .scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: rgba(0, 255, 255, 0.3);
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.7);
+  animation: scan 4s linear infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+@keyframes scan {
+  0% { top: 0; }
+  100% { top: 100%; }
+}
+
+.premium-modeling-popup .video-overlay-text {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  color: rgba(0,255,255,0.9);
+  font-size: 11px;
+  font-weight: bold;
+  z-index: 3;
+  pointer-events: none;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+.premium-modeling-popup .ripple-effect {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(0,255,255,0.08) 0%, transparent 75%);
+  animation: pulse-ring 2s infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+@keyframes pulse-ring {
+  0% { transform: scale(0.96); opacity: 0.4; }
+  50% { transform: scale(1.04); opacity: 0.8; }
+  100% { transform: scale(0.96); opacity: 0.4; }
+}
+
+.premium-modeling-popup .hover-cta-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(8, 15, 30, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 4;
+  pointer-events: none;
+}
+.premium-modeling-popup .video-container:hover .hover-cta-overlay {
+  opacity: 1;
+}
+.premium-modeling-popup .cta-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: #00ffff;
+  font-weight: bold;
+  font-size: 12px;
+  text-shadow: 0 0 8px rgba(0, 255, 255, 0.8);
+  text-align: center;
+  padding: 0 16px;
+}
+.premium-modeling-popup .cta-icon {
+  font-size: 18px;
+  animation: bounce 1.5s infinite;
+}
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.premium-modeling-popup .action-btn-wrap {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+}
+.premium-modeling-popup .cyber-action-btn {
+  width: 100%;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, rgba(0, 255, 255, 0.15) 0%, rgba(0, 150, 255, 0.15) 100%);
+  border: 1px solid rgba(0, 255, 255, 0.35);
+  color: #00ffff;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  text-shadow: 0 0 5px rgba(0, 255, 255, 0.6);
+}
+.premium-modeling-popup .cyber-action-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 255, 255, 0.28) 0%, rgba(0, 150, 255, 0.28) 100%);
+  border-color: #00ffff;
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.4);
+  transform: scale(1.02);
+}
+.premium-modeling-popup .arrow-svg {
+  transition: transform 0.3s ease;
+}
+.premium-modeling-popup .cyber-action-btn:hover .arrow-svg {
+  transform: translateX(4px);
+}
+
+.premium-modeling-popup .popup-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: rgba(0,0,0,0.3);
+  border-top: 1px solid rgba(255,255,255,0.05);
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
 }
 </style>
