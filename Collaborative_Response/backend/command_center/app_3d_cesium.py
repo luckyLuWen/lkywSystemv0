@@ -195,7 +195,7 @@ def save_to_czml(uav_df, car_df):
     start_str = global_start_time.isoformat() + "Z"
     avail = f"{start_str}/{global_end_time.isoformat()}Z"
     
-    czml = [{"id": "document", "version": "1.0", "clock": {"interval": avail, "currentTime": start_str, "multiplier": 10, "range": "LOOP_STOP"}}]
+    czml = [{"id": "document", "version": "1.0", "clock": {"interval": avail, "currentTime": start_str, "multiplier": 190, "range": "LOOP_STOP"}}]
     
     # 静态地标
     czml.append({"id": "StartMarker", "position": {"cartographicDegrees": [START_POINT[1], START_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [0,255,0,255]}}, "label": {"text": "救援基地", "font": "16px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}}})
