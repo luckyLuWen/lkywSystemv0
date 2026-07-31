@@ -897,6 +897,19 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
     global_start_time = min(uav_df['timestamp'].min(), car_df['timestamp'].min())
     global_end_time = max(uav_df['timestamp'].max(), car_df['timestamp'].max())
     
+    # 动态适应多智能体救援模式下的最远车辆到达时间，消除后续无意义的时间空白
+    if multi_agent_data:
+        max_agent_sec = 0.0
+        for akey, ainfo in multi_agent_data.items():
+            dist_km = ainfo.get('net_dist_km', 1.0)
+            if dist_km == 0: dist_km = 1.0
+            sec = (dist_km * 1000.0) / CAR_SPEED
+            if sec > max_agent_sec:
+                max_agent_sec = sec
+        target_end_sec = max(max_agent_sec + 20.0, 90.0)
+        multi_end_time = global_start_time + pd.Timedelta(seconds=target_end_sec)
+        global_end_time = min(global_end_time, multi_end_time)
+
     start_str = format_timestamp(global_start_time)
     avail = f"{start_str}/{format_timestamp(global_end_time)}"
     
@@ -1176,6 +1189,17 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
         czml.append({"id": "Congestion", "polygon": {"positions": {"cartographicDegrees": poly}, "material": {"solidColor": {"color": {"rgba": [0, 0, 255, 80]}}}}})
 
     czml_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mission.czml")
+    print(f"[DEBUG] save_to_czml called. czml_path: {czml_path}")
+    print(f"[DEBUG] multi_agent_data is None? {multi_agent_data is None}")
+    if multi_agent_data:
+        print(f"[DEBUG] multi_agent_data keys: {list(multi_agent_data.keys())}")
+        for k, v in multi_agent_data.items():
+            print(f"[DEBUG] Key: {k}, has_poi: {bool(v.get('poi'))}, path_len: {len(v.get('path', [])) if v.get('path') else 0}")
+    
+    # 统计有多少以 Agent 开头的实体被追加进了 czml 列表
+    agent_count = sum(1 for item in czml if str(item.get("id", "")).startswith("Agent"))
+    print(f"[DEBUG] Total czml entities to write: {len(czml)}, containing Agent entities count: {agent_count}")
+
     with open(czml_path, "w", encoding='utf-8') as f: 
         json.dump(czml, f, ensure_ascii=False, indent=2, default=lambda x: int(x) if isinstance(x, np.integer) else (float(x) if isinstance(x, np.floating) else x))
     print("[CZML] CZML file generated successfully!")

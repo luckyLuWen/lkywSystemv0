@@ -22,7 +22,7 @@
         },
         {
           "name": "三伏潭镇卫生院分院",
-          "euclidean_km": 11.39,
+          "euclidean_km": 11.38,
           "net_dist_km": 23.63,
           "reason": "路网距离较远 (23.63 km > 10.83 km)"
         }
@@ -90,14 +90,14 @@
         "name": "剅河镇应急安全中心",
         "lat": 30.3451,
         "lon": 113.1919,
-        "dist_km": 9.5,
+        "dist_km": 9.49,
         "net_dist_km": 21.21
       },
       "has_path": true,
       "losers": [
         {
           "name": "三伏潭镇危化品监管站",
-          "euclidean_km": 11.98,
+          "euclidean_km": 11.97,
           "net_dist_km": 24.69,
           "reason": "路网距离较远 (24.69 km > 21.21 km)"
         },
@@ -130,7 +130,7 @@
         },
         {
           "name": "三伏潭镇公路段道班",
-          "euclidean_km": 11.22,
+          "euclidean_km": 11.21,
           "net_dist_km": 23.73,
           "reason": "路网距离较远 (23.73 km > 19.61 km)"
         }
