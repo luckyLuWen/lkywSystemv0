@@ -74,7 +74,7 @@
 
         <div class="popup-body">
           <div class="prototype-image-container">
-            < img src="/Dashboard/images/传感网原型.png" alt="传感网原型" class="custom-prototype-img" />
+            <img src="/Dashboard/images/传感网原型.png" alt="传感网原型" class="custom-prototype-img" />
           </div>
 
           <div class="prototype-desc">
@@ -1862,9 +1862,8 @@
       </div>
     </div>
 
-    <!-- 📺 次生灾害进入精细建模模块悬浮窗 -->
     <div
-      v-if="secondaryDisasterVideoPopup.show && (currentScene === 'truck' ? (Number(props.activePhaseIndex) === 5 || Number(props.activePhaseIndex) === 6) : Number(props.activePhaseIndex) === 5)"
+      v-if="secondaryDisasterVideoPopup.show && Number(props.activePhaseIndex) === 5"
       class="premium-modeling-popup"
       :style="{ left: secondaryDisasterVideoPopup.x + 'px', top: secondaryDisasterVideoPopup.y + 'px' }"
     >
@@ -2666,40 +2665,52 @@
         <template v-else>
           <!-- 终端打字日志 -->
           <div class="alp-terminal">
-            <div class="alp-log-line" style="animation-delay:0.1s"><span>[SYS]</span> 启动多智能体并发寻优... 正在获取区域 OSM 路网拓扑...</div>
-            <div class="alp-log-line" style="animation-delay:0.6s"><span>[SYS]</span> Dijkstra 加权算法启动，执行动态路阻因子剔除...</div>
-            <div class="alp-log-line" style="animation-delay:1.2s"><span>[OK ]</span> 真实拓扑加权寻优比对完成，决策结果已落地。</div>
+            <div class="alp-log-line" style="animation-delay:0.1s"><span class="log-tag tag-sys">[SYS]</span> 启动多智能体并发寻优... 正在获取区域 OSM 路网拓扑...</div>
+            <div class="alp-log-line" style="animation-delay:0.6s"><span class="log-tag tag-sys">[SYS]</span> Dijkstra 加权算法启动，执行动态路阻因子剔除...</div>
+            <div class="alp-log-line" style="animation-delay:1.2s"><span class="log-tag tag-ok">[OK ]</span> 真实拓扑加权寻优比对完成，决策结果已落地。</div>
           </div>
 
-          <!-- 五路决策卡片 -->
-          <div class="alp-decision-list">
-            <div
+          <!-- Tab 按钮切换条 -->
+          <div class="alp-tabs">
+            <button
               v-for="(agent, key) in multiAgentLogPanel.data.agents"
               :key="key"
-              class="alp-agent-card"
-              :style="{ '--alp-color': agent.color }"
+              class="alp-tab-btn"
+              :class="{ active: selectedAgentKey === key }"
+              :style="{ '--btn-color': agent.color }"
+              @click="selectedAgentKey = key"
             >
-              <!-- 智能体头部 -->
+              {{ agentShortNames[key] || agent.label }}
+            </button>
+          </div>
+
+          <!-- 单个选中智能体决策卡片 -->
+          <div class="alp-decision-single" v-if="multiAgentLogPanel.data.agents[selectedAgentKey]">
+            <div
+              class="alp-agent-card"
+              :style="{ '--alp-color': multiAgentLogPanel.data.agents[selectedAgentKey].color }"
+            >
+              <!-- 智能体头部：采用纵向堆叠布局防止名字挤压折行 -->
               <div class="alp-agent-head">
-                <span class="alp-agent-label">✦ {{ agent.label }}</span>
-                <span class="alp-agent-winner">{{ agent.poi.name }}</span>
+                <span class="alp-agent-label">{{ multiAgentLogPanel.data.agents[selectedAgentKey].label }}</span>
+                <span class="alp-agent-winner">{{ multiAgentLogPanel.data.agents[selectedAgentKey].poi.name }}</span>
               </div>
               <!-- 距离指标 -->
               <div class="alp-stats">
                 <div class="alp-stat-row alp-highlight">
-                  <span>拓扑路网寻优距离</span>
-                  <span>{{ agent.poi.net_dist_km }} km</span>
+                  <span class="stat-lbl">最优路网拓扑距离</span>
+                  <span class="stat-val">{{ multiAgentLogPanel.data.agents[selectedAgentKey].poi.net_dist_km }} km</span>
                 </div>
                 <div class="alp-stat-row">
-                  <span>空间欧氏初筛距离</span>
-                  <span>{{ agent.poi.dist_km }} km</span>
+                  <span class="stat-lbl">空间直线初筛距离</span>
+                  <span class="stat-val">{{ multiAgentLogPanel.data.agents[selectedAgentKey].poi.dist_km }} km</span>
                 </div>
               </div>
               <!-- 淘汰名录 -->
-              <div v-if="agent.losers && agent.losers.length > 0" class="alp-losers">
-                <div class="alp-losers-title">[-] 动态路阻因子剔除名录</div>
-                <div v-for="(loser, idx) in agent.losers" :key="idx" class="alp-loser-item">
-                  <div class="alp-loser-name">❌ {{ loser.name }}</div>
+              <div v-if="multiAgentLogPanel.data.agents[selectedAgentKey].losers && multiAgentLogPanel.data.agents[selectedAgentKey].losers.length > 0" class="alp-losers">
+                <div class="alp-losers-title">候选节点动态剔除名录</div>
+                <div v-for="(loser, idx) in multiAgentLogPanel.data.agents[selectedAgentKey].losers" :key="idx" class="alp-loser-item">
+                  <div class="alp-loser-name">✕ {{ loser.name }}</div>
                   <div class="alp-loser-reason">{{ loser.reason }}</div>
                 </div>
               </div>
@@ -2984,7 +2995,7 @@ const cameraAdjust = reactive({
 const agentSpeedConfig = reactive({
   uavDuration: 6.0,         // 无人机出动动画时长 (秒)
   ugvDuration: 6.0,          // 无人车出动动画时长 (秒)
-  multiAgentMultiplier: 190 // 救援装备出动倍速（与后台 Collaborative_Response 保持同步）
+  multiAgentMultiplier: 9.8 // 救援装备出动倍速（与后台 Collaborative_Response 保持同步）
 });
 
 watch(() => agentSpeedConfig.multiAgentMultiplier, (newVal) => {
@@ -3057,7 +3068,7 @@ const initialPhaseCameraConfigs = {
     8: { range: 70650, pitch: -90, heading: 350 },
     9: { range: 480, pitch: -25, heading: 33 },
     10: { range: 500, pitch: -21, heading: 28 },
-    11: { range: 1440, pitch: -39, heading: -5 },
+    11: { range: 500, pitch: -21, heading: 28 },
     12: { range: 62750, pitch: -79, heading: 5 }
   },
   tanker: {
@@ -3071,7 +3082,7 @@ const initialPhaseCameraConfigs = {
     8: { range: 9000, pitch: -45, heading: 352 },
     9: { range: 600, pitch: -30, heading: -10 },
     10: { range: 600, pitch: -18, heading: -21 },
-    11: { range: 1600, pitch: -45, heading: 0 },
+    11: { range: 600, pitch: -18, heading: -21 },
     12: { range: 9000, pitch: -45, heading: 352 }
   }
 }
@@ -5340,6 +5351,7 @@ const loadMission = async (isMultiAgent = false) => {
     }
     
     dataSource._lastEndpoint = endpoint;
+    dataSource._isMultiAgent = isMultiAgent;
     
     // 清除 CZML 实体的时间范围可用性限制，防止时间走完或越界时实体在地图上消失
     dataSource.entities.values.forEach(entity => {
@@ -5473,8 +5485,25 @@ const loadMission = async (isMultiAgent = false) => {
     // 根据用户要求，加快无人机无人车行走的时间，如果是多智能体出动则更快
     viewer.clock.multiplier = isMultiAgent ? agentSpeedConfig.multiAgentMultiplier : 190.0;
     viewer.clock.shouldAnimate = true;
+    
+    // 加载完成后强制刷新实体显隐状态，使 5 类救援装备和路径线能立刻展示
+    if (typeof updatePhaseScene === 'function') {
+      updatePhaseScene(phaseIdx, false);
+    }
+    
+    // 更新救援装备出动面板的状态反馈
+    if (isMultiAgent) {
+      rescueDispatchStatus.value = '✅ 救援装备已出动';
+      rescueDispatchPending.value = false;
+      setTimeout(() => { rescueDispatchStatus.value = '' }, 4000);
+    }
   } catch (error) {
     console.error('加载三维轨迹 CZML 失败:', error);
+    if (isMultiAgent) {
+      rescueDispatchStatus.value = '❌ 失败: ' + (error instanceof Error ? error.message : String(error));
+      rescueDispatchPending.value = false;
+      setTimeout(() => { rescueDispatchStatus.value = '' }, 4000);
+    }
   }
 }
 
@@ -7169,12 +7198,12 @@ function toggleVehicleFilter(filterType) {
   }
 }
 
-// 动态绘制 "两客一危" 车辆的极简高科技赛博胶囊徽章（Capsule Badge）
+// 动态绘制 "两客一危" 车辆的极简高科技赛博全息车牌浮标（Ultra-Sleek Holographic Tag）
 function createVehicleBillboardCanvas(category, plate, speed) {
-  // Retina 2x 超清绘制，保证高分屏与缩放视角下极度精致
+  // Retina 2x 超清绘制，保证高分屏与缩放视角下极度精致、清晰且绝不粗糙
   const scaleFactor = 2;
-  const logicalWidth = 138;
-  const logicalHeight = 30;
+  const logicalWidth = 124;
+  const logicalHeight = 26;
   const canvas = document.createElement('canvas');
   canvas.width = logicalWidth * scaleFactor;
   canvas.height = logicalHeight * scaleFactor;
@@ -7182,34 +7211,36 @@ function createVehicleBillboardCanvas(category, plate, speed) {
 
   ctx.scale(scaleFactor, scaleFactor);
 
-  let themeColor, icon;
+  let themeColor;
   if (category === 'hazard') {
-    themeColor = '#FF3344'; // 高危红
-    icon = '🧪';
+    themeColor = '#FF2A6D'; // 烈焰霓虹粉红 (危化品)
   } else if (category === 'passenger') {
-    themeColor = '#00E676'; // 班线绿
-    icon = '🚌';
+    themeColor = '#00F59B'; // 极光荧光绿 (班线客运)
   } else {
-    themeColor = '#00B0FF'; // 包车蓝
-    icon = '🚐';
+    themeColor = '#00D2FF'; // 电光青蓝 (旅游包车)
   }
 
-  const cardW = 130;
-  const cardH = 22;
-  const cardX = 4;
-  const cardY = 3;
+  const cardW = 118;
+  const cardH = 19;
+  const cardX = 3;
+  const cardY = 2;
 
-  // 1. 底层胶囊背景：半透明极光深黑 + 1.2px 边框发光
+  // 1. 全息透光底框：深邃半透明暗夜蓝 + 顶部渐变微光 + 1.2px 赛博霓虹细边框
   ctx.save();
   ctx.shadowColor = themeColor;
-  ctx.shadowBlur = 5;
+  ctx.shadowBlur = 7;
 
-  ctx.fillStyle = 'rgba(6, 12, 24, 0.90)';
+  // 渐变底色
+  const cardGrad = ctx.createLinearGradient(cardX, cardY, cardX, cardY + cardH);
+  cardGrad.addColorStop(0, 'rgba(10, 24, 48, 0.92)');
+  cardGrad.addColorStop(1, 'rgba(4, 12, 24, 0.85)');
+  ctx.fillStyle = cardGrad;
+
   ctx.strokeStyle = themeColor;
   ctx.lineWidth = 1.2;
   ctx.beginPath();
   if (typeof ctx.roundRect === 'function') {
-    ctx.roundRect(cardX, cardY, cardW, cardH, 11);
+    ctx.roundRect(cardX, cardY, cardW, cardH, 4);
   } else {
     ctx.rect(cardX, cardY, cardW, cardH);
   }
@@ -7217,40 +7248,59 @@ function createVehicleBillboardCanvas(category, plate, speed) {
   ctx.stroke();
   ctx.restore();
 
-  // 2. 左侧图标圆圈
-  const iconCx = cardX + 12;
-  const iconCy = cardY + cardH / 2;
+  // 顶部内饰极光高光细线 (Aurora Edge Flare)
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(cardX + 4, cardY + 1);
+  ctx.lineTo(cardX + cardW - 4, cardY + 1);
+  ctx.stroke();
 
+  // 2. 左侧微型发光呼吸圆点 (Micro Pulsing Dot)
+  const dotX = cardX + 8;
+  const dotY = cardY + cardH / 2;
+
+  // 外圈发光环
+  ctx.strokeStyle = themeColor;
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.arc(dotX, dotY, 4.5, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 核心发光实心点
   ctx.fillStyle = themeColor;
   ctx.beginPath();
-  ctx.arc(iconCx, iconCy, 7.5, 0, Math.PI * 2);
+  ctx.arc(dotX, dotY, 2.5, 0, Math.PI * 2);
   ctx.fill();
 
-  // 图标 Emoji
-  ctx.font = '8.5px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(icon, iconCx, iconCy + 0.5);
-
-  // 3. 车牌号 (主标题：纯白 11px 粗体)
-  ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  // 3. 车牌号码（清爽纯白 10.5px 粗体）
+  ctx.font = 'bold 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText(plate, cardX + 24, cardY + cardH / 2);
+  ctx.fillText(plate, cardX + 17, cardY + cardH / 2 + 0.5);
 
-  // 4. 实时速度 (右侧鲜黄 10px monospace)
-  ctx.font = 'bold 9.5px monospace';
-  ctx.fillStyle = '#FFD700';
+  // 4. 中间细分隔线
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cardX + 72, cardY + 4);
+  ctx.lineTo(cardX + 72, cardY + cardH - 4);
+  ctx.stroke();
+
+  // 5. 实时速度（荧光金黄色 9.5px）
+  ctx.font = 'bold 9.5px "Orbitron", monospace';
+  ctx.fillStyle = '#FFE600';
   ctx.textAlign = 'right';
-  ctx.fillText(`${speed}k/h`, cardX + cardW - 6, cardY + cardH / 2);
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`${speed}km/h`, cardX + cardW - 5, cardY + cardH / 2 + 0.5);
 
-  // 5. 底部下沉定位针尖（定位下沉，解决悬浮感）
+  // 6. 底部微型下沉定位针尖 (Micro Anchor Pin)
   ctx.fillStyle = themeColor;
   ctx.beginPath();
   ctx.moveTo(logicalWidth / 2 - 3, cardY + cardH);
   ctx.lineTo(logicalWidth / 2 + 3, cardY + cardH);
-  ctx.lineTo(logicalWidth / 2, cardY + cardH + 4);
+  ctx.lineTo(logicalWidth / 2, cardY + cardH + 3.5);
   ctx.closePath();
   ctx.fill();
 
@@ -7892,6 +7942,7 @@ function updateTankerSequence(phaseIndex, pointId = '') {
 function playEntityAnimation(entity, loop = false, duration = 0, speedMultiplier = 1.0) {
   if (!viewer || !entity) return;
 
+
   const tryPlay = (attemptsLeft) => {
     if (attemptsLeft <= 0) {
       return;
@@ -8252,13 +8303,16 @@ function addEventEntities() {
         disableDepthTestDistance: Number.POSITIVE_INFINITY
       },
       label: {
-        text: '监控视频',
-        font: '13px sans-serif',
-        fillColor: Cesium.Color.WHITE,
+        text: '📷 监控视频',
+        font: 'bold 12px sans-serif',
+        fillColor: Cesium.Color.fromCssColorString('#38bdf8'),
         outlineColor: Cesium.Color.BLACK,
         outlineWidth: 2,
         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-        pixelOffset: new Cesium.Cartesian2(0, -24),
+        showBackground: true,
+        backgroundColor: new Cesium.Color(0.02, 0.08, 0.18, 0.8),
+        backgroundPadding: new Cesium.Cartesian2(6, 4),
+        pixelOffset: new Cesium.Cartesian2(-45, -28),
         disableDepthTestDistance: Number.POSITIVE_INFINITY
       }
     })
@@ -8283,13 +8337,16 @@ function addEventEntities() {
         disableDepthTestDistance: Number.POSITIVE_INFINITY
       },
       label: {
-        text: '监控视频',
-        font: '13px sans-serif',
-        fillColor: Cesium.Color.WHITE,
+        text: '📷 监控视频',
+        font: 'bold 12px sans-serif',
+        fillColor: Cesium.Color.fromCssColorString('#38bdf8'),
         outlineColor: Cesium.Color.BLACK,
         outlineWidth: 2,
         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-        pixelOffset: new Cesium.Cartesian2(0, -24),
+        showBackground: true,
+        backgroundColor: new Cesium.Color(0.02, 0.08, 0.18, 0.8),
+        backgroundPadding: new Cesium.Cartesian2(6, 4),
+        pixelOffset: new Cesium.Cartesian2(-45, -28),
         disableDepthTestDistance: Number.POSITIVE_INFINITY
       }
     })
@@ -9157,8 +9214,8 @@ const currentLng = circleCenterLng + radiusLng * Math.cos(angle);
         scale: new Cesium.CallbackProperty(() => uavAdjust.scale > 0 ? uavAdjust.scale : 0.1, false),
         minimumPixelSize: 1, // 改为 1 像素，使无人机完全遵循真实的 3D 空间透视，随视角远近自然缩放
         heightReference: Cesium.HeightReference.NONE,
-        // 开启 Entity 自带的动画调度，使螺旋桨持续高速旋转
-        runAnimations: true,
+        // 关闭 Entity 自带的动画调度，完全交由 playEntityAnimation 手动精确管理
+        runAnimations: false,
         silhouetteColor: Cesium.Color.fromCssColorString('#00f2fe'),
         silhouetteSize: 2.0
       }
@@ -9388,23 +9445,12 @@ const currentLng = circleCenterLng + radiusLng * Math.cos(angle);
         }
       }
       
-      // 修复：将原来未定义的 startLng 统一改为上面定义好的 baseStartLng
-      if (props.activePhaseIndex >= 3 && props.activePhaseIndex < 8) {
-        return Cesium.Cartesian3.fromDegrees(baseStartLng, baseStartLat, startHeight);
-      } else if (props.activePhaseIndex < 3) {
-        return Cesium.Cartesian3.fromDegrees(baseStartLng, baseStartLat, startHeight);
-      } else if (props.activePhaseIndex === 8) {
-        const elapsed = Math.max(0, Cesium.JulianDate.secondsDifference(time, phase7StartJulian));
-        const duration = agentSpeedConfig.ugvDuration; 
-        const t = Math.min(elapsed / duration, 1.0);
-        const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-        
-        const lng = baseStartLng + (targetLng - baseStartLng) * easeT;
-        const lat = baseStartLat + (targetLat - baseStartLat) * easeT;
-        return Cesium.Cartesian3.fromDegrees(lng, lat, startHeight);
-      } else {
-        // 🚨 阶段 >= 8：到达目标点后原地驻停
+      if (props.activePhaseIndex >= 6) {
+        // 阶段 7 及以上（无人感知部署、信号干扰等）：统一稳定就位于事故现场前沿部署点
         return Cesium.Cartesian3.fromDegrees(targetLng, targetLat, startHeight);
+      } else {
+        // 阶段 < 6（初始阶段）：在起点停泊
+        return Cesium.Cartesian3.fromDegrees(baseStartLng, baseStartLat, startHeight);
       }
     }, false);
 
@@ -9854,8 +9900,8 @@ if (props.activePhaseIndex === 3 || props.activePhaseIndex === 7) {
         scale: new Cesium.CallbackProperty(() => tankerUavAdjust.scale > 0 ? tankerUavAdjust.scale : 0.1, false),
         minimumPixelSize: 1, // 改为 1 像素，使无人机完全遵循真实的 3D 空间透视，随视角远近自然缩放
         heightReference: Cesium.HeightReference.NONE,
-        // 开启 Entity 自带的动画调度，使螺旋桨持续高速旋转
-        runAnimations: true,
+        // 关闭 Entity 自带的动画调度，完全交由 playEntityAnimation 手动精确管理
+        runAnimations: false,
         silhouetteColor: Cesium.Color.fromCssColorString('#00f2fe'),
         silhouetteSize: 2.0
       }
@@ -9967,7 +10013,7 @@ tankerRescueCarModelConfigs.forEach((config, index) => {
   let tankerPhase7StartJulian = null;
   let tankerLastLocalPhase = -1;
 
-  const tankerRescueCarPosition = new Cesium.CallbackProperty((time) => {
+const tankerRescueCarPosition = new Cesium.CallbackProperty((time) => {
     const phase = Number(props.activePhaseIndex);
     if (tankerLastLocalPhase !== phase) {
       tankerPhase7StartJulian = Cesium.JulianDate.clone(time);
@@ -9977,7 +10023,7 @@ tankerRescueCarModelConfigs.forEach((config, index) => {
     if (phase < 7) {
       return Cesium.Cartesian3.fromDegrees(tankerBaseStartLng, tankerBaseStartLat, tankerStartHeight);
     } else if (phase === 7 || phase === 8) {
-      // 阶段 7~8：沿规划路线行驶（读取 server.py 生成的 Car_Path CZML 路径）
+      // 阶段 7~8：沿规划路线行驶
       const ugvInfo = getUgvLast200mPosition('tanker', phase, null, time, config.stopFactor);
       if (ugvInfo && ugvInfo.pos) {
         const carto = Cesium.Cartographic.fromCartesian(ugvInfo.pos);
@@ -9989,7 +10035,7 @@ tankerRescueCarModelConfigs.forEach((config, index) => {
         carto.height = baseHeight + tankerStartHeight;
         return Cesium.Cartographic.toCartesian(carto);
       }
-      // 降级：直线插值（当 CZML 尚未加载时）
+      // 降级：直线插值
       const elapsed = Math.max(0, Cesium.JulianDate.secondsDifference(time, tankerPhase7StartJulian));
       const duration = 10.0;
       const t = Math.min(elapsed / duration, 1.0);
@@ -9998,8 +10044,16 @@ tankerRescueCarModelConfigs.forEach((config, index) => {
       const lat = tankerBaseStartLat + (tankerActualTargetLat - tankerBaseStartLat) * easeT;
       return Cesium.Cartesian3.fromDegrees(lng, lat, tankerStartHeight);
     } else {
-      // 阶段 9 及以上：停在无人感知执行阶段的部署终点，保持静止不动
-      // （与货车场景一致，与 phase 8 最终停泊位置完全对齐）
+      // =====================================
+      // 🌟 阶段 9 及以上：无人感知执行阶段，开启动态巡逻游走！
+      // =====================================
+      const patrolSpeed = 0.4;         // 游走速度
+      const patrolDistance = 0.00008;  // 游走范围
+      const roadAngleRad = Cesium.Math.toRadians(90); // 游走轴向 (如果发现车横向漂移，可改为 0)
+      
+      // 使用 index * Math.PI 让两辆车运动方向相反，形成交错巡逻效果
+      const wave = Math.sin((Date.now() / 1000.0) * patrolSpeed + (index * Math.PI));
+
       const ugvInfo = getUgvLast200mPosition('tanker', phase, null, time, config.stopFactor);
       if (ugvInfo && ugvInfo.pos) {
         const carto = Cesium.Cartographic.fromCartesian(ugvInfo.pos);
@@ -10008,11 +10062,16 @@ tankerRescueCarModelConfigs.forEach((config, index) => {
           const terrainHeight = viewer.scene.globe.getHeight(carto);
           if (terrainHeight !== undefined) baseHeight = terrainHeight;
         }
-        carto.height = baseHeight + tankerStartHeight;
-        return Cesium.Cartographic.toCartesian(carto);
+        // 核心：在静止坐标上叠加游走偏移量
+        const curLng = Cesium.Math.toDegrees(carto.longitude) + wave * patrolDistance * Math.cos(roadAngleRad);
+        const curLat = Cesium.Math.toDegrees(carto.latitude) + wave * patrolDistance * Math.sin(roadAngleRad);
+        return Cesium.Cartesian3.fromDegrees(curLng, curLat, baseHeight + tankerStartHeight);
       }
-      // 降级：无法读取路径时，使用预计算目标点原地驻停
-      return Cesium.Cartesian3.fromDegrees(tankerActualTargetLng, tankerActualTargetLat, tankerStartHeight);
+      
+      // 降级：无法读取路径时，基于预计算终点进行游走
+      const curLng = tankerActualTargetLng + wave * patrolDistance * Math.cos(roadAngleRad);
+      const curLat = tankerActualTargetLat + wave * patrolDistance * Math.sin(roadAngleRad);
+      return Cesium.Cartesian3.fromDegrees(curLng, curLat, tankerStartHeight);
     }
   }, false);
 
@@ -10097,14 +10156,14 @@ tankerRescueCarModelConfigs.forEach((config, index) => {
       if (carEntity.show !== undefined) {
         visible = typeof carEntity.show.getValue === 'function' ? carEntity.show.getValue(time) : !!carEntity.show;
       }
-      if (Number(props.activePhaseIndex) >= 9 && visible) return true;
+      if (Number(props.activePhaseIndex) >= 9 && Number(props.activePhaseIndex) < 11 && visible) return true;
       carEntity._netTime = null;
       return false;
     }, false),
     label: {
       text: new Cesium.CallbackProperty(() => {
         if (currentScene.value !== 'tanker') return '';
-        if (Number(props.activePhaseIndex) < 9) return '';
+        if (Number(props.activePhaseIndex) < 9 || Number(props.activePhaseIndex) >= 11) return '';
         if (Number(props.activePhaseIndex) >= 10) {
            if (modelIndex === 0) return `[RELAY] 启用临时通信中继\n▶ 核心链路: 已接管\n▶ 延迟: 8ms`;
            return `▶ 环境数据流: ACTIVE\n▶ 上传至中继: 稳定`;
@@ -10468,14 +10527,14 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
     }, false),
     show: new Cesium.CallbackProperty((time) => {
       if (currentScene.value !== 'truck') return false; 
-      if (Number(props.activePhaseIndex) >= 9 && isCarVisible(time)) return true;
+      if (Number(props.activePhaseIndex) >= 9 && Number(props.activePhaseIndex) < 11 && isCarVisible(time)) return true;
       carEntity._netTime = null; 
       return false;
     }, false),
     label: {
       text: new Cesium.CallbackProperty(() => {
         if (currentScene.value !== 'truck') return '';
-        if (Number(props.activePhaseIndex) < 9) return ''; 
+        if (Number(props.activePhaseIndex) < 9 || Number(props.activePhaseIndex) >= 11) return ''; 
         if (Number(props.activePhaseIndex) >= 10) {
            if (modelIndex === 0) return `[RELAY] 启用临时通信中继\n▶ 核心链路: 已接管\n▶ 延迟: 8ms`;
            return `▶ 环境数据流: ACTIVE\n▶ 上传至中继: 稳定`;
@@ -10758,8 +10817,8 @@ function updatePhaseScene(index, animate = false) {
       rescueCoords.lat = 30.3268;
       rescueCoords.height = 120.0;
       
-      if (rescueMarkerEntity) rescueMarkerEntity.show = true;
-      rescuePopup.show = true;
+      if (rescueMarkerEntity) rescueMarkerEntity.show = false;
+      rescuePopup.show = false;
       ugvPopup.show = false;
 
       if (!window.__multiAgentTriggeredFor || window.__multiAgentTriggeredFor !== 'truck') {
@@ -10806,8 +10865,8 @@ function updatePhaseScene(index, animate = false) {
       rescueCoords.lat = tankerPointAdjust.lat;
       rescueCoords.height = 17.0;
       
-      if (rescueMarkerEntity) rescueMarkerEntity.show = true;
-      rescuePopup.show = true;
+      if (rescueMarkerEntity) rescueMarkerEntity.show = false;
+      rescuePopup.show = false;
       ugvPopup.show = false;
 
       if (!window.__multiAgentTriggeredFor || window.__multiAgentTriggeredFor !== 'leak') {
@@ -10823,79 +10882,90 @@ function updatePhaseScene(index, animate = false) {
 
     if (index >= 3) {
       const expectedEndpoint = currentScene.value === 'truck' ? 'crash' : 'leak';
-      if (!currentMissionDataSource || currentMissionDataSource._lastEndpoint !== expectedEndpoint) {
-        loadMission();
-} else {
-        // 同事的补丁：如果数据源已加载，显式确保规划路线可见，防止 Bug 导致线段丢失
-        if (currentMissionDataSource) {
-            // 第 12 阶段仅保留多智能体救援路线，避免等待救援规划时残留无人装备路线。
-            const showAutonomousUavRoute = index >= 3 && index < 11;
-            const showAutonomousUgvRoute = index >= 7 && index < 11;
-            const uavPath = currentMissionDataSource.entities.getById('UAV_Path');
-            if (uavPath) {
-              uavPath.show = showAutonomousUavRoute;
-              if (uavPath.polyline) uavPath.polyline.show = showAutonomousUavRoute;
-            }
-            const uavPathGlow = currentMissionDataSource.entities.getById('UAV_Path_glow');
-            if (uavPathGlow) {
-              uavPathGlow.show = showAutonomousUavRoute;
-              if (uavPathGlow.polyline) uavPathGlow.polyline.show = showAutonomousUavRoute;
-            }
-
-            const carPath = currentMissionDataSource.entities.getById('Car_Path');
-            if (carPath) {
-              carPath.show = showAutonomousUgvRoute;
-              if (carPath.polyline) carPath.polyline.show = showAutonomousUgvRoute;
-            }
-            const carPathGlow = currentMissionDataSource.entities.getById('Car_Path_glow');
-            if (carPathGlow) {
-              carPathGlow.show = showAutonomousUgvRoute;
-              if (carPathGlow.polyline) carPathGlow.polyline.show = showAutonomousUgvRoute;
-            }
-            const czmlCar = currentMissionDataSource.entities.getById('Car');
-            if (czmlCar) {
-              czmlCar.show = showAutonomousUgvRoute;
-            }
-            if (highlightPathEntity) {
-              highlightPathEntity.show = showAutonomousUgvRoute;
-              if (highlightPathEntity.polyline) highlightPathEntity.polyline.show = showAutonomousUgvRoute;
-            }
-            const highlightPath = viewer && viewer.entities ? viewer.entities.getById('Car_Path_Highlight') : null;
-            if (highlightPath) {
-              highlightPath.show = showAutonomousUgvRoute;
-              if (highlightPath.polyline) highlightPath.polyline.show = showAutonomousUgvRoute;
-            }
-            const czmlUav = currentMissionDataSource.entities.getById('UAV');
-            if (czmlUav) {
-              czmlUav.show = showAutonomousUavRoute;
-            }
-
-            // 多智能体路径仅在第 12 阶段“救援装备出动”显示。
-            const multiAgentPrefixes = ['Agent_', 'AgentPath_', 'AgentPOI_', 'AgentCP_'];
-            currentMissionDataSource.entities.values.forEach(entity => {
-                const id = entity.id;
-                if (id && multiAgentPrefixes.some(prefix => id.startsWith(prefix))) {
-                    const shouldShow = (index >= 11);
-                    entity.show = shouldShow;
-                }
-            });
-        }
+      const needsMultiAgent = (index === 11);
+      if (
+        !currentMissionDataSource ||
+        currentMissionDataSource._lastEndpoint !== expectedEndpoint ||
+        !!currentMissionDataSource._isMultiAgent !== needsMultiAgent
+      ) {
+        loadMission(needsMultiAgent);
       }
 
-      // 根据用户要求，当在货车现场进入"无人装备出动"(阶段7)时，视角飞向微调面板中对应的视角，支持动态同步
-      if (pointId === 'accident_blue' && index === 7) {
+      // 同事的补丁：如果数据源已加载，显式确保规划路线可见，防止 Bug 导致线段丢失
+      if (currentMissionDataSource) {
+          // 第 12 阶段仅保留多智能体救援路线，避免等待救援规划时残留无人装备路线。
+          const showAutonomousUavRoute = index >= 3 && index < 11;
+          const showAutonomousUgvRoute = index >= 7 && index < 11;
+          const uavPath = currentMissionDataSource.entities.getById('UAV_Path');
+          if (uavPath) {
+            uavPath.show = showAutonomousUavRoute;
+            if (uavPath.polyline) uavPath.polyline.show = showAutonomousUavRoute;
+          }
+          const uavPathGlow = currentMissionDataSource.entities.getById('UAV_Path_glow');
+          if (uavPathGlow) {
+            uavPathGlow.show = showAutonomousUavRoute;
+            if (uavPathGlow.polyline) uavPathGlow.polyline.show = showAutonomousUavRoute;
+          }
+
+          const carPath = currentMissionDataSource.entities.getById('Car_Path');
+          if (carPath) {
+            carPath.show = showAutonomousUgvRoute;
+            if (carPath.polyline) carPath.polyline.show = showAutonomousUgvRoute;
+          }
+          const carPathGlow = currentMissionDataSource.entities.getById('Car_Path_glow');
+          if (carPathGlow) {
+            carPathGlow.show = showAutonomousUgvRoute;
+            if (carPathGlow.polyline) carPathGlow.polyline.show = showAutonomousUgvRoute;
+          }
+          const czmlCar = currentMissionDataSource.entities.getById('Car');
+          if (czmlCar) {
+            czmlCar.show = showAutonomousUgvRoute;
+          }
+          if (highlightPathEntity) {
+            highlightPathEntity.show = showAutonomousUgvRoute;
+            if (highlightPathEntity.polyline) highlightPathEntity.polyline.show = showAutonomousUgvRoute;
+          }
+          const highlightPath = viewer && viewer.entities ? viewer.entities.getById('Car_Path_Highlight') : null;
+          if (highlightPath) {
+            highlightPath.show = showAutonomousUgvRoute;
+            if (highlightPath.polyline) highlightPath.polyline.show = showAutonomousUgvRoute;
+          }
+          const czmlUav = currentMissionDataSource.entities.getById('UAV');
+          if (czmlUav) {
+            czmlUav.show = showAutonomousUavRoute;
+          }
+
+          // 多智能体路径在第 12 阶段(index 11)“救援装备出动”及后续显示
+          const multiAgentPrefixes = ['Agent_', 'AgentPath_', 'AgentPOI_', 'AgentCP_'];
+          currentMissionDataSource.entities.values.forEach(entity => {
+              const id = entity.id;
+              if (id) {
+                  if (id.startsWith('AgentCP_') || id === 'StartMarker') {
+                      // 仅仅隐藏中间集散点(CP)与重复起点(StartMarker)
+                      entity.show = false;
+                  } else if (multiAgentPrefixes.some(prefix => id.startsWith(prefix))) {
+                      const shouldShow = (index >= 11);
+                      entity.show = shouldShow;
+                  }
+              }
+          });
+      }
+
+      // 根据用户要求，当在货车或油罐车现场进入"无人装备出动"(阶段7)时，视角飞向微调面板中对应的视角，支持动态同步
+      if ((pointId === 'accident_blue' || pointId === 'accident_red') && index === 7) {
         stopAutoRotate();
         try {
           viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
         } catch (e) {}
         isFlying = true;
         
-        const cfg = defaultPhaseCameraConfigs['truck'][8];
+        const sceneKey = pointId === 'accident_red' ? 'tanker' : 'truck';
+        const cfg = defaultPhaseCameraConfigs[sceneKey][8];
         const headingRad = Cesium.Math.toRadians(cfg.heading);
         const pitchRad = Cesium.Math.toRadians(cfg.pitch);
         const range = cfg.range;
-        const targetLng = Number(truckAdjust.lng) || 113.104833;
-        const targetLat = Number(truckAdjust.lat) || 30.385469;
+        const targetLng = sceneKey === 'tanker' ? (Number(tankerPointAdjust.lng) || 114.894472) : (Number(truckAdjust.lng) || 113.104833);
+        const targetLat = sceneKey === 'tanker' ? (Number(tankerPointAdjust.lat) || 30.632203) : (Number(truckAdjust.lat) || 30.385469);
         const targetCartesian = Cesium.Cartesian3.fromDegrees(targetLng, targetLat, 0);
 
         viewer.camera.flyToBoundingSphere(new Cesium.BoundingSphere(targetCartesian, 0), {
@@ -10935,8 +11005,10 @@ function updatePhaseScene(index, animate = false) {
         }
       }
 
-      // 恢复正常的时间流速，防止粒子和模型动画过快
-      viewer.clock.multiplier = 1.0;
+      // 恢复正常的时间流速（第 12 阶段保持多智能体播放倍速）
+      if (index !== 11) {
+        viewer.clock.multiplier = 1.0;
+      }
     }
 
     if (popupEntity) {
@@ -10964,12 +11036,12 @@ function updatePhaseScene(index, animate = false) {
               entity.show = false;
             }
           });
-          // 恢复显示救援车模型（只有进入“无人装备出动”及后续阶段 index >= 7 才显示无人车）
-          rescueCarEntities.forEach(entity => { entity.show = (index >= 7); });
+          // 恢复显示救援车模型（只有进入“无人装备出动”至“信号干扰阶段”才显示无人车，第12阶段自动隐藏，腾出干净屏幕）
+          rescueCarEntities.forEach(entity => { entity.show = (index >= 7 && index < 11); });
           
           // 隐藏油罐车场景的无人机和救援车
           tankerUavEntities.forEach(entity => { entity.show = false });
-          tankerRescueCarEntities.forEach(entity => { entity.show = (pointId === 'accident_red' && index >= 7); });
+          tankerRescueCarEntities.forEach(entity => { entity.show = (pointId === 'accident_red' && index >= 7 && index < 11); });
           
           // 隐藏所有泄露和扩散粒子，但保留货车场景所需的烟雾与火焰粒子（由 updateTruckSequence 控制其具体大小）
           if (leakParticle) leakParticle.show = false
@@ -10997,7 +11069,7 @@ function updatePhaseScene(index, animate = false) {
               entity.show = false;
             }
           });
-          tankerRescueCarEntities.forEach(entity => { entity.show = (index >= 7); });
+          tankerRescueCarEntities.forEach(entity => { entity.show = (index >= 7 && index < 11); });
           
           // 隐藏货车场景的无人机和救援车
           uavEntities.forEach(entity => { entity.show = false })
@@ -11258,8 +11330,7 @@ watch(
 )
 
 watch(() => props.activePhaseIndex, (next, prev) => {
-  const isTanker = currentScene.value === 'tanker';
-  const shouldShowPopup = isTanker ? (Number(next) === 5) : (Number(next) === 5 || Number(next) === 6);
+  const shouldShowPopup = Number(next) === 5;
   secondaryDisasterVideoPopup.show = shouldShowPopup;
   accidentViewLevel.value = null;
   stopAutoRotate();
@@ -11276,10 +11347,12 @@ watch(() => props.activePhaseIndex, (next, prev) => {
   } else if (next === 8 && prev !== 8) {
     phase8StartTime = Date.now();
     tankerPhase8StartTime = Date.now();
-  } else if (next === 11 && prev !== 11) {
-    // 进入第 11 阶段时自动执行救援装备出动
+  } else if (next === 11) {
+    // 进入第 12 阶段(index 11)时自动执行救援装备出动，这里只更新 pending 文本状态，
+    // 具体的 CZML 生成与数据加载交给 updatePhaseScene 通用逻辑中唯一的 loadMission 调用，防止并发冲突！
     rescueDispatchScene.value = currentScene.value === 'truck' ? 'crash' : 'leak';
-    triggerRescueMultiAgent();
+    rescueDispatchPending.value = true;
+    rescueDispatchStatus.value = '救援装备出动中...';
   } else if (next < 3) {
     phase3StartTime = 0;
     tankerPhase3StartTime = 0;
@@ -11299,10 +11372,17 @@ watch(() => props.activePhaseIndex, (next, prev) => {
     diffusionStartTime = 0;
   }
 
-  // 同步 Cesium 时钟时间与动画播放状态（确保 viewer.clock.shouldAnimate 持续开启，且保持 1.0 正常倍速，防止粒子系统因高倍速时间膨胀而爆闪）
+  // 同步 Cesium 时钟时间与动画播放状态
   if (viewer) {
     viewer.clock.shouldAnimate = true;
-    viewer.clock.multiplier = 1.0;
+    if (next === 11) {
+      viewer.clock.multiplier = Number(agentSpeedConfig.multiAgentMultiplier) || 9.8;
+      if (currentMissionDataSource && currentMissionDataSource.clock) {
+        viewer.clock.currentTime = currentMissionDataSource.clock.startTime;
+      }
+    } else {
+      viewer.clock.multiplier = 1.0;
+    }
     viewer.clock.clockRange = Cesium.ClockRange.UNBOUNDED;
   }
 
@@ -11534,6 +11614,15 @@ const multiAgentLogPanel = reactive({
   loading: false,
   data: null,   // multi_agent 字段：{ scenario, agents: { medical, fire, police, hazmat, road } }
 })
+
+const selectedAgentKey = ref('fire')
+const agentShortNames = {
+  fire: '消防',
+  hazmat: '防化',
+  medical: '医疗',
+  police: '公安',
+  road: '路政'
+}
 
 let _agentLogPollingTimer = null
 
@@ -17066,172 +17155,271 @@ position: absolute;
   position: absolute;
   top: 20px;
   right: 20px;
-  width: 310px;
+  width: 330px;
   max-height: calc(100vh - 60px);
   z-index: 9200;
   pointer-events: auto;
   border-radius: 14px;
   overflow: hidden;
-  background: linear-gradient(145deg, rgba(8, 16, 36, 0.97) 0%, rgba(12, 24, 50, 0.97) 100%);
-  border: 1px solid rgba(56, 189, 248, 0.22);
-  box-shadow: 0 8px 36px rgba(56, 189, 248, 0.14), 0 2px 12px rgba(0,0,0,0.55);
+  background: linear-gradient(145deg, rgba(8, 16, 36, 0.98) 0%, rgba(12, 24, 52, 0.98) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  box-shadow: 0 12px 40px rgba(8, 16, 36, 0.6), 0 0 20px rgba(56, 189, 248, 0.08);
   backdrop-filter: blur(16px);
   display: flex;
   flex-direction: column;
-  font-family: 'Inter', 'Microsoft YaHei', sans-serif;
-  font-size: 12px;
-  color: rgba(255,255,255,0.88);
+  font-family: 'Inter', 'SF Pro Display', 'Microsoft YaHei', sans-serif;
+  color: rgba(255,255,255,0.92);
 }
 
 /* 入场/离场动画 */
 .agent-log-fade-enter-active,
 .agent-log-fade-leave-active {
-  transition: opacity 0.38s ease, transform 0.38s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: opacity 0.38s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.38s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 .agent-log-fade-enter-from,
 .agent-log-fade-leave-to {
   opacity: 0;
-  transform: translateX(16px) scale(0.96);
+  transform: translateY(-8px) scale(0.98);
 }
 
 /* 标题栏 */
 .alp-header {
-  padding: 12px 14px 10px;
-  background: rgba(30, 41, 59, 0.65);
-  border-bottom: 1px solid rgba(56, 189, 248, 0.14);
+  padding: 14px 18px 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.15);
   flex-shrink: 0;
 }
 .alp-title-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
-.alp-icon { font-size: 16px; flex-shrink: 0; }
+.alp-icon { font-size: 20px; flex-shrink: 0; }
 .alp-title-text { flex: 1; display: flex; flex-direction: column; }
 .alp-title {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 750;
   color: #38bdf8;
-  letter-spacing: 0.4px;
-  line-height: 1.2;
+  letter-spacing: 0.6px;
+  line-height: 1.25;
 }
 .alp-subtitle {
-  font-size: 10px;
-  color: #94a3b8;
-  font-family: 'Courier New', Courier, monospace;
-  margin-top: 2px;
+  font-size: 11px;
+  color: #64748b;
+  font-family: 'Consolas', Monaco, monospace;
+  margin-top: 3px;
+  letter-spacing: 0.3px;
 }
 .alp-badge {
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 3px 7px;
-  border-radius: 4px;
-  background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  letter-spacing: 0.3px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  letter-spacing: 0.5px;
 }
 
 /* 终端日志区 */
 .alp-terminal {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 11.5px;
+  font-family: 'Consolas', 'Fira Code', Menlo, monospace;
+  font-size: 12.5px;
   color: #cbd5e1;
-  background: rgba(0, 0, 0, 0.38);
-  padding: 9px 12px;
+  background: rgba(8, 16, 32, 0.85);
+  padding: 12px 14px;
   border-left: 3px solid #38bdf8;
-  margin: 10px 10px 0;
-  border-radius: 5px;
+  border: 1px solid rgba(56, 189, 248, 0.15);
+  border-left-width: 4px;
+  margin: 14px 14px 4px;
+  border-radius: 6px;
   flex-shrink: 0;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
 }
 .alp-log-line {
-  margin-bottom: 3px;
+  margin-bottom: 4px;
   opacity: 0;
   animation: alpFadeLog 0.3s forwards;
-  line-height: 1.5;
+  line-height: 1.6;
 }
-.alp-log-line span { color: #38bdf8; font-weight: bold; }
+.alp-log-line:last-child { margin-bottom: 0; }
+.log-tag { font-weight: 700; margin-right: 6px; }
+.tag-sys { color: #38bdf8; }
+.tag-ok { color: #34d399; }
 @keyframes alpFadeLog { to { opacity: 1; } }
 
-/* 决策卡片列表 */
-.alp-decision-list {
-  overflow-y: auto;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
-}
-.alp-decision-list::-webkit-scrollbar { width: 3px; }
-.alp-decision-list::-webkit-scrollbar-thumb { background: rgba(56,189,248,0.2); border-radius: 2px; }
-
-.alp-agent-card {
-  background: rgba(30, 41, 59, 0.45);
-  border: 1px solid rgba(148, 163, 184, 0.1);
-  border-left: 3px solid var(--alp-color);
-  border-radius: 7px;
-  padding: 9px 10px;
-}
-.alp-agent-head {
+/* Tab 切换栏 */
+.alp-tabs {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 7px;
+  gap: 4px;
+  padding: 8px 12px;
+  background: rgba(15, 23, 42, 0.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
 }
-.alp-agent-label {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--alp-color);
-}
-.alp-agent-winner {
+.alp-tab-btn {
+  flex: 1;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  color: #cbd5e1;
   font-size: 12px;
   font-weight: 600;
-  color: #e2e8f0;
-  text-align: right;
-  max-width: 55%;
+  padding: 5px 0;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: center;
+  font-family: inherit;
 }
+.alp-tab-btn:hover {
+  color: #ffffff;
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(56, 189, 248, 0.2);
+}
+.alp-tab-btn.active {
+  background: rgba(15, 23, 42, 0.85);
+  color: var(--btn-color);
+  border: 1px solid var(--btn-color);
+  box-shadow: 0 0 6px var(--btn-color);
+  font-weight: 700;
+}
+
+/* 决策卡片单栏区域 */
+.alp-decision-single {
+  overflow-y: auto;
+  padding: 12px;
+  flex: 1;
+}
+.alp-decision-single::-webkit-scrollbar { width: 4px; }
+.alp-decision-single::-webkit-scrollbar-thumb { background: rgba(56,189,248,0.25); border-radius: 2px; }
+
+.alp-agent-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.55) 0%, rgba(15, 23, 42, 0.65) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-left: 4px solid var(--alp-color);
+  border-radius: 8px;
+  padding: 12px 14px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+}
+.alp-agent-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  border-color: rgba(255,255,255,0.1);
+}
+/* 卡片左上角柔和渐变微光 */
+.alp-agent-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: radial-gradient(circle at 0% 0%, var(--alp-color) 0%, transparent 45%);
+  opacity: 0.07;
+  pointer-events: none;
+  border-radius: 8px;
+}
+
+/* 头部：改用纵向排列，彻底解决左右拉伸导致的折行和文字重合问题 */
+.alp-agent-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 8px;
+}
+.alp-agent-label {
+  font-size: 14px;
+  font-weight: 750;
+  color: var(--alp-color);
+  letter-spacing: 0.5px;
+}
+.alp-agent-winner {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #e2e8f0;
+  line-height: 1.4;
+}
+
+/* 指标区 */
 .alp-stats {
-  background: rgba(0,0,0,0.22);
-  border-radius: 4px;
-  padding: 6px 8px;
-  margin-bottom: 7px;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
 }
 .alp-stat-row {
   display: flex;
   justify-content: space-between;
-  font-size: 11.5px;
-  color: #cbd5e1;
-  margin-bottom: 4px;
+  align-items: center;
+  font-size: 12.5px;
+  color: #94a3b8;
+  margin-bottom: 5px;
 }
 .alp-stat-row:last-child { margin-bottom: 0; }
-.alp-highlight { color: #38bdf8; font-weight: 600; }
+.alp-highlight { color: #e2e8f0; }
+.alp-highlight .stat-val { color: #38bdf8; font-weight: 700; }
+.stat-lbl { font-size: 12px; }
+.stat-val { font-family: 'Consolas', monospace; font-size: 13px; color: #cbd5e1; }
 
-.alp-losers { border-top: 1px dashed rgba(148,163,184,0.2); padding-top: 6px; }
-.alp-losers-title { font-size: 10.5px; color: #94a3b8; margin-bottom: 4px; }
-.alp-loser-item { margin-bottom: 4px; }
-.alp-loser-name { font-size: 11.5px; color: #cbd5e1; }
-.alp-loser-reason { font-size: 10.5px; color: #f87171; margin-left: 14px; margin-top: 2px; }
+/* 淘汰名录样式升级：加边框与柔和淡红底色，提升表格质感 */
+.alp-losers { 
+  border-top: 1px dashed rgba(255,255,255,0.08); 
+  padding-top: 10px; 
+  margin-top: 6px;
+}
+.alp-losers-title { 
+  font-size: 11px; 
+  font-weight: 700;
+  color: #64748b; 
+  margin-bottom: 8px; 
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.alp-loser-item { 
+  background: rgba(239, 68, 68, 0.03);
+  border-left: 2px solid rgba(239, 68, 68, 0.25);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-bottom: 6px; 
+}
+.alp-loser-item:last-child { margin-bottom: 0; }
+.alp-loser-name { 
+  font-size: 12px; 
+  color: #cbd5e1; 
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+.alp-loser-reason { 
+  font-size: 11px; 
+  color: #f87171; 
+  margin-top: 2px; 
+}
 
 /* 加载/空状态 */
 .alp-loading, .alp-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 16px;
-  font-size: 11px;
+  gap: 8px;
+  padding: 24px;
+  font-size: 13px;
   color: rgba(255,255,255,0.45);
 }
 .alp-loading { flex-direction: row; }
 .alp-spin {
-  width: 14px; height: 14px;
+  width: 18px; height: 18px;
   border: 2px solid rgba(56,189,248,0.3);
   border-top-color: #38bdf8;
   border-radius: 50%;
   animation: alpSpin 0.8s linear infinite;
 }
 @keyframes alpSpin { to { transform: rotate(360deg); } }
-.alp-empty small { font-size: 10px; color: rgba(255,255,255,0.3); }
+.alp-empty small { font-size: 11px; color: rgba(255,255,255,0.3); }
 
 </style>
