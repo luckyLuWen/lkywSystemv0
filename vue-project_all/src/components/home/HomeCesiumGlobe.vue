@@ -622,170 +622,7 @@
         </div>
       </div>
 
-      <!-- 💡 现场灯光微调工具面板 -->
-      <div v-if="isLightPanelExpanded" class="light-control-panel">
-        <div class="light-panel-header" @click="toggleLightPanel">
-          <span class="light-panel-title">💡 现场灯光微调工具</span>
-          <span class="light-panel-toggle">✕</span>
-        </div>
-        
-        <div class="light-panel-body">
-          <div class="light-control-row">
-            <label class="light-control-label">选择灯光</label>
-            <div class="light-select-tabs">
-              <button 
-                v-for="(l, idx) in lights" 
-                :key="l.id" 
-                :class="['light-tab-btn', { active: activeLightIndex === idx }]"
-                @click="activeLightIndex = idx"
-              >
-                {{ l.id }}
-              </button>
-            </div>
-          </div>
-          
-          <div class="light-control-row">
-            <label class="light-control-label">显示灯光模型</label>
-            <input type="checkbox" v-model="lightAdjust.show" class="light-checkbox" />
-          </div>
-          
-          <div class="light-control-row">
-            <label class="light-control-label">经度 (Lng)</label>
-            <input type="number" v-model.number="lightAdjust.lng" step="0.000001" class="light-input-num" />
-          </div>
-          
-          <div class="light-control-row">
-            <label class="light-control-label">纬度 (Lat)</label>
-            <input type="number" v-model.number="lightAdjust.lat" step="0.000001" class="light-input-num" />
-          </div>
 
-          <div class="light-control-row">
-            <label class="light-control-label">高度 (Height)</label>
-            <div class="light-slider-container">
-              <input type="range" v-model.number="lightAdjust.height" min="-20" max="100" step="0.1" class="light-slider" />
-              <input type="number" v-model.number="lightAdjust.height" step="0.1" class="light-slider-input" />
-            </div>
-          </div>
-
-          <div class="light-control-row">
-            <label class="light-control-label">缩放 (Scale)</label>
-            <div class="light-slider-container">
-              <input type="range" v-model.number="lightAdjust.scale" min="0.001" max="10.0" step="0.001" class="light-slider" />
-              <input type="number" v-model.number="lightAdjust.scale" step="0.001" class="light-slider-input" />
-            </div>
-          </div>
-
-          <div class="light-control-row">
-            <label class="light-control-label">航向 (Heading)</label>
-            <div class="light-slider-container">
-              <input type="range" v-model.number="lightAdjust.heading" min="0" max="360" step="1" class="light-slider" />
-              <input type="number" v-model.number="lightAdjust.heading" step="1" class="light-slider-input" />
-            </div>
-          </div>
-
-          <div class="light-control-row">
-            <label class="light-control-label">俯仰 (Pitch)</label>
-            <div class="light-slider-container">
-              <input type="range" v-model.number="lightAdjust.pitch" min="-180" max="180" step="1" class="light-slider" />
-              <input type="number" v-model.number="lightAdjust.pitch" step="1" class="light-slider-input" />
-            </div>
-          </div>
-
-          <div class="light-control-row">
-            <label class="light-control-label">翻滚 (Roll)</label>
-            <div class="light-slider-container">
-              <input type="range" v-model.number="lightAdjust.roll" min="-180" max="180" step="1" class="light-slider" />
-              <input type="number" v-model.number="lightAdjust.roll" step="1" class="light-slider-input" />
-            </div>
-          </div>
-
-          <div class="light-panel-buttons">
-            <button @click="snapLightTo('truck')" class="light-btn">🚚 定位至货车点</button>
-            <button @click="snapLightTo('tanker')" class="light-btn">⛽ 定位至油罐车点</button>
-          </div>
-
-          <div class="light-panel-buttons" style="flex-direction: column; gap: 6px;">
-            <button @click="copyLightCoords" class="light-btn btn-primary">📋 复制当前灯光配置参数</button>
-            <button @click="copyAllLightsCoords" class="light-btn">📋 复制所有灯光配置参数</button>
-          </div>
-          
-          <div v-if="coordCopiedMessage" class="light-copied-msg">{{ coordCopiedMessage }}</div>
-        </div>
-      </div>
-     <!-- 📡 5G通信基站微调工具面板 -->
-      <div v-if="isJizhanPanelExpanded" class="light-control-panel jizhan-control-panel">
-        <div class="light-panel-header" @click="toggleJizhanPanel">
-          <span class="light-panel-title">5G基站微调 ({{ currentScene === 'truck' ? '货车现场' : '油罐车现场' }})</span>
-          <span class="light-panel-toggle">✕</span>
-        </div>
-        
-        <div class="light-panel-body">
-          <div class="light-control-row">
-            <label class="light-control-label">显示基站模型</label>
-            <input type="checkbox" v-model="currentJizhanAdjust.show" class="light-checkbox" />
-          </div>
-          
-          <div class="light-control-row">
-            <label class="light-control-label">经度 (Lng)</label>
-            <input type="number" v-model.number="currentJizhanAdjust.lng" step="0.000001" class="light-input-num" />
-          </div>
-          
-          <div class="light-control-row">
-            <label class="light-control-label">纬度 (Lat)</label>
-            <input type="number" v-model.number="currentJizhanAdjust.lat" step="0.000001" class="light-input-num" />
-          </div>
-
-          <div class="light-control-row">
-            <label class="light-control-label">高度 (Height)</label>
-            <div class="light-slider-container">
-              <input type="range" v-model.number="currentJizhanAdjust.height" min="-20" max="100" step="0.1" class="light-slider" />
-              <input type="number" v-model.number="currentJizhanAdjust.height" step="0.1" class="light-slider-input" />
-            </div>
-          </div>
-
-          <div class="light-control-row">
-            <label class="light-control-label">缩放 (Scale)</label>
-            <div class="light-slider-container">
-              <input type="range" v-model.number="currentJizhanAdjust.scale" min="0.01" max="50.0" step="0.1" class="light-slider" />
-              <input type="number" v-model.number="currentJizhanAdjust.scale" step="0.1" class="light-slider-input" />
-            </div>
-          </div>
-
-          <div class="light-control-row">
-            <label class="light-control-label">航向 (Heading)</label>
-            <div class="light-slider-container">
-              <input type="range" v-model.number="currentJizhanAdjust.heading" min="0" max="360" step="1" class="light-slider" />
-              <input type="number" v-model.number="currentJizhanAdjust.heading" step="1" class="light-slider-input" />
-            </div>
-          </div>
-
-          <div class="light-control-row">
-            <label class="light-control-label">俯仰 (Pitch)</label>
-            <div class="light-slider-container">
-              <input type="range" v-model.number="currentJizhanAdjust.pitch" min="-180" max="180" step="1" class="light-slider" />
-              <input type="number" v-model.number="currentJizhanAdjust.pitch" step="1" class="light-slider-input" />
-            </div>
-          </div>
-
-          <div class="light-control-row">
-            <label class="light-control-label">翻滚 (Roll)</label>
-            <div class="light-slider-container">
-              <input type="range" v-model.number="currentJizhanAdjust.roll" min="-180" max="180" step="1" class="light-slider" />
-              <input type="number" v-model.number="currentJizhanAdjust.roll" step="1" class="light-slider-input" />
-            </div>
-          </div>
-
-          <div class="light-panel-buttons">
-            <button @click="snapJizhanToDefault" class="light-btn">📍 重置为默认位置</button>
-          </div>
-
-          <div class="light-panel-buttons">
-            <button @click="copyJizhanCoords" class="light-btn btn-primary">📋 复制基站配置参数</button>
-          </div>
-          
-          <div v-if="jizhanCopiedMessage" class="light-copied-msg">{{ jizhanCopiedMessage }}</div>
-        </div>
-      </div>
 
       <!-- ⛽ 油罐车与泄漏烟雾模型微调工具面板 -->
       <div v-if="isTankerPanelExpanded" class="light-control-panel tanker-control-panel">
@@ -1218,294 +1055,6 @@
         </div>
       </div>
 
-      <!-- 🔥💨 无人感知部署/执行阶段粒子微调面板 -->
-      <div v-if="isLateFirePanelExpanded" class="light-control-panel latefire-control-panel">
-        <div class="light-panel-header" @click="toggleLateFirePanel">
-          <span class="light-panel-title">🔥💨 后期感知阶段粒子微调</span>
-          <span class="light-panel-toggle">✕</span>
-        </div>
-        
-        <div class="light-panel-body" style="padding-top: 8px;">
-          <!-- 粒子类型切换标签页 -->
-          <div class="particle-tabs" style="display: flex; border-bottom: 1px solid rgba(0, 229, 255, 0.25); margin-bottom: 12px; gap: 4px;">
-            <div 
-              class="particle-tab" 
-              @click="activeParticleTab = 'fire'"
-              :style="{
-                flex: 1,
-                textAlign: 'center',
-                padding: '6px 0',
-                cursor: 'pointer',
-                fontSize: '12px',
-                transition: 'all 0.3s',
-                borderBottom: activeParticleTab === 'fire' ? '2px solid #00e5ff' : '2px solid transparent',
-                color: activeParticleTab === 'fire' ? '#00e5ff' : '#8fa5c0',
-                textShadow: activeParticleTab === 'fire' ? '0 0 8px rgba(0,229,255,0.5)' : 'none',
-                fontWeight: activeParticleTab === 'fire' ? 'bold' : 'normal'
-              }"
-            >
-              🔥 火焰粒子
-            </div>
-            <div 
-              class="particle-tab" 
-              @click="activeParticleTab = 'smoke'"
-              :style="{
-                flex: 1,
-                textAlign: 'center',
-                padding: '6px 0',
-                cursor: 'pointer',
-                fontSize: '12px',
-                transition: 'all 0.3s',
-                borderBottom: activeParticleTab === 'smoke' ? '2px solid #00e5ff' : '2px solid transparent',
-                color: activeParticleTab === 'smoke' ? '#00e5ff' : '#8fa5c0',
-                textShadow: activeParticleTab === 'smoke' ? '0 0 8px rgba(0,229,255,0.5)' : 'none',
-                fontWeight: activeParticleTab === 'smoke' ? 'bold' : 'normal'
-              }"
-            >
-              💨 烟雾粒子
-            </div>
-          </div>
-
-          <!-- 火焰粒子微调 -->
-          <div v-if="activeParticleTab === 'fire'">
-            <!-- 粒子大小维度 (宽高) -->
-            <div class="light-control-row">
-              <label class="light-control-label">粒子宽度 (Width)</label>
-              <div class="light-slider-container">
-                <input type="range" v-model.number="lateFireAdjust.imageWidth" min="2" max="40" step="1" class="light-slider" />
-                <input type="number" v-model.number="lateFireAdjust.imageWidth" class="light-slider-input" />
-              </div>
-            </div>
-            <div class="light-control-row">
-              <label class="light-control-label">粒子高度 (Height)</label>
-              <div class="light-slider-container">
-                <input type="range" v-model.number="lateFireAdjust.imageHeight" min="2" max="80" step="1" class="light-slider" />
-                <input type="number" v-model.number="lateFireAdjust.imageHeight" class="light-slider-input" />
-              </div>
-            </div>
-            
-            <!-- 发射速率 -->
-            <div class="light-control-row">
-              <label class="light-control-label">发射速率 (emissionRate)</label>
-              <div class="light-slider-container">
-                <input type="range" v-model.number="lateFireAdjust.emissionRate" min="5" max="100" step="1" class="light-slider" />
-                <input type="number" v-model.number="lateFireAdjust.emissionRate" class="light-slider-input" />
-              </div>
-            </div>
-
-            <!-- 缩放系数上限 -->
-            <div class="light-control-row">
-              <label class="light-control-label">最大缩放 (endScale)</label>
-              <div class="light-slider-container">
-                <input type="range" v-model.number="lateFireAdjust.endScale" min="0.1" max="2.0" step="0.05" class="light-slider" />
-                <input type="number" v-model.number="lateFireAdjust.endScale" step="0.05" class="light-slider-input" />
-              </div>
-            </div>
-
-            <!-- 喷射最大速度 -->
-            <div class="light-control-row">
-              <label class="light-control-label">最大初速度 (maxSpeed)</label>
-              <div class="light-slider-container">
-                <input type="range" v-model.number="lateFireAdjust.maxSpeed" min="0.1" max="4.0" step="0.1" class="light-slider" />
-                <input type="number" v-model.number="lateFireAdjust.maxSpeed" step="0.1" class="light-slider-input" />
-              </div>
-            </div>
-
-            <!-- 上升气流加速度 -->
-            <div class="light-control-row">
-              <label class="light-control-label">上升推力 (gravity)</label>
-              <div class="light-slider-container">
-                <input type="range" v-model.number="lateFireAdjust.gravity" min="0.0" max="3.0" step="0.1" class="light-slider" />
-                <input type="number" v-model.number="lateFireAdjust.gravity" step="0.1" class="light-slider-input" />
-              </div>
-            </div>
-
-            <!-- 空气阻尼阻力 -->
-            <div class="light-control-row">
-              <label class="light-control-label">空气阻力 (drag)</label>
-              <div class="light-slider-container">
-                <input type="range" v-model.number="lateFireAdjust.drag" min="0.80" max="1.00" step="0.01" class="light-slider" />
-                <input type="number" v-model.number="lateFireAdjust.drag" step="0.01" class="light-slider-input" />
-              </div>
-            </div>
-
-            <!-- 粒子寿命范围 -->
-            <div class="light-control-row">
-              <label class="light-control-label">最小寿命 (minLife)</label>
-              <div class="light-slider-container">
-                <input type="range" v-model.number="lateFireAdjust.minLife" min="0.5" max="10.0" step="0.1" class="light-slider" />
-                <input type="number" v-model.number="lateFireAdjust.minLife" step="0.1" class="light-slider-input" />
-              </div>
-            </div>
-
-            <div class="light-control-row">
-              <label class="light-control-label">最大寿命 (maxLife)</label>
-              <div class="light-slider-container">
-                <input type="range" v-model.number="lateFireAdjust.maxLife" min="0.5" max="10.0" step="0.1" class="light-slider" />
-                <input type="number" v-model.number="lateFireAdjust.maxLife" step="0.1" class="light-slider-input" />
-              </div>
-            </div>
-
-            <div class="light-panel-buttons" style="flex-direction: column; gap: 6px; margin-top: 10px;">
-              <button @click="resetLateFireParams" class="light-btn btn-primary">🔄 重置火焰参数</button>
-              <button @click="copyLateFireParams" class="light-btn">📋 复制当前火焰参数</button>
-            </div>
-          </div>
-
-          <!-- 烟雾粒子微调 -->
-          <div v-if="activeParticleTab === 'smoke'">
-            <!-- 粒子大小维度 (宽高) -->
-            <div class="light-control-row">
-              <label class="light-control-label">粒子宽度 (Width)</label>
-              <div class="light-slider-container">
-                <input type="range" v-model.number="lateSmokeAdjust.imageWidth" min="2" max="40" step="1" class="light-slider" />
-                <input type="number" v-model.number="lateSmokeAdjust.imageWidth" class="light-slider-input" />
-              </div>
-            </div>
-            <div class="light-control-row">
-              <label class="light-control-label">粒子高度 (Height)</label>
-              <div class="light-slider-container">
-                <input type="range" v-model.number="lateSmokeAdjust.imageHeight" min="2" max="80" step="1" class="light-slider" />
-                <input type="number" v-model.number="lateSmokeAdjust.imageHeight" class="light-slider-input" />
-              </div>
-            </div>
-            
-            <!-- 发射速率 -->
-            <div class="light-control-row">
-              <label class="light-control-label">发射速率 (emissionRate)</label>
-              <div class="light-slider-container">
-                <input type="range" v-model.number="lateSmokeAdjust.emissionRate" min="5" max="100" step="1" class="light-slider" />
-                <input type="number" v-model.number="lateSmokeAdjust.emissionRate" class="light-slider-input" />
-              </div>
-            </div>
-
-            <!-- 缩放系数上限 -->
-            <div class="light-control-row">
-              <label class="light-control-label">最大缩放 (endScale)</label>
-              <div class="light-slider-container">
-                <input type="range" v-model.number="lateSmokeAdjust.endScale" min="0.1" max="4.0" step="0.05" class="light-slider" />
-                <input type="number" v-model.number="lateSmokeAdjust.endScale" step="0.05" class="light-slider-input" />
-              </div>
-            </div>
-
-            <!-- 喷射最大速度 -->
-            <div class="light-control-row">
-              <label class="light-control-label">最大初速度 (maxSpeed)</label>
-              <div class="light-slider-container">
-                <input type="range" v-model.number="lateSmokeAdjust.maxSpeed" min="0.1" max="4.0" step="0.1" class="light-slider" />
-                <input type="number" v-model.number="lateSmokeAdjust.maxSpeed" step="0.1" class="light-slider-input" />
-              </div>
-            </div>
-
-            <!-- 上升气流加速度 -->
-            <div class="light-control-row">
-              <label class="light-control-label">上升推力 (gravity)</label>
-              <div class="light-slider-container">
-                <input type="range" v-model.number="lateSmokeAdjust.gravity" min="0.0" max="5.0" step="0.1" class="light-slider" />
-                <input type="number" v-model.number="lateSmokeAdjust.gravity" step="0.1" class="light-slider-input" />
-              </div>
-            </div>
-
-            <!-- 空气阻尼阻力 -->
-            <div class="light-control-row">
-              <label class="light-control-label">空气阻力 (drag)</label>
-              <div class="light-slider-container">
-                <input type="range" v-model.number="lateSmokeAdjust.drag" min="0.80" max="1.00" step="0.01" class="light-slider" />
-                <input type="number" v-model.number="lateSmokeAdjust.drag" step="0.01" class="light-slider-input" />
-              </div>
-            </div>
-
-            <!-- 粒子寿命范围 -->
-            <div class="light-control-row">
-              <label class="light-control-label">最小寿命 (minLife)</label>
-              <div class="light-slider-container">
-                <input type="range" v-model.number="lateSmokeAdjust.minLife" min="0.5" max="10.0" step="0.1" class="light-slider" />
-                <input type="number" v-model.number="lateSmokeAdjust.minLife" step="0.1" class="light-slider-input" />
-              </div>
-            </div>
-
-            <div class="light-control-row">
-              <label class="light-control-label">最大寿命 (maxLife)</label>
-              <div class="light-slider-container">
-                <input type="range" v-model.number="lateSmokeAdjust.maxLife" min="0.5" max="10.0" step="0.1" class="light-slider" />
-                <input type="number" v-model.number="lateSmokeAdjust.maxLife" step="0.1" class="light-slider-input" />
-              </div>
-            </div>
-
-            <div class="light-panel-buttons" style="flex-direction: column; gap: 6px; margin-top: 10px;">
-              <button @click="resetLateSmokeParams" class="light-btn btn-primary">🔄 重置烟雾参数</button>
-              <button @click="copyLateSmokeParams" class="light-btn">📋 复制当前烟雾参数</button>
-            </div>
-          </div>
-
-          <div v-if="lateFireCopiedMessage" class="light-copied-msg">{{ lateFireCopiedMessage }}</div>
-        </div>
-      </div>
-
-      <!-- 🏷️ 市级行政区文字标注微调面板 -->
-      <div v-if="labelConfig.show" class="camera-adjust-modal label-adjust-modal">
-        <div class="camera-modal-header">
-          <div class="header-title">
-            <span class="icon">🏷️</span>
-            <span>市级行政区划标注字号微调</span>
-          </div>
-          <button class="close-btn" @click="labelConfig.show = false">✕</button>
-        </div>
-
-        <div class="camera-modal-body">
-          <div class="slider-row">
-            <div class="slider-header">
-              <span class="slider-label">标注字号大小 (px)</span>
-              <span class="val-tag gold-tag">{{ labelConfig.fontSize }} px</span>
-            </div>
-            <div class="slider-control">
-              <input 
-                type="range" 
-                v-model.number="labelConfig.fontSize" 
-                min="12" 
-                max="36" 
-                step="1" 
-                class="cyber-range-slider gold-slider"
-                @input="updateCityLabelsFont"
-              />
-              <input 
-                type="number" 
-                v-model.number="labelConfig.fontSize" 
-                min="12"
-                max="36"
-                class="cyber-num-input gold-input"
-                @change="updateCityLabelsFont"
-              />
-            </div>
-          </div>
-
-          <div class="slider-row">
-            <div class="slider-header">
-              <span class="slider-label">外圈描边厚度 (px)</span>
-              <span class="val-tag gold-tag">{{ labelConfig.outlineWidth }} px</span>
-            </div>
-            <div class="slider-control">
-              <input 
-                type="range" 
-                v-model.number="labelConfig.outlineWidth" 
-                min="1" 
-                max="8" 
-                step="1" 
-                class="cyber-range-slider gold-slider"
-                @input="updateCityLabelsFont"
-              />
-              <input 
-                type="number" 
-                v-model.number="labelConfig.outlineWidth" 
-                min="1"
-                max="8"
-                class="cyber-num-input gold-input"
-                @change="updateCityLabelsFont"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- 🛠️ 右下角微调控制台：悬浮按钮组 -->
@@ -1514,13 +1063,6 @@
       <div class="dock-toggle-handle" @click="isDockCollapsed = !isDockCollapsed" title="显示/隐藏微调控制台">
         <span class="toggle-arrow">{{ isDockCollapsed ? '◀' : '▶' }}</span>
       </div>
-      <button 
-        class="dock-tool-btn label-btn" 
-        :class="{ active: labelConfig.show }" 
-        @click="togglePanel('label')"
-      >
-        标注字号微调
-      </button>
       <button 
         class="dock-tool-btn camera-btn" 
         :class="{ active: cameraAdjust.show }" 
@@ -1541,20 +1083,6 @@
         @click="togglePanel('startCar')"
       >
         初始车流微调
-      </button>
-      <button 
-        class="dock-tool-btn light-btn" 
-        :class="{ active: isLightPanelExpanded }" 
-        @click="toggleLightPanel"
-      >
-        现场灯光微调
-      </button>
-      <button 
-        class="dock-tool-btn jizhan-btn" 
-        :class="{ active: isJizhanPanelExpanded }" 
-        @click="toggleJizhanPanel"
-      >
-        5G基站微调
       </button>
       <button 
         class="dock-tool-btn tanker-btn" 
@@ -1597,13 +1125,6 @@
         @click="toggleSimulationPopupPanel"
       >
         推演浮窗微调
-      </button>
-      <button 
-        class="dock-tool-btn fire-btn" 
-        :class="{ active: isLateFirePanelExpanded }" 
-        @click="toggleLateFirePanel"
-      >
-        后期粒子微调
       </button>
     </div>
 
@@ -3425,11 +2946,7 @@ function copyJizhanCoords() {
   });
 }
 function togglePanel(panelName) {
-  if (panelName === 'label') {
-    const nextVal = !labelConfig.show;
-    closeAllPanelsExcept(panelName);
-    labelConfig.show = nextVal;
-  } else if (panelName === 'camera') {
+  if (panelName === 'camera') {
     const nextVal = !cameraAdjust.show;
     closeAllPanelsExcept(panelName);
     cameraAdjust.show = nextVal;
@@ -3441,14 +2958,6 @@ function togglePanel(panelName) {
     const nextVal = !startStageVehicleAdjust.show;
     closeAllPanelsExcept(panelName);
     startStageVehicleAdjust.show = nextVal;
-  } else if (panelName === 'light') {
-    const nextVal = !isLightPanelExpanded.value;
-    closeAllPanelsExcept(panelName);
-    isLightPanelExpanded.value = nextVal;
-  } else if (panelName === 'jizhan') {
-    const nextVal = !isJizhanPanelExpanded.value;
-    closeAllPanelsExcept(panelName);
-    isJizhanPanelExpanded.value = nextVal;
   } else if (panelName === 'tanker') {
     const nextVal = !isTankerPanelExpanded.value;
     closeAllPanelsExcept(panelName);
@@ -3469,31 +2978,19 @@ function togglePanel(panelName) {
     const nextVal = !isSimulationPopupPanelExpanded.value;
     closeAllPanelsExcept(panelName);
     isSimulationPopupPanelExpanded.value = nextVal;
-  } else if (panelName === 'lateFire') {
-    const nextVal = !isLateFirePanelExpanded.value;
-    closeAllPanelsExcept(panelName);
-    isLateFirePanelExpanded.value = nextVal;
   }
 }
 
 function closeAllPanelsExcept(exceptPanel) {
-  if (exceptPanel !== 'label') labelConfig.show = false;
   if (exceptPanel !== 'camera') cameraAdjust.show = false;
   if (exceptPanel !== 'traffic') trafficConfig.show = false;
   if (exceptPanel !== 'startCar') startStageVehicleAdjust.show = false;
-  if (exceptPanel !== 'light') isLightPanelExpanded.value = false;
-  if (exceptPanel !== 'jizhan') isJizhanPanelExpanded.value = false;
   if (exceptPanel !== 'tanker') isTankerPanelExpanded.value = false;
   if (exceptPanel !== 'uavugv') isUavUgvPanelExpanded.value = false;
   if (exceptPanel !== 'ugvPopup') isUgvPopupPanelExpanded.value = false;
   if (exceptPanel !== 'uavPopup') isUavPopupPanelExpanded.value = false;
   if (exceptPanel !== 'simulationPopup') isSimulationPopupPanelExpanded.value = false;
-  if (exceptPanel !== 'lateFire') isLateFirePanelExpanded.value = false;
   if (exceptPanel !== 'secPopup') isSecDisasterPopupPanelExpanded.value = false;
-}
-
-function toggleJizhanPanel() {
-  togglePanel('jizhan');
 }
 
 
@@ -5408,6 +4905,9 @@ const loadMission = async (isMultiAgent = false) => {
     const czmlUav = dataSource.entities.getById('UAV');
     if (czmlUav) {
       czmlUav.show = showAutonomousUavRoute;
+      if (czmlUav.model) {
+        czmlUav.model.runAnimations = true;
+      }
       czmlUav.path = undefined; // 必须将 path 设为 undefined，否则 CallbackProperty 导致 Cesium PathVisualizer 在更新轨迹线时崩溃
       if (!czmlUav.originalPosition) {
         czmlUav.originalPosition = czmlUav.position;
@@ -6724,7 +6224,24 @@ const focusRiskVehicleOnMap = (item) => {
   if (!viewer || !item) return;
   const { lng, lat, plate, type, levelClass, reason } = item;
 
-  // 1. 在在途移动车辆中寻找匹配或分配一辆移动点位
+  // 1. 清除上一次的追踪点与大标牌，并显隐复原上一次被追踪车辆的默认小标牌
+  if (viewer) {
+    viewer.trackedEntity = undefined;
+  }
+  if (activeFocusedRiskEntity) {
+    viewer.entities.remove(activeFocusedRiskEntity);
+    activeFocusedRiskEntity = null;
+  }
+  if (activeFocusedRiskPoint) {
+    viewer.entities.remove(activeFocusedRiskPoint);
+    activeFocusedRiskPoint = null;
+  }
+  if (trackedRiskVehicle && trackedRiskVehicle.billboard) {
+    trackedRiskVehicle.billboard.show = true; // 复原前一辆车的常规车牌浮标显示
+    trackedRiskVehicle = null;
+  }
+
+  // 2. 在在途移动车辆中寻找匹配或分配一辆移动点位
   let matched = null;
   let targetLng = lng;
   let targetLat = lat;
@@ -6739,7 +6256,6 @@ const focusRiskVehicleOnMap = (item) => {
       matched = candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : lkywVehicles.value[0];
       if (matched) {
         matched.plate = plate.replace('-', '·');
-        // 重绘其车辆顶部的正常胶囊标牌车牌号
         const newCanvas = createVehicleBillboardCanvas(matched.category, matched.plate, matched.speed);
         matched.billboard.image = newCanvas;
       }
@@ -6748,6 +6264,10 @@ const focusRiskVehicleOnMap = (item) => {
 
   if (matched) {
     trackedRiskVehicle = matched;
+    // 关键：隐退这辆车默认的常规车牌浮标，避免与其上方的预警大悬浮窗口互相重叠打架
+    if (matched.billboard) {
+      matched.billboard.show = false;
+    }
     const cartesian = matched.billboard.position;
     const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
     targetLng = Cesium.Math.toDegrees(cartographic.longitude);
@@ -6756,28 +6276,23 @@ const focusRiskVehicleOnMap = (item) => {
     trackedRiskVehicle = null;
   }
 
-  // 2. 清除上一次的追踪点与标牌，解除相机绑定
-  if (viewer) {
-    viewer.trackedEntity = undefined;
-  }
-  if (activeFocusedRiskEntity) {
-    viewer.entities.remove(activeFocusedRiskEntity);
-    activeFocusedRiskEntity = null;
-  }
-  if (activeFocusedRiskPoint) {
-    viewer.entities.remove(activeFocusedRiskPoint);
-    activeFocusedRiskPoint = null;
-  }
+  // 3. 构造动态跟随逻辑（当车辆在道路上行驶时，预警大标牌与红点 100% 实时平滑跟随车辆，绝不留在原地与后续车辆重叠）
+  const dynamicPosition = new Cesium.CallbackProperty(() => {
+    if (trackedRiskVehicle && trackedRiskVehicle.billboard && trackedRiskVehicle.billboard.position) {
+      return trackedRiskVehicle.billboard.position;
+    }
+    return Cesium.Cartesian3.fromDegrees(targetLng, targetLat);
+  }, false);
 
-  // 3. 绘制带有预警详情的精致赛博胶囊标牌与呼吸点
+  // 4. 绘制带有预警详情的赛博风险大标牌（增加 pixelOffset 垂直向上避让 28px）
   const canvas = createRiskVehicleCanvas(plate, type, reason);
-  const position = Cesium.Cartesian3.fromDegrees(targetLng, targetLat);
 
   activeFocusedRiskEntity = viewer.entities.add({
-    position: position,
+    position: dynamicPosition,
     billboard: {
       image: canvas,
       scale: 0.8,
+      pixelOffset: new Cesium.Cartesian2(0, -28), // 向上抬高避开下方红点与模型
       verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
       disableDepthTestDistance: Number.POSITIVE_INFINITY
     }
@@ -6791,7 +6306,7 @@ const focusRiskVehicleOnMap = (item) => {
   }
 
   activeFocusedRiskPoint = viewer.entities.add({
-    position: position,
+    position: dynamicPosition,
     point: {
       color: Cesium.Color.fromCssColorString(dotColor),
       pixelSize: 10.0,
@@ -6804,7 +6319,7 @@ const focusRiskVehicleOnMap = (item) => {
   // 设置跟随相机偏移量（西南偏南 1500m 距离，1000m 高度俯瞰视角）
   activeFocusedRiskPoint.viewFrom = new Cesium.Cartesian3(-1500, -1500, 1000);
 
-  // 4. 照相机飞抵该移动点位并锁定追踪
+  // 5. 照相机飞抵该移动点位并锁定追踪
   viewer.camera.flyTo({
     destination: Cesium.Cartesian3.fromDegrees(targetLng, targetLat, 2500),
     orientation: {
@@ -9257,8 +8772,8 @@ const currentLng = circleCenterLng + radiusLng * Math.cos(angle);
         scale: new Cesium.CallbackProperty(() => uavAdjust.scale > 0 ? uavAdjust.scale : 0.1, false),
         minimumPixelSize: 1, // 改为 1 像素，使无人机完全遵循真实的 3D 空间透视，随视角远近自然缩放
         heightReference: Cesium.HeightReference.NONE,
-        // 关闭 Entity 自带的动画调度，完全交由 playEntityAnimation 手动精确管理
-        runAnimations: false,
+        // 开启无人机 3D 模型内置螺旋臂/螺旋桨的高速旋转动画
+        runAnimations: true,
         silhouetteColor: Cesium.Color.fromCssColorString('#00f2fe'),
         silhouetteSize: 2.0
       }
@@ -9943,8 +9458,8 @@ if (props.activePhaseIndex === 3 || props.activePhaseIndex === 7) {
         scale: new Cesium.CallbackProperty(() => tankerUavAdjust.scale > 0 ? tankerUavAdjust.scale : 0.1, false),
         minimumPixelSize: 1, // 改为 1 像素，使无人机完全遵循真实的 3D 空间透视，随视角远近自然缩放
         heightReference: Cesium.HeightReference.NONE,
-        // 关闭 Entity 自带的动画调度，完全交由 playEntityAnimation 手动精确管理
-        runAnimations: false,
+        // 开启无人机 3D 模型内置螺旋臂/螺旋桨的高速旋转动画
+        runAnimations: true,
         silhouetteColor: Cesium.Color.fromCssColorString('#00f2fe'),
         silhouetteSize: 2.0
       }
@@ -16018,106 +15533,9 @@ async function triggerRescueMultiAgent() {
   margin-top: 4px;
 }
 
-/* 🏷️ 地图行政区划标注字号控制台 */
-.map-label-style-control {
-  margin-bottom: 12px;
-  background: rgba(15, 23, 42, 0.45);
-  border: 1px solid rgba(0, 242, 254, 0.25);
-  border-radius: 8px;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  box-shadow: 0 0 15px rgba(0, 242, 254, 0.08);
-}
 
-.control-label-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
 
-.control-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: #ffffff;
-}
 
-.control-value-badge {
-  font-size: 11px;
-  font-weight: 700;
-  color: #00f2fe;
-  background: rgba(0, 242, 254, 0.1);
-  border: 1px solid rgba(0, 242, 254, 0.3);
-  padding: 1px 8px;
-  border-radius: 10px;
-  font-family: monospace;
-}
-
-.control-slider-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.size-icon {
-  font-size: 11px;
-  font-weight: 700;
-  color: #94a3b8;
-}
-
-.size-icon.big {
-  font-size: 14px;
-  color: #00f2fe;
-}
-
-.dock-tool-btn.label-btn {
-  background: rgba(0, 242, 254, 0.1);
-  border-color: rgba(0, 242, 254, 0.3);
-  color: #00f2fe;
-}
-
-.dock-tool-btn.label-btn:hover,
-.dock-tool-btn.label-btn.active {
-  background: rgba(0, 242, 254, 0.25);
-  border-color: #00f2fe;
-  box-shadow: 0 0 12px rgba(0, 242, 254, 0.4);
-}
-
-/* 6灯光选项卡选择样式 */
-.light-select-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  width: 200px;
-}
-
-.light-tab-btn {
-  flex-grow: 1;
-  min-width: 58px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-  padding: 4px 0;
-  color: #a0aec0;
-  font-size: 11px;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: center;
-}
-
-.light-tab-btn:hover {
-  background: rgba(0, 229, 255, 0.1);
-  border-color: rgba(0, 229, 255, 0.4);
-  color: #00ffd8;
-}
-
-.light-tab-btn.active {
-  background: rgba(0, 229, 255, 0.25);
-  border-color: #00ffd8;
-  color: #ffffff;
-  box-shadow: 0 0 8px rgba(0, 255, 216, 0.2);
-}
 
 /* ⛽ 油罐车模型与泄漏点微调面板专属橙色高端拟态样式 */
 .dock-tool-btn.tanker-btn {

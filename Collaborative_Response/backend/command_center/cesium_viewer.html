@@ -313,6 +313,7 @@
                 viewer.clock.stopTime = missionDs.clock.stopTime;
                 viewer.clock.currentTime = missionDs.clock.startTime;
                 viewer.clock.clockRange = Cesium.ClockRange.LOOP_STOP;
+                viewer.clock.multiplier = 1;
                 if (viewer.timeline) {
                     viewer.timeline.zoomTo(missionDs.clock.startTime, missionDs.clock.stopTime);
                 }
