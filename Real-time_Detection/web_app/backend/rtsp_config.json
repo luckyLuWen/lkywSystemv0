@@ -2,8 +2,8 @@
   "rtsp_streams": [
     {
       "id": "rtsp_cam_01",
-      "name": "OBS模拟摄像头-01",
-      "url": "rtmp://127.0.0.1:1935/live",
+      "name": "RTSP视频流-01",
+      "url": "rtsp://127.0.0.1:8554/live",
       "location": "测试区域A",
       "enabled": true
     }
