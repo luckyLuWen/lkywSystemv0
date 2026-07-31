@@ -318,7 +318,7 @@ def get_detections(limit=50, offset=0, model_name=None, label=None, source_type=
     conn = get_db()
     query = (
         'SELECT id, timestamp, model_name, original_filename, saved_filename, '
-        'result_filename, detection_count, detections_json, inference_time_s, source_type '
+        'result_filename, detection_count, detections_json, inference_time_s, conf_threshold, iou_threshold, source_type '
         'FROM detections'
     )
     where_clauses = []

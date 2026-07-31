@@ -71,22 +71,29 @@ const exportCSV = () => {
 <style scoped>
 .export-buttons {
   display: flex;
-  gap: 10px;
+  gap: 18px;
 }
 
 .btn-export {
   background: transparent;
-  border: 1px solid var(--border-cyan);
+  border: 2px solid var(--border-cyan);
   color: var(--primary-cyan);
-  padding: 8px 18px;
-  border-radius: 4px;
-  font-size: 14px;
+  padding: 14px 38px;
+  border-radius: 8px;
+  font-size: 24px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  min-height: 58px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .btn-export:hover {
-  background: rgba(0, 229, 255, 0.1);
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.15);
+  background: rgba(0, 229, 255, 0.15);
+  border-color: var(--primary-cyan);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
 }
 </style>

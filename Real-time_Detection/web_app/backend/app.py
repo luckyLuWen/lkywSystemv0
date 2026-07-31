@@ -1245,29 +1245,78 @@ def get_rtsp_status():
     })
 
 
+def run_rtsp_frame_detection(frame, model_name, detection_mode, conf_threshold, iou_threshold):
+    available_models = list(MODEL_PATHS.keys())
+    default_model = available_models[0] if available_models else 'SFGA-YOLO26M'
+    if model_name not in MODEL_PATHS:
+        model_name = default_model
+
+    selected_models = [model_name]
+    if detection_mode == 'composite':
+        selected_models = [name for name in COMPOSITE_MODEL_NAMES if name in MODEL_PATHS]
+        if not selected_models:
+            selected_models = [model_name]
+
+    all_detections = []
+    for current_model_name in selected_models:
+        model_result = run_frame_detection_for_model(
+            current_model_name,
+            frame,
+            conf_threshold,
+            iou_threshold
+        )
+        all_detections.extend(model_result['detections'])
+
+    if detection_mode == 'composite':
+        final_detections = merge_detections(all_detections, threshold=0.7, same_class_only=False, prefer='area')
+    else:
+        final_detections = merge_detections(all_detections, threshold=0.8, same_class_only=True, prefer='confidence')
+
+    annotated_frame = frame.copy()
+    draw_detections_on_image(annotated_frame, final_detections)
+
+    return annotated_frame, final_detections
+
+
 def start_rtsp_detector(data):
-    """Start an RTSP detector from a plain command/API payload."""
+    """Start or update an RTSP detector."""
     stream_id = data.get('stream_id') or data.get('streamId') or 'rtsp_cam_01'
     rtsp_url = data.get('rtsp_url') or data.get('rtspUrl')
     camera_name = data.get('camera_name') or data.get('cameraName') or 'RTSP Camera'
     model_name = data.get('model') or list(MODEL_PATHS.keys())[0]
+    detection_mode = data.get('detection_mode') or 'single'
+    task_type = data.get('task_type') or 'collision'
+    conf_threshold = float(data.get('conf') if data.get('conf') is not None else 0.25)
+    iou_threshold = float(data.get('iou') if data.get('iou') is not None else 0.45)
 
     if not rtsp_url:
         return {'error': 'RTSP URL is required'}, 400
 
     if stream_id in rtsp_detectors:
-        return {'success': True, 'message': 'Stream already running', 'stream_id': stream_id}, 200
+        detector = rtsp_detectors[stream_id]
+        detector.update_settings(
+            conf_threshold=conf_threshold,
+            iou_threshold=iou_threshold,
+            model_name=model_name,
+            detection_mode=detection_mode,
+            task_type=task_type
+        )
+        return {'success': True, 'message': 'Stream settings updated', 'stream_id': stream_id}, 200
 
     raw_model_path = MODEL_PATHS.get(model_name)
-    if raw_model_path is None:
-        return {'error': f'Model not found: {model_name}'}, 404
+    model_path = str(resolve_path(raw_model_path)) if raw_model_path else None
 
-    model_path = str(resolve_path(raw_model_path))
     detector = RTSPDetector(
         model_path=model_path,
         rtsp_url=rtsp_url,
         camera_id=stream_id,
         on_detection=on_rtsp_detection_event,
+        detect_frame_fn=run_rtsp_frame_detection,
+        conf_threshold=conf_threshold,
+        iou_threshold=iou_threshold,
+        model_name=model_name,
+        detection_mode=detection_mode,
+        task_type=task_type
     )
     detector.connect()
     detector.start()
@@ -1396,22 +1445,33 @@ def rtsp_video_feed(stream_id):
     def generate():
         detector = rtsp_detectors.get(stream_id)
         if not detector: return
-        while detector.is_running:
-            frame = detector.get_frame()
-            if frame is not None:
+        last_version = -1
+        while detector and detector.is_running:
+            frame, version = detector.get_frame()
+            if frame is not None and version != last_version:
+                last_version = version
                 ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
                 if ret:
                     yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
             else:
-                import time
-                time.sleep(0.05)
+                time.sleep(0.015)
     return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/api/rtsp/detection/<stream_id>', methods=['GET'])
 def get_rtsp_detection(stream_id):
     if stream_id in rtsp_detectors:
         detector = rtsp_detectors[stream_id]
-        return jsonify({'success': True, 'detection': detector.get_detection_result(), 'stats': detector.get_stats()})
+        res = {
+            'success': True,
+            'detection': detector.get_detection_result(),
+            'stats': detector.get_stats()
+        }
+        frame, _ = detector.get_frame()
+        if frame is not None:
+            ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 65])
+            if ret:
+                res['image'] = f"data:image/jpeg;base64,{base64.b64encode(buffer).decode('utf-8')}"
+        return jsonify(res)
     return jsonify({'error': 'Not found'}), 404
 
 if __name__ == '__main__':
