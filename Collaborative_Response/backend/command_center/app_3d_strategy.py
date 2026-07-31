@@ -913,7 +913,7 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
     start_str = format_timestamp(global_start_time)
     avail = f"{start_str}/{format_timestamp(global_end_time)}"
     
-    czml = [{"id": "document", "version": "1.0", "clock": {"interval": avail, "currentTime": start_str, "multiplier": 190, "range": "LOOP_STOP"}}]
+    czml = [{"id": "document", "version": "1.0", "clock": {"interval": avail, "currentTime": start_str, "multiplier": 1, "range": "LOOP_STOP"}}]
     
     # 静态地标
     czml.append({"id": "StartMarker", "position": {"cartographicDegrees": [START_POINT[1], START_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [0,255,0,255]}}, "label": {"text": START_POINT_NAME, "font": "16px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}, "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 25000.0]}}})
