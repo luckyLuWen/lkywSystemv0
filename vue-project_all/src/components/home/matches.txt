@@ -1,0 +1,483 @@
+37: <li><strong>空基巡航层：</strong>无人机搭载红外热成像相机，执行大范围视场唤醒与全局热点追踪。</li>
+56: <!-- 无人机/无人车 出动速度 -->
+60: <span class="slider-label">无人机出动耗时 (秒)</span>
+61: <span class="val-tag gold-tag">{{ agentSpeedConfig.uavDuration.toFixed(1) }}s</span>
+64: <input type="range" v-model.number="agentSpeedConfig.uavDuration" min="1" max="30" step="0.5" class="cyber-range-slider gold-slider" />
+65: <input type="number" v-model.number="agentSpeedConfig.uavDuration" min="1" max="30" class="cyber-num-input gold-input" />
+404: <!-- 整体轨迹快捷平移微调 -->
+741: <!-- ⛽ 油罐车与泄漏烟雾模型微调工具面板 -->
+764: 泄漏烟雾中心
+826: <!-- 🤖 无人机与无人车模型微调工具面板 -->
+827: <div v-if="isUavUgvPanelExpanded" class="light-control-panel uavugv-control-panel">
+828: <div class="light-panel-header" @click="toggleUavUgvPanel">
+857: :class="['light-tab-btn', { active: activeUavUgvTarget === 'uav' }]"
+858: @click="activeUavUgvTarget = 'uav'"
+861: 无人机 (UAV)
+864: :class="['light-tab-btn', { active: activeUavUgvTarget === 'ugv' }]"
+865: @click="activeUavUgvTarget = 'ugv'"
+873: <template v-if="activeUavUgvTarget === 'uav'">
+876: <input type="number" v-model.number="currentUavAdjust.lng" step="0.000001" class="light-input-num" />
+881: <input type="number" v-model.number="currentUavAdjust.lat" step="0.000001" class="light-input-num" />
+887: <input type="range" v-model.number="currentUavAdjust.height" min="-20" max="150" step="0.1" class="light-slider" />
+888: <input type="number" v-model.number="currentUavAdjust.height" step="0.1" class="light-slider-input" />
+895: <input type="range" v-model.number="currentUavAdjust.scale" min="0.1" max="100.0" step="0.1" class="light-slider" />
+896: <input type="number" v-model.number="currentUavAdjust.scale" step="0.1" class="light-slider-input" />
+903: <input type="range" v-model.number="currentUavAdjust.heading" min="-180" max="360" step="1" class="light-slider" />
+904: <input type="number" v-model.number="currentUavAdjust.heading" step="1" class="light-slider-input" />
+962: <button @click="copyUavUgvCoords" class="light-btn btn-primary">📋 复制当前配置参数</button>
+963: <button @click="snapUavUgvToDefault" class="light-btn">📍 重置为默认位置</button>
+966: <div v-if="uavUgvCopiedMessage" class="light-copied-msg">{{ uavUgvCopiedMessage }}</div>
+1023: <!-- 🚁 无人机已就位/出发悬浮窗微调面板 -->
+1024: <div v-if="isUavPopupPanelExpanded" class="light-control-panel uavpopup-control-panel">
+1025: <div class="light-panel-header" @click="toggleUavPopupPanel">
+1026: <span class="light-panel-title">🚁 无人机悬浮窗微调 ({{ currentScene === 'truck' ? '货车现场' : '油罐车现场' }})</span>
+1068: <button @click="resetUavPopupCoords" class="light-btn btn-primary">🔄 重置默认偏移</button>
+1069: <button @click="copyUavPopupParams" class="light-btn">📋 复制当前悬浮窗参数</button>
+1072: <div v-if="uavPopupCopiedMessage" class="light-copied-msg">{{ uavPopupCopiedMessage }}</div>
+1158: 💨 烟雾粒子
+1248: <!-- 烟雾粒子微调 -->
+1329: <button @click="resetLateSmokeParams" class="light-btn btn-primary">🔄 重置烟雾参数</button>
+1330: <button @click="copyLateSmokeParams" class="light-btn">📋 复制当前烟雾参数</button>
+1460: class="dock-tool-btn uavugv-btn"
+1461: :class="{ active: isUavUgvPanelExpanded }"
+1462: @click="toggleUavUgvPanel"
+1474: class="dock-tool-btn uavpopup-btn"
+1475: :class="{ active: isUavPopupPanelExpanded }"
+1476: @click="toggleUavPopupPanel"
+1545: <span class="status-tag" :class="sensorFusionState.uav.statusClass">{{ sensorFusionState.uav.text }}</span>
+1586: <!-- 故事线检测告警弹窗：事故发生 / 次生灾害起火 -->
+1813: <!-- ✈️ 无人机出发悬浮窗 -->
+1816: class="shelter-popup-panel uav-dispatch-popup"
+1819: <div class="shelter-popup-header uav-dispatch-header">
+1902: <div class="ugv-sensor-item wide"><span class="ugv-sensor-label">烟雾</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvA.smoke + ' ug' : '--' }}</span></div>
+1910: <div class="ugv-sensor-item wide"><span class="ugv-sensor-label">烟雾</span><span class="ugv-sensor-val">{{ props.isWsConnected ? ugvB.smoke + ' ug' : '--' }}</span></div>
+1919: <!-- 无人机现场侦察照片悬浮窗 -->
+1922: class="uav-photo-panel"
+1924: <div class="uav-photo-header">
+1925: <span class="uav-photo-icon">📸</span>
+1926: <span class="uav-photo-title">多角度现场侦察拍图 ({{ capturedCount }}/4)</span>
+1927: <span class="uav-status-tag" :class="{ 'status-done': capturedCount === 4 }">
+1932: <div class="uav-photo-content">
+1934: <div class="uav-main-photo-wrapper">
+1938: :class="['uav-photo-img', 'photo-angle-' + activePhotoIndex]"
+1939: alt="无人机侦察照片"
+1941: <div v-else class="uav-photo-placeholder">
+1943: <span>等待无人机到达拍照位置...</span>
+1946: <div class="uav-photo-overlay" v-if="activePhotoIndex !== null">
+1947: <div class="uav-photo-timestamp">REC ● {{ currentTimeStr }}</div>
+1948: <div class="uav-photo-coords">{{ getAngleName(activePhotoIndex) }} ({{ props.phases[0]?.id.startsWith('t-') ? '113.1048°E, 30.3855°N' : '114.8933°E, 30.6317°N' }})</div>
+1953: <div class="uav-thumbnails-row">
+1957: class="uav-thumb-box"
+1964: <div class="uav-thumb-inner" v-if="capturedPhotos[i]">
+1967: :class="['uav-thumb-img', 'photo-angle-' + i]"
+1971: <div class="uav-thumb-lock" v-else>
+2434: // 3. 空基节点 (无人机) 状态
+2435: uav: {
+2582: title: '次生灾害起火告警',
+2583: phaseLabel: '次生灾害（起火）',
+2589: results: ['两客一危车辆', '碰撞起火'],
+2590: report: '检测到事故车辆起火并伴随浓烟，建议立即触发消防救援与交通封控联动。',
+2593: { x: 37, y: 21, width: 34, height: 43, label: '碰撞起火', kind: 'fire' }
+2619: title: '次生灾害泄露告警',
+2620: phaseLabel: '次生灾害（泄露）',
+2627: report: '检测到油罐车罐体出现危化品泄露迹象，白色烟雾从罐体破损区域持续外逸，建议立即布设空气监测与封控半径。',
+2637: title: '次生灾害弥漫告警',
+2638: phaseLabel: '次生灾害（弥漫）',
+2673: uavDuration: 6.0,         // 无人机出动动画时长 (秒)
+2773: { shortLabel: '无人机出动', title: '无人机出动前往现场' },
+2774: { shortLabel: '无人机侦察', title: '无人机快速出动侦察' },
+2775: { shortLabel: '次生灾害（烟雾）', title: '事故现场产生大量烟雾' },
+2776: { shortLabel: '次生灾害（起火）', title: '事故车辆开始起火' },
+2788: { shortLabel: '无人机出动', title: '无人机出动前往现场' },
+2789: { shortLabel: '无人机侦察', title: '无人机快速出动侦察' },
+2790: { shortLabel: '次生灾害（泄露）', title: '罐体受损开始发生化学品泄露' },
+2791: { shortLabel: '次生灾害（弥漫）', title: '泄露液体开始向四周大面积弥漫' },
+3133: } else if (panelName === 'uavugv') {
+3134: const nextVal = !isUavUgvPanelExpanded.value;
+3136: isUavUgvPanelExpanded.value = nextVal;
+3141: } else if (panelName === 'uavPopup') {
+3142: const nextVal = !isUavPopupPanelExpanded.value;
+3144: isUavPopupPanelExpanded.value = nextVal;
+3164: if (exceptPanel !== 'uavugv') isUavUgvPanelExpanded.value = false;
+3166: if (exceptPanel !== 'uavPopup') isUavPopupPanelExpanded.value = false;
+3226: const uavPopupCopiedMessage = ref('');
+3255: const isUavUgvPanelExpanded = ref(false)
+3257: const isUavPopupPanelExpanded = ref(false)
+3264: function toggleUavUgvPanel() {
+3265: togglePanel('uavugv')
+3272: function toggleUavPopupPanel() {
+3273: togglePanel('uavPopup')
+3361: // 💨 烟雾粒子微调参数与控制
+3393: lateFireCopiedMessage.value = '已成功复制烟雾参数到剪贴板！';
+3406: // 实时监听微调面板数值变化，热更新烟雾粒子系统参数
+3443: // 无人机视频/图像时间戳更新
+3484: // 无人机多角度照片拍摄状态
+3505: return isTruck ? '/Dashboard/images/uav_aerial_photo.png' : '/Dashboard/images/tanker_aerial_photo.png'
+3529: const thumbs = document.querySelectorAll('.sidebar-thumb-box, .uav-thumb-box');
+3553: // 无人机出动状态与坐标
+3558: title: '无人机出发',
+3623: // 🛣️ 整体向东/西/南/北快捷平移整条道路航点轨迹 (米)
+3662: if (rescuePopup.title === '无人机已到达') {
+3683: function resetUavPopupCoords() {
+3685: if (rescuePopup.title === '无人机已到达') {
+3704: function copyUavPopupParams() {
+3707: const stateStr = rescuePopup.title === '无人机已到达' ? 'reached' : 'start';
+3708: const params = `// ${prefix} UAV popup (${stateStr})\nrescuePopup.xOffset = ${rescuePopup.xOffset};\nrescuePopup.yOffset = ${rescuePopup.yOffset};`;
+3710: uavPopupCopiedMessage.value = '已成功复制偏移参数到剪贴板！';
+3712: uavPopupCopiedMessage.value = '';
+3716: uavPopupCopiedMessage.value = '复制失败，请手动记录';
+3718: uavPopupCopiedMessage.value = '';
+3774: let sharedTruckUavPosition = null;
+3775: let sharedTankerUavPosition = null;
+3788: const currentUavAdjust = computed(() => {
+3789: return currentScene.value === 'truck' ? uavAdjust : tankerUavAdjust
+3849: // 无人机配置
+3850: // 无人机配置 (包含主无人机与2架僚机，支持编队飞行与120度等距环绕)
+3851: const uavModelConfigs = [
+3853: { id: 'uav_model', uri: '/Dashboard/models/drone_all7.glb', label: '1号出动无人机', lonOffset: 0, latOffset: 0, angleOffset: 0 },
+3854: { id: 'uav_model_move', uri: '/Dashboard/models/drone_all7.glb', label: '1号感知部署无人机', lonOffset: 0, latOffset: 0, angleOffset: 0 },
+3856: { id: 'uav_model_2', uri: '/Dashboard/models/drone_all7.glb', label: '2号出动无人机', lonOffset: -0.00005, latOffset: -0.00005, angleOffset: Math.PI * 2 / 3 },
+3857: { id: 'uav_model_move_2', uri: '/Dashboard/models/drone_all7.glb', label: '2号感知部署无人机', lonOffset: -0.00005, latOffset: -0.00005, angleOffset: Math.PI * 2 / 3 },
+3859: { id: 'uav_model_3', uri: '/Dashboard/models/drone_all7.glb', label: '3号出动无人机', lonOffset: 0.00005, latOffset: -0.00005, angleOffset: Math.PI * 4 / 3 },
+3860: { id: 'uav_model_move_3', uri: '/Dashboard/models/drone_all7.glb', label: '3号感知部署无人机', lonOffset: 0.00005, latOffset: -0.00005, angleOffset: Math.PI * 4 / 3 }
+3986: // Catmull-Rom 样条平滑轨迹插值计算器（支持车辆沿真实 Cesium 弧形公路自然转弯）
+4103: // 无人机位置调整（起始点：仙桃市三伏潭镇专职消防队）
+4104: const uavAdjust = reactive({
+4121: let uavEntities = []
+4127: let uavOrbitStartTime = 0
+4129: let lastUavPhaseIndex = -1
+4131: // 油罐车场景的无人机和救援车配置（独立控制）
+4132: const tankerUavAdjust = reactive({
+4150: const activeUavUgvTarget = ref('uav');
+4151: const uavUgvCopiedMessage = ref('');
+4153: function snapUavUgvToDefault() {
+4155: if (activeUavUgvTarget.value === 'uav') {
+4157: tankerUavAdjust.scale = 67.3;
+4158: tankerUavAdjust.heading = 34;
+4159: tankerUavAdjust.lng = 114.89539;
+4160: tankerUavAdjust.lat = 30.63129;
+4161: tankerUavAdjust.height = 120.0;
+4163: uavAdjust.scale = 58.3;
+4164: uavAdjust.heading = 18;
+4165: uavAdjust.lng = 113.202;
+4166: uavAdjust.lat = 30.3268;
+4167: uavAdjust.height = 98.8;
+4190: function copyUavUgvCoords() {
+4192: const targetName = activeUavUgvTarget.value === 'uav' ? 'UAV' : 'UGV';
+4194: const objName = activeUavUgvTarget.value === 'uav'
+4195: ? (isTanker ? 'tankerUavAdjust' : 'uavAdjust')
+4198: const obj = activeUavUgvTarget.value === 'uav' ? currentUavAdjust.value : currentRescueCarAdjust.value;
+4199: const execHeadingLine = activeUavUgvTarget.value === 'ugv' ? `\n${objName}.execHeading = ${obj.execHeading};` : '';
+4203: uavUgvCopiedMessage.value = `已成功复制当前${targetName}配置参数到剪贴板！`;
+4205: uavUgvCopiedMessage.value = '';
+4209: uavUgvCopiedMessage.value = '复制失败，请手动记录';
+4211: uavUgvCopiedMessage.value = '';
+4267: const uavPath = currentMissionDataSource.entities.getById('UAV_Path');
+4268: if (!carPath || !carPath.polyline || !carPath.polyline.positions || !uavPath || !uavPath.polyline || !uavPath.polyline.positions) return null;
+4295: const duration = currentSceneName === 'truck' ? agentSpeedConfig.uavDuration * 1000 : 10000;
+4410: // 油罐车场景的无人机和救援车实体数组
+4411: let tankerUavEntities = []
+4418: let tankerUavOrbitStartTime = 0
+4419: let lastTankerUavPhaseIndex = -1
+4744: lkywfire: '两客一危车辆碰撞起火',
+4745: lkyw_fire: '两客一危车辆碰撞起火',
+4750: carfire: '轿车碰撞起火',
+4751: car_fire: '轿车碰撞起火',
+4945: // 如果是加载多智能体（5类救援路线），立刻隐藏原有的无人机/无人车路线，防止后台计算期间页面显示错误的旧路线
+4947: ['UAV_Path', 'Car_Path', 'UAV_Path_glow', 'Car_Path_glow'].forEach(id => {
+4996: const showAutonomousUavRoute = phaseIdx >= 3 && phaseIdx < 11 && !isMultiAgent;
+4999: // 让 CZML 的 UAV 和 Car 实体位置与自定义 3D 模型位置完全对齐，避免分叉
+5003: czmlCar.path = undefined; // 必须将 path 设为 undefined，否则 CallbackProperty 导致 Cesium PathVisualizer 在更新轨迹线时崩溃
+5017: const czmlUav = dataSource.entities.getById('UAV');
+5018: if (czmlUav) {
+5019: czmlUav.show = showAutonomousUavRoute;
+5020: czmlUav.path = undefined; // 必须将 path 设为 undefined，否则 CallbackProperty 导致 Cesium PathVisualizer 在更新轨迹线时崩溃
+5021: if (!czmlUav.originalPosition) {
+5022: czmlUav.originalPosition = czmlUav.position;
+5024: czmlUav.position = new Cesium.CallbackProperty(() => {
+5026: const callback = isTanker ? sharedTankerUavPosition : sharedTruckUavPosition;
+5030: return czmlUav.originalPosition ? czmlUav.originalPosition.getValue(getQueryTime()) : null;
+5035: const uavPath = dataSource.entities.getById('UAV_Path');
+5036: if (uavPath) {
+5037: uavPath.show = showAutonomousUavRoute;
+5038: if (uavPath.polyline) uavPath.polyline.show = showAutonomousUavRoute;
+5040: const uavPathGlow = dataSource.entities.getById('UAV_Path_glow');
+5041: if (uavPathGlow) {
+5042: uavPathGlow.show = showAutonomousUavRoute;
+5043: if (uavPathGlow.polyline) uavPathGlow.polyline.show = showAutonomousUavRoute;
+5116: // 根据用户要求，加快无人机无人车行走的时间，如果是多智能体出动则更快
+5120: console.error('加载三维轨迹 CZML 失败:', error);
+5164: const allEntities = [...truckEntities, ...tankerEntities, ...uavEntities, ...tankerUavEntities];
+5196: // 核心修复逻辑：如果是无人机，且可见，则强制要求以高速持续旋转
+5197: if (entity.id.includes('uav_model') && entity.show) {
+5200: console.log(`[Cesium] 正在强制接管无人机螺旋桨动画: ${entity.id}`);
+5214: console.warn(`[Cesium] 激活无人机螺旋桨动画失败: ${entity.id}`, animErr);
+5406: startScale: 1.5, // 与烟雾保持一致
+5407: endScale: 12.0, // 与烟雾保持一致
+5408: minimumParticleLife: 4.0, // 与烟雾保持一致
+5409: maximumParticleLife: 8.0, // 与烟雾保持一致
+5410: minimumSpeed: 1.0, // 与烟雾保持一致
+5411: maximumSpeed: 2.5, // 与烟雾保持一致
+5412: imageSize: new Cesium.Cartesian2(25, 25), // 与烟雾保持一致
+5413: emissionRate: 25.0, // 与烟雾保持一致
+5415: emitter: new Cesium.SphereEmitter(5.0), // 与烟雾保持一致
+5420: // 与烟雾保持一致
+5548: // 无人机出动阶段：让无人机浮窗严格跟随 UAV 模型位置实时移动，从消防队一路跟随到现场
+5551: const uavId = isTanker ? 'uav_model_tanker' : 'uav_model';
+5552: const uavEntity = viewer.entities.getById(uavId);
+5553: if (uavEntity) {
+5554: const pos = uavEntity.position.getValue(viewer.clock.currentTime);
+5568: rescuePopup.x = canvasPosition.x + (rescuePopup.xOffset !== undefined ? rescuePopup.xOffset : (rescuePopup.title === '无人机已到达' ? 161 : -10));
+5569: rescuePopup.y = canvasPosition.y + (rescuePopup.yOffset !== undefined ? rescuePopup.yOffset : (rescuePopup.title === '无人机已到达' ? -62 : 15));
+5600: // 更新故事线检测告警浮窗坐标：事故与次生灾害阶段跟随对应事故现场
+6409: alert('🤖 全省应急联动机制已成功开启！系统正在推演最佳调度路线与巡逻无人机航线。');
+7208: // ⚡ 强行接管并驱动所有无人机（包括货车现场与油罐车现场的各个编队）旋翼旋转动画。
+7209: // 由于无人机使用 Date.now() 实时间隔来计算飞行轨道（确保暂停时也处于动画飞舞状态），
+7213: const allUavEntities = [...(uavEntities || []), ...(tankerUavEntities || [])];
+7215: allUavEntities.forEach(entity => {
+7242: console.warn('[Cesium] UAV rotors animation error:', animErr);
+7292: // - 如果物理模型没变（如从事故发生切到次生灾害），则保持当前帧（不重播），满足用户“在最后一帧静止”的需求
+7311: // 无人机阶段（阶段6、7、8）不播放动画，保持事故发生后的最后一帧
+7346: // 只有在聚焦该点且阶段 >= 5 时才显示（次生灾害烟雾/起火阶段）
+7350: // 只有在聚焦该点且阶段 >= 6 时才显示（次生灾害起火阶段）
+7371: // 5, 6, 7 阶段 (起火爆发期)：精致跃动火舌（无 NaN 抖动闪烁）
+7428: // 只有在聚焦该点且阶段 >= 5 时才显示（次生灾害泄露阶段）
+7435: // 只有在聚焦该点且阶段 >= 6 时才显示（次生灾害弥漫阶段）
+7896: // 🗺️ 无人机绕飞盘旋轨迹 (货车追尾场景)
+7898: id: 'uav-orbit-path-truck',
+7899: name: '货车场景无人机盘旋轨迹',
+7905: let centerHeight = Number(uavAdjust.height) || 18.5;
+7908: const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+7939: // 🗺️ 无人机绕飞盘旋轨迹 (油罐车泄漏场景)
+7941: id: 'uav-orbit-path-tanker',
+7942: name: '油罐车场景无人机盘旋轨迹',
+7948: let centerHeight = Number(tankerUavAdjust.height) || 120.0;
+7951: const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+8206: // 🛣️ 初始化 0-1~0-4 初始车流沥青公路轨迹线段 (Polyline) 及 P1 ~ P8 航点标记 Entities
+8209: name: '初始车流沥青公路轨迹线',
+8274: name: '油罐车路线1轨迹线',
+8298: name: '油罐车路线2轨迹线',
+8401: // 初始化无人机模型（用于货车追尾现场的无人装备出动阶段）
+8402: // 初始化无人机模型（用于货车追尾现场的无人装备出动阶段）
+8403: uavModelConfigs.forEach((config) => {
+8404: console.log(`[Cesium] 正在初始化无人机实体: ${config.id}, 路径: ${config.uri}`);
+8406: const uavPosition = new Cesium.CallbackProperty(() => {
+8407: const startLng = Number(uavAdjust.lng) || 113.202;
+8408: const startLat = Number(uavAdjust.lat) || 30.3268;
+8409: const startHeight = Number(uavAdjust.height) || 18.5;
+8420: const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+8435: // 阶段 4（无人机侦察）：从距离事故点 200m 处飞行向事故点
+8439: const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+8477: // 阶段 5 (次生灾害烟雾) 与 阶段 6 (次生灾害起火)：单架无人机围绕事故点做圆周绕飞旋转
+8478: if (!uavOrbitStartTime) { uavOrbitStartTime = Date.now(); }
+8479: const elapsed = Date.now() - uavOrbitStartTime;
+8495: // 阶段 3（无人机出动）或阶段 7（无人装备出动）：无人机从基地出发，运动到距离事故点 200 米处停下
+8499: const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+8517: const duration = agentSpeedConfig.uavDuration * 1000;
+8542: // 阶段 8（无人感知部署）：无人机从距离事故点 200 米处平滑运动向事故点
+8550: const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+8575: // 阶段 >= 9：无人机围绕事故点做圆周绕飞拍照
+8576: if (!uavOrbitStartTime) { uavOrbitStartTime = Date.now(); }
+8577: const elapsed = Date.now() - uavOrbitStartTime;
+8581: const angle = baseAngle + (config.angleOffset || 0); // 👈 加上这架无人机的专属相位角
+8589: // 触发多角度照片拍摄状态 (只让 1 号主无人机触发，避免编队中多架无人机重复触发拍摄)
+8590: if (config.id === 'uav_model_move') {
+8618: const uavOrientation = new Cesium.CallbackProperty(() => {
+8619: const pos = uavPosition.getValue(viewer.clock.currentTime);
+8625: const entity = currentMissionDataSource.entities.getById('UAV');
+8638: headingRad = Cesium.Math.toRadians(Number(uavAdjust.heading) || 18);
+8641: headingRad = Cesium.Math.toRadians(Number(uavAdjust.heading) || 18);
+8644: headingRad = Cesium.Math.toRadians(Number(uavAdjust.heading) || 18);
+8648: const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+8687: const headingDeg = Number(uavAdjust.heading) || 18;
+8698: headingRad = Cesium.Math.toRadians(Number(uavAdjust.heading) || 18);
+8709: position: uavPosition,
+8710: orientation: uavOrientation,
+8713: scale: new Cesium.CallbackProperty(() => uavAdjust.scale > 0 ? uavAdjust.scale : 0.1, false),
+8714: minimumPixelSize: 1, // 改为 1 像素，使无人机完全遵循真实的 3D 空间透视，随视角远近自然缩放
+8723: const UAV_DEBUG_MODE = true;
+8725: // 只要判断这架无人机的 ID 是不是数组里的第一个即可。
+8726: // 请看看你第一架无人机的 config.id 是什么，比如是 'uav-1'
+8727: // 🚨 只要 ID 是 'uav_model' 或者 'uav_model_move'，就是第一架无人机，阶段 5 连线，其余阶段 9 连线
+8728: // 🚨 1. 判断是否是第一架无人机 (名字里不带 _2 和 _3)
+8729: const isFirstUAV = !config.id.includes('_2') && !config.id.includes('_3');
+8732: id: `line-link-uav-${config.id}-to-jizhan`, // 保持原有 ID 方便清理
+8733: name: `无人机数据链路`,
+8744: if (isFirstUAV) {
+8745: // 第一架无人机：仅在 5, 6, 9及以上 连线。(7, 8 强制断开)
+8748: // 其余增援无人机：阶段 9 及以上才连线
+8761: if (isFirstUAV) {
+8792: uavEntities.push(entity);
+8793: if (config.id === 'uav_model') {
+8794: sharedTruckUavPosition = uavPosition;
+8809: // (A) 货车现场 - 科技风无人机盘旋轨迹（双层光流 + 极光外包络）
+8811: id: 'uav-orbit-ring-glow-truck',
+8812: name: '货车现场无人机盘旋轨迹外发光',
+8830: id: 'uav-orbit-ring-flow-truck',
+8831: name: '货车现场无人机盘旋轨迹光流脉冲',
+8848: // (B) 油罐车现场 - 科技风无人机盘旋轨迹
+8850: id: 'uav-orbit-ring-glow-tanker',
+8851: name: '油罐车现场无人机盘旋轨迹外发光',
+8869: id: 'uav-orbit-ring-flow-tanker',
+8870: name: '油罐车现场无人机盘旋轨迹光流脉冲',
+8912: // 投影计算：合并冗余代码，沿着起火点和初始坐标直线前进，在前方停车
+9032: // 初始化油罐车场景的无人机模型
+9033: // 初始化油罐车场景的无人机模型
+9034: uavModelConfigs.forEach((config) => {
+9035: console.log(`[Cesium] 正在初始化油罐车场景无人机实体: ${config.id}, 路径: ${config.uri}`);
+9037: const tankerUavPosition = new Cesium.CallbackProperty(() => {
+9038: if (lastTankerUavPhaseIndex !== props.activePhaseIndex) {
+9044: tankerUavOrbitStartTime = 0;
+9045: lastTankerUavPhaseIndex = props.activePhaseIndex;
+9047: const startHeight = Number(tankerUavAdjust.height) || 120.0;
+9060: const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+9067: // 加上编队偏移量，让不同无人机的绕飞中心散开
+9079: const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+9124: if (!tankerUavOrbitStartTime) { tankerUavOrbitStartTime = Date.now(); }
+9125: const elapsed = Date.now() - tankerUavOrbitStartTime;
+9141: // 阶段 3（无人机出动）或 阶段 7（无人装备出动）：无人机运动到距离事故点 200 米处停下
+9145: const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+9163: const duration = agentSpeedConfig.uavDuration * 1000;
+9205: // 阶段 8（无人感知部署）：无人机从距离事故点 200 米处平滑运动向事故点
+9215: const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+9262: if (!tankerUavOrbitStartTime) { tankerUavOrbitStartTime = Date.now(); }
+9263: const elapsed = Date.now() - tankerUavOrbitStartTime;
+9281: let uavStartLng = centerLng + 0.0005;
+9282: let uavStartLat = centerLat;
+9284: uavStartLng = carLng + 0.5 * (targetLng - carLng);
+9285: uavStartLat = carLat + 0.5 * (targetLat - carLat);
+9289: const dLng = uavStartLng - centerLng;
+9290: const dLat = uavStartLat - centerLat;
+9305: if (config.id === 'uav_model_move') {
+9330: if (config.id === 'uav_model_move' && !capturedPhotos.value[3]) {
+9339: const tankerUavOrientation = new Cesium.CallbackProperty(() => {
+9340: const pos = tankerUavPosition.getValue(viewer.clock.currentTime);
+9346: const pathEntity = currentMissionDataSource.entities.getById('UAV_Path');
+9385: const headingDeg = Number(tankerUavAdjust.heading) || 18;
+9389: // 计算无人机当前位置指向事故中心的朝向角度，使镜头始终对准事故车拍照
+9396: headingRad = Cesium.Math.toRadians(Number(tankerUavAdjust.heading) || 18);
+9406: position: tankerUavPosition,
+9407: orientation: tankerUavOrientation,
+9410: scale: new Cesium.CallbackProperty(() => tankerUavAdjust.scale > 0 ? tankerUavAdjust.scale : 0.1, false),
+9411: minimumPixelSize: 1, // 改为 1 像素，使无人机完全遵循真实的 3D 空间透视，随视角远近自然缩放
+9419: // 🚨 新增：油罐车无人机连接到专属基站
+9420: // 🚨 1. 判断是否是第一架无人机 (ID 名字里不带 _2 和 _3)
+9421: const isFirstUAV = !config.id.includes('_2') && !config.id.includes('_3');
+9424: id: `line-link-tanker-uav-${config.id}-to-jizhan`, // 保持油罐车专属 ID 唯一性
+9425: name: `油罐车场景无人机数据链路`,
+9439: if (isFirstUAV) {
+9440: // 第一架无人机：仅在 5, 6, 9及以上 连线。(7, 8 强制断开)
+9443: // 其余增援无人机：阶段 9 及以上才连线
+9457: if (isFirstUAV) {
+9491: tankerUavEntities.push(entity);
+9492: if (config.id === 'uav_model') {
+9493: sharedTankerUavPosition = tankerUavPosition;
+10141: // 1. 判断是否点击了烟雾粒子或三维车辆模型，若是且当前是中视角，则拉近到近视角
+10213: uavOrbitStartTime = 0;
+10214: tankerUavOrbitStartTime = 0;
+10221: // 🗺️ 隐/显盘旋轨迹实体：仅在第5阶段“次生灾害（烟雾）”显现
+10226: ['uav-orbit-ring-glow-truck', 'uav-orbit-ring-flow-truck'].forEach(id => {
+10230: ['uav-orbit-ring-glow-tanker', 'uav-orbit-ring-flow-tanker'].forEach(id => {
+10234: ['uav-orbit-path-truck', 'uav-orbit-path-tanker'].forEach(id => {
+10285: // 无人机浮窗
+10286: rescuePopup.title = '无人机出发';
+10333: // 油罐车场景无人机
+10334: rescuePopup.title = '无人机出发';
+10336: rescuePopup.altitude = String(Math.round(tankerUavAdjust.height)) + ' m';
+10343: rescueCoords.height = tankerUavAdjust.height + 10.0;
+10394: const showAutonomousUavRoute = index >= 3 && index < 11;
+10396: const uavPath = currentMissionDataSource.entities.getById('UAV_Path');
+10397: if (uavPath) {
+10398: uavPath.show = showAutonomousUavRoute;
+10399: if (uavPath.polyline) uavPath.polyline.show = showAutonomousUavRoute;
+10401: const uavPathGlow = currentMissionDataSource.entities.getById('UAV_Path_glow');
+10402: if (uavPathGlow) {
+10403: uavPathGlow.show = showAutonomousUavRoute;
+10404: if (uavPathGlow.polyline) uavPathGlow.polyline.show = showAutonomousUavRoute;
+10430: const czmlUav = currentMissionDataSource.entities.getById('UAV');
+10431: if (czmlUav) {
+10432: czmlUav.show = showAutonomousUavRoute;
+10501: // 在货车追尾现场的无人机阶段显示无人机模型和救援车并隐藏所有粒子效果
+10503: uavEntities.forEach(entity => {
+10506: isTarget = (entity.id === 'uav_model' || entity.id === 'uav_model_move');
+10508: isTarget = (entity.id === 'uav_model_move');
+10523: // 隐藏油罐车场景的无人机和救援车
+10524: tankerUavEntities.forEach(entity => { entity.show = false });
+10527: // 隐藏所有泄露和扩散粒子，但保留货车场景所需的烟雾与火焰粒子（由 updateTruckSequence 控制其具体大小）
+10535: // 在油罐车泄露现场的无人机阶段显示无人机模型和救援车并隐藏所有粒子效果
+10536: tankerUavEntities.forEach(entity => {
+10539: isTarget = (entity.id === 'uav_model_tanker' || entity.id === 'uav_model_move_tanker');
+10541: isTarget = (entity.id === 'uav_model_move_tanker');
+10555: // 隐藏货车场景的无人机和救援车
+10556: uavEntities.forEach(entity => { entity.show = false })
+10559: // 隐藏货车的烟雾与火焰，但根据阶段显示油罐车的泄露与扩散粒子
+10565: // 如果视角切换到其他地方，隐藏所有无人机和救援车
+10566: uavEntities.forEach(entity => { entity.show = false })
+10568: tankerUavEntities.forEach(entity => { entity.show = false })
+10575: // 隐藏所有无人机模型和救援车
+10576: uavEntities.forEach(entity => { entity.show = false })
+10578: tankerUavEntities.forEach(entity => { entity.show = false })
+10583: lastUavPhaseIndex = index;
+10584: lastTankerUavPhaseIndex = index;
+10635: accidentDetailPopup.img = pointId === 'accident_blue' ? '/Dashboard/images/uav_aerial_photo.png' : '/Dashboard/images/tanker_aerial_photo.png'
+10771: // 监听无人机微调变化 (位置和角度已完全由 CallbackProperty 接管，此处无需手动更新 Entity 属性)
+10773: // 无人机控制函数
+10774: function showUav() {
+10775: uavEntities.forEach(entity => { entity.show = true })
+10776: console.log('无人机已显示')
+10779: function hideUav() {
+10780: uavEntities.forEach(entity => { entity.show = false })
+10781: console.log('无人机已隐藏')
+10820: uavOrbitStartTime = Date.now();
+10821: tankerUavOrbitStartTime = Date.now();
+10841: uavOrbitStartTime = 0;
+10842: tankerUavOrbitStartTime = 0;
+11004: // 无人装备出动 (镜像 triggerCesiumUGVUAV)
+11005: async function triggerRescueUGVUAV() {
+12194: /* 无人机拍照侦察悬浮窗样式 */
+12195: .uav-photo-panel {
+12211: .uav-photo-header {
+12220: .uav-photo-icon {
+12224: .uav-photo-title {
+12231: .uav-status-tag {
+12243: .uav-status-tag.status-done {
+12249: .uav-photo-content {
+12256: .uav-main-photo-wrapper {
+12266: .uav-photo-placeholder {
+12286: .uav-photo-img {
+12307: .uav-photo-overlay {
+12322: .uav-photo-timestamp {
+12327: .uav-photo-coords {
+12331: .uav-thumbnails-row {
+12338: .uav-thumb-box {
+12350: .uav-thumb-box.is-captured {
+12355: .uav-thumb-box.is-captured:hover {
+12360: .uav-thumb-box.is-captured.is-active {
+12365: .uav-thumb-inner {
+12371: .uav-thumb-img {
+12391: .uav-thumb-lock {
+12600: /* ✈️ 无人机出发浮窗 — 青色科技主题 */
+12601: .uav-dispatch-popup {
+12611: .uav-dispatch-popup .shelter-popup-arrow {
+12619: .uav-dispatch-header {
+12655: .uav-dispatch-popup .shelter-popup-table,
+12661: .uav-dispatch-popup .shelter-popup-table td,
+12667: .uav-dispatch-popup .shelter-popup-table td.label {
+12673: .uav-dispatch-popup .shelter-popup-table td.value {
+15357: .dock-tool-btn.uavugv-btn {
+15361: .dock-tool-btn.uavugv-btn:hover,
+15362: .dock-tool-btn.uavugv-btn.active {
+15369: .uavugv-control-panel {
+15374: .uavugv-control-panel .light-panel-header {
+15379: .uavugv-control-panel .light-tab-btn:hover {
+15385: .uavugv-control-panel .light-tab-btn.active {
+15415: /* 🚁 无人机悬浮窗微调面板专属青色高端拟态样式 */
+15416: .dock-tool-btn.uavpopup-btn {
+15420: .dock-tool-btn.uavpopup-btn:hover,
+15421: .dock-tool-btn.uavpopup-btn.active {
+15428: .uavpopup-control-panel {
+15433: .uavpopup-control-panel .light-panel-header {
+15890: .rescue-ugvuav-btn,
+15906: .rescue-ugvuav-btn {
+15912: .rescue-ugvuav-btn:hover:not(:disabled) {
+15934: .rescue-ugvuav-btn:disabled,
