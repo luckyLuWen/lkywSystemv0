@@ -133,7 +133,13 @@
 
     <footer class="cyber-footer">
       <div class="footer-line"></div>
-      <p>湖北省重点研发项目 // “两客一危”重大交通安全事故智能决策与救援关键技术研究 // “两客一危”事故智能检测</p>
+      <div class="footer-content">
+        <span class="footer-badge highlight">湖北省重点研发项目</span>
+        <span class="footer-divider">◆</span>
+        <span class="footer-text">“两客一危”重大交通安全事故智能决策与救援关键技术研究</span>
+        <span class="footer-divider">◆</span>
+        <span class="footer-badge cyan">“两客一危”交通事故智能检测</span>
+      </div>
     </footer>
   </div>
 </template>
@@ -294,7 +300,7 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: minmax(380px, 420px) minmax(0, 1fr) minmax(390px, 440px);
   gap: 22px;
-  padding: 178px 20px 18px;
+  padding: 196px 20px 18px;
   min-height: calc(100vh - 74px);
   align-items: start;
 }
@@ -306,10 +312,10 @@ onUnmounted(() => {
   gap: 18px;
   min-width: 0;
   position: sticky;
-  top: 178px;
+  top: 196px;
   align-self: start;
   min-height: 0;
-  max-height: calc(100vh - 196px);
+  max-height: calc(100vh - 212px);
   overflow: auto;
   padding-right: 2px;
 }
@@ -565,22 +571,63 @@ onUnmounted(() => {
 }
 
 .cyber-footer {
-  padding: 18px 24px 24px;
+  margin-top: 20px;
+  padding: 20px 30px 28px;
   text-align: center;
+  background: linear-gradient(180deg, rgba(2, 10, 19, 0.7), rgba(2, 12, 24, 0.95));
+  backdrop-filter: blur(12px);
 }
 
 .footer-line {
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border-cyan), transparent);
-  margin-bottom: 8px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.7), transparent);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.5);
+  margin-bottom: 18px;
 }
 
-.cyber-footer p {
-  font-family: monospace;
+.footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.footer-badge {
+  padding: 7px 18px;
+  border-radius: 6px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.footer-badge.highlight {
+  background: rgba(255, 193, 7, 0.12);
+  border: 1px solid rgba(255, 193, 7, 0.35);
+  color: #ffc107;
+  box-shadow: 0 0 12px rgba(255, 193, 7, 0.15);
+}
+
+.footer-badge.cyan {
+  background: rgba(0, 229, 255, 0.12);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  color: var(--primary-cyan);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.15);
+}
+
+.footer-text {
+  font-size: 19px;
+  font-weight: 600;
+  color: #e2f8ff;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+}
+
+.footer-divider {
+  color: var(--primary-cyan);
   font-size: 14px;
-  color: var(--text-dim);
-  letter-spacing: 0.12em;
-  opacity: 0.75;
+  opacity: 0.8;
+  text-shadow: 0 0 10px var(--primary-cyan);
 }
 
 @media (max-width: 1500px) {

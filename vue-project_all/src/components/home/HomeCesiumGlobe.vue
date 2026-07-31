@@ -3432,6 +3432,10 @@ function goToSensorManage(target = '') {
 // 当前选中的场景
 const currentScene = ref('truck')
 
+function isStorySceneFocused() {
+  return props.focusedPointId === 'accident_blue' || props.focusedPointId === 'accident_red'
+}
+
 // 无人机视频/图像时间戳更新
 const currentTimeStr = ref('')
 const updateTime = () => {
@@ -4423,8 +4427,26 @@ let focusAreaEntity = null
 let popupEntity = null 
 let connectionLineEntity = null
 
-// 事故现场三级视角状态
+// 事故现场三级视角状态与路侧摄像头解锁状态
 const accidentViewLevel = ref(null) // 'far', 'medium', 'close', null (默认推演视角)
+const light1Unlocked = ref(false)
+const light23Unlocked = ref(false)
+
+function isCameraDetailView(level = accidentViewLevel.value) {
+  return level === 'medium' || level === 'close'
+}
+
+function isLight1CameraUnlocked() {
+  return light1Unlocked.value
+    && props.focusedPointId === 'accident_blue'
+    && isCameraDetailView()
+}
+
+function isLight23CameraUnlocked() {
+  return light23Unlocked.value
+    && props.focusedPointId === 'accident_red'
+    && isCameraDetailView()
+}
 const accidentDetailPopup = reactive({
   show: false,
   x: 0,
@@ -7282,7 +7304,7 @@ function updateTruckSequence(phaseIndex, pointId = '') {
   
   // 仿真初始车流 (0-1~0-4.glb) 在仿真开始节点 (phaseIndex === 0) 显示
   startStageVehicleEntities.forEach(entity => {
-    entity.show = ((currentScene.value === 'truck' || currentScene.value === 'tanker') && phaseIndex === 0)
+    entity.show = (isStorySceneFocused() && (currentScene.value === 'truck' || currentScene.value === 'tanker') && phaseIndex === 0)
   })
 
   if (targetModelId) {
@@ -7405,7 +7427,7 @@ function updateTankerSequence(phaseIndex, pointId = '') {
 
   // 仿真初始车流 (0-1~0-4.glb) 在仿真开始节点 (phaseIndex === 0) 显示
   startStageVehicleEntities.forEach(entity => {
-    entity.show = ((currentScene.value === 'truck' || currentScene.value === 'tanker') && phaseIndex === 0)
+    entity.show = (isStorySceneFocused() && (currentScene.value === 'truck' || currentScene.value === 'tanker') && phaseIndex === 0)
   })
 
   // 全时段就绪：泄露与弥漫效果根据focusedPointId决定是否显示
@@ -7686,8 +7708,10 @@ function addEventEntities() {
         Number(l.lng), Number(l.lat), Number(l.height) + heightOffset,
         Number(l.heading) + headingOffset, pitchAngle, fovAngle, maxRange,
         () => {
-          // 只在对应的场景且阶段大于2时显示
+          // 只在对应的场景、阶段大于2、且完成两步解锁后显示
           const isCurrentScene = isTruckLight ? (currentScene.value === 'truck') : (currentScene.value === 'tanker');
+          if (l.id === 'light1') return Number(props.activePhaseIndex) >= 2 && isCurrentScene && isLight1CameraUnlocked();
+          if (l.id === 'light23') return Number(props.activePhaseIndex) >= 2 && isCurrentScene && isLight23CameraUnlocked();
           return Number(props.activePhaseIndex) >= 2 && isCurrentScene;
         }
       );
@@ -7706,7 +7730,10 @@ function addEventEntities() {
       name: `事故现场灯光模型-${l.id}`,
       show: new Cesium.CallbackProperty(() => {
         const isCurrentScene = isTruckLight ? (currentScene.value === 'truck') : (currentScene.value === 'tanker');
-        return l.show && isCurrentScene;
+        if (!isCurrentScene || !l.show) return false;
+        if (l.id === 'light1') return isLight1CameraUnlocked();
+        if (l.id === 'light23') return isLight23CameraUnlocked();
+        return true;
       }, false),
       position: new Cesium.CallbackProperty(() => Cesium.Cartesian3.fromDegrees(Number(l.lng), Number(l.lat), Number(l.height)), false),
       orientation: new Cesium.CallbackProperty(() => {
@@ -7717,8 +7744,24 @@ function addEventEntities() {
         uri: '/Dashboard/models/light.glb',
         scale: new Cesium.CallbackProperty(() => l.scale, false),
         heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-        silhouetteColor: (l.id === 'light1' || l.id === 'light23') ? Cesium.Color.fromCssColorString('#38bdf8') : undefined,
-        silhouetteSize: (l.id === 'light1' || l.id === 'light23') ? 3.0 : 0.0
+        silhouetteColor: new Cesium.CallbackProperty(() => {
+          if (l.id === 'light1' && currentScene.value === 'truck' && isLight1CameraUnlocked()) {
+            return Cesium.Color.fromCssColorString('#38bdf8');
+          }
+          if (l.id === 'light23' && currentScene.value === 'tanker' && isLight23CameraUnlocked()) {
+            return Cesium.Color.fromCssColorString('#38bdf8');
+          }
+          return undefined;
+        }, false),
+        silhouetteSize: new Cesium.CallbackProperty(() => {
+          if (l.id === 'light1' && currentScene.value === 'truck' && isLight1CameraUnlocked()) {
+            return 3.0;
+          }
+          if (l.id === 'light23' && currentScene.value === 'tanker' && isLight23CameraUnlocked()) {
+            return 3.0;
+          }
+          return 0.0;
+        }, false)
       }
     });
 
@@ -7782,7 +7825,7 @@ function addEventEntities() {
       id: 'light1-camera-marker',
       name: '前方路侧摄像头可点击标记',
       show: new Cesium.CallbackProperty(() => {
-        return currentScene.value === 'truck' && light1.show
+        return currentScene.value === 'truck' && light1.show && isLight1CameraUnlocked()
       }, false),
       position: new Cesium.CallbackProperty(() => {
         return Cesium.Cartesian3.fromDegrees(Number(light1.lng), Number(light1.lat), Number(light1.height) + 16)
@@ -7795,7 +7838,7 @@ function addEventEntities() {
         disableDepthTestDistance: Number.POSITIVE_INFINITY
       },
       label: {
-        text: '监控视频',
+        text: '',
         font: '13px sans-serif',
         fillColor: Cesium.Color.WHITE,
         outlineColor: Cesium.Color.BLACK,
@@ -7813,7 +7856,7 @@ function addEventEntities() {
       id: 'light23-camera-marker',
       name: '前方路侧摄像头可点击标记',
       show: new Cesium.CallbackProperty(() => {
-        return currentScene.value === 'tanker' && light23.show
+        return currentScene.value === 'tanker' && light23.show && isLight23CameraUnlocked()
       }, false),
       position: new Cesium.CallbackProperty(() => {
         return Cesium.Cartesian3.fromDegrees(Number(light23.lng), Number(light23.lat), Number(light23.height) + 16)
@@ -7826,7 +7869,7 @@ function addEventEntities() {
         disableDepthTestDistance: Number.POSITIVE_INFINITY
       },
       label: {
-        text: '监控视频',
+        text: '',
         font: '13px sans-serif',
         fillColor: Cesium.Color.WHITE,
         outlineColor: Cesium.Color.BLACK,
@@ -8160,8 +8203,8 @@ function addEventEntities() {
       id: config.id,
       name: config.label,
       show: new Cesium.CallbackProperty(() => {
-        // 在货车追尾现场或油罐车泄漏现场且处于仿真开始节点 (activePhaseIndex === 0) 时显示并贴地行驶
-        return (currentScene.value === 'truck' || currentScene.value === 'tanker') && props.activePhaseIndex === 0
+        // 仅进入事故故事线后，仿真开始节点车辆才显示并贴地行驶
+        return isStorySceneFocused() && (currentScene.value === 'truck' || currentScene.value === 'tanker') && props.activePhaseIndex === 0
       }, false),
       position: new Cesium.CallbackProperty(() => {
         return getStartStageVehiclePosAndOrient(index, config.delayRatio).position
@@ -8172,8 +8215,8 @@ function addEventEntities() {
       model: {
         uri: config.uri,
         scale: new Cesium.CallbackProperty(() => {
-          // 仅在货车或油罐车场景且处于仿真开始节点 (activePhaseIndex === 0) 时渲染几何大小
-          if ((currentScene.value !== 'truck' && currentScene.value !== 'tanker') || props.activePhaseIndex !== 0) {
+          // 仅进入事故故事线且处于仿真开始节点时渲染几何大小
+          if (!isStorySceneFocused() || (currentScene.value !== 'truck' && currentScene.value !== 'tanker') || props.activePhaseIndex !== 0) {
             return 0;
           }
           const carsArr = activeCars.value
@@ -10076,12 +10119,16 @@ rescueCarEntities.forEach((carEntity, modelIndex) => {
       
       const entityId = entity ? entity.id : null;
 
-      if (entityId === 'light1-glb-entity' || entityId === 'light1-camera-marker') {
-        openCameraStream('light1', movement);
+      if (entityId === 'truck-light1-glb-entity' || entityId === 'light1-camera-marker') {
+        if (currentScene.value === 'truck' && isLight1CameraUnlocked()) {
+          openCameraStream('light1', movement);
+        }
         return;
       }
-      if (entityId === 'light23-glb-entity' || entityId === 'light23-camera-marker') {
-        openCameraStream('light23', movement);
+      if (entityId === 'tanker-light23-glb-entity' || entityId === 'light23-camera-marker') {
+        if (currentScene.value === 'tanker' && isLight23CameraUnlocked()) {
+          openCameraStream('light23', movement);
+        }
         return;
       }
       
@@ -10163,7 +10210,8 @@ function updatePhaseScene(index, animate = false) {
       activePhotoIndex.value = null;
     }
     const phase = props.phases[index] || props.phases[0]
-    const pointId = props.focusedPointId || phase.focusPoint || 'gateway'
+    const hasFocusedPoint = !!props.focusedPointId
+    const pointId = hasFocusedPoint ? props.focusedPointId : 'gateway'
 
     // 🗺️ 隐/显盘旋轨迹实体：仅在第5阶段“次生灾害（烟雾）”显现
     const isSmokePhase = (index === 5);
@@ -10557,6 +10605,10 @@ function zoomToPoint(pointId) {
   const point = scenarioPoints[pointId]
   if (!point) return
   
+  light1Unlocked.value = false
+  light23Unlocked.value = false
+  cameraStreamPopup.show = false
+
   stopAutoRotate()
   isFlying = true
   
@@ -10592,6 +10644,12 @@ function goToMediumView() {
   const point = scenarioPoints[pointId]
   if (!point) return
   
+  if (pointId === 'accident_blue') {
+    light1Unlocked.value = true;
+  } else if (pointId === 'accident_red') {
+    light23Unlocked.value = true;
+  }
+
   accidentDetailPopup.show = false
   accidentViewLevel.value = 'medium'
   updateMarkerVisibility()
@@ -10641,7 +10699,7 @@ function goToCloseView(pointId) {
   if (!viewer || isFlying) return
   const point = scenarioPoints[pointId]
   if (!point) return
-  
+
   accidentDetailPopup.show = false
   accidentViewLevel.value = 'close'
   updateMarkerVisibility()
@@ -10730,6 +10788,10 @@ function hideUav() {
 
 function resetView() {
   if (!viewer || isFlying) return
+  light1Unlocked.value = false
+  light23Unlocked.value = false
+  cameraStreamPopup.show = false
+  accidentDetailPopup.show = false
   stopAutoRotate()
   isFlying = true
   viewer.camera.flyTo({
@@ -10802,16 +10864,18 @@ watch(() => props.activePhaseIndex, (next, prev) => {
     viewer.clock.clockRange = Cesium.ClockRange.UNBOUNDED;
   }
 
-  // 自动对齐场景并加载该阶段配置
-  const scene = props.focusedPointId === 'accident_red' ? 'tanker' : 'truck'
-  cameraAdjust.scene = scene
-  cameraAdjust.phaseIndex = next + 1
-  const cfg = (defaultPhaseCameraConfigs[scene] && defaultPhaseCameraConfigs[scene][next + 1]) || { range: 1440, pitch: -39, heading: -5 }
-  cameraAdjust.range = cfg.range
-  cameraAdjust.pitch = cfg.pitch
-  cameraAdjust.heading = cfg.heading
+  // 自动对齐场景并加载该阶段配置；未进入故事线时保持主页地图态
+  if (props.focusedPointId) {
+    const scene = props.focusedPointId === 'accident_red' ? 'tanker' : 'truck'
+    cameraAdjust.scene = scene
+    cameraAdjust.phaseIndex = next + 1
+    const cfg = (defaultPhaseCameraConfigs[scene] && defaultPhaseCameraConfigs[scene][next + 1]) || { range: 1440, pitch: -39, heading: -5 }
+    cameraAdjust.range = cfg.range
+    cameraAdjust.pitch = cfg.pitch
+    cameraAdjust.heading = cfg.heading
+  }
 
-  updatePhaseScene(next, true);
+  updatePhaseScene(next, !!props.focusedPointId);
 }, { immediate: true, flush: 'post' });
 
 watch(accidentViewLevel, () => {
@@ -10827,6 +10891,9 @@ watch(() => props.focusedPointId, (newVal) => {
     }
   } else {
     accidentDetailPopup.show = false
+    cameraStreamPopup.show = false
+    light1Unlocked.value = false
+    light23Unlocked.value = false
   }
   if (newVal === 'accident_blue') {
     cameraAdjust.scene = 'truck'

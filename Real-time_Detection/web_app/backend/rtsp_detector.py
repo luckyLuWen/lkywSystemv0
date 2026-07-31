@@ -16,6 +16,8 @@ CLASS_COLORS = {
     "lkyw_nofire": (0, 140, 251),
     "car_normal": (53, 216, 253),
     "lkyw_normal": (0, 140, 251),
+    "normal": (233, 165, 14),
+    "accident": (46, 67, 168),
 }
 
 
@@ -28,9 +30,12 @@ def get_class_color(class_name):
     if normalized_name in CLASS_COLORS:
         return CLASS_COLORS[normalized_name]
 
+    leak_markers = ("leak", "hazmat", "tank", "泄露", "泄漏", "危化")
     nofire_markers = ("nofire", "no_fire", "non_fire", "normal", "无火", "未起火", "正常")
     fire_markers = ("fire", "起火", "火灾", "着火")
 
+    if any(marker in normalized_name for marker in leak_markers):
+        return (178, 145, 8)
     if any(marker in normalized_name for marker in nofire_markers):
         return (53, 216, 253)
     if any(marker in normalized_name for marker in fire_markers):
@@ -41,45 +46,63 @@ def get_class_color(class_name):
 
 def is_fire_class(class_name):
     normalized_name = str(class_name or "").strip().lower().replace("-", "_").replace(" ", "_")
+    leak_markers = ("leak", "hazmat", "tank", "泄露", "泄漏", "危化")
     nofire_markers = ("nofire", "no_fire", "non_fire", "normal", "无火", "未起火", "正常")
     fire_markers = ("fire", "起火", "火灾", "着火")
 
+    if any(marker in normalized_name for marker in leak_markers):
+        return False
     if any(marker in normalized_name for marker in nofire_markers):
         return False
     return any(marker in normalized_name for marker in fire_markers)
 
 
 class RTSPDetector:
-    def __init__(self, model_path, rtsp_url, camera_id="RTSP-01", on_detection=None):
+    def __init__(self, model_path, rtsp_url, camera_id="RTSP-01", on_detection=None, detect_frame_fn=None, conf_threshold=0.25, iou_threshold=0.45, model_name=None, detection_mode='single', task_type='collision'):
         """
         初始化RTSP检测器
-        
-        Args:
-            model_path: YOLO模型路径
-            rtsp_url: RTSP流地址
-            camera_id: 摄像头标识
         """
-        self.model = YOLO(model_path)
+        self.model = YOLO(model_path) if model_path else None
         self.rtsp_url = rtsp_url
         self.camera_id = camera_id
         self.on_detection = on_detection
+        self.detect_frame_fn = detect_frame_fn
+        self.conf_threshold = conf_threshold
+        self.iou_threshold = iou_threshold
+        self.model_name = model_name or 'SFGA-YOLO26M'
+        self.detection_mode = detection_mode
+        self.task_type = task_type
         
         self.cap = None
         self.is_running = False
         self.current_frame = None
         self.detection_result = None
+        self.frame_version = 0
+        self.last_inference_time = 0.019
         self.lock = threading.Lock()
         
         # 统计信息
         self.frame_count = 0
         self.fire_count = 0
         self.last_detection_time = None
+
+    def update_settings(self, conf_threshold=None, iou_threshold=None, model_name=None, detection_mode=None, task_type=None):
+        with self.lock:
+            if conf_threshold is not None:
+                self.conf_threshold = float(conf_threshold)
+            if iou_threshold is not None:
+                self.iou_threshold = float(iou_threshold)
+            if model_name is not None:
+                self.model_name = str(model_name)
+            if detection_mode is not None:
+                self.detection_mode = str(detection_mode)
+            if task_type is not None:
+                self.task_type = str(task_type)
+        print(f"🔄 RTSP检测器参数实时更新: conf={self.conf_threshold}, iou={self.iou_threshold}, model={self.model_name}, mode={self.detection_mode}")
         
     def connect(self):
         """连接RTSP流"""
         self.cap = cv2.VideoCapture(self.rtsp_url)
-        
-        # 设置缓冲区大小，减少延迟
         self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         
         if not self.cap.isOpened():
@@ -110,7 +133,6 @@ class RTSPDetector:
         """检测循环（在独立线程中运行）"""
         retry_count = 0
         max_retries = 5
-        frame_skip_counter = 0  # 帧跳过计数器
         
         while self.is_running:
             try:
@@ -133,33 +155,43 @@ class RTSPDetector:
                     time.sleep(1)
                     continue
                 
-                # 重置重试计数
                 retry_count = 0
                 
-                # 跳帧处理：每2帧处理1帧，减少闪烁
-                frame_skip_counter += 1
-                if frame_skip_counter % 2 != 0:
-                    continue
+                # 获取最新的设置参数
+                with self.lock:
+                    conf_val = self.conf_threshold
+                    iou_val = self.iou_threshold
+                    model_val = self.model_name
+                    mode_val = self.detection_mode
+
+                start_t = time.time()
+                if self.detect_frame_fn:
+                    annotated_frame, detections = self.detect_frame_fn(frame, model_val, mode_val, conf_val, iou_val)
+                else:
+                    results = self.model.predict(source=frame, conf=conf_val, iou=iou_val, verbose=False)
+                    annotated_frame = self._draw_detection_result(frame, results[0])
+                    detections = self._extract_detections(results[0])
+                proc_time = round(time.time() - start_t, 3)
                 
-                # 执行YOLO检测
-                results = self.model(frame, verbose=False)
-                
-                # 绘制检测结果
-                annotated_frame = self._draw_detection_result(frame, results[0])
-                
-                # 提取检测信息
-                detection_info = self._extract_detection_info(results[0])
-                
-                # 更新当前帧和检测结果
+                detection_info = {
+                    'camera_id': self.camera_id,
+                    'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'detections': detections,
+                    'has_fire': any(is_fire_class(d.get('class', '')) for d in detections),
+                    'vehicle_type': next((d.get('class') for d in detections if '客车' in d.get('class', '') or '危化品' in d.get('class', '')), None),
+                    'inference_time': proc_time
+                }
+
                 notify_detection = False
                 stats_snapshot = None
                 with self.lock:
                     self.current_frame = annotated_frame
                     self.detection_result = detection_info
                     self.frame_count += 1
+                    self.frame_version += 1
                     self.last_detection_time = time.time()
+                    self.last_inference_time = proc_time
                     
-                    # 统计火灾检测次数
                     if detection_info.get('has_fire', False):
                         self.fire_count += 1
                         notify_detection = True
@@ -170,7 +202,8 @@ class RTSPDetector:
                         'is_running': self.is_running,
                         'frame_count': self.frame_count,
                         'fire_count': self.fire_count,
-                        'last_detection_time': self.last_detection_time
+                        'last_detection_time': self.last_detection_time,
+                        'inference_time': proc_time
                     }
 
                 if notify_detection and self.on_detection:
@@ -179,8 +212,7 @@ class RTSPDetector:
                     except Exception as callback_error:
                         print(f"⚠️ RTSP检测事件回调失败: {callback_error}")
                 
-                # 控制帧率，避免CPU占用过高和画面闪烁
-                time.sleep(0.1)  # 约10fps，更稳定
+                time.sleep(0.01)
                 
             except Exception as e:
                 print(f"❌ 检测循环错误: {e}")
@@ -213,58 +245,38 @@ class RTSPDetector:
 
         return annotated_frame
 
-    def _extract_detection_info(self, result):
-        """提取检测信息"""
-        info = {
-            'camera_id': self.camera_id,
-            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-            'detections': [],
-            'has_fire': False,
-            'vehicle_type': None
-        }
-        
+    def _extract_detections(self, result):
+        detections = []
         if result.boxes is not None and len(result.boxes) > 0:
             for box in result.boxes:
                 cls_id = int(box.cls[0])
                 conf = float(box.conf[0])
                 class_name = result.names[cls_id]
-                
-                detection = {
+                detections.append({
                     'class': class_name,
                     'confidence': round(conf, 3),
                     'bbox': box.xyxy[0].tolist()
-                }
-                info['detections'].append(detection)
-                
-                # 判断是否检测到火灾
-                if is_fire_class(class_name):
-                    info['has_fire'] = True
-                
-                # 判断车辆类型
-                if '客车' in class_name or '危化品' in class_name:
-                    info['vehicle_type'] = class_name
-        
-        return info
-    
+                })
+        return detections
+
     def get_frame(self):
-        """获取当前检测帧（用于视频流传输）"""
         with self.lock:
             if self.current_frame is not None:
-                return self.current_frame.copy()
-        return None
+                return self.current_frame.copy(), self.frame_version
+        return None, 0
     
     def get_detection_result(self):
-        """获取最新检测结果"""
         with self.lock:
             return self.detection_result.copy() if self.detection_result else None
     
     def get_stats(self):
-        """获取统计信息"""
-        return {
-            'camera_id': self.camera_id,
-            'rtsp_url': self.rtsp_url,
-            'is_running': self.is_running,
-            'frame_count': self.frame_count,
-            'fire_count': self.fire_count,
-            'last_detection_time': self.last_detection_time
-        }
+        with self.lock:
+            return {
+                'camera_id': self.camera_id,
+                'rtsp_url': self.rtsp_url,
+                'is_running': self.is_running,
+                'frame_count': self.frame_count,
+                'fire_count': self.fire_count,
+                'last_detection_time': self.last_detection_time,
+                'inference_time': getattr(self, 'last_inference_time', 0.019)
+            }

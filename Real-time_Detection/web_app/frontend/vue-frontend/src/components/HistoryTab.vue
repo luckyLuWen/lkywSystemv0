@@ -66,6 +66,8 @@
               class="meta-tag model-tag"
             >{{ model }}</span>
             <span class="meta-tag source-tag">{{ rec.source_type }}</span>
+            <span class="meta-tag param-tag">Conf: {{ formatParam(rec.conf_threshold) }}</span>
+            <span class="meta-tag param-tag">IOU: {{ formatParam(rec.iou_threshold) }}</span>
           </div>
           <div class="record-labels" v-if="rec.labels && rec.labels.length">
             <span v-for="label in rec.labels" :key="label" class="label-chip">{{ label }}</span>
@@ -128,15 +130,23 @@
             <div class="metrics-bar video-metrics">
               <div class="metric-badge">
                 <span class="metric-label">推理时间</span>
-                <span class="metric-value">{{ detail.inference_time_s }} s</span>
+                <span class="metric-value cyan">{{ detail.inference_time_s }} s</span>
               </div>
               <div class="metric-badge">
                 <span class="metric-label">检测任务</span>
-                <span class="metric-value small">{{ displayTaskLabel(detail) }}</span>
+                <span class="metric-value">{{ displayTaskLabel(detail) }}</span>
               </div>
               <div class="metric-badge">
                 <span class="metric-label">模型</span>
-                <span class="metric-value small model-list-text">{{ displayModelNames(detail).join(' / ') }}</span>
+                <span class="metric-value model-list-text">{{ displayModelNames(detail).join(' / ') }}</span>
+              </div>
+              <div class="metric-badge">
+                <span class="metric-label">置信度</span>
+                <span class="metric-value">{{ formatParam(detail.conf_threshold) }}</span>
+              </div>
+              <div class="metric-badge">
+                <span class="metric-label">IOU 阈值</span>
+                <span class="metric-value">{{ formatParam(detail.iou_threshold) }}</span>
               </div>
             </div>
           </template>
@@ -160,19 +170,27 @@
             <div class="metrics-bar">
               <div class="metric-badge">
                 <span class="metric-label">检测数量</span>
-                <span class="metric-value cyan">{{ detail.detection_count }}</span>
+                <span class="metric-value">{{ detail.detection_count }}</span>
               </div>
               <div class="metric-badge">
                 <span class="metric-label">推理时间</span>
-                <span class="metric-value">{{ detail.inference_time_s }} s</span>
+                <span class="metric-value cyan">{{ detail.inference_time_s }} s</span>
               </div>
               <div class="metric-badge">
                 <span class="metric-label">检测任务</span>
-                <span class="metric-value small">{{ displayTaskLabel(detail) }}</span>
+                <span class="metric-value">{{ displayTaskLabel(detail) }}</span>
               </div>
               <div class="metric-badge">
                 <span class="metric-label">模型</span>
-                <span class="metric-value small model-list-text">{{ displayModelNames(detail).join(' / ') }}</span>
+                <span class="metric-value model-list-text">{{ displayModelNames(detail).join(' / ') }}</span>
+              </div>
+              <div class="metric-badge">
+                <span class="metric-label">置信度</span>
+                <span class="metric-value">{{ formatParam(detail.conf_threshold) }}</span>
+              </div>
+              <div class="metric-badge">
+                <span class="metric-label">IOU 阈值</span>
+                <span class="metric-value">{{ formatParam(detail.iou_threshold) }}</span>
               </div>
             </div>
 
@@ -256,6 +274,12 @@ const hasActiveFilters = computed(() => Boolean(filters.model || filters.label |
 const formatTime = (ts) => {
   if (!ts) return ''
   return ts.replace('T', ' ').substring(0, 19)
+}
+
+const formatParam = (val) => {
+  if (val === undefined || val === null || val === '') return '0.25'
+  const num = Number(val)
+  return isNaN(num) ? '0.25' : num.toFixed(2)
 }
 
 const COMPOSITE_MODEL_PARTS = {
@@ -537,6 +561,15 @@ onMounted(loadRecords)
   font-size: 24px;
 }
 
+.meta-tag.param-tag {
+  background: rgba(0, 229, 255, 0.12);
+  color: var(--primary-cyan);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  font-family: monospace, sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+}
+
 .record-stats {
   display: flex;
   align-items: baseline;
@@ -768,8 +801,8 @@ onMounted(loadRecords)
 }
 
 .video-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  gap: 16px;
 }
 
 .frame-zoom-overlay {
@@ -836,36 +869,47 @@ onMounted(loadRecords)
 
 .metric-badge {
   flex: 1;
-  background: rgba(0, 229, 255, 0.05);
-  border: 1px solid rgba(0, 229, 255, 0.15);
-  border-radius: 8px;
-  padding: 16px;
+  min-width: 0;
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.08), rgba(3, 20, 36, 0.85));
+  border: 2px solid rgba(0, 229, 255, 0.3);
+  border-radius: 10px;
+  padding: 20px 14px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .metric-label {
   display: block;
-  font-size: 19px;
+  font-size: 20px;
   color: var(--text-dim);
   letter-spacing: 1px;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .metric-value {
-  display: block;
-  font-size: 42px;
-  font-weight: bold;
-  font-family: monospace;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  width: 100%;
+  font-size: 30px;
+  font-weight: 800;
+  font-family: "Microsoft YaHei", "Inter", "PingFang SC", sans-serif;
+  color: #ffffff;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .metric-value.cyan {
-  color: var(--primary-cyan);
-  text-shadow: 0 0 8px var(--primary-cyan);
-}
-
-.metric-value.small {
-  font-size: 21px;
-  word-break: break-all;
+  color: var(--primary-cyan) !important;
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.5);
 }
 
 .detection-results { margin-bottom: 16px; }
@@ -917,24 +961,28 @@ onMounted(loadRecords)
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 12px;
-  padding: 24px 36px;
-  border-top: 1px solid rgba(0, 229, 255, 0.1);
+  gap: 20px;
+  padding: 28px 42px;
+  border-top: 2px solid rgba(0, 229, 255, 0.2);
 }
 
 .btn-confirm {
   background: var(--primary-cyan);
   border: none;
   color: #000;
-  padding: 10px 28px;
-  border-radius: 6px;
-  font-size: 21px;
-  font-weight: 600;
+  padding: 14px 44px;
+  border-radius: 8px;
+  font-size: 24px;
+  font-weight: 700;
   cursor: pointer;
+  min-height: 58px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-confirm:hover {
-  box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+  box-shadow: 0 0 24px rgba(0, 229, 255, 0.4);
 }
 
 @keyframes fadeIn {
