@@ -1,8 +1,7 @@
 # 核心依赖
 ultralytics>=8.0.0
 opencv-python>=4.8.0
-torch>=2.0.0
-torchvision>=0.15.0
+
 
 # Web应用
 flask>=2.3.0
