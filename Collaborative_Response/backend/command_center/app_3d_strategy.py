@@ -1352,6 +1352,7 @@ if __name__ == '__main__':
         'end_point_name': END_POINT_NAME,
         'start_point_name': START_POINT_NAME,
         'strategy': SYNC_STRATEGY,
+        'multi_agent_enabled': MULTI_AGENT,
         'metrics': {
             'carTime': str(car_time_min),
             'uavTime': str(uav_flight_min),
