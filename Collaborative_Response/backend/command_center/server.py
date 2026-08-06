@@ -626,8 +626,10 @@ def run_multi_agent():
     cache_dir.mkdir(exist_ok=True)
     cache_file = cache_dir / f"mission_{end_point}_{strategy}_ugv{ugv_block}_uav{uav_smoke}_multi1.czml"
 
-    # 如果存在极速预缓存，直接复用已解算完毕的 CZML 文件（响应耗时从 15s 降至 5ms）
-    if cache_file.exists() and not force_refresh:
+    # 如果存在极速预缓存且脚本未更新，直接复用已解算完毕的 CZML 文件
+    script_path = BASE_DIR / "app_3d_strategy.py"
+    script_mtime = script_path.stat().st_mtime if script_path.exists() else 0
+    if cache_file.exists() and not force_refresh and cache_file.stat().st_mtime >= script_mtime:
         try:
             shutil.copyfile(cache_file, MISSION_PATH)
             return success_response(

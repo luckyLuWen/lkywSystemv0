@@ -643,7 +643,23 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
                 tooltip=tooltip,
             ).add_to(fg)
 
-        # 静态路径线取消（由 TimestampedGeoJson 动画动态绘制，避免重复杂乱）
+        # 静态绘制五类救援力量的多智能体规划路径
+        if multi_agent_data:
+            _agent_hex_colors = {
+                'medical': '#22c55e', 'fire': '#f97316', 'police': '#3b82f6',
+                'hazmat': '#a855f7', 'road': '#64748b',
+            }
+            for akey, ainfo in multi_agent_data.items():
+                p_coords = ainfo.get('path')
+                if p_coords and len(p_coords) > 0:
+                    h_color = _agent_hex_colors.get(akey, '#2563eb')
+                    folium.PolyLine(
+                        p_coords,
+                        color=h_color,
+                        weight=5,
+                        opacity=0.9,
+                        tooltip=f"★ {ainfo.get('label', akey)}：{ainfo.get('poi', {}).get('name', '')} 救援路线 ({ainfo.get('poi', {}).get('net_dist_km', '')} km)"
+                    ).add_to(fg)
 
     folium.LayerControl(collapsed=True).add_to(m)
 
@@ -992,11 +1008,11 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
                 continue
             rgba = agent_colors_czml.get(agent_key, [200,200,200,220])
             line_flat = []
-            for lat, lon in path: line_flat.extend([lon, lat, 3])
+            for lat, lon in path: line_flat.extend([lon, lat, 6])
             czml.append({
                 "id": f"AgentPath_{agent_key}",
-                "polyline": {"positions": {"cartographicDegrees": line_flat}, "width": 4,
-                             "material": {"solidColor": {"color": {"rgba": rgba}}}, "clampToGround": True}
+                "polyline": {"positions": {"cartographicDegrees": line_flat}, "width": 5,
+                             "material": {"solidColor": {"color": {"rgba": rgba}}}}
             })
             agent_pos = []
             path_len = len(path)

@@ -883,7 +883,7 @@ function get2DParticleConfig(phaseIndex) {
     } else if (phaseIndex === 9) { // 无人感知执行
       config.smoke.emissionRate = 50
       config.fire.emissionRate = 45
-    } else if (phaseIndex === 10) { // 救援装备出动
+    } else if (phaseIndex >= 11) { // 救援装备出动
       config.smoke.emissionRate = 15
       config.fire.emissionRate = 8
       config.smoke.imageWidth = 10
@@ -917,7 +917,7 @@ function get2DParticleConfig(phaseIndex) {
       config.diffusion.emissionRate = 65
       config.diffusion.imageWidth = 10
       config.diffusion.imageHeight = 10
-    } else if (phaseIndex === 10) { // 救援装备出动
+    } else if (phaseIndex >= 11) { // 救援装备出动
       config.diffusion.emissionRate = 20
       config.diffusion.imageWidth = 5
       config.diffusion.imageHeight = 5
