@@ -23,7 +23,7 @@ CESIUM_DIR = BASE_DIR / "Cesium"
 PATH_RESULT_PATH = BASE_DIR / "path_result.json"
 MULTI_AGENT_RESULT_PATH = BASE_DIR / "multi_agent_result.json"
 MISSION_PATH = BASE_DIR / "mission.czml"
-FOLIUM_PATH = BASE_DIR / "wuhan_rescue_optimized.html"
+FOLIUM_PATH = BASE_DIR / "2d_deduction.html"
 RUNTIME_DIR = BASE_DIR / "runtime"
 LOG_DIR = BASE_DIR / "logs"
 SERVICES_CONFIG_PATH = BASE_DIR / "services.json"
@@ -493,7 +493,11 @@ def cesium_viewer():
 
 @app.route("/2d_deduction.html")
 def serve_2d_deduction():
-    return send_from_directory(BASE_DIR, "2d_deduction.html")
+    response = send_from_directory(BASE_DIR, "2d_deduction.html")
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 @app.route("/api/agent_paths")
