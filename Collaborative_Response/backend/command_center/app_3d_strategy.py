@@ -25,7 +25,7 @@ parser.add_argument('--uav_smoke', type=int, default=1)
 # 默认策略设为 RCD 逆向推演以展示最佳效果
 parser.add_argument('--strategy', type=str, default='rcd')
 parser.add_argument('--end_point', type=str, default='leak', choices=['leak', 'crash'],
-                    help='终点选择: leak=油罐车泄露现场, crash=货车追尾现场')
+                    help='终点选择: leak=油罐车泄露现场, crash=客车追尾现场')
 parser.add_argument('--compare', type=int, default=0,
                     help='是否开启对比模式: 1=同时生成基线算法路径进行对比')
 parser.add_argument('--multi_agent', type=int, default=0,
@@ -43,11 +43,11 @@ UAV_SPEED = 20.0   # 20 m/s (大型救援无人机)
 
 END_POINTS = {
     'leak':  (30.63101, 114.89209),                       # 油罐车泄漏现场
-    'crash': (30.385469, 113.104833),                     # 货车追尾现场
+    'crash': (30.385469, 113.104833),                     # 客车追尾现场
 }
 END_POINT_NAMES = {
     'leak':  '市区道路-油罐车泄漏现场',
-    'crash': '高速公路-货车追尾现场',
+    'crash': '高速公路-客车追尾现场',
 }
 END_POINT = END_POINTS[args.end_point]
 END_POINT_NAME = END_POINT_NAMES[args.end_point]
@@ -739,38 +739,38 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
         uav_saving_pct = (uav_saving_km / greedy_dist * 100) if greedy_dist > 0 else 0
         compare_rows = f'''
             <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(96,165,250,0.12);">
-                <div style="font-size: 11px; font-weight: 600; color: #a78bfa; margin-bottom: 6px;">路径算法优化对比</div>
-                <div style="font-size: 10px; margin-bottom: 4px; background: rgba(0,0,0,0.15); border-radius: 4px; padding: 5px 8px;">
-                    <div style="color: #94a3b8; margin-bottom: 3px;">无人车（地面道路）</div>
+                <div style="font-size: 13px; font-weight: 700; color: #a78bfa; margin-bottom: 6px;">路径算法优化对比</div>
+                <div style="font-size: 11.5px; margin-bottom: 5px; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px 8px;">
+                    <div style="color: #cbd5e1; font-weight: 600; margin-bottom: 3px;">无人车（地面道路）</div>
                     <div style="display: flex; justify-content: space-between;">
-                        <span style="color: #fdba74;">广度优先搜索</span><span style="color: #94a3b8;">{bfs_dist:.1f} km</span>
+                        <span style="color: #fdba74;">广度优先搜索</span><span style="color: #cbd5e1; font-weight: 600;">{bfs_dist:.1f} km</span>
                     </div>
                     <div style="display: flex; justify-content: space-between;">
-                        <span style="color: #93c5fd;">加权最短路径</span><span style="color: #94a3b8;">{car_dist:.1f} km</span>
+                        <span style="color: #93c5fd;">加权最短路径</span><span style="color: #cbd5e1; font-weight: 600;">{car_dist:.1f} km</span>
                     </div>
-                    <div style="color: #4ade80; text-align: center; margin-top: 2px;">▼ 优化 {car_saving_km:.1f} km（缩短 {car_saving_pct:.1f}%）</div>
+                    <div style="color: #4ade80; font-weight: 700; text-align: center; margin-top: 3px; font-size: 12px;">▼ 优化 {car_saving_km:.1f} km（缩短 {car_saving_pct:.1f}%）</div>
                 </div>
-                <div style="font-size: 10px; background: rgba(0,0,0,0.15); border-radius: 4px; padding: 5px 8px;">
-                    <div style="color: #94a3b8; margin-bottom: 3px;">无人机（空中航线）</div>
+                <div style="font-size: 11.5px; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px 8px;">
+                    <div style="color: #cbd5e1; font-weight: 600; margin-bottom: 3px;">无人机（空中航线）</div>
                     <div style="display: flex; justify-content: space-between;">
-                        <span style="color: #fdba74;">贪心搜索</span><span style="color: #94a3b8;">{greedy_dist:.1f} km</span>
+                        <span style="color: #fdba74;">贪心搜索</span><span style="color: #cbd5e1; font-weight: 600;">{greedy_dist:.1f} km</span>
                     </div>
                     <div style="display: flex; justify-content: space-between;">
-                        <span style="color: #93c5fd;">全局最优搜索</span><span style="color: #94a3b8;">{uav_dist:.1f} km</span>
+                        <span style="color: #93c5fd;">全局最优搜索</span><span style="color: #cbd5e1; font-weight: 600;">{uav_dist:.1f} km</span>
                     </div>
-                    <div style="color: #4ade80; text-align: center; margin-top: 2px;">▼ 优化 {uav_saving_km:.1f} km（缩短 {uav_saving_pct:.1f}%）</div>
+                    <div style="color: #4ade80; font-weight: 700; text-align: center; margin-top: 3px; font-size: 12px;">▼ 优化 {uav_saving_km:.1f} km（缩短 {uav_saving_pct:.1f}%）</div>
                 </div>
             </div>
         '''
 
     ui_html = f'''
-    <div style="position: fixed; top: 96px; left: 20px; z-index: 1000; width: 300px;
+    <div style="position: fixed; top: 96px; left: 20px; z-index: 1000; width: 310px;
                 background: rgba(2, 12, 26, 0.88); padding: 14px 16px; border-radius: 10px;
                 border: 1px solid rgba(0, 242, 254, 0.25); backdrop-filter: blur(12px);
                 box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 0 15px rgba(0, 242, 254, 0.05); font-family: 'Microsoft YaHei', sans-serif; color: #cbd5e1;">
-        <div style="font-size: 14px; font-weight: 700; color: #00f2fe; margin-bottom: 4px;
+        <div style="font-size: 16px; font-weight: 700; color: #00f2fe; margin-bottom: 4px;
                     letter-spacing: 1px; text-align: center; text-shadow: 0 0 8px rgba(0, 242, 254, 0.3);">协同效能评估</div>
-        <div id="eta-display" style="text-align:center;font-size:11px;color:#fbbf24;margin-bottom:6px;">预计到达 --:--</div>
+        <div id="eta-display" style="text-align:center;font-size:13px;font-weight:700;color:#fbbf24;margin-bottom:6px;">预计到达 --:--</div>
         <script>
         (function(){{
             var totalS = {int((max(car_interp['timestamp'].max(), uav_interp['timestamp'].max()) - START_TIME).total_seconds())};
@@ -789,44 +789,44 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
         }})();
         </script>
         <!-- 核心指标 -->
-        <div style="font-size: 12px; line-height: 1.8;">
+        <div style="font-size: 13px; line-height: 1.8;">
             <div style="display: flex; justify-content: space-between; padding: 2px 0;">
                 <span style="color: #94a3b8;">协同策略</span>
-                <b style="color: #00f2fe;">{strategy_name}</b>
+                <b style="color: #00f2fe; font-size: 13.5px;">{strategy_name}</b>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 2px 0;">
                 <span style="color: #94a3b8;">无人车行驶耗时</span>
-                <b style="color: #ffffff;">{car_df['time_s'].iloc[-1]/60:.1f} 分钟</b>
+                <b style="color: #ffffff; font-size: 13.5px;">{car_df['time_s'].iloc[-1]/60:.1f} 分钟</b>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 2px 0;">
                 <span style="color: #94a3b8;">无人机飞行耗时</span>
-                <b style="color: #ffffff;">{(uav_df['time_s'].iloc[-1]-delay)/60:.1f} 分钟</b>
+                <b style="color: #ffffff; font-size: 13.5px;">{(uav_df['time_s'].iloc[-1]-delay)/60:.1f} 分钟</b>
             </div>
-            <div style="display: flex; justify-content: space-between; padding: 2px 6px; margin: 3px 0;
-                        background: rgba(245,158,11,0.1); border-radius: 4px;">
+            <div style="display: flex; justify-content: space-between; padding: 3px 8px; margin: 4px 0;
+                        background: rgba(245,158,11,0.12); border-radius: 4px; font-size: 13px;">
                 <span style="color: #fbbf24;">空地协同等待</span>
-                <b style="color: #fbbf24;">{delay:.1f} 秒</b>
+                <b style="color: #fbbf24; font-size: 13.5px;">{delay:.1f} 秒</b>
             </div>
         </div>
         <!-- 路径参数 -->
-        <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(0, 242, 254, 0.15); font-size: 11px; line-height: 1.7;">
+        <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(0, 242, 254, 0.15); font-size: 12.5px; line-height: 1.8;">
             <div style="display: flex; justify-content: space-between;">
-                <span style="color: #94a3b8;">无人车行驶距离</span><span style="color: #c4b5fd;">{car_dist:.1f} km</span>
+                <span style="color: #94a3b8;">无人车行驶距离</span><span style="color: #c4b5fd; font-weight: 600;">{car_dist:.1f} km</span>
             </div>
             <div style="display: flex; justify-content: space-between;">
-                <span style="color: #94a3b8;">无人机飞行距离</span><span style="color: #c4b5fd;">{uav_dist:.1f} km</span>
+                <span style="color: #94a3b8;">无人机飞行距离</span><span style="color: #c4b5fd; font-weight: 600;">{uav_dist:.1f} km</span>
             </div>
             <div style="display: flex; justify-content: space-between;">
-                <span style="color: #94a3b8;">车辆巡航速度</span><span style="color: #94a3b8;">{car_speed_kmh:.0f} km/h</span>
+                <span style="color: #94a3b8;">车辆巡航速度</span><span style="color: #cbd5e1; font-weight: 600;">{car_speed_kmh:.0f} km/h</span>
             </div>
             <div style="display: flex; justify-content: space-between;">
-                <span style="color: #94a3b8;">无人机飞行速度</span><span style="color: #94a3b8;">{UAV_SPEED:.0f} m/s</span>
+                <span style="color: #94a3b8;">无人机飞行速度</span><span style="color: #cbd5e1; font-weight: 600;">{UAV_SPEED:.0f} m/s</span>
             </div>
             <div style="display: flex; justify-content: space-between;">
-                <span style="color: #94a3b8;">无人机能源消耗</span><span style="color: #f472b6;">{uav_energy:.1f} kWh</span>
+                <span style="color: #94a3b8;">无人机能源消耗</span><span style="color: #f472b6; font-weight: 600;">{uav_energy:.1f} kWh</span>
             </div>
-            <div style="display: flex; justify-content: space-between; color: #ef4444;">
-                <span>空地到达时间差</span><b>{time_diff:.1f} 秒</b>
+            <div style="display: flex; justify-content: space-between; color: #ef4444; font-size: 13px;">
+                <span>空地到达时间差</span><b style="font-size: 13.5px;">{time_diff:.1f} 秒</b>
             </div>
         </div>
         {compare_rows}
@@ -834,6 +834,358 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
     '''
     
     m.get_root().html.add_child(folium.Element(ui_html))
+
+    # 右上角地图图例面板 — 参照 3D 态势地图风格精细化设计
+    legend_title = "五类多智能体 运行图例" if multi_agent_data else "空地协同推演 运行图例"
+    
+    if multi_agent_data:
+        legend_rows_html = '''
+            <div class="legend-sec-title">五类救援力量路线</div>
+            <div class="legend-row medical-row">
+                <div class="legend-left">
+                    <span class="legend-glow-dot green"></span>
+                    <span class="legend-text-main">医疗救援路线</span>
+                </div>
+                <span class="legend-text-sub green-sub">绿线</span>
+            </div>
+            <div class="legend-row fire-row">
+                <div class="legend-left">
+                    <span class="legend-glow-dot orange"></span>
+                    <span class="legend-text-main">消防救援路线</span>
+                </div>
+                <span class="legend-text-sub orange-sub">橙线</span>
+            </div>
+            <div class="legend-row police-row">
+                <div class="legend-left">
+                    <span class="legend-glow-dot blue"></span>
+                    <span class="legend-text-main">公安处置路线</span>
+                </div>
+                <span class="legend-text-sub blue-sub">蓝线</span>
+            </div>
+            <div class="legend-row hazmat-row">
+                <div class="legend-left">
+                    <span class="legend-glow-dot purple"></span>
+                    <span class="legend-text-main">危化处置路线</span>
+                </div>
+                <span class="legend-text-sub purple-sub">紫线</span>
+            </div>
+            <div class="legend-row road-row">
+                <div class="legend-left">
+                    <span class="legend-glow-dot gray"></span>
+                    <span class="legend-text-main">交通管制路线</span>
+                </div>
+                <span class="legend-text-sub gray-sub">灰线</span>
+            </div>
+
+            <div class="legend-sec-title margin-top-sec">五类救援 POI 站点</div>
+            <div class="legend-row medical-row">
+                <div class="legend-left">
+                    <span class="legend-glow-dot green"></span>
+                    <span class="legend-text-main">医疗救护站 POI</span>
+                </div>
+                <span class="legend-text-sub green-sub">绿标记</span>
+            </div>
+            <div class="legend-row fire-row">
+                <div class="legend-left">
+                    <span class="legend-glow-dot orange"></span>
+                    <span class="legend-text-main">消防救援站 POI</span>
+                </div>
+                <span class="legend-text-sub orange-sub">橙标记</span>
+            </div>
+            <div class="legend-row police-row">
+                <div class="legend-left">
+                    <span class="legend-glow-dot blue"></span>
+                    <span class="legend-text-main">公安交警队 POI</span>
+                </div>
+                <span class="legend-text-sub blue-sub">蓝标记</span>
+            </div>
+            <div class="legend-row hazmat-row">
+                <div class="legend-left">
+                    <span class="legend-glow-dot purple"></span>
+                    <span class="legend-text-main">危化处置点 POI</span>
+                </div>
+                <span class="legend-text-sub purple-sub">紫标记</span>
+            </div>
+            <div class="legend-row road-row">
+                <div class="legend-left">
+                    <span class="legend-glow-dot gray"></span>
+                    <span class="legend-text-main">交通管制队 POI</span>
+                </div>
+                <span class="legend-text-sub gray-sub">灰标记</span>
+            </div>
+        '''
+    else:
+        compare_legend = ''
+        if COMPARE:
+            compare_legend = '''
+                <div class="legend-row bfs-row">
+                    <div class="legend-left">
+                        <span class="legend-glow-line green-dashed"></span>
+                        <span class="legend-text-main">基线车辆(BFS)</span>
+                    </div>
+                    <span class="legend-text-sub green-sub">绿虚线</span>
+                </div>
+                <div class="legend-row greedy-row">
+                    <div class="legend-left">
+                        <span class="legend-glow-line orange-dashed"></span>
+                        <span class="legend-text-main">基线无人机(Greedy)</span>
+                    </div>
+                    <span class="legend-text-sub orange-sub">橙虚线</span>
+                </div>
+            '''
+        legend_rows_html = f'''
+            <div class="legend-sec-title">装备协同路线</div>
+            <div class="legend-row ugv-row">
+                <div class="legend-left">
+                    <span class="legend-glow-dot blue"></span>
+                    <span class="legend-text-main">地面无人车(UGV)</span>
+                </div>
+                <span class="legend-text-sub blue-sub">蓝实线</span>
+            </div>
+            <div class="legend-row uav-row">
+                <div class="legend-left">
+                    <span class="legend-glow-dot purple"></span>
+                    <span class="legend-text-main">侦查无人机(UAV)</span>
+                </div>
+                <span class="legend-text-sub purple-sub">紫虚线</span>
+            </div>
+            {compare_legend}
+
+            <div class="legend-sec-title margin-top-sec">五类救援 POI 站点</div>
+            <div class="legend-row medical-row">
+                <div class="legend-left">
+                    <span class="legend-glow-dot green"></span>
+                    <span class="legend-text-main">医疗救护站 POI</span>
+                </div>
+                <span class="legend-text-sub green-sub">绿标记</span>
+            </div>
+            <div class="legend-row fire-row">
+                <div class="legend-left">
+                    <span class="legend-glow-dot orange"></span>
+                    <span class="legend-text-main">消防救援站 POI</span>
+                </div>
+                <span class="legend-text-sub orange-sub">橙标记</span>
+            </div>
+            <div class="legend-row police-row">
+                <div class="legend-left">
+                    <span class="legend-glow-dot blue"></span>
+                    <span class="legend-text-main">公安交警队 POI</span>
+                </div>
+                <span class="legend-text-sub blue-sub">蓝标记</span>
+            </div>
+            <div class="legend-row hazmat-row">
+                <div class="legend-left">
+                    <span class="legend-glow-dot purple"></span>
+                    <span class="legend-text-main">危化处置点 POI</span>
+                </div>
+                <span class="legend-text-sub purple-sub">紫标记</span>
+            </div>
+            <div class="legend-row road-row">
+                <div class="legend-left">
+                    <span class="legend-glow-dot gray"></span>
+                    <span class="legend-text-main">交通管制队 POI</span>
+                </div>
+                <span class="legend-text-sub gray-sub">灰标记</span>
+            </div>
+        '''
+
+    legend_zones_html = '''
+        <div class="legend-sec-title margin-top-sec">态势与管控要素</div>
+        <div class="legend-row accident-row">
+            <div class="legend-left">
+                <span class="legend-glow-dot red"></span>
+                <span class="legend-text-main">事故响应终点</span>
+            </div>
+            <span class="legend-text-sub red-sub">红标记</span>
+        </div>
+        <div class="legend-row start-row">
+            <div class="legend-left">
+                <span class="legend-glow-dot green"></span>
+                <span class="legend-text-main">救援力量起点</span>
+            </div>
+            <span class="legend-text-sub green-sub">绿标记</span>
+        </div>
+        <div class="legend-row nfz-row">
+            <div class="legend-left">
+                <span class="legend-box-icon red-box"></span>
+                <span class="legend-text-main">低空限飞管制区</span>
+            </div>
+            <span class="legend-text-sub red-sub">红虚框</span>
+        </div>
+        <div class="legend-row cong-row">
+            <div class="legend-left">
+                <span class="legend-box-icon blue-box"></span>
+                <span class="legend-text-main">道路施工拥堵区</span>
+            </div>
+            <span class="legend-text-sub blue-sub">蓝虚框</span>
+        </div>
+    '''
+
+    right_legend_html = f'''
+    <style>
+        .deduction-2d-legend {{
+            position: fixed;
+            top: 96px;
+            right: 20px;
+            z-index: 1000;
+            width: 210px;
+            background: rgba(10, 20, 38, 0.88);
+            border: 1px solid rgba(0, 242, 254, 0.25);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), inset 0 0 15px rgba(0, 242, 254, 0.1);
+            border-radius: 12px;
+            padding: 12px 14px;
+            backdrop-filter: blur(20px);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+            color: #cbd5e1;
+            user-select: none;
+        }}
+        .deduction-2d-legend .legend-header {{
+            border-bottom: 1px solid rgba(0, 242, 254, 0.15);
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+            text-align: center;
+        }}
+        .deduction-2d-legend .legend-title {{
+            font-size: 13px;
+            font-weight: bold;
+            color: #00f2fe;
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px rgba(0, 242, 254, 0.35);
+        }}
+        .deduction-2d-legend .legend-sec-title {{
+            font-size: 10px;
+            font-weight: 700;
+            color: #94a3b8;
+            margin-bottom: 5px;
+            letter-spacing: 0.5px;
+        }}
+        .deduction-2d-legend .margin-top-sec {{
+            margin-top: 8px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(0, 242, 254, 0.12);
+        }}
+        .deduction-2d-legend .legend-row {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(6, 12, 24, 0.85);
+            border-radius: 7px;
+            padding: 5px 8px;
+            margin-bottom: 5px;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }}
+        .deduction-2d-legend .legend-row:hover {{
+            background: rgba(12, 24, 48, 0.95);
+        }}
+        .deduction-2d-legend .legend-left {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+        .deduction-2d-legend .legend-text-main {{
+            font-size: 11px;
+            font-weight: 600;
+            color: #ffffff;
+            white-space: nowrap;
+        }}
+        .deduction-2d-legend .legend-text-sub {{
+            font-size: 9px;
+            font-weight: bold;
+            font-family: monospace;
+            padding: 1px 5px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }}
+        /* 发光呼气点 */
+        .deduction-2d-legend .legend-glow-dot {{
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            position: relative;
+            display: inline-block;
+            flex-shrink: 0;
+        }}
+        .deduction-2d-legend .legend-glow-dot::after {{
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            border-radius: 50%;
+            background: inherit;
+            opacity: 0.4;
+            animation: dot-pulse 1.8s infinite ease-in-out;
+        }}
+        @keyframes dot-pulse {{
+            0% {{ transform: scale(1); opacity: 0.4; }}
+            50% {{ transform: scale(1.8); opacity: 0; }}
+            100% {{ transform: scale(1); opacity: 0.4; }}
+        }}
+        /* 颜色分类风格 */
+        .deduction-2d-legend .green {{ background-color: #00ffaa; box-shadow: 0 0 6px #00ffaa; }}
+        .deduction-2d-legend .orange {{ background-color: #ff7700; box-shadow: 0 0 6px #ff7700; }}
+        .deduction-2d-legend .blue {{ background-color: #00e5ff; box-shadow: 0 0 6px #00e5ff; }}
+        .deduction-2d-legend .purple {{ background-color: #c084fc; box-shadow: 0 0 6px #c084fc; }}
+        .deduction-2d-legend .gray {{ background-color: #94a3b8; box-shadow: 0 0 6px #94a3b8; }}
+        .deduction-2d-legend .red {{ background-color: #ff3344; box-shadow: 0 0 6px #ff3344; }}
+
+        .deduction-2d-legend .medical-row {{ border-color: rgba(0, 255, 170, 0.25); box-shadow: 0 0 8px rgba(0, 255, 170, 0.08); }}
+        .deduction-2d-legend .fire-row {{ border-color: rgba(255, 119, 0, 0.25); box-shadow: 0 0 8px rgba(255, 119, 0, 0.08); }}
+        .deduction-2d-legend .police-row {{ border-color: rgba(0, 229, 255, 0.25); box-shadow: 0 0 8px rgba(0, 229, 255, 0.08); }}
+        .deduction-2d-legend .hazmat-row {{ border-color: rgba(192, 132, 252, 0.25); box-shadow: 0 0 8px rgba(192, 132, 252, 0.08); }}
+        .deduction-2d-legend .road-row {{ border-color: rgba(148, 163, 184, 0.25); box-shadow: 0 0 8px rgba(148, 163, 184, 0.08); }}
+        .deduction-2d-legend .ugv-row {{ border-color: rgba(0, 229, 255, 0.25); box-shadow: 0 0 8px rgba(0, 229, 255, 0.08); }}
+        .deduction-2d-legend .uav-row {{ border-color: rgba(192, 132, 252, 0.25); box-shadow: 0 0 8px rgba(192, 132, 252, 0.08); }}
+        .deduction-2d-legend .bfs-row {{ border-color: rgba(0, 255, 170, 0.25); }}
+        .deduction-2d-legend .greedy-row {{ border-color: rgba(255, 119, 0, 0.25); }}
+        .deduction-2d-legend .accident-row {{ border-color: rgba(255, 51, 68, 0.25); box-shadow: 0 0 8px rgba(255, 51, 68, 0.08); }}
+        .deduction-2d-legend .start-row {{ border-color: rgba(0, 255, 170, 0.25); box-shadow: 0 0 8px rgba(0, 255, 170, 0.08); }}
+        .deduction-2d-legend .nfz-row {{ border-color: rgba(255, 51, 68, 0.25); }}
+        .deduction-2d-legend .cong-row {{ border-color: rgba(0, 229, 255, 0.25); }}
+
+        .deduction-2d-legend .green-sub {{ color: #00ffaa; background: rgba(0, 255, 170, 0.12); }}
+        .deduction-2d-legend .orange-sub {{ color: #ff7700; background: rgba(255, 119, 0, 0.12); }}
+        .deduction-2d-legend .blue-sub {{ color: #00e5ff; background: rgba(0, 229, 255, 0.12); }}
+        .deduction-2d-legend .purple-sub {{ color: #c084fc; background: rgba(192, 132, 252, 0.12); }}
+        .deduction-2d-legend .gray-sub {{ color: #cbd5e1; background: rgba(148, 163, 184, 0.12); }}
+        .deduction-2d-legend .red-sub {{ color: #ff3344; background: rgba(255, 51, 68, 0.12); }}
+
+        .deduction-2d-legend .legend-box-icon {{
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            display: inline-block;
+            flex-shrink: 0;
+        }}
+        .deduction-2d-legend .red-box {{
+            background: rgba(255, 51, 68, 0.3);
+            border: 1px dashed #ff3344;
+        }}
+        .deduction-2d-legend .blue-box {{
+            background: rgba(0, 229, 255, 0.25);
+            border: 1px dashed #00e5ff;
+        }}
+        .deduction-2d-legend .legend-glow-line {{
+            width: 12px;
+            height: 2px;
+            display: inline-block;
+            flex-shrink: 0;
+        }}
+        .deduction-2d-legend .green-dashed {{ border-top: 2px dashed #00ffaa; }}
+        .deduction-2d-legend .orange-dashed {{ border-top: 2px dashed #ff7700; }}
+    </style>
+    <div class="deduction-2d-legend">
+        <div class="legend-header">
+            <div class="legend-title">🗺️ {legend_title}</div>
+        </div>
+        {legend_rows_html}
+        {legend_zones_html}
+    </div>
+    '''
+
+    m.get_root().html.add_child(folium.Element(right_legend_html))
 
     # 路径增强：无人机耗时节点 + UGV/UAV 速度标签（2D）
     if not multi_agent_data:

@@ -1,7 +1,7 @@
 <template>
   <div class="layout">
     <aside class="sidebar">
-      <h2>协同响应指挥面板</h2>
+      <h2>救援推演与智能决策</h2>
 
       <div class="menu">
         <button :class="['menu-btn', { active: currentView === 'home' && !showEvaluationPanel }]" @click="showHome">系统首页</button>
@@ -91,7 +91,7 @@
           <span>事故场景</span>
           <select v-model="deductionScene" class="ctrl-select">
             <option value="leak">油罐车泄露现场</option>
-            <option value="crash">货车追尾现场</option>
+            <option value="crash">客车追尾现场</option>
           </select>
         </label>
         <label class="ctrl-field">
@@ -123,7 +123,7 @@
           <span>事故场景</span>
           <select v-model="cesiumScene" class="ctrl-select">
             <option value="leak">油罐车泄露现场</option>
-            <option value="crash">货车追尾现场</option>
+            <option value="crash">客车追尾现场</option>
           </select>
         </label>
         <div class="ctrl-btns">
@@ -192,7 +192,7 @@
                 <select
                   v-model="cesiumEndpoint"
                   class="scene-select">
-                  <option value="crash">&#x1F692; 货车追尾现场</option>
+                  <option value="crash">&#x1F692; 客车追尾现场</option>
                   <option value="leak">&#x1F6E2; 油罐车泄露现场</option>
                 </select>
                 <button
