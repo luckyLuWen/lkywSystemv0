@@ -221,7 +221,7 @@ const goHome = () => {
 const sceneConfigs = {
   truck: {
     key: 'truck',
-    label: '客车追尾事件',
+    label: '货车追尾事件',
     location: '三维扫描现场重建',
     icon: '🚛',
     uri: '/Dashboard/models/Accident_Occur1.glb'

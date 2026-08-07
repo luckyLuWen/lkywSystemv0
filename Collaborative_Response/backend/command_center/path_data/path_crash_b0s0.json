@@ -1,6 +1,6 @@
 {
   "end_point": "crash",
-  "end_point_name": "高速公路-客车追尾现场",
+  "end_point_name": "高速公路-货车追尾现场",
   "strategy": "rcd",
   "ugv_block": false,
   "uav_smoke": false,

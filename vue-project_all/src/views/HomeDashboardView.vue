@@ -697,12 +697,12 @@ const topMenus = [
 const accidentPoints = [
   {
     id: 'rear-end',
-    title: '客车追尾现场',
+    title: '货车追尾现场',
     focusPoint: 'accident_blue',
     phases: [
       { id: 't-start', time: '14:00', shortLabel: '仿真开始', title: '仿真推演开始', systems: ['总系统首页'], focusPoint: 'accident_blue' },
       { id: 't-normal', time: '14:05', shortLabel: '正常行驶', title: '车辆正常行驶阶段', systems: ['边缘网关'], focusPoint: 'accident_blue' },
-      { id: 't-accident', time: '14:12', shortLabel: '事故发生', title: '客车追尾事故瞬间', systems: ['实时检测'], focusPoint: 'detection' },
+      { id: 't-accident', time: '14:12', shortLabel: '事故发生', title: '货车追尾事故瞬间', systems: ['实时检测'], focusPoint: 'detection' },
       { id: 't-uav-dispatch', time: '14:14', shortLabel: '无人机出动', title: '无人机出动', systems: ['协同响应'], focusPoint: 'accident_blue' },
       { id: 't-uav-recon', time: '14:15', shortLabel: '无人机侦察', title: '无人机快速出动侦察', systems: ['协同响应'], focusPoint: 'accident_blue' },
       { id: 't-smoke', time: '14:18', shortLabel: '次生灾害（烟雾）', title: '事故现场产生大量烟雾', systems: ['协同响应'], focusPoint: 'accident_blue' },
