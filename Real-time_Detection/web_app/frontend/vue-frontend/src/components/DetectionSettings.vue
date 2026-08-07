@@ -34,7 +34,7 @@
           :class="{ active: settings.taskType === 'collision' }"
           @click="settings.taskType = 'collision'"
         >
-          货车追尾现场
+          客车追尾现场
         </button>
         <button
           type="button"
@@ -63,7 +63,7 @@
             <strong>{{ getModelLabel(model) }}</strong>
           </div>
         </div>
-        <div class="tag">货车追尾现场与油罐车泄露现场综合检测</div>
+        <div class="tag">客车追尾现场与油罐车泄露现场综合检测</div>
       </template>
     </div>
 
@@ -99,7 +99,7 @@ const props = defineProps({
 })
 
 const taskLabels = {
-  collision: '货车追尾现场',
+  collision: '客车追尾现场',
   hazmat: '油罐车泄露现场'
 }
 
@@ -114,7 +114,7 @@ const compositeModels = computed(() => {
     .filter(Boolean)
 })
 
-const currentTaskLabel = computed(() => taskLabels[props.settings?.taskType] || '货车追尾现场')
+const currentTaskLabel = computed(() => taskLabels[props.settings?.taskType] || '客车追尾现场')
 
 const modeHint = computed(() => {
   if (props.settings?.detectionMode === 'composite') return 'SFGA + LCA 双模型联合推理'

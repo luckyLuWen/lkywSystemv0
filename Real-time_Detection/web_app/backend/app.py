@@ -114,7 +114,7 @@ PRIMARY_MODEL_NAME = 'SFGA-YOLO26M'
 HAZMAT_PRIMARY_MODEL_NAME = 'LCA-YOLO26N'
 
 MODEL_TASKS = {
-    'collision': '货车追尾现场',
+    'collision': '客车追尾现场',
     'hazmat': '油罐车泄露现场',
 }
 
@@ -465,7 +465,7 @@ def get_models():
                 'size': model_path.stat().st_size / (1024 * 1024),  # Size in MB
                 'is_primary': name in (PRIMARY_MODEL_NAME, HAZMAT_PRIMARY_MODEL_NAME),
                 'task_type': MODEL_TASK_TYPES.get(name, 'collision'),
-                'task_label': MODEL_TASKS.get(MODEL_TASK_TYPES.get(name, 'collision'), '货车追尾现场'),
+                'task_label': MODEL_TASKS.get(MODEL_TASK_TYPES.get(name, 'collision'), '客车追尾现场'),
                 'performance': MODEL_PERFORMANCE.get(name),
             })
     return jsonify({'models': available_models})
@@ -486,7 +486,7 @@ def run_image_detection_for_model(model_name, filepath, img, conf_threshold, iou
     result = results[0]
     detections = []
     task_type = MODEL_TASK_TYPES.get(model_name, 'collision')
-    task_label = MODEL_TASKS.get(task_type, '货车追尾现场')
+    task_label = MODEL_TASKS.get(task_type, '客车追尾现场')
     model_display_name = get_model_display_name(model_name)
 
     for box in result.boxes:
@@ -532,7 +532,7 @@ def run_frame_detection_for_model(model_name, frame, conf_threshold, iou_thresho
     result = results[0]
     detections = []
     task_type = MODEL_TASK_TYPES.get(model_name, 'collision')
-    task_label = MODEL_TASKS.get(task_type, '货车追尾现场')
+    task_label = MODEL_TASKS.get(task_type, '客车追尾现场')
     model_display_name = get_model_display_name(model_name)
 
     for box in result.boxes:

@@ -94,7 +94,7 @@ def get_task_label_for_model(model_name):
     if normalized_name in {'LCA-YOLO26N', 'YOLO26N', 'YOLO11N'}:
         return '油罐车泄露现场'
     if normalized_name in {'SFGA-YOLO26M', 'YOLO26M', 'YOLO11M'}:
-        return '货车追尾现场'
+        return '客车追尾现场'
     return ''
 
 

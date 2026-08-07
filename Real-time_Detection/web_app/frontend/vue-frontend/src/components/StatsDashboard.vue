@@ -18,53 +18,88 @@
     <div v-else-if="stats" class="stats-content">
       <!-- Summary Cards -->
       <div class="stat-cards-row">
-        <div class="card stat-card">
-          <div class="stat-icon">📊</div>
-          <div class="stat-num cyan">{{ stats.total_detections }}</div>
-          <div class="stat-desc">累计检测次数</div>
+        <!-- 1. 首位：平均推理时间（高亮） -->
+        <div class="card stat-card highlight-card">
+          <div class="stat-desc highlight-desc">平均推理时间 (s)</div>
+          <div class="stat-num cyan-highlight">{{ stats.avg_inference_time_s }}</div>
         </div>
+        <!-- 2. 今日检测 -->
         <div class="card stat-card">
-          <div class="stat-icon">📅</div>
-          <div class="stat-num amber">{{ stats.today_detections }}</div>
           <div class="stat-desc">今日检测</div>
+          <div class="stat-num normal-num">{{ stats.today_detections }}</div>
         </div>
+        <!-- 3. 累计检测次数 -->
         <div class="card stat-card">
-          <div class="stat-icon">⚡</div>
-          <div class="stat-num">{{ stats.avg_inference_time_s }}</div>
-          <div class="stat-desc">平均推理时间 (s)</div>
+          <div class="stat-desc">累计检测次数</div>
+          <div class="stat-num normal-num">{{ stats.total_detections }}</div>
         </div>
+        <!-- 4. 使用模型数 -->
         <div class="card stat-card">
-          <div class="stat-icon">🧠</div>
-          <div class="stat-num small">{{ Object.keys(stats.model_usage || {}).length }}</div>
           <div class="stat-desc">使用模型数</div>
+          <div class="stat-num normal-num">{{ Object.keys(stats.model_usage || {}).length }}</div>
         </div>
       </div>
 
-      <!-- Charts Row -->
-      <div class="charts-row">
+      <!-- Dual Algorithm Class Distribution Row -->
+      <div class="distribution-grid-row">
+        <!-- 饼图1：客车追尾检测类别分布 -->
         <div class="card chart-card distribution-card">
-          <div class="card-title">类别分布</div>
-          <div v-if="doughnutData" class="distribution-body">
+          <div class="card-title">客车追尾检测类别分布</div>
+          <div v-if="crashDoughnutData" class="distribution-body">
             <div class="chart-wrapper doughnut-wrapper">
-              <Doughnut :data="doughnutData" :options="doughnutOptions" />
+              <Doughnut :data="crashDoughnutData" :options="doughnutOptions" />
             </div>
             <div class="distribution-legend">
               <div
-                v-for="item in classDistributionItems"
-                :key="item.label"
+                v-for="item in crashLegendItems"
+                :key="item.key"
                 class="legend-row"
               >
                 <span class="legend-color" :style="{ backgroundColor: item.color }"></span>
-                <span class="legend-label">{{ item.label }}</span>
+                <div class="legend-text">
+                  <span class="legend-label">{{ item.label }}</span>
+                  <span class="legend-code">({{ item.code }})</span>
+                </div>
                 <strong>{{ item.value }}</strong>
               </div>
             </div>
           </div>
           <div v-else class="chart-wrapper">
-            <div class="empty-chart">暂无数据</div>
+            <div class="empty-chart">暂无追尾检测数据</div>
           </div>
         </div>
-        <div class="card chart-card">
+
+        <!-- 饼图2：油罐车泄露检测类别分布 -->
+        <div class="card chart-card distribution-card">
+          <div class="card-title">油罐车泄露检测类别分布</div>
+          <div v-if="leakDoughnutData" class="distribution-body">
+            <div class="chart-wrapper doughnut-wrapper">
+              <Doughnut :data="leakDoughnutData" :options="doughnutOptions" />
+            </div>
+            <div class="distribution-legend">
+              <div
+                v-for="item in leakLegendItems"
+                :key="item.key"
+                class="legend-row"
+              >
+                <span class="legend-color" :style="{ backgroundColor: item.color }"></span>
+                <div class="legend-text">
+                  <span class="legend-label">{{ item.label }}</span>
+                  <span class="legend-code">({{ item.code }})</span>
+                </div>
+                <strong>{{ item.value }}</strong>
+              </div>
+            </div>
+          </div>
+          <div v-else class="chart-wrapper">
+            <div class="empty-chart">暂无泄露检测数据</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trend Charts Row -->
+      <div class="charts-row">
+        <div class="card chart-card trend-card-full">
           <div class="card-title">近30天检测趋势</div>
           <div class="chart-wrapper">
             <Bar v-if="barData" :data="barData" :options="barOptions" />
@@ -159,6 +194,18 @@ const normalizedClassDistribution = computed(() => {
 })
 
 
+const LABEL_ZH_MAP = {
+  car_fire: '轿车碰撞起火',
+  lkyw_fire: '两客一危车辆碰撞起火',
+  car_nofire: '轿车碰撞无火',
+  lkyw_nofire: '两客一危车辆碰撞无火',
+  leak: '危化品泄露',
+  noleak: '未发现危化品泄露'
+}
+
+const CRASH_KEYS = ['car_fire', 'lkyw_fire', 'car_nofire', 'lkyw_nofire']
+const LEAK_KEYS = ['leak', 'noleak']
+
 let _colorIdx = 0
 const getFallbackColor = () => {
   const c = FALLBACK_COLORS[_colorIdx % FALLBACK_COLORS.length]
@@ -166,29 +213,75 @@ const getFallbackColor = () => {
   return c
 }
 
-const doughnutData = computed(() => {
+// 1. 客车追尾场景分布 (SFGA-YOLO26M)
+const crashDistribution = computed(() => {
   const dist = normalizedClassDistribution.value
-  if (!dist || Object.keys(dist).length === 0) return null
-  _colorIdx = 0
-  const labels = Object.keys(dist)
+  const result = {}
+  CRASH_KEYS.forEach(k => {
+    if (dist[k] !== undefined && dist[k] > 0) result[k] = dist[k]
+  })
+  return result
+})
+
+const crashDoughnutData = computed(() => {
+  const dist = crashDistribution.value
+  const keys = Object.keys(dist)
+  if (keys.length === 0) return null
   return {
-    labels,
+    labels: keys.map(k => LABEL_ZH_MAP[k] || k),
     datasets: [{
-      data: labels.map(k => dist[k]),
-      backgroundColor: labels.map(k => CLASS_COLORS_MAP[k] || getFallbackColor()),
+      data: keys.map(k => dist[k]),
+      backgroundColor: keys.map(k => CLASS_COLORS_MAP[k] || getFallbackColor()),
       borderColor: 'rgba(0,0,0,0.3)',
-      borderWidth: 1
+      borderWidth: 1.5
     }]
   }
 })
 
-const classDistributionItems = computed(() => {
+const crashLegendItems = computed(() => {
+  const dist = crashDistribution.value
+  return Object.entries(dist).map(([k, v]) => ({
+    key: k,
+    label: LABEL_ZH_MAP[k] || k,
+    code: k,
+    value: v,
+    color: CLASS_COLORS_MAP[k] || getFallbackColor()
+  }))
+})
+
+// 2. 油罐车泄露场景分布 (LCA-YOLO26N)
+const leakDistribution = computed(() => {
   const dist = normalizedClassDistribution.value
-  _colorIdx = 0
-  return Object.entries(dist).map(([label, value]) => ({
-    label,
-    value,
-    color: CLASS_COLORS_MAP[label] || getFallbackColor()
+  const result = {}
+  LEAK_KEYS.forEach(k => {
+    if (dist[k] !== undefined && dist[k] > 0) result[k] = dist[k]
+  })
+  return result
+})
+
+const leakDoughnutData = computed(() => {
+  const dist = leakDistribution.value
+  const keys = Object.keys(dist)
+  if (keys.length === 0) return null
+  return {
+    labels: keys.map(k => LABEL_ZH_MAP[k] || k),
+    datasets: [{
+      data: keys.map(k => dist[k]),
+      backgroundColor: keys.map(k => CLASS_COLORS_MAP[k] || getFallbackColor()),
+      borderColor: 'rgba(0,0,0,0.3)',
+      borderWidth: 1.5
+    }]
+  }
+})
+
+const leakLegendItems = computed(() => {
+  const dist = leakDistribution.value
+  return Object.entries(dist).map(([k, v]) => ({
+    key: k,
+    label: LABEL_ZH_MAP[k] || k,
+    code: k,
+    value: v,
+    color: CLASS_COLORS_MAP[k] || getFallbackColor()
   }))
 })
 
@@ -286,63 +379,85 @@ onMounted(fetchStats)
 
 .stat-card {
   text-align: center;
-  padding: 30px 24px;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid rgba(0, 229, 255, 0.14);
+  background: rgba(4, 22, 39, 0.78);
 }
 
-.stat-icon {
-  font-size: 42px;
-  margin-bottom: 10px;
+.stat-card.highlight-card {
+  border: 1.5px solid rgba(0, 229, 255, 0.5);
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.16), rgba(4, 22, 39, 0.95));
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.22);
 }
 
 .stat-num {
   font-size: 48px;
-  font-weight: bold;
-  font-family: monospace;
-  margin-bottom: 4px;
+  font-weight: 800;
+  font-family: 'Times New Roman', Times, serif;
+  margin-bottom: 0;
+  line-height: 1;
 }
 
-.stat-num.cyan {
+.stat-num.normal-num {
+  color: #e2f8ff;
+  text-shadow: none;
+}
+
+.stat-num.cyan-highlight {
   color: var(--primary-cyan);
-  text-shadow: 0 0 8px var(--primary-cyan);
-}
-
-.stat-num.amber {
-  color: var(--accent-amber);
-  text-shadow: 0 0 8px var(--accent-amber);
-}
-
-.stat-num.small {
-  font-size: 36px;
+  text-shadow: 0 0 14px rgba(0, 229, 255, 0.65);
 }
 
 .stat-desc {
-  font-size: 19px;
+  font-size: 23px;
   color: var(--text-dim);
   letter-spacing: 1px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stat-desc.highlight-desc {
+  color: var(--primary-cyan);
+  font-weight: 800;
+}
+
+.distribution-grid-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
 }
 
 .charts-row {
   display: grid;
-  grid-template-columns: minmax(320px, 0.95fr) minmax(520px, 1.65fr);
+  grid-template-columns: 1fr;
   gap: 20px;
   margin-bottom: 24px;
 }
 
 .chart-card {
-  min-height: 450px;
+  min-height: 440px;
 }
 
+/* 所有卡片标题放大 1.3 倍 (21px * 1.3 = 27px ~ 28px) */
 .card-title {
   color: var(--primary-cyan);
-  font-size: 21px;
+  font-size: 28px;
+  font-weight: 800;
   letter-spacing: 2px;
   margin-bottom: 18px;
   padding-bottom: 15px;
-  border-bottom: 1px solid rgba(0, 229, 255, 0.1);
+  border-bottom: 2px solid rgba(0, 229, 255, 0.2);
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
 }
 
 .chart-wrapper {
-  height: 450px;
+  height: 380px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -353,7 +468,7 @@ onMounted(fetchStats)
 }
 
 .distribution-body {
-  min-height: 450px;
+  min-height: 380px;
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
@@ -362,7 +477,7 @@ onMounted(fetchStats)
 
 .doughnut-wrapper {
   width: 100%;
-  height: 270px;
+  height: 240px;
 }
 
 .distribution-legend {
@@ -373,35 +488,51 @@ onMounted(fetchStats)
 
 .legend-row {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) auto;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  min-height: 38px;
-  padding: 7px 10px;
-  border: 1px solid rgba(0, 229, 255, 0.14);
-  background: rgba(0, 229, 255, 0.04);
+  gap: 14px;
+  min-height: 48px;
+  padding: 10px 16px;
+  border: 1px solid rgba(0, 229, 255, 0.18);
+  background: rgba(0, 229, 255, 0.05);
+  border-radius: 6px;
 }
 
 .legend-color {
-  width: 18px;
-  height: 18px;
-  border-radius: 2px;
-  box-shadow: 0 0 8px currentColor;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.legend-text {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
 }
 
 .legend-label {
   color: var(--text-main);
-  font-size: 17px;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 22px;
+  font-weight: 700;
   white-space: nowrap;
+}
+
+.legend-code {
+  font-size: 20px;
+  color: #b0bec5;
+  font-weight: 700;
+  font-family: 'Times New Roman', Times, serif;
+  letter-spacing: 0.5px;
+  opacity: 0.95;
 }
 
 .legend-row strong {
   color: var(--primary-cyan);
-  font-size: 19px;
-  font-family: monospace;
+  font-size: 26px;
+  font-family: 'Times New Roman', Times, serif;
+  font-weight: 800;
 }
 
 .empty-chart {
