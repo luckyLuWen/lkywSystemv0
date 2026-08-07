@@ -308,6 +308,17 @@
             viewer.dataSources.removeAll();
             viewer.dataSources.add(missionDs);
             
+            if (missionDs.clock) {
+                viewer.clock.startTime = missionDs.clock.startTime;
+                viewer.clock.stopTime = missionDs.clock.stopTime;
+                viewer.clock.currentTime = missionDs.clock.startTime;
+                viewer.clock.clockRange = Cesium.ClockRange.LOOP_STOP;
+                viewer.clock.multiplier = 1;
+                if (viewer.timeline) {
+                    viewer.timeline.zoomTo(missionDs.clock.startTime, missionDs.clock.stopTime);
+                }
+            }
+
             // 自动智能识别当前推演场景
             currentScenario = detectCurrentScenario();
             updateScenarioBadgeUI();

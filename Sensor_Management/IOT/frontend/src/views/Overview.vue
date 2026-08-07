@@ -604,28 +604,47 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* ================= 核心色板与全局设定 (彻底移除旧版外部字体引入) ================= */
+/* ================= 突破外层 Layout 布局限制 ================= */
+/* 强行穿透并清除常见 Vue Admin 模板父级容器的内边距和白色背景 */
+:global(main),
+:global(.el-main),
+:global(.app-main),
+:global(.main-container),
+:global(.layout-content) {
+  padding: 0 !important;
+  margin: 0 !important;
+  background-color: #030710 !important; /* 强制背景色为深空色 */
+  overflow: hidden !important;
+}
 
+:global(body), :global(html), :global(#app) {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #030710 !important;
+}
+
+/* ================= 核心色板与全局设定 ================= */
 .command-center-container {
-  /* 使用更深邃的暗空背景，配合一点点底层的蓝色光晕 */
+  /* 铺满已被清空 padding 的父容器 */
+  width: 100%;
+  /* 强制高度充满视口剩余空间，减去顶部导航栏(按图中预估约为50px) */
+  height: calc(100vh - 50px);
+  
   background: #030710 radial-gradient(circle at 50% 0%, rgba(0, 114, 255, 0.1) 0%, rgba(6, 14, 28, 1) 100%);
   color: rgba(186, 230, 253, 0.88); 
-  height: 100vh;
-  width: 100%;
-  max-width: 1800px;
-  margin: 0 auto;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
-  /* 严格对标参考标准：高级无衬线系统字体栈 */
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   box-sizing: border-box;
+  overflow: hidden; /* 防止内部溢出导致双滚动条 */
 }
 * { box-sizing: border-box; }
 
 /* ================= 顶部全局头部 ================= */
 .cc-header {
-  height: 50px; 
+  flex: 0 0 50px; 
   display: flex; justify-content: space-between; align-items: center;
   padding: 0 20px; 
   background: rgba(6, 14, 28, 0.85);
@@ -635,9 +654,8 @@ onBeforeUnmount(() => {
   z-index: 10;
 }
 .header-left, .header-right { flex: 1; display: flex; align-items: center; }
-.header-right { justify-content: flex-end; gap: 12px; }
+.header-right { justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
 
-/* 标题：改用精准px，增加等宽感 */
 .cc-title { 
   flex: 2; text-align: center; margin: 0; 
   font-size: 19px; 
@@ -645,35 +663,30 @@ onBeforeUnmount(() => {
   letter-spacing: 1.5px; 
   color: #00f2fe; 
   text-shadow: 0 0 12px rgba(0, 242, 254, 0.6); 
+  white-space: nowrap;
 }
 
-.sys-badge { padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; border: 1px solid; }
+.sys-badge { padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; border: 1px solid; white-space: nowrap; }
 .sys-badge.online { background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.5); box-shadow: 0 0 8px rgba(16, 185, 129, 0.2); }
 .sys-badge.offline { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 0 8px rgba(239, 68, 68, 0.2); }
 
-/* 时间和数字：严格使用 JetBrains Mono 等宽字体规范 */
-.sys-time { 
-  font-family: "JetBrains Mono", monospace; 
-  font-size: 13.5px; 
-  color: rgba(0, 242, 254, 0.7); 
-}
+.sys-time { font-family: "JetBrains Mono", monospace; font-size: 13.5px; color: rgba(0, 242, 254, 0.7); }
 .sys-status-mini { display: flex; gap: 6px; font-size: 11px; font-weight: bold; }
-.sys-status-mini span { 
-  padding: 2px 5px; border-radius: 3px; border: 1px solid; background: rgba(0,0,0,0.3); 
-  font-family: "JetBrains Mono", monospace;
-}
+.sys-status-mini span { padding: 2px 5px; border-radius: 3px; border: 1px solid; background: rgba(0,0,0,0.3); font-family: "JetBrains Mono", monospace;}
 .sys-status-mini .ok { color: #10b981; border-color: rgba(16, 185, 129, 0.5); }
 .sys-status-mini .err { color: #ef4444; border-color: rgba(239, 68, 68, 0.5); }
 
 /* ================= 核心栅格布局 ================= */
 .cc-main {
-  flex: 1; display: grid;
+  flex: 1; 
+  display: grid;
   grid-template-columns: 2.6fr 4.2fr 3.2fr; 
-  gap: 12px; padding: 12px; 
+  gap: 12px; 
+  padding: 12px; 
   overflow: hidden;
 }
 
-.cc-column { display: flex; flex-direction: column; gap: 12px; height: 100%; overflow-y: auto; overflow-x: hidden; }
+.cc-column { display: flex; flex-direction: column; gap: 12px; height: 100%; overflow-y: auto; overflow-x: hidden; padding-right: 4px;}
 .cc-column::-webkit-scrollbar { width: 4px; }
 .cc-column::-webkit-scrollbar-thumb { background: rgba(0, 242, 254, 0.3); border-radius: 2px; }
 
@@ -743,7 +756,7 @@ onBeforeUnmount(() => {
 }
 .res-card:hover { border-color: rgba(0, 242, 254, 0.7); background: rgba(0, 242, 254, 0.08); box-shadow: 0 0 15px rgba(0, 242, 254, 0.2); }
 .res-icon { font-size: 22px; margin-bottom: 4px; filter: drop-shadow(0 0 5px rgba(0, 242, 254, 0.5)); }
-.res-title { font-size: 11.5px; font-weight: bold; color: #fff; margin-bottom: 6px; }
+.res-title { font-size: 11.5px; font-weight: bold; color: #fff; margin-bottom: 6px; text-align: center; }
 .res-divide { width: 50%; height: 2px; background: linear-gradient(90deg, transparent, rgba(0, 242, 254, 0.6), transparent); margin-bottom: 6px; }
 .res-data-row { display: flex; width: 100%; justify-content: space-around; }
 .r-data { display: flex; flex-direction: column; align-items: center; gap: 2px; }
@@ -752,11 +765,11 @@ onBeforeUnmount(() => {
 
 .alive-ratio .lbl-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; color: rgba(186, 230, 253, 0.88); }
 .progress-bar { height: 5px; background: rgba(0, 242, 254, 0.08); border: 1px solid rgba(0, 242, 254, 0.15); border-radius: 3px; overflow: hidden; }
-.net-info-row { display: flex; gap: 8px; margin-top: 6px; }
+.net-info-row { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 
 /* ================= 中央：视频与指令 ================= */
 .task-banner { 
-  display: flex; justify-content: space-between; 
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
   background: rgba(6, 14, 28, 0.85); backdrop-filter: blur(10px);
   border: 1px solid rgba(0, 242, 254, 0.3); 
   box-shadow: 0 4px 15px rgba(0,0,0,0.5), 0 0 10px rgba(0, 242, 254, 0.05);
@@ -770,7 +783,7 @@ onBeforeUnmount(() => {
   flex: 1; display: flex; flex-direction: column; 
   background: #000; 
   border: 1px solid rgba(0, 242, 254, 0.3); 
-  border-radius: 8px; overflow: hidden; min-height: 200px; position: relative; 
+  border-radius: 8px; overflow: hidden; min-height: 250px; position: relative; 
   box-shadow: 0 8px 32px rgba(0,0,0,0.8), 0 0 15px rgba(0, 242, 254, 0.1);
 }
 .dc-header { position: absolute; top: 0; left: 0; right: 0; padding: 8px 12px; background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, transparent 100%); display: flex; justify-content: space-between; align-items: center; z-index: 2; }
@@ -789,9 +802,9 @@ onBeforeUnmount(() => {
 .bottom-left { bottom: 15px; left: 15px; border-right: none; border-top: none; }
 .bottom-right { bottom: 15px; right: 15px; border-left: none; border-top: none; }
 
-.dc-controls { padding: 6px; background: rgba(6, 14, 28, 0.9); border-top: 1px solid rgba(0, 242, 254, 0.3); display: flex; gap: 8px; justify-content: center; backdrop-filter: blur(10px); }
+.dc-controls { padding: 6px; background: rgba(6, 14, 28, 0.9); border-top: 1px solid rgba(0, 242, 254, 0.3); display: flex; gap: 8px; justify-content: center; backdrop-filter: blur(10px); flex-wrap: wrap; }
 
-/* ================= 升级：组网通信遥测日志面板 ================= */
+/* ================= 组网通信遥测日志面板 ================= */
 .log-panel { height: 210px; flex-shrink: 0; } 
 .network-nodes-mini { display: flex; gap: 12px; font-size: 10.5px; font-family: "JetBrains Mono", monospace; color: rgba(186, 230, 253, 0.7); align-items: center;}
 .n-node { display: flex; align-items: center; gap: 4px; }
@@ -810,10 +823,8 @@ onBeforeUnmount(() => {
   display: flex; flex-direction: column;
 }
 .log-row { margin-bottom: 4px; line-height: 1.4; border-bottom: 1px dashed rgba(0, 242, 254, 0.1); padding-bottom: 3px; word-break: break-all; }
-
 .log-time { color: rgba(0, 242, 254, 0.7); margin-right: 6px; }
 .log-topic { color: rgba(186, 230, 253, 0.88); margin-right: 6px; font-size: 10px;}
-
 .log-source { padding: 1px 5px; border-radius: 3px; margin-right: 6px; font-weight: bold; font-size: 9.5px; display: inline-block; min-width: 38px; text-align: center;}
 .log-source.sys { background: rgba(0, 242, 254, 0.15); color: #00f2fe; border: 1px solid rgba(0, 242, 254, 0.4); }
 .log-source.mqtt { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4); }
@@ -827,7 +838,7 @@ onBeforeUnmount(() => {
 
 /* ================= 右侧：节点详情 ================= */
 .node-card { cursor: pointer; transition: 0.3s cubic-bezier(0.25, 1, 0.5, 1); display: flex; flex-direction: column;}
-.node-card:hover { border-color: #00f2fe; box-shadow: 0 0 16px rgba(0, 242, 254, 0.3); background: rgba(0, 242, 254, 0.05); }
+.node-card:hover { border-color: #00f2fe; box-shadow: 0 0 16px rgba(0, 242, 254, 0.3); background: rgba(0, 242, 254, 0.05); transform: translateY(-2px);}
 .node-header { 
   display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; 
   border-bottom: 1px solid rgba(0, 242, 254, 0.15); 
@@ -861,51 +872,44 @@ onBeforeUnmount(() => {
 .s-row .ok { color: #10b981; text-shadow: 0 0 5px rgba(16, 185, 129, 0.5); }
 .s-row .err { color: #ef4444; text-shadow: 0 0 5px rgba(239, 68, 68, 0.5); }
 
-/* 按钮及动画 (幽灵光效体系) */
+/* 按钮及动画 */
 .cc-btn { 
   padding: 6px 10px; border: none; border-radius: 6px; font-size: 11.5px; font-weight: bold; cursor: pointer; 
   transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1); 
   font-family: inherit;
 }
-.btn-primary { 
-  background: rgba(0, 242, 254, 0.15); color: #00f2fe; 
-  border: 1px solid #00f2fe; box-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
-  text-shadow: 0 0 5px rgba(0, 242, 254, 0.5);
-}
+.btn-primary { background: rgba(0, 242, 254, 0.15); color: #00f2fe; border: 1px solid #00f2fe; box-shadow: 0 0 8px rgba(0, 242, 254, 0.3); text-shadow: 0 0 5px rgba(0, 242, 254, 0.5); }
 .btn-primary:hover { background: rgba(0, 242, 254, 0.25); box-shadow: 0 0 15px rgba(0, 242, 254, 0.5); }
-
-.btn-danger { 
-  background: rgba(239, 68, 68, 0.15); color: #ef4444; 
-  border: 1px solid #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
-}
+.btn-danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.3); }
 .btn-danger:hover { background: rgba(239, 68, 68, 0.25); box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); }
-
-.btn-tech { 
-  background: rgba(16, 185, 129, 0.15); color: #10b981; 
-  border: 1px solid #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.3); 
-}
-
-.btn-ghost { 
-  background: transparent; color: rgba(186, 230, 253, 0.88); 
-  border: 1px solid rgba(0, 242, 254, 0.3); 
-}
+.btn-tech { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.3); }
+.btn-ghost { background: transparent; color: rgba(186, 230, 253, 0.88); border: 1px solid rgba(0, 242, 254, 0.3); }
 .btn-ghost:hover { background: rgba(0, 242, 254, 0.12); color: #fff; border-color: #00f2fe; box-shadow: 0 0 10px rgba(0, 242, 254, 0.3); }
-
-.btn-active { 
-  background: rgba(0, 242, 254, 0.25); color: #fff; 
-  border: 1px solid #00f2fe; box-shadow: 0 0 12px rgba(0, 242, 254, 0.5); 
-  animation: pulse-cyan 2s infinite; 
-}
+.btn-active { background: rgba(0, 242, 254, 0.25); color: #fff; border: 1px solid #00f2fe; box-shadow: 0 0 12px rgba(0, 242, 254, 0.5); animation: pulse-cyan 2s infinite; }
 .cc-btn:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); box-shadow: none; }
 
 @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-@keyframes pulse-cyan { 
-  0% { box-shadow: 0 0 8px rgba(0, 242, 254, 0.4); } 
-  50% { box-shadow: 0 0 16px rgba(0, 242, 254, 0.8); } 
-  100% { box-shadow: 0 0 8px rgba(0, 242, 254, 0.4); } 
+@keyframes pulse-cyan { 0% { box-shadow: 0 0 8px rgba(0, 242, 254, 0.4); } 50% { box-shadow: 0 0 16px rgba(0, 242, 254, 0.8); } 100% { box-shadow: 0 0 8px rgba(0, 242, 254, 0.4); } }
+
+/* ================= 响应式调整（防止缩放变形） ================= */
+@media (max-width: 1400px) { 
+  .cc-main { grid-template-columns: 1fr 1.6fr 1.1fr; } 
 }
 
-@media (max-width: 1400px) { 
-  .cc-main { grid-template-columns: 2.8fr 4.2fr 3.0fr; } 
+@media (max-width: 1024px) {
+  .command-center-container {
+    height: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .cc-main { 
+    grid-template-columns: 1fr; 
+    overflow: visible;
+  }
+  .cc-column {
+    height: auto;
+    overflow: visible;
+    padding-right: 0;
+  }
 }
 </style>

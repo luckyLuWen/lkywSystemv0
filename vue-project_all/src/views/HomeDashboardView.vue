@@ -11,13 +11,16 @@
             :class="{ active: activeMenuKey === item.key }"
             @click="goTo(item)"
           >
+            <span class="btn-glow-dot"></span>
             {{ item.label }}
           </button>
         </div>
       </div>
       
       <div class="header-center-title" @click="goTo({ key: 'home', label: '地图大屏', path: '/' })" style="cursor: pointer;">
+        <div class="title-bg-wing"></div>
         <div class="title-glow">基于数字孪生的交通事故智能决策与救援推演平台</div>
+        <div class="title-bottom-line"></div>
       </div>
       
       <div class="header-right-actions">
@@ -694,12 +697,12 @@ const topMenus = [
 const accidentPoints = [
   {
     id: 'rear-end',
-    title: '货车追尾现场',
+    title: '客车追尾现场',
     focusPoint: 'accident_blue',
     phases: [
       { id: 't-start', time: '14:00', shortLabel: '仿真开始', title: '仿真推演开始', systems: ['总系统首页'], focusPoint: 'accident_blue' },
       { id: 't-normal', time: '14:05', shortLabel: '正常行驶', title: '车辆正常行驶阶段', systems: ['边缘网关'], focusPoint: 'accident_blue' },
-      { id: 't-accident', time: '14:12', shortLabel: '事故发生', title: '货车追尾事故瞬间', systems: ['实时检测'], focusPoint: 'detection' },
+      { id: 't-accident', time: '14:12', shortLabel: '事故发生', title: '客车追尾事故瞬间', systems: ['实时检测'], focusPoint: 'detection' },
       { id: 't-uav-dispatch', time: '14:14', shortLabel: '无人机出动', title: '无人机出动', systems: ['协同响应'], focusPoint: 'accident_blue' },
       { id: 't-uav-recon', time: '14:15', shortLabel: '无人机侦察', title: '无人机快速出动侦察', systems: ['协同响应'], focusPoint: 'accident_blue' },
       { id: 't-smoke', time: '14:18', shortLabel: '次生灾害（烟雾）', title: '事故现场产生大量烟雾', systems: ['协同响应'], focusPoint: 'accident_blue' },
@@ -923,9 +926,9 @@ watch(
 
 /* Top Nav Desktop (Menu bar + Toolbar) Overhaul */
 .top-nav-desktop {
-  background: linear-gradient(180deg, #09101f 0%, #060a12 100%);
-  border-bottom: 1px solid rgba(0, 242, 254, 0.25);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 242, 254, 0.1);
+  background: linear-gradient(180deg, rgba(6, 16, 32, 0.98) 0%, rgba(4, 12, 24, 0.90) 100%);
+  border-bottom: 1px solid rgba(0, 240, 255, 0.35);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 240, 255, 0.15);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -934,6 +937,25 @@ watch(
   user-select: none;
   z-index: 100;
   position: relative;
+  overflow: hidden;
+}
+
+/* 顶部流光扫描光轨效果 */
+.top-nav-desktop::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00F0FF, transparent);
+  animation: topScanLine 6s linear infinite;
+  opacity: 0.8;
+}
+
+@keyframes topScanLine {
+  0% { left: -60%; }
+  100% { left: 140%; }
 }
 
 .header-logo-section {
@@ -971,11 +993,11 @@ watch(
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .title-glow {
-  font-size: 28px;
+  font-size: 27px;
   font-weight: 800;
   color: #00f2fe;
   text-shadow: 0 0 12px rgba(0, 242, 254, 0.65), 0 0 4px rgba(0, 242, 254, 0.8);
@@ -1088,6 +1110,39 @@ watch(
 
 .right-sidebar.collapsed {
   transform: translateX(calc(-100% - 20px));
+}
+
+/* 侧边栏顶部/底部 4 角战术边角 */
+.left-sidebar::before,
+.right-sidebar::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 12px;
+  height: 12px;
+  border-top: 2px solid #00F0FF;
+  border-left: 2px solid #00F0FF;
+  border-radius: 4px 0 0 0;
+  pointer-events: none;
+  box-shadow: -2px -2px 8px rgba(0, 240, 255, 0.6);
+  z-index: 12;
+}
+
+.left-sidebar::after,
+.right-sidebar::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 12px;
+  height: 12px;
+  border-bottom: 2px solid #00F0FF;
+  border-right: 2px solid #00F0FF;
+  border-radius: 0 0 4px 0;
+  pointer-events: none;
+  box-shadow: 2px 2px 8px rgba(0, 240, 255, 0.6);
+  z-index: 12;
 }
 
 /* Sidebar Toggle Buttons - High Tech Glass */
@@ -2467,6 +2522,6 @@ watch(
   color: #38bdf8;
   font-weight: bold;
   margin: 2px 0;
-  font-family: monospace;
+  font-family: var(--font-family-mono);
 }
 </style>
