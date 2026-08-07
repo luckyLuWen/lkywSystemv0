@@ -1,7 +1,7 @@
 <template>
   <div class="layout">
     <aside class="sidebar">
-      <h2>救援推演与智能决策</h2>
+      <h2>协同响应指挥面板</h2>
 
       <div class="menu">
         <button :class="['menu-btn', { active: currentView === 'home' && !showEvaluationPanel }]" @click="showHome">系统首页</button>
@@ -50,13 +50,6 @@
             <option value="特大">特大</option>
           </select>
         </label>
-        <label class="ctrl-field">
-          <span>地图交互模式</span>
-          <select v-model="streamlitInteractMode" class="ctrl-select">
-            <option value="view">🔍 查看站点详情</option>
-            <option value="block">⛔ 添加道路阻断障碍</option>
-          </select>
-        </label>
         <div class="ctrl-subtitle">环境参数</div>
         <div class="ctrl-row">
           <label class="ctrl-field" style="flex: 1;">
@@ -75,12 +68,9 @@
           </label>
         </div>
         <div class="ctrl-btns">
-          <button class="ctrl-btn green" :disabled="streamlitPending" @click="triggerStreamlitCalculate">🚀 开始动态规划联合解算</button>
+          <button class="ctrl-btn ghost" :disabled="streamlitPending" @click="applyStreamlitSettings">应用设置</button>
         </div>
-        <div class="ctrl-btns" style="margin-top: 6px;">
-          <button class="ctrl-btn ghost" :disabled="streamlitPending" @click="applyStreamlitSettings">刷新环境设置</button>
-        </div>
-        <p class="ctrl-hint">控制参数已统一收拢于最左侧控制台，地图同步联动</p>
+        <p class="ctrl-hint">事故模拟交互和规划按钮在右侧地图中操作</p>
         <p v-if="streamlitStatus" class="ctrl-status">{{ streamlitStatus }}</p>
       </div>
 
@@ -91,7 +81,7 @@
           <span>事故场景</span>
           <select v-model="deductionScene" class="ctrl-select">
             <option value="leak">油罐车泄露现场</option>
-            <option value="crash">客车追尾现场</option>
+            <option value="crash">货车追尾现场</option>
           </select>
         </label>
         <label class="ctrl-field">
@@ -123,7 +113,7 @@
           <span>事故场景</span>
           <select v-model="cesiumScene" class="ctrl-select">
             <option value="leak">油罐车泄露现场</option>
-            <option value="crash">客车追尾现场</option>
+            <option value="crash">货车追尾现场</option>
           </select>
         </label>
         <div class="ctrl-btns">
@@ -192,7 +182,7 @@
                 <select
                   v-model="cesiumEndpoint"
                   class="scene-select">
-                  <option value="crash">&#x1F692; 客车追尾现场</option>
+                  <option value="crash">&#x1F692; 货车追尾现场</option>
                   <option value="leak">&#x1F6E2; 油罐车泄露现场</option>
                 </select>
                 <button
@@ -464,7 +454,6 @@ const streamlitMode = ref('medical')
 const streamlitSeverity = ref('中度')
 const streamlitWeather = ref('☀️ 晴朗')
 const streamlitTime = ref('08:30')
-const streamlitInteractMode = ref('view')
 const streamlitPending = ref(false)
 const streamlitStatus = ref('')
 
@@ -793,35 +782,19 @@ async function openManagedView(viewId, serviceId, frameBuilder) {
   frameBuilder()
 }
 
-function buildStreamlitUrl(extraParams = {}) {
+function buildStreamlitUrl() {
   const base = (resolvedStreamlitUrl.value || streamlitUrl.value).split('?')[0]
-  const p = new URLSearchParams({
-    embed: 'true',
-    sidebar: 'minimal',
-    mode: streamlitMode.value,
-    severity: streamlitSeverity.value,
-    weather: streamlitWeather.value,
-    interact_mode: streamlitInteractMode.value,
-    ...extraParams,
-  })
+  const p = new URLSearchParams({ embed: 'true', sidebar: 'minimal', mode: streamlitMode.value, severity: streamlitSeverity.value, weather: streamlitWeather.value })
   if (streamlitTime.value) p.set('time', streamlitTime.value)
   return base + '?' + p.toString()
 }
 
 function applyStreamlitSettings() {
   streamlitPending.value = true
-  streamlitStatus.value = '更新设置中...'
-  streamlitFrameSrc.value = buildStreamlitUrl({ t: Date.now() })
+  streamlitStatus.value = '应用设置中...'
+  streamlitFrameSrc.value = buildStreamlitUrl()
   streamlitFrameKey.value += 1
   setTimeout(() => { streamlitPending.value = false; streamlitStatus.value = '' }, 1500)
-}
-
-function triggerStreamlitCalculate() {
-  streamlitPending.value = true
-  streamlitStatus.value = '解算中...'
-  streamlitFrameSrc.value = buildStreamlitUrl({ action: 'run', t: Date.now() })
-  streamlitFrameKey.value += 1
-  setTimeout(() => { streamlitPending.value = false; streamlitStatus.value = '解算完成' }, 1500)
 }
 
 async function showStreamlitView() {

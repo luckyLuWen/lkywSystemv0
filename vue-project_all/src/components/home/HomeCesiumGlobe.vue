@@ -10505,20 +10505,21 @@ function updatePhaseScene(index, animate = false) {
     }
 
     if (index >= 3) {
-      const needsMultiAgent = (index === 11) || Boolean(currentMissionDataSource && currentMissionDataSource._isMultiAgent);
+      const expectedEndpoint = currentScene.value === 'truck' ? 'crash' : 'leak';
+      const needsMultiAgent = (index === 11);
       if (
         !currentMissionDataSource ||
         currentMissionDataSource._lastEndpoint !== expectedEndpoint ||
-        (needsMultiAgent && !currentMissionDataSource._isMultiAgent)
+        !!currentMissionDataSource._isMultiAgent !== needsMultiAgent
       ) {
         loadMission(needsMultiAgent);
       }
 
       // 同事的补丁：如果数据源已加载，显式确保规划路线可见，防止 Bug 导致线段丢失
       if (currentMissionDataSource) {
-          const isMulti = index >= 11 || Boolean(currentMissionDataSource && currentMissionDataSource._isMultiAgent);
-          const showAutonomousUavRoute = index >= 3 && index < 11 && !isMulti;
-          const showAutonomousUgvRoute = index >= 7 && index < 11 && !isMulti;
+          // 第 12 阶段仅保留多智能体救援路线，避免等待救援规划时残留无人装备路线。
+          const showAutonomousUavRoute = index >= 3 && index < 11;
+          const showAutonomousUgvRoute = index >= 7 && index < 11;
           const uavPath = currentMissionDataSource.entities.getById('UAV_Path');
           if (uavPath) {
             uavPath.show = showAutonomousUavRoute;
@@ -10558,7 +10559,7 @@ function updatePhaseScene(index, animate = false) {
             czmlUav.show = showAutonomousUavRoute;
           }
 
-          // 多智能体路径在第 12 阶段(index 11)“救援装备出动”或激活多智能体模式时显示
+          // 多智能体路径在第 12 阶段(index 11)“救援装备出动”及后续显示
           const multiAgentPrefixes = ['Agent_', 'AgentPath_', 'AgentPOI_', 'AgentCP_'];
           currentMissionDataSource.entities.values.forEach(entity => {
               const id = entity.id;
@@ -10567,7 +10568,8 @@ function updatePhaseScene(index, animate = false) {
                       // 仅仅隐藏中间集散点(CP)与重复起点(StartMarker)
                       entity.show = false;
                   } else if (multiAgentPrefixes.some(prefix => id.startsWith(prefix))) {
-                      entity.show = isMulti;
+                      const shouldShow = (index >= 11);
+                      entity.show = shouldShow;
                   }
               }
           });

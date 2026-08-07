@@ -401,20 +401,8 @@ def main():
     ext_severity = qp.get("severity", "")
     ext_weather = qp.get("weather", "")
     ext_time = qp.get("time", "")
-    ext_interact = qp.get("interact_mode", "view")
-    ext_action = qp.get("action", "")
 
-    if _is_embed:
-        st.markdown("""
-        <style>
-        [data-testid="stSidebar"] { display: none !important; }
-        [data-testid="collapsedControl"] { display: none !important; }
-        header[data-testid="stHeader"] { display: none !important; }
-        footer { display: none !important; }
-        .block-container { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; padding-left: 1rem !important; padding-right: 1rem !important; }
-        </style>
-        """, unsafe_allow_html=True)
-    else:
+    if not _is_embed:
         st.sidebar.title("🛠️ 联合指挥应急控制台")
 
     # 1. 任务设置 (扩展为5个模块)
@@ -462,16 +450,13 @@ def main():
         weather = _default_w
     
     # 3. 互动模式
-    if not _is_embed:
-        st.sidebar.markdown("""
-        <div style="background:rgba(0, 242, 254, 0.06);border:1px solid rgba(0, 242, 254, 0.3);border-left:4px solid #00f2fe;border-radius:6px;padding:10px 14px;margin-bottom:4px;box-shadow:0 0 12px rgba(0, 242, 254, 0.1);">
-            <span style="font-size:16px;font-weight:700;color:#00f2fe;text-shadow:0 0 8px rgba(0, 242, 254, 0.3);">&#x1F3AE; 交互控制台</span>
-        </div>
-        """, unsafe_allow_html=True)
-        inter_mode = st.sidebar.radio("地图点击功能", ["&#x1F50D; 查看站点详情", "&#x1F6AB; 添加道路阻断"], index=0, key="interact_radio")
-        st.session_state.interaction_mode = 'block' if "添加" in inter_mode else 'view'
-    else:
-        st.session_state.interaction_mode = 'block' if ("block" in ext_interact or "阻断" in ext_interact) else 'view'
+    st.sidebar.markdown("""
+    <div style="background:rgba(0, 242, 254, 0.06);border:1px solid rgba(0, 242, 254, 0.3);border-left:4px solid #00f2fe;border-radius:6px;padding:10px 14px;margin-bottom:4px;box-shadow:0 0 12px rgba(0, 242, 254, 0.1);">
+        <span style="font-size:16px;font-weight:700;color:#00f2fe;text-shadow:0 0 8px rgba(0, 242, 254, 0.3);">&#x1F3AE; 交互控制台</span>
+    </div>
+    """, unsafe_allow_html=True)
+    inter_mode = st.sidebar.radio("地图点击功能", ["&#x1F50D; 查看站点详情", "&#x1F6AB; 添加道路阻断"], index=0, key="interact_radio")
+    st.session_state.interaction_mode = 'block' if "添加" in inter_mode else 'view'
 
     # 预加载
     raw_facs = get_facilities_data(target_tag)
@@ -482,32 +467,23 @@ def main():
     h = sim_time.hour
     traffic_f = 2.5 if 7<=h<=9 else (2.2 if 17<=h<=19 else 1.2)
     tf_color = "#ef4444" if traffic_f >= 2.0 else "#f59e0b" if traffic_f >= 1.5 else "#10b981"
-    if not _is_embed:
-        st.sidebar.markdown(f"""
-        <div style="background:rgba(2,12,26,0.6);border:1px solid rgba(0,242,254,0.15);border-radius:8px;padding:12px 14px;margin:10px 0;box-shadow:inset 0 0 10px rgba(0,242,254,0.05);">
-            <div style="font-size:13px;font-weight:700;color:#00f2fe;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-                <span style="display:inline-block;width:4px;height:16px;background:#00f2fe;border-radius:2px;"></span>&#x1F4CB; 调度参数
-            </div>
-            <table style="width:100%;font-size:13px;line-height:2.2;color:#cbd5e1;border-collapse:collapse;">
-            <tr><td style="color:#94a3b8;width:68px;padding:2px 0;">调度主体</td><td style="font-weight:600;color:#ffffff;">{current_task['mode']}</td></tr>
-            <tr><td style="color:#94a3b8;padding:2px 0;">响应等级</td><td style="font-weight:600;color:#ffffff;">{severity}</td></tr>
-            <tr><td style="color:#94a3b8;padding:2px 0;">天气状况</td><td>{weather}&ensp;<span style="color:#00f2fe;font-weight:500;">通行 {w_rate*100:.0f}%</span></td></tr>
-            <tr><td style="color:#94a3b8;padding:2px 0;">模拟时间</td><td>{sim_time.strftime('%H:%M')}&ensp;<span style="color:{tf_color};font-weight:500;">系数 {traffic_f:.1f}</span></td></tr>
-            <tr><td style="color:#94a3b8;padding:2px 0;">可用站点</td><td style="font-weight:600;color:#ffffff;">{len(facilities_basic)} 个</td></tr>
-            </table>
+    st.sidebar.markdown(f"""
+    <div style="background:rgba(2,12,26,0.6);border:1px solid rgba(0,242,254,0.15);border-radius:8px;padding:12px 14px;margin:10px 0;box-shadow:inset 0 0 10px rgba(0,242,254,0.05);">
+        <div style="font-size:13px;font-weight:700;color:#00f2fe;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+            <span style="display:inline-block;width:4px;height:16px;background:#00f2fe;border-radius:2px;"></span>&#x1F4CB; 调度参数
         </div>
-        """, unsafe_allow_html=True)
+        <table style="width:100%;font-size:13px;line-height:2.2;color:#cbd5e1;border-collapse:collapse;">
+        <tr><td style="color:#94a3b8;width:68px;padding:2px 0;">调度主体</td><td style="font-weight:600;color:#ffffff;">{current_task['mode']}</td></tr>
+        <tr><td style="color:#94a3b8;padding:2px 0;">响应等级</td><td style="font-weight:600;color:#ffffff;">{severity}</td></tr>
+        <tr><td style="color:#94a3b8;padding:2px 0;">天气状况</td><td>{weather}&ensp;<span style="color:#00f2fe;font-weight:500;">通行 {w_rate*100:.0f}%</span></td></tr>
+        <tr><td style="color:#94a3b8;padding:2px 0;">模拟时间</td><td>{sim_time.strftime('%H:%M')}&ensp;<span style="color:{tf_color};font-weight:500;">系数 {traffic_f:.1f}</span></td></tr>
+        <tr><td style="color:#94a3b8;padding:2px 0;">可用站点</td><td style="font-weight:600;color:#ffffff;">{len(facilities_basic)} 个</td></tr>
+        </table>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # 4. 规划按钮/自动解算触发
-    should_run = False
-    if not _is_embed:
-        if st.sidebar.button("🚀 开始动态规划联合解算", type="primary", use_container_width=True):
-            should_run = True
-    else:
-        if ext_action == "run" or qp.get("auto_run", "") == "1":
-            should_run = True
-
-    if should_run:
+    # 4. 规划按钮
+    if st.sidebar.button("🚀 开始动态规划联合解算", type="primary", use_container_width=True):
         bar = st.sidebar.progress(0, text="初始化 GIS 引擎...")
         G = load_graph()
         

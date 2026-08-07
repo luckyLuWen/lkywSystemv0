@@ -142,7 +142,7 @@ const props = defineProps({
 
 .terminal-logs {
   font-family: 'Courier New', Courier, monospace;
-  font-size: 13.5px;
+  font-size: 12px;
   color: #cbd5e1;
   background: rgba(0, 0, 0, 0.35);
   padding: 10px 12px;
@@ -154,7 +154,7 @@ const props = defineProps({
   margin-bottom: 4px;
   opacity: 0;
   animation: fadeInLog 0.3s forwards;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 .log-line span {
   font-weight: bold;
@@ -184,7 +184,7 @@ const props = defineProps({
   margin-bottom: 8px;
 }
 .agent-label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--agent-color);
 }
@@ -192,7 +192,7 @@ const props = defineProps({
   margin-right: 2px;
 }
 .agent-winner-name {
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 600;
   color: #e2e8f0;
 }
@@ -205,7 +205,7 @@ const props = defineProps({
 .stat-row {
   display: flex;
   justify-content: space-between;
-  font-size: 13.5px;
+  font-size: 12px;
   color: #cbd5e1;
   margin-bottom: 4px;
 }
@@ -213,7 +213,7 @@ const props = defineProps({
 .stat-row.highlight {
   font-weight: 600;
 }
-.text-cyan { color: #00f2fe; font-weight: 700; }
+.text-cyan { color: #00f2fe; }
 .text-gray { color: #cbd5e1; }
 
 .losers-section {
@@ -221,13 +221,13 @@ const props = defineProps({
   padding-top: 6px;
 }
 .losers-title {
-  font-size: 12.5px;
-  color: #cbd5e1;
-  margin-bottom: 5px;
-  font-weight: 700;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 4px;
+  font-weight: 600;
 }
 .loser-item {
-  margin-bottom: 5px;
+  margin-bottom: 4px;
 }
 .loser-item:last-child {
   margin-bottom: 0;
@@ -236,15 +236,15 @@ const props = defineProps({
   display: none;
 }
 .loser-name {
-  font-size: 13.5px;
-  color: #e2e8f0;
-  font-weight: 600;
+  font-size: 12px;
+  color: #cbd5e1;
+  font-weight: 500;
 }
 .loser-reason {
-  font-size: 12.5px;
+  font-size: 11px;
   color: #f87171;
   margin-left: 12px;
   margin-top: 2px;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 </style>
