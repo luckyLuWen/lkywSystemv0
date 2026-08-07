@@ -23,7 +23,7 @@ CESIUM_DIR = BASE_DIR / "Cesium"
 PATH_RESULT_PATH = BASE_DIR / "path_result.json"
 MULTI_AGENT_RESULT_PATH = BASE_DIR / "multi_agent_result.json"
 MISSION_PATH = BASE_DIR / "mission.czml"
-FOLIUM_PATH = BASE_DIR / "wuhan_rescue_optimized.html"
+FOLIUM_PATH = BASE_DIR / "2d_deduction.html"
 RUNTIME_DIR = BASE_DIR / "runtime"
 LOG_DIR = BASE_DIR / "logs"
 SERVICES_CONFIG_PATH = BASE_DIR / "services.json"
@@ -107,15 +107,16 @@ def load_strategy_metrics(scenario: str = None) -> dict[str, Any]:
         payload = json.load(file)
         
     multi_agent_data = None
-    if scenario:
-        scenario_path = BASE_DIR / f"multi_agent_result_{scenario}.json"
-        if scenario_path.exists():
-            with scenario_path.open("r", encoding="utf-8") as f:
-                multi_agent_data = json.load(f)
+    if payload.get("multi_agent_enabled", False):
+        if scenario:
+            scenario_path = BASE_DIR / f"multi_agent_result_{scenario}.json"
+            if scenario_path.exists():
+                with scenario_path.open("r", encoding="utf-8") as f:
+                    multi_agent_data = json.load(f)
     
-    if not multi_agent_data and MULTI_AGENT_RESULT_PATH.exists():
-        with MULTI_AGENT_RESULT_PATH.open("r", encoding="utf-8") as f:
-            multi_agent_data = json.load(f)
+        if not multi_agent_data and MULTI_AGENT_RESULT_PATH.exists():
+            with MULTI_AGENT_RESULT_PATH.open("r", encoding="utf-8") as f:
+                multi_agent_data = json.load(f)
 
     return {
         "available": True,
@@ -492,7 +493,11 @@ def cesium_viewer():
 
 @app.route("/2d_deduction.html")
 def serve_2d_deduction():
-    return send_from_directory(BASE_DIR, "2d_deduction.html")
+    response = send_from_directory(BASE_DIR, "2d_deduction.html")
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 @app.route("/api/agent_paths")
@@ -579,6 +584,56 @@ def run_2d():
         return error_response(str(exc))
 
 
+import shutil
+
+def save_cache_bundle(cache_key: str, is_multi: bool) -> None:
+    cache_dir = BASE_DIR / "cache"
+    cache_dir.mkdir(exist_ok=True)
+    if MISSION_PATH.exists():
+        shutil.copyfile(MISSION_PATH, cache_dir / f"mission_{cache_key}.czml")
+    if FOLIUM_PATH.exists():
+        shutil.copyfile(FOLIUM_PATH, cache_dir / f"deduction_{cache_key}.html")
+    if PATH_RESULT_PATH.exists():
+        shutil.copyfile(PATH_RESULT_PATH, cache_dir / f"result_{cache_key}.json")
+    if is_multi and MULTI_AGENT_RESULT_PATH.exists():
+        shutil.copyfile(MULTI_AGENT_RESULT_PATH, cache_dir / f"multi_{cache_key}.json")
+
+
+def restore_cache_bundle(cache_key: str, is_multi: bool, force_refresh: bool = False) -> bool:
+    if force_refresh:
+        return False
+    cache_dir = BASE_DIR / "cache"
+    czml = cache_dir / f"mission_{cache_key}.czml"
+    html = cache_dir / f"deduction_{cache_key}.html"
+    res = cache_dir / f"result_{cache_key}.json"
+    multi = cache_dir / f"multi_{cache_key}.json"
+
+    if not (czml.exists() and html.exists() and res.exists()):
+        return False
+    if is_multi and not multi.exists():
+        return False
+
+    script_path = BASE_DIR / "app_3d_strategy.py"
+    script_mtime = script_path.stat().st_mtime if script_path.exists() else 0
+    if czml.stat().st_mtime < script_mtime or html.stat().st_mtime < script_mtime or res.stat().st_mtime < script_mtime:
+        return False
+
+    try:
+        shutil.copyfile(czml, MISSION_PATH)
+        shutil.copyfile(html, FOLIUM_PATH)
+        shutil.copyfile(res, PATH_RESULT_PATH)
+        if is_multi:
+            shutil.copyfile(multi, MULTI_AGENT_RESULT_PATH)
+        elif MULTI_AGENT_RESULT_PATH.exists():
+            try:
+                MULTI_AGENT_RESULT_PATH.unlink()
+            except Exception:
+                pass
+        return True
+    except Exception:
+        return False
+
+
 @app.route("/api/run_3d_strategy")
 def run_3d_strategy():
     end_point = request.args.get("end_point", "leak")
@@ -587,7 +642,18 @@ def run_3d_strategy():
     ugv_block = request.args.get("ugv_block", "1")
     uav_smoke = request.args.get("uav_smoke", "1")
     strategy = request.args.get("strategy", "rcd")
-    compare = request.args.get("compare", "1")  # 默认开启对比，前端可传 compare=0 关闭
+    compare = request.args.get("compare", "1")
+    force_refresh = request.args.get("refresh", "0") == "1"
+    cache_key = f"{end_point}_{strategy}_ugv{ugv_block}_uav{uav_smoke}_multi0"
+
+    if restore_cache_bundle(cache_key, is_multi=False, force_refresh=force_refresh):
+        return success_response(
+            "二维动态推演与策略评估已极速加载",
+            url="/2d_deduction.html",
+            metrics=load_strategy_metrics(),
+            cached=True
+        )
+
     extra_args = [
         "--end_point", end_point,
         "--ugv_block", ugv_block,
@@ -602,14 +668,14 @@ def run_3d_strategy():
             stderr=result.stderr.strip(),
             stdout=result.stdout.strip(),
         )
+
+    save_cache_bundle(cache_key, is_multi=False)
     return success_response(
         "二维动态推演与策略评估已刷新",
         url="/2d_deduction.html",
         metrics=load_strategy_metrics(),
     )
 
-
-import shutil
 
 @app.route("/api/run_multi_agent")
 def run_multi_agent():
@@ -621,23 +687,15 @@ def run_multi_agent():
     strategy = request.args.get("strategy", "rcd")
     compare = request.args.get("compare", "1")
     force_refresh = request.args.get("refresh", "0") == "1"
+    cache_key = f"{end_point}_{strategy}_ugv{ugv_block}_uav{uav_smoke}_multi1"
 
-    cache_dir = BASE_DIR / "cache"
-    cache_dir.mkdir(exist_ok=True)
-    cache_file = cache_dir / f"mission_{end_point}_{strategy}_ugv{ugv_block}_uav{uav_smoke}_multi1.czml"
-
-    # 如果存在极速预缓存，直接复用已解算完毕的 CZML 文件（响应耗时从 15s 降至 5ms）
-    if cache_file.exists() and not force_refresh:
-        try:
-            shutil.copyfile(cache_file, MISSION_PATH)
-            return success_response(
-                "五类救援装备路径已极速加载",
-                url="/2d_deduction.html",
-                end_point=end_point,
-                cached=True
-            )
-        except Exception:
-            pass
+    if restore_cache_bundle(cache_key, is_multi=True, force_refresh=force_refresh):
+        return success_response(
+            "五类救援装备路径已极速加载",
+            url="/2d_deduction.html",
+            end_point=end_point,
+            cached=True
+        )
 
     extra_args = [
         "--end_point", end_point,
@@ -655,12 +713,7 @@ def run_multi_agent():
             stdout=result.stdout.strip(),
         )
 
-    if MISSION_PATH.exists():
-        try:
-            shutil.copyfile(MISSION_PATH, cache_file)
-        except Exception:
-            pass
-
+    save_cache_bundle(cache_key, is_multi=True)
     return success_response(
         "五类救援装备路径已生成",
         url="/2d_deduction.html",
@@ -676,23 +729,16 @@ def run_3d_cesium():
     strategy = request.args.get("strategy", "rcd")
     compare = request.args.get("compare", "1")
     force_refresh = request.args.get("refresh", "0") == "1"
+    cache_key = f"{end_point}_{strategy}_ugv{ugv_block}_uav{uav_smoke}_multi0"
 
-    cache_dir = BASE_DIR / "cache"
-    cache_dir.mkdir(exist_ok=True)
-    cache_file = cache_dir / f"mission_{end_point}_{strategy}_ugv{ugv_block}_uav{uav_smoke}_multi0.czml"
-
-    if cache_file.exists() and not force_refresh:
-        try:
-            shutil.copyfile(cache_file, MISSION_PATH)
-            return success_response(
-                "三维态势地图已极速加载",
-                url="/cesium_viewer",
-                mission=file_info(MISSION_PATH),
-                end_point=end_point,
-                cached=True
-            )
-        except Exception:
-            pass
+    if restore_cache_bundle(cache_key, is_multi=False, force_refresh=force_refresh):
+        return success_response(
+            "三维态势地图已极速加载",
+            url="/cesium_viewer",
+            mission=file_info(MISSION_PATH),
+            end_point=end_point,
+            cached=True
+        )
 
     extra_args = [
         "--end_point", end_point,
@@ -709,12 +755,7 @@ def run_3d_cesium():
             stdout=result.stdout.strip(),
         )
 
-    if MISSION_PATH.exists():
-        try:
-            shutil.copyfile(MISSION_PATH, cache_file)
-        except Exception:
-            pass
-
+    save_cache_bundle(cache_key, is_multi=False)
     return success_response(
         "三维态势地图已刷新",
         url="/cesium_viewer",
