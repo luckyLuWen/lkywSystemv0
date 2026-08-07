@@ -3993,6 +3993,7 @@ let phase8StartTime = 0
 let uavOrbitStartTime = 0
 let diffusionStartTime = 0
 let lastUavPhaseIndex = -1
+let uavRotorAngle = 0
 
 // 油罐车场景的无人机和救援车配置（独立控制）
 const tankerUavAdjust = reactive({
@@ -5929,6 +5930,58 @@ async function initViewer() {
     })
     removeLightListener = viewer.scene.preRender.addEventListener(function(scene, time) {
       scene.light.direction = Cesium.Cartesian3.clone(scene.camera.directionWC, scene.light.direction)
+
+      // 🚁 强行驱动无人机 4 个螺旋桨节点高频 Y 轴旋转（保留原始 0.01 比例与各挂座 3D 偏移位移，彻底解决不旋转与变大问题）
+      uavRotorAngle += 0.55;
+      const propellerDefaults = {
+        'Propeller_1': { trans: new Cesium.Cartesian3(-0.085382, 0.057920, 0.075441), dir: 1 },
+        'Propeller_2': { trans: new Cesium.Cartesian3(-0.085382, 0.057920, -0.070529), dir: -1 },
+        'Propeller_3': { trans: new Cesium.Cartesian3(0.085382, 0.057920, -0.070529), dir: 1 },
+        'Propeller_4': { trans: new Cesium.Cartesian3(0.085382, 0.057920, 0.075441), dir: -1 }
+      };
+      const defaultScale = new Cesium.Cartesian3(0.01, 0.01, 0.01);
+
+      const allUavs = [...(uavEntities || []), ...(tankerUavEntities || [])];
+      allUavs.forEach(entity => {
+        if (entity && entity.show) {
+          let p = primitiveCache.get(entity.id);
+          if (!p) {
+            p = findModelPrimitive(scene.primitives, entity);
+            if (!p) p = findModelPrimitive(scene.groundPrimitives, entity);
+            if (p) primitiveCache.set(entity.id, p);
+          }
+          if (p) {
+            const modelObj = p.model || p;
+            if (modelObj && typeof modelObj.getNode === 'function') {
+              Object.keys(propellerDefaults).forEach(nodeName => {
+                try {
+                  const node = modelObj.getNode(nodeName);
+                  if (node) {
+                    const info = propellerDefaults[nodeName];
+                    let trans = info.trans;
+                    if (node.translation) {
+                      if (typeof node.translation.x === 'number') trans = node.translation;
+                      else if (Array.isArray(node.translation) && node.translation.length >= 3) {
+                        trans = new Cesium.Cartesian3(node.translation[0], node.translation[1], node.translation[2]);
+                      }
+                    }
+                    let scale = defaultScale;
+                    if (node.scale) {
+                      if (typeof node.scale.x === 'number') scale = node.scale;
+                      else if (Array.isArray(node.scale) && node.scale.length >= 3) {
+                        scale = new Cesium.Cartesian3(node.scale[0], node.scale[1], node.scale[2]);
+                      }
+                    }
+                    const rotM3 = Cesium.Matrix3.fromRotationY(uavRotorAngle * info.dir);
+                    const rotTransM4 = Cesium.Matrix4.fromRotationTranslation(rotM3, trans);
+                    node.matrix = Cesium.Matrix4.multiplyByScale(rotTransM4, scale, new Cesium.Matrix4());
+                  }
+                } catch (e) {}
+              });
+            }
+          }
+        }
+      });
     })
 
      viewer.cesiumWidget.creditContainer.style.display = 'none'
@@ -8463,6 +8516,14 @@ function addEventEntities() {
     console.log(`[Cesium] 正在初始化无人机实体: ${config.id}, 路径: ${config.uri}`);
 
     const uavPosition = new Cesium.CallbackProperty(() => {
+      if (lastUavPhaseIndex !== props.activePhaseIndex) {
+        phase3StartTime = 0;
+        phase6StartTime = 0;
+        phase7StartTime = 0;
+        phase8StartTime = 0;
+        uavOrbitStartTime = 0;
+        lastUavPhaseIndex = props.activePhaseIndex;
+      }
       const startLng = Number(uavAdjust.lng) || 113.202;
       const startLat = Number(uavAdjust.lat) || 30.3268;
       const startHeight = Number(uavAdjust.height) || 18.5;
