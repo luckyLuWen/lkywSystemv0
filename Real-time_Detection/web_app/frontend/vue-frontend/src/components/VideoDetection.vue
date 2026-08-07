@@ -138,7 +138,7 @@ const normalizedInterval = computed(() => {
 
 const pageModeLabel = computed(() => {
   if (props.settings?.detectionMode === 'composite') return '综合事故检测'
-  return props.settings?.taskType === 'hazmat' ? '油罐车泄露现场' : '货车追尾现场'
+  return props.settings?.taskType === 'hazmat' ? '油罐车泄露现场' : '客车追尾现场'
 })
 
 const displayLabels = (det) => {
@@ -454,7 +454,7 @@ const startDetection = async () => {
   color: var(--primary-cyan) !important;
   font-size: 32px;
   font-weight: 800;
-  font-family: "Microsoft YaHei", "Inter", "PingFang SC", sans-serif;
+  font-family: var(--font-main);
   text-shadow: 0 0 14px rgba(0, 229, 255, 0.45);
   line-height: 1.2;
   white-space: nowrap;

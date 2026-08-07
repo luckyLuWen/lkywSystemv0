@@ -47,7 +47,7 @@
       <aside class="right-panel">
         <div class="card telemetry-card">
           <div class="card-header">
-            <h3>[算法推理监控面板]</h3>
+            <h3>算法推理监控面板</h3>
           </div>
           <div class="status-content">
             <div class="status-item gpu-row">
@@ -59,31 +59,34 @@
               <span class="value online">{{ sysInfo.cuda_version || '--' }}</span>
             </div>
             <div class="status-item">
-              <span class="label">推理模型状态</span>
-              <span class="value model-status-value" :class="{ online: sysInfo.model_loaded }">{{ sysInfo.model_loaded ? formatLoadedModelName(sysInfo.model_name) : '待加载' }}</span>
+              <span class="label">推理模型</span>
+              <span class="value model-status-value" :class="{ online: isOnline }">{{ currentActiveModelDisplay }}</span>
             </div>
           </div>
           <div class="detection-summary">
             <div class="summary-head">
               <span>检测结果摘要</span>
-              <strong>RESULT</strong>
+              <strong style="font-size: 20px;">RESULT</strong>
             </div>
             <div class="summary-grid">
-              <div class="summary-item">
-                <span>累计检测次数</span>
-                <strong class="cyan">{{ formatCount(detectionStats.total_detections) }}</strong>
+              <div class="summary-item highlight-item">
+                <span>平均推理时间</span>
+                <strong class="cyan-highlight">
+                  <span class="num">{{ formatInferenceTimeVal(detectionStats.avg_inference_time_s) }}</span>
+                  <span class="unit">s</span>
+                </strong>
               </div>
               <div class="summary-item">
                 <span>今日检测次数</span>
-                <strong class="amber">{{ formatCount(todayDetectionCount) }}</strong>
+                <strong class="normal-num">{{ formatCount(todayDetectionCount) }}</strong>
               </div>
               <div class="summary-item">
-                <span>平均推理时间</span>
-                <strong>{{ formatInferenceTime(detectionStats.avg_inference_time_s) }}</strong>
+                <span>累计检测次数</span>
+                <strong class="normal-num">{{ formatCount(detectionStats.total_detections) }}</strong>
               </div>
               <div class="summary-item">
                 <span>已加载模型数</span>
-                <strong class="cyan">{{ loadedModelCount }}</strong>
+                <strong class="normal-num">{{ loadedModelCount }}</strong>
               </div>
             </div>
           </div>
@@ -93,10 +96,10 @@
                 <span>显存占用实时折线图</span>
                 <strong>{{ formatVram(sysInfo.vram_used_gb, sysInfo.vram_total_gb) }}</strong>
               </div>
-              <svg class="trend-chart" viewBox="0 0 140 88" preserveAspectRatio="none">
-                <line class="trend-axis" x1="12" y1="10" x2="12" y2="74" />
-                <line class="trend-axis" x1="12" y1="74" x2="134" y2="74" />
-                <line class="trend-grid-line" x1="12" y1="42" x2="134" y2="42" />
+              <svg class="trend-chart" viewBox="0 0 140 96" preserveAspectRatio="none">
+                <line class="trend-axis" x1="12" y1="8" x2="12" y2="88" />
+                <line class="trend-axis" x1="12" y1="88" x2="134" y2="88" />
+                <line class="trend-grid-line" x1="12" y1="48" x2="134" y2="48" />
                 <polyline class="trend-line vram" :points="buildTrendPoints(telemetryHistory.vram, 0.4)" />
               </svg>
             </div>
@@ -106,10 +109,10 @@
                 <span>GPU负载实时波动曲线</span>
                 <strong>{{ formatPercentMetric(sysInfo.gpu_util) }}</strong>
               </div>
-              <svg class="trend-chart" viewBox="0 0 140 88" preserveAspectRatio="none">
-                <line class="trend-axis" x1="12" y1="10" x2="12" y2="74" />
-                <line class="trend-axis" x1="12" y1="74" x2="134" y2="74" />
-                <line class="trend-grid-line" x1="12" y1="42" x2="134" y2="42" />
+              <svg class="trend-chart" viewBox="0 0 140 96" preserveAspectRatio="none">
+                <line class="trend-axis" x1="12" y1="8" x2="12" y2="88" />
+                <line class="trend-axis" x1="12" y1="88" x2="134" y2="88" />
+                <line class="trend-grid-line" x1="12" y1="48" x2="134" y2="48" />
                 <polyline class="trend-line util" :points="buildTrendPoints(telemetryHistory.util, 18)" />
               </svg>
             </div>
@@ -119,10 +122,10 @@
                 <span>温度实时波动曲线</span>
                 <strong>{{ formatTemperature(sysInfo.gpu_temp) }}</strong>
               </div>
-              <svg class="trend-chart" viewBox="0 0 140 88" preserveAspectRatio="none">
-                <line class="trend-axis" x1="12" y1="10" x2="12" y2="74" />
-                <line class="trend-axis" x1="12" y1="74" x2="134" y2="74" />
-                <line class="trend-grid-line" x1="12" y1="42" x2="134" y2="42" />
+              <svg class="trend-chart" viewBox="0 0 140 96" preserveAspectRatio="none">
+                <line class="trend-axis" x1="12" y1="8" x2="12" y2="88" />
+                <line class="trend-axis" x1="12" y1="88" x2="134" y2="88" />
+                <line class="trend-grid-line" x1="12" y1="48" x2="134" y2="48" />
                 <polyline class="trend-line temp" :points="buildTrendPoints(telemetryHistory.temp, 6)" />
               </svg>
             </div>
@@ -199,8 +202,8 @@ const buildTrendPoints = (series, minSpan = 10) => {
   const lastIndex = Math.max(1, values.length - 1)
   const left = 12
   const right = 134
-  const top = 10
-  const bottom = 74
+  const top = 8
+  const bottom = 88
   const chartWidth = right - left
   const chartHeight = bottom - top
 
@@ -213,10 +216,34 @@ const buildTrendPoints = (series, minSpan = 10) => {
   }).join(' ')
 }
 
+const MODEL_DISPLAY_FALLBACKS = {
+  yolo26M: 'YOLO26M',
+  yolo26N: 'YOLO26N',
+  yolo11M: 'YOLO11M',
+  yolo11N: 'YOLO11N',
+  'sfga-yolo26m': 'SFGA-YOLO26M',
+  'lca-yolo26n': 'LCA-YOLO26N'
+}
+
 const formatLoadedModelName = (name) => {
   if (!name) return ''
-  return String(name).replace(/（.*?）|\(.*?\)/g, '')
+  const found = availableModels.value?.find(m => m.name === name || m.display_name === name)
+  if (found && (found.display_name || found.name)) {
+    return String(found.display_name || found.name).replace(/（.*?）|\(.*?\)/g, '')
+  }
+  const clean = String(name).replace(/（.*?）|\(.*?\)/g, '')
+  return MODEL_DISPLAY_FALLBACKS[clean] || MODEL_DISPLAY_FALLBACKS[clean.toLowerCase()] || clean
 }
+
+const currentActiveModelDisplay = computed(() => {
+  if (settings.detectionMode === 'composite') {
+    return 'SFGA-YOLO26M + LCA-YOLO26N'
+  }
+  if (settings.model) {
+    return formatLoadedModelName(settings.model)
+  }
+  return sysInfo.model_loaded ? formatLoadedModelName(sysInfo.model_name) : '待加载'
+})
 
 const formatCount = (value) => {
   const numeric = Number(value)
@@ -244,6 +271,12 @@ const formatInferenceTime = (value) => {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) return '--'
   return `${numeric.toFixed(numeric >= 1 ? 2 : 3)} s`
+}
+
+const formatInferenceTimeVal = (value) => {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return '--'
+  return numeric.toFixed(numeric >= 1 ? 2 : 3)
 }
 
 const todayDetectionCount = computed(() => (
@@ -338,57 +371,52 @@ onUnmounted(() => {
 }
 
 .telemetry-card {
-  max-height: calc(100vh - 196px);
+  max-height: calc(100vh - 170px);
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 24px 22px;
   background: var(--card-bg-strong) !important;
 }
 
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
 .card-header h3 {
-  font-size: 28px;
+  font-size: 32px;
   line-height: 1.15;
   margin-bottom: 0;
+  color: var(--primary-cyan);
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
 }
 
 .status-content {
   display: grid;
-  gap: 4px;
+  gap: 6px;
 }
 
 .status-item {
   display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
+  grid-template-columns: 130px minmax(0, 1fr);
   align-items: center;
-  gap: 14px;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(0, 229, 255, 0.08);
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(0, 229, 255, 0.12);
 }
 
 .status-item.gpu-row {
-  grid-template-columns: 68px minmax(0, 1fr);
+  grid-template-columns: 60px minmax(0, 1fr);
 }
 
 .status-item .label {
-  font-size: 21px;
+  font-size: 22px;
   color: var(--text-dim);
-  font-family: monospace;
+  font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', sans-serif;
   white-space: nowrap;
 }
 
 .status-item .value {
-  font-size: 20px;
+  font-size: 22px;
   color: #fff;
   font-weight: 800;
-  font-family: monospace;
+  font-family: 'Times New Roman', Times, serif;
   min-width: 0;
   text-align: right;
   white-space: nowrap;
@@ -397,7 +425,7 @@ onUnmounted(() => {
 }
 
 .status-item.gpu-row .value {
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .status-item .value.online {
@@ -411,16 +439,22 @@ onUnmounted(() => {
 }
 
 .status-item .model-status-value {
-  font-size: 20px;
+  font-size: 22px;
+  font-weight: 800;
+  font-family: 'Times New Roman', Times, serif;
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .detection-summary {
-  margin-top: 18px;
-  padding: 16px 14px;
-  border: 1px solid rgba(0, 229, 255, 0.22);
+  margin-top: 20px;
+  padding: 18px 16px;
+  border: 1px solid rgba(0, 229, 255, 0.25);
   background:
-    linear-gradient(135deg, rgba(0, 229, 255, 0.1), rgba(255, 193, 7, 0.045)),
-    rgba(0, 229, 255, 0.045);
+    linear-gradient(135deg, rgba(0, 229, 255, 0.12), rgba(255, 193, 7, 0.05)),
+    rgba(0, 229, 255, 0.05);
 }
 
 .summary-head {
@@ -428,39 +462,46 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  margin-bottom: 12px;
-  font-family: monospace;
+  margin-bottom: 14px;
+  font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', sans-serif;
 }
 
 .summary-head span {
   color: var(--primary-cyan);
-  font-size: 19px;
+  font-size: 22px;
   font-weight: 800;
   text-shadow: 0 0 8px rgba(0, 229, 255, 0.45);
 }
 
 .summary-head strong {
   color: rgba(255, 193, 7, 0.9);
-  font-size: 14px;
+  font-size: 16px;
+  font-family: 'Times New Roman', Times, serif;
   letter-spacing: 0.08em;
 }
 
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .summary-item {
-  min-height: 72px;
-  padding: 12px 10px;
-  border: 1px solid rgba(0, 229, 255, 0.12);
-  background: rgba(2, 16, 30, 0.45);
+  min-height: 84px;
+  padding: 14px 12px;
+  border: 1px solid rgba(0, 229, 255, 0.14);
+  background: rgba(2, 16, 30, 0.55);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 5px;
+  gap: 6px;
   min-width: 0;
+}
+
+.summary-item.highlight-item {
+  border: 1.5px solid rgba(0, 229, 255, 0.45);
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.15), rgba(3, 20, 36, 0.85));
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.18);
 }
 
 .summary-item.wide {
@@ -469,42 +510,64 @@ onUnmounted(() => {
 
 .summary-item span {
   color: var(--text-dim);
-  font-family: monospace;
-  font-size: 16px;
+  font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', sans-serif;
+  font-size: 19px;
   white-space: nowrap;
+}
+
+.summary-item.highlight-item span {
+  color: var(--primary-cyan);
+  font-weight: 700;
 }
 
 .summary-item strong {
-  color: #fff3bf;
-  font-family: monospace;
-  font-size: 28px;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 32px;
+  font-weight: 800;
   line-height: 1;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: flex;
+  align-items: baseline;
+  margin: 0;
+  padding: 0;
 }
 
-.summary-item strong.cyan {
+.summary-item strong.normal-num {
+  color: #e2f8ff;
+  text-shadow: none;
+}
+
+.summary-item strong.cyan-highlight,
+.summary-item strong.cyan-highlight .num {
   color: var(--primary-cyan);
-  text-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.65);
 }
 
-.summary-item strong.amber {
-  color: var(--primary-yellow);
-  text-shadow: 0 0 8px rgba(255, 193, 7, 0.42);
+.summary-item strong .unit {
+  font-size: 20px;
+  margin-left: 6px;
+  font-weight: 600;
+  color: var(--text-dim);
+  font-family: 'Times New Roman', Times, serif;
+  text-shadow: none;
+}
+
+.summary-item.highlight-item strong .unit {
+  color: var(--primary-cyan);
+  opacity: 0.9;
 }
 
 .telemetry-trends {
   display: grid;
-  gap: 12px;
-  margin-top: 16px;
+  gap: 16px;
+  margin-top: 20px;
 }
 
 .trend-card {
-  min-height: 124px;
-  padding: 14px 14px 10px;
-  border: 1px solid rgba(0, 229, 255, 0.18);
-  background: rgba(0, 229, 255, 0.045);
+  min-height: 168px;
+  padding: 16px 16px 12px;
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  background: rgba(0, 229, 255, 0.06);
 }
 
 .trend-head {
@@ -512,47 +575,49 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   gap: 14px;
-  margin-bottom: 10px;
-  font-family: monospace;
+  margin-bottom: 12px;
+  font-family: var(--font-main);
 }
 
 .trend-head span {
-  color: var(--text-dim);
-  font-size: 17px;
+  color: #e0f2fe;
+  font-size: 21px;
+  font-weight: 700;
   white-space: nowrap;
 }
 
 .trend-head strong {
   color: #fff3bf;
-  font-size: 18px;
+  font-size: 23px;
+  font-weight: 800;
   white-space: nowrap;
 }
 
 .trend-chart {
   width: 100%;
-  height: 76px;
+  height: 116px;
   overflow: visible;
 }
 
 .trend-grid-line {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.12);
-  stroke-width: 0.7;
-  stroke-dasharray: 3 4;
+  stroke: rgba(255, 255, 255, 0.15);
+  stroke-width: 0.8;
+  stroke-dasharray: 4 4;
 }
 
 .trend-axis {
   fill: none;
-  stroke: rgba(0, 229, 255, 0.28);
-  stroke-width: 1;
+  stroke: rgba(0, 229, 255, 0.35);
+  stroke-width: 1.2;
 }
 
 .trend-line {
   fill: none;
-  stroke-width: 2.4;
+  stroke-width: 3.4;
   stroke-linecap: round;
   stroke-linejoin: round;
-  filter: drop-shadow(0 0 4px currentColor);
+  filter: drop-shadow(0 0 6px currentColor);
 }
 
 .trend-line.vram {

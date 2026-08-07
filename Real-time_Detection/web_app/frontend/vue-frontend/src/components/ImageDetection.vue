@@ -224,7 +224,7 @@ const isBatchResult = computed(() => result.value && result.value.total_files !=
 const hasModelBreakdown = computed(() => Array.isArray(result.value?.models) && result.value.models.length > 1)
 const pageModeLabel = computed(() => {
   if (props.settings?.detectionMode === 'composite') return '综合事故检测'
-  return props.settings?.taskType === 'hazmat' ? '油罐车泄露现场' : '货车追尾现场'
+  return props.settings?.taskType === 'hazmat' ? '油罐车泄露现场' : '客车追尾现场'
 })
 const progressText = computed(() => totalCount.value ? `${processedCount.value}/${totalCount.value}` : '')
 
@@ -460,7 +460,7 @@ const processFiles = async (files) => {
   display: flex; align-items: center; justify-content: center;
   height: 48px; width: 100%;
   font-size: 32px; font-weight: 800;
-  font-family: "Microsoft YaHei", "Inter", "PingFang SC", sans-serif;
+  font-family: var(--font-main);
   color: #ffffff; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .metric-value.cyan { color: var(--primary-cyan) !important; text-shadow: 0 0 12px var(--primary-cyan); }
@@ -478,7 +478,7 @@ const processFiles = async (files) => {
 }
 .chip-row { display: flex; align-items: center; gap: 12px; }
 .chip-class { color: inherit; font-size: 24px; font-weight: 700; }
-.chip-conf { color: inherit; opacity: 0.95; font-size: 22px; font-family: monospace; font-weight: 700; }
+.chip-conf { color: inherit; opacity: 0.95; font-size: 22px; font-family: var(--font-main); font-weight: 700; }
 .no-detection { text-align: center; color: var(--text-dim); padding: 36px; font-size: 26px; }
 .modal-footer {
   display: flex; justify-content: flex-end; align-items: center; gap: 20px;

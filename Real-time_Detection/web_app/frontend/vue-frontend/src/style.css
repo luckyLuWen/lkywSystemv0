@@ -1,4 +1,5 @@
 :root {
+  --font-main: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', serif, sans-serif;
   --primary-cyan: #00e5ff;
   --primary-color: #00e5ff;
   --bg-dark: #020a13;
@@ -19,16 +20,19 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  font-family: var(--font-main);
 }
 
 html,
 body,
 #app {
   min-height: 100vh;
+  font-family: var(--font-main);
 }
 
 body {
-  font-family: "Microsoft YaHei", "Inter", "PingFang SC", sans-serif;
+  font-family: var(--font-main);
+  font-size: 16px;
   font-size: 16px;
   background:
     radial-gradient(circle at 16% 12%, rgba(0, 229, 255, 0.11), transparent 28%),

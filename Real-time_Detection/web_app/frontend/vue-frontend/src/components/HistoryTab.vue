@@ -132,13 +132,13 @@
                 <span class="metric-label">推理时间</span>
                 <span class="metric-value cyan">{{ detail.inference_time_s }} s</span>
               </div>
-              <div class="metric-badge">
+              <div class="metric-badge wide-badge">
                 <span class="metric-label">检测任务</span>
-                <span class="metric-value">{{ displayTaskLabel(detail) }}</span>
+                <span class="metric-value text-sm">{{ displayTaskLabel(detail) }}</span>
               </div>
-              <div class="metric-badge">
+              <div class="metric-badge wide-badge">
                 <span class="metric-label">模型</span>
-                <span class="metric-value model-list-text">{{ displayModelNames(detail).join(' / ') }}</span>
+                <span class="metric-value text-sm model-list-text">{{ displayModelNames(detail).join(' / ') }}</span>
               </div>
               <div class="metric-badge">
                 <span class="metric-label">置信度</span>
@@ -176,13 +176,13 @@
                 <span class="metric-label">推理时间</span>
                 <span class="metric-value cyan">{{ detail.inference_time_s }} s</span>
               </div>
-              <div class="metric-badge">
+              <div class="metric-badge wide-badge">
                 <span class="metric-label">检测任务</span>
-                <span class="metric-value">{{ displayTaskLabel(detail) }}</span>
+                <span class="metric-value text-sm">{{ displayTaskLabel(detail) }}</span>
               </div>
-              <div class="metric-badge">
+              <div class="metric-badge wide-badge">
                 <span class="metric-label">模型</span>
-                <span class="metric-value model-list-text">{{ displayModelNames(detail).join(' / ') }}</span>
+                <span class="metric-value text-sm model-list-text">{{ displayModelNames(detail).join(' / ') }}</span>
               </div>
               <div class="metric-badge">
                 <span class="metric-label">置信度</span>
@@ -301,7 +301,7 @@ const displayTaskLabel = (record) => {
   const modelNames = displayModelNames(record)
   if (modelNames.includes('SFGA-YOLO26M') && modelNames.includes('LCA-YOLO26N')) return '综合事故检测'
   if (modelNames.some(name => ['LCA-YOLO26N', 'YOLO26N', 'YOLO11N'].includes(name))) return '油罐车泄露现场'
-  if (modelNames.some(name => ['SFGA-YOLO26M', 'YOLO26M', 'YOLO11M'].includes(name))) return '货车追尾现场'
+  if (modelNames.some(name => ['SFGA-YOLO26M', 'YOLO26M', 'YOLO11M'].includes(name))) return '客车追尾现场'
   return '检测任务'
 }
 
@@ -863,17 +863,18 @@ onMounted(loadRecords)
 
 .metrics-bar {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 14px;
   margin-bottom: 24px;
 }
 
 .metric-badge {
   flex: 1;
-  min-width: 0;
+  min-width: 110px;
   background: linear-gradient(135deg, rgba(0, 229, 255, 0.08), rgba(3, 20, 36, 0.85));
   border: 2px solid rgba(0, 229, 255, 0.3);
   border-radius: 10px;
-  padding: 20px 14px;
+  padding: 16px 12px;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -881,12 +882,17 @@ onMounted(loadRecords)
   align-items: center;
 }
 
+.metric-badge.wide-badge {
+  flex: 1.8;
+  min-width: 175px;
+}
+
 .metric-label {
   display: block;
   font-size: 20px;
   color: var(--text-dim);
   letter-spacing: 1px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -895,16 +901,25 @@ onMounted(loadRecords)
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 48px;
+  min-height: 48px;
   width: 100%;
   font-size: 30px;
   font-weight: 800;
-  font-family: "Microsoft YaHei", "Inter", "PingFang SC", sans-serif;
+  font-family: var(--font-main);
   color: #ffffff;
-  line-height: 1;
+  line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.metric-value.text-sm {
+  font-size: 22px;
+  font-weight: 700;
+  white-space: normal;
+  line-height: 1.25;
+  text-align: center;
+  word-break: break-word;
 }
 
 .metric-value.cyan {
@@ -912,43 +927,61 @@ onMounted(loadRecords)
   text-shadow: 0 0 12px rgba(0, 229, 255, 0.5);
 }
 
-.detection-results { margin-bottom: 16px; }
+.detection-results { margin-bottom: 24px; }
 
 .section-title {
   color: var(--primary-cyan);
-  font-size: 21px;
+  font-size: 28px;
+  font-weight: 800;
   letter-spacing: 2px;
-  margin-bottom: 14px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(0, 229, 255, 0.1);
+  margin-top: 20px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid rgba(0, 229, 255, 0.3);
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.6);
 }
 
 .detection-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 16px;
 }
 
 .detection-chip {
-  background: rgba(255, 193, 7, 0.08);
-  border: 1px solid rgba(255, 193, 7, 0.25);
-  border-radius: 6px;
-  padding: 8px 14px;
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.16), rgba(3, 20, 36, 0.9));
+  border: 2px solid rgba(255, 193, 7, 0.55);
+  border-radius: 10px;
+  padding: 16px 28px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
+  box-shadow: 0 0 18px rgba(255, 193, 7, 0.25);
+}
+
+.detection-chip.zh-chip {
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.16), rgba(3, 20, 36, 0.9));
+  border: 2px solid rgba(0, 229, 255, 0.55);
+  box-shadow: 0 0 18px rgba(0, 229, 255, 0.25);
 }
 
 .chip-class {
   color: var(--accent-amber);
-  font-size: 22px;
-  font-weight: 500;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.detection-chip.zh-chip .chip-class {
+  color: var(--primary-cyan);
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
 }
 
 .chip-conf {
-  color: var(--text-dim);
-  font-size: 19px;
-  font-family: monospace;
+  color: #ffffff;
+  font-size: 26px;
+  font-weight: 700;
+  font-family: 'Times New Roman', Times, serif;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
 }
 
 .no-detection {

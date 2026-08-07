@@ -334,7 +334,7 @@ const MODEL_PERFORMANCE = {
 const SCENARIO_DETECTION_CONFIG = {
   crash: {
     id: 'crash',
-    title: '货车追尾事故检测',
+    title: '客车追尾事故检测',
     models: ['SFGA-YOLO26M', 'YOLO26M', 'YOLO11M'],
     modelUsageFallback: { 'SFGA-YOLO26M': 68, YOLO26M: 52, YOLO11M: 41 },
     classKeys: ['car_fire', 'lkyw_fire', 'car_nofire', 'lkyw_nofire']
