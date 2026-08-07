@@ -29,7 +29,7 @@
       <div class="physics-hud" style="position: absolute; top: 80px; right: 20px; color: #00ffd8; font-family: monospace; background: rgba(8,12,28,0.85); padding: 15px; border-radius: 6px; border: 1px solid rgba(0,255,180,0.3); font-size: 14px; pointer-events: none; line-height: 1.6; z-index: 10; box-shadow: 0 0 15px rgba(0,0,0,0.5);">
         <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; border-bottom: 1px solid rgba(0,255,180,0.3); padding-bottom: 4px; color: #fff;">📡 物理粒子引擎监控</div>
         <div>当前区域: <span style="color: #fff;">{{ currentCity === 'xiantao' ? '仙桃市' : '黄冈市' }}</span></div>
-        <div>当前场景: <span style="color: #fff;">{{ activeScene === 'truck_crash' ? '货车追尾现场' : '油罐车泄露现场' }}</span></div>
+        <div>当前场景: <span style="color: #fff;">{{ activeScene === 'truck_crash' ? '客车追尾现场' : '油罐车泄露现场' }}</span></div>
         <div>当前阶段: <span style="color: #fff;">{{ activeAccidentPhases[activePhaseIndex]?.shortLabel || '未知' }}</span></div>
         <div>环境风速: <span style="color: #ffb700; font-weight: bold;">{{ currentWindSpeed }} m/s</span></div>
         <div>环境风向: <span style="color: #ffb700; font-weight: bold;">{{ currentWindDirection }}° ({{ getWindDirectionText(currentWindDirection) }})</span></div>
@@ -66,7 +66,7 @@
             @click="changeScene('truck_crash')"
             class="phase-btn"
           >
-            🚛 货车追尾现场
+            🚌 客车追尾现场
           </button>
           <button 
             :class="{ active: activeScene === 'tanker_leak' }"
@@ -355,7 +355,7 @@ function goBackToTimeline() {
 const currentCity = ref(route.query.city === 'huanggang' ? 'huanggang' : 'xiantao')
 
 // 事故现场与坐标配置
-const activeScene = ref('truck_crash') // 默认：货车追尾现场
+const activeScene = ref('truck_crash') // 默认：客车追尾现场
 
 const scenePositions = {
   xiantao: {
@@ -375,18 +375,18 @@ const activePhaseIndex = ref(5) // 默认推演第 5 阶段
 const selectedPhase = activePhaseIndex // 别名，确保向后兼容
 
 const accidentsList = [
-  { id: 'rear-end', title: '货车追尾现场' },
+  { id: 'rear-end', title: '客车追尾现场' },
   { id: 'leakage', title: '油罐车泄露现场' }
 ]
 
 const accidentPoints = [
   {
     id: 'rear-end',
-    title: '货车追尾现场',
+    title: '客车追尾现场',
     phases: [
       { id: 't-start', time: '14:00', shortLabel: '仿真开始', title: '仿真推演开始' },
       { id: 't-normal', time: '14:05', shortLabel: '正常行驶', title: '车辆正常行驶阶段' },
-      { id: 't-accident', time: '14:12', shortLabel: '事故发生', title: '货车追尾事故瞬间' },
+      { id: 't-accident', time: '14:12', shortLabel: '事故发生', title: '客车追尾事故瞬间' },
       { id: 't-uav-dispatch', time: '14:14', shortLabel: '无人机出动', title: '无人机出动' },
       { id: 't-uav-recon', time: '14:15', shortLabel: '无人机侦察', title: '无人机快速出动侦察' },
       { id: 't-smoke', time: '14:18', shortLabel: '次生灾害（烟雾）', title: '事故现场产生大量烟雾' },
@@ -531,7 +531,7 @@ function selectPhase(phaseIndex) {
   return;
   
   if (activeScene.value === 'truck_crash') {
-    // 事故线A：货车追尾现场
+    // 事故线A：客车追尾现场
     if (currentCity.value === 'xiantao') {
       if (phaseIndex === 3) { // 事故发生
         smokeAdjust.imageWidth = 18;
@@ -616,7 +616,7 @@ function selectPhase(phaseIndex) {
         if (fireParticle) fireParticle.show = true;
       }
     } else {
-      // 黄冈市泄露扩散 (货车追尾引发的泄露/起火等扩散)
+      // 黄冈市泄露扩散 (客车追尾引发的泄露/起火等扩散)
       if (phaseIndex === 3 || phaseIndex === 4) {
         diffusionAdjust.imageWidth = 6;
         diffusionAdjust.imageHeight = 6;
@@ -883,7 +883,7 @@ function get2DParticleConfig(phaseIndex) {
     } else if (phaseIndex === 9) { // 无人感知执行
       config.smoke.emissionRate = 50
       config.fire.emissionRate = 45
-    } else if (phaseIndex === 10) { // 救援装备出动
+    } else if (phaseIndex >= 11) { // 救援装备出动
       config.smoke.emissionRate = 15
       config.fire.emissionRate = 8
       config.smoke.imageWidth = 10
@@ -917,7 +917,7 @@ function get2DParticleConfig(phaseIndex) {
       config.diffusion.emissionRate = 65
       config.diffusion.imageWidth = 10
       config.diffusion.imageHeight = 10
-    } else if (phaseIndex === 10) { // 救援装备出动
+    } else if (phaseIndex >= 11) { // 救援装备出动
       config.diffusion.emissionRate = 20
       config.diffusion.imageWidth = 5
       config.diffusion.imageHeight = 5
@@ -991,7 +991,7 @@ function add3DModels() {
   // 2. 货车事故模型
   const truckAccident = viewer.entities.add({
     id: 'sim_truck_accident',
-    name: '货车追尾',
+    name: '客车追尾',
     position: Cesium.Cartesian3.fromDegrees(xtCoords.lng, xtCoords.lat, 0),
     model: {
       uri: '/Dashboard/models/Accident_Occur1.glb',
@@ -1848,7 +1848,7 @@ function drawAccidentBase(ctx, width, height) {
   ctx.shadowBlur = 0
 
   if (activeScene.value === 'truck_crash') {
-    // ==================== 货车追尾现场 ====================
+    // ==================== 客车追尾现场 ====================
     // 车辆模型已按需不绘制
     
     // 起火核心点警示标志
