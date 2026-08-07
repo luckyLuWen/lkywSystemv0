@@ -2522,6 +2522,6 @@ watch(
   color: #38bdf8;
   font-weight: bold;
   margin: 2px 0;
-  font-family: monospace;
+  font-family: var(--font-family-mono);
 }
 </style>
