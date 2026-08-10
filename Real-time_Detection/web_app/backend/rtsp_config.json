@@ -10,7 +10,7 @@
   ],
   "model_path": "../../yolo11s.pt",
   "detection_settings": {
-    "confidence_threshold": 0.25,
+    "confidence_threshold": 0.70,
     "frame_skip": 0,
     "max_retries": 5
   }

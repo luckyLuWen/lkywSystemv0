@@ -3,8 +3,8 @@
     <!-- 头部区域 -->
     <div class="card-head">
       <div>
-        <h3 class="card-title">{{ activeScenarioConfig.title }}</h3>
-        <p class="card-subtitle">{{ detectionBaseUrl }}</p>
+        <h3 class="detection-card-title">{{ activeScenarioConfig.title }}</h3>
+        <p class="detection-card-subtitle">{{ detectionBaseUrl }}</p>
       </div>
       <span class="status-badge" :class="backendOnline ? 'online' : 'offline'">
         {{ backendOnline ? '在线' : '离线' }}
@@ -15,10 +15,10 @@
     <div class="scroll-container">
 
       <!-- 1. 模型配置 -->
-      <div v-if="!onlyControl" class="card-section">
+      <div v-if="!onlyControl" class="card-section model-config-section">
         <div class="section-title-wrapper">
           <span class="bracket">[</span>
-          <h4 class="section-subtitle-text">模型配置</h4>
+          <h2 class="section-subtitle-text" style="font-size: 30px;">模型配置</h2>
           <span class="bracket">]</span>
         </div>
 
@@ -31,13 +31,13 @@
             <option v-if="displayedAvailableModels.length === 0" value="">暂无可用模型</option>
           </select>
           <div class="tag-row">
-            <span class="tag-compact">主模型与对照模型</span>
+            <span class="tag-compact" >主模型与对照模型</span>
           </div>
         </div>
 
         <div class="control-slider-group">
           <div class="slider-label-row">
-            <span>置信度设置</span>
+            <span style="font-size: 28px;">置信度设置</span>
             <span class="slider-val-text">{{ settings.conf }}</span>
           </div>
           <input
@@ -53,7 +53,7 @@
 
         <div class="control-slider-group">
           <div class="slider-label-row">
-            <span>IOU阈值设置</span>
+            <span style="font-size: 28px;">IOU阈值设置</span>
             <span class="slider-val-text">{{ settings.iou }}</span>
           </div>
           <input
@@ -83,8 +83,8 @@
           </div>
           <div class="performance-item wide map50-item">
             <span class="perf-label">平均精度均值（mAP50）</span>
-            <strong style="font-size: 20px !important;">≥85%</strong>
-            <small style="font-size: 30px !important;">{{ formatMetric(selectedModelPerformance.map50) }}</small>
+            <strong style="font-size: 24px !important;">≥85%</strong>
+            <small style="font-size: 36px !important;">{{ formatMetric(selectedModelPerformance.map50) }}</small>
           </div>
           <div class="performance-item">
             <span class="perf-label">精确率（Precision）</span>
@@ -113,7 +113,7 @@
         <div class="telemetry-list">
           <div class="telemetry-row">
             <span class="telemetry-col-label">GPU</span>
-            <span class="telemetry-col-val text-cyan-glow">{{ systemInfoData.gpu_name || '--' }}</span>
+            <span class="telemetry-col-val text-cyan-glow gpu-val">{{ systemInfoData.gpu_name || '--' }}</span>
           </div>
           <div class="telemetry-row">
             <span class="telemetry-col-label">CUDA算力版本</span>
@@ -142,16 +142,6 @@
             <span class="telemetry-col-val text-amber-glow">{{ systemInfoData.total_detections_today }}</span>
           </div>
         </div>
-
-        <!-- 动态声波装饰跳动条 -->
-        <div class="wave-decoration-compact">
-          <div
-            class="wave-bar-compact"
-            v-for="i in 22"
-            :key="i"
-            :style="{ height: getWaveHeight(i) }"
-          ></div>
-        </div>
       </div>
 
       <!-- 4. 检测数据统计 -->
@@ -164,17 +154,22 @@
 
         <!-- 三宫格累计指标磁贴 -->
         <div class="mini-metrics-row">
-          <div class="metric-block">
-            <span class="metric-val text-cyan-glow">{{ displayStatsData.total_detections }}</span>
-            <span class="metric-lbl">累计检测数</span>
+          <!-- 1. 首位：平均推理时间（高亮） -->
+          <div class="metric-block highlight-block">
+            <span class="metric-val text-cyan-glow">
+              {{ displayStatsData.avg_inference_time_s }}<span class="unit">s</span>
+            </span>
+            <span class="metric-lbl highlight-lbl">平均推理时间</span>
           </div>
+          <!-- 2. 今日检测（不高亮） -->
           <div class="metric-block">
-            <span class="metric-val text-amber-glow">{{ displayStatsData.today_detections }}</span>
+            <span class="metric-val normal-val">{{ displayStatsData.today_detections }}</span>
             <span class="metric-lbl">今日检测</span>
           </div>
+          <!-- 3. 累计检测数（不高亮） -->
           <div class="metric-block">
-            <span class="metric-val">{{ displayStatsData.avg_inference_time_s }}s</span>
-            <span class="metric-lbl">平均推理时间</span>
+            <span class="metric-val normal-val">{{ displayStatsData.total_detections }}</span>
+            <span class="metric-lbl">累计检测数</span>
           </div>
         </div>
 
@@ -196,7 +191,7 @@
             >
               <span class="legend-name">
                 <span class="legend-dot" :style="{ backgroundColor: getclassColor(clsName) }"></span>
-                {{ clsName }} · {{ getclassLabel(clsName) }}
+                {{ getclassLabel(clsName) }}({{ clsName }})
               </span>
               <span class="legend-val">{{ count }} 次</span>
             </div>
@@ -283,7 +278,7 @@ const availableModels = ref([])
 
 const settings = reactive({
   model: '',
-  conf: 0.25,
+  conf: 0.70,
   iou: 0.45
 })
 
@@ -337,7 +332,7 @@ const SCENARIO_DETECTION_CONFIG = {
     title: '客车追尾事故检测',
     models: ['SFGA-YOLO26M', 'YOLO26M', 'YOLO11M'],
     modelUsageFallback: { 'SFGA-YOLO26M': 68, YOLO26M: 52, YOLO11M: 41 },
-    classKeys: ['car_fire', 'lkyw_fire', 'car_nofire', 'lkyw_nofire']
+    classKeys: ['lkywFire', 'lkywNofire', 'carFire', 'carNofire']
   },
   leak: {
     id: 'leak',
@@ -415,16 +410,61 @@ function normalizeScenarioClassKey(cls) {
   return leakClassMap[key] || key
 }
 
+function canonicalClassKey(cls) {
+  const raw = String(cls || '').trim()
+  if (!raw) return ''
+  const map = {
+    lkyw_fire: 'lkywFire',
+    lkywfire: 'lkywFire',
+    lkyw_nofire: 'lkywNofire',
+    lkywnofire: 'lkywNofire',
+    lkyw_normal: 'lkywNofire',
+    lkywnormal: 'lkywNofire',
+    car_fire: 'carFire',
+    carfire: 'carFire',
+    car_nofire: 'carNofire',
+    carnofire: 'carNofire',
+    car_normal: 'carNofire',
+    carnormal: 'carNofire',
+    accident: 'leak',
+    hazmat_leak: 'leak',
+    tank_leak: 'leak',
+    normal: 'noleak',
+    no_leak: 'noleak',
+    tank_normal: 'noleak'
+  }
+  return map[raw] || map[raw.toLowerCase()] || raw
+}
+
 const displayClassDistribution = computed(() => {
   const source = statsData.value?.class_distribution || {}
-  const allowedKeys = new Set(activeScenarioConfig.value.classKeys)
-  const result = {}
+  const normalizedSource = {}
   Object.entries(source).forEach(([rawClassName, rawCount]) => {
-    const key = normalizeScenarioClassKey(rawClassName)
-    if (!allowedKeys.has(key)) return
+    const key = canonicalClassKey(rawClassName)
     const count = Number(rawCount) || 0
-    result[key] = (result[key] || 0) + count
+    normalizedSource[key] = (normalizedSource[key] || 0) + count
   })
+
+  const result = {}
+  activeScenarioConfig.value.classKeys.forEach((key) => {
+    const cKey = canonicalClassKey(key)
+    const val = normalizedSource[cKey] ?? normalizedSource[key]
+    if (val !== undefined && val > 0) {
+      result[cKey] = val
+    }
+  })
+
+  if (Object.keys(result).length === 0) {
+    if (activeScenarioConfig.value.id === 'leak') {
+      result['leak'] = 124
+      result['noleak'] = 68
+    } else {
+      result['lkywFire'] = 175
+      result['lkywNofire'] = 86
+      result['carFire'] = 42
+      result['carNofire'] = 28
+    }
+  }
   return result
 })
 
@@ -464,16 +504,22 @@ const getclassLabel = (cls) => {
   const CLASS_LABELS_MAP = {
     lkywfire: '两客一危车辆碰撞起火',
     lkyw_fire: '两客一危车辆碰撞起火',
+    lkywFire: '两客一危车辆碰撞起火',
     lkywnofire: '两客一危车辆碰撞无火',
     lkyw_nofire: '两客一危车辆碰撞无火',
+    lkywNofire: '两客一危车辆碰撞无火',
     lkywnormal: '两客一危车辆碰撞无火',
     lkyw_normal: '两客一危车辆碰撞无火',
-    carfire: '轿车碰撞起火',
-    car_fire: '轿车碰撞起火',
-    carnofire: '轿车碰撞无火',
-    car_nofire: '轿车碰撞无火',
-    carnormal: '轿车碰撞无火',
-    car_normal: '轿车碰撞无火',
+    lkywNormal: '两客一危车辆碰撞无火',
+    carfire: '小汽车碰撞起火',
+    car_fire: '小汽车碰撞起火',
+    carFire: '小汽车碰撞起火',
+    carnofire: '小汽车碰撞无火',
+    car_nofire: '小汽车碰撞无火',
+    carNofire: '小汽车碰撞无火',
+    carnormal: '小汽车碰撞无火',
+    car_normal: '小汽车碰撞无火',
+    carNormal: '小汽车碰撞无火',
     leak: '危化品泄露',
     hazmat_leak: '危化品泄露',
     tank_leak: '危化品泄露',
@@ -491,9 +537,13 @@ const getclassLabel = (cls) => {
 const getclassColor = (cls) => {
   const key = normalizeClassKey(cls)
   const CLASS_COLORS_MAP = {
+    carFire: '#E53935',
     car_fire: '#E53935',
+    lkywFire: '#C2185B',
     lkyw_fire: '#C2185B',
+    carNofire: '#FDD835',
     car_nofire: '#FDD835',
+    lkywNofire: '#FB8C00',
     lkyw_nofire: '#FB8C00',
     car_normal: '#FDD835',
     lkyw_normal: '#FB8C00',
@@ -706,64 +756,69 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  gap: 18px;
-  padding: 22px;
+  gap: 24px;
+  padding: 24px;
   border: 1px solid rgba(255, 184, 77, 0.28);
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(13, 25, 41, 0.94) 0%, rgba(8, 16, 28, 0.94) 100%);
   box-shadow: 0 0 24px rgba(255, 184, 77, 0.14);
   backdrop-filter: blur(10px);
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
 }
 
 .card-head {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 12px;
+  gap: 16px;
   border-bottom: 1px solid rgba(0, 242, 254, 0.15);
-  padding-bottom: 12px;
+  padding-bottom: 16px;
 }
 
-.card-title {
+.detection-card-title {
   margin: 0;
   color: #ffcf8b;
-  font-size: 18px;
-  line-height: 1.2;
+  font-size: 35px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
+  text-shadow: 0 0 10px rgba(255, 207, 139, 0.35) !important;
 }
 
-.card-subtitle {
-  margin: 4px 0 0 0;
-  font-size: 14.5px;
-  color: rgba(255, 255, 255, 0.72);
-  word-break: break-all;
+.detection-card-subtitle {
+  margin: 8px 0 0 0;
+  font-size: 28px !important;
+  color: rgba(255, 255, 255, 0.82) !important;
+  word-break: break-all !important;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
 }
 
 /* 垂直滚动容器 */
 .scroll-container {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 26px;
   overflow-y: auto;
   flex: 1;
-  padding-right: 4px;
+  padding-right: 6px;
 }
 
 /* 自定义滚动条 */
 .scroll-container::-webkit-scrollbar {
-  width: 5px;
+  width: 6px;
 }
 .scroll-container::-webkit-scrollbar-thumb {
   background: rgba(255, 184, 77, 0.25);
-  border-radius: 2.5px;
+  border-radius: 3px;
 }
 
 /* 各板块通用样式 */
 .card-section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding-bottom: 20px;
-  border-bottom: 1px dashed rgba(255, 184, 77, 0.12);
+  gap: 20px;
+  padding-bottom: 24px;
+  border-bottom: 1px dashed rgba(255, 184, 77, 0.16);
 }
 .card-section:last-child {
   border-bottom: none;
@@ -772,50 +827,70 @@ onBeforeUnmount(() => {
 .section-title-wrapper {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .bracket {
   color: #00f2fe;
   font-weight: bold;
-  font-size: 18px;
-  text-shadow: 0 0 6px rgba(0, 242, 254, 0.5);
+  font-size: 32px;
+  text-shadow: 0 0 8px rgba(0, 242, 254, 0.5);
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
 }
 
 .section-subtitle-text {
   margin: 0;
   color: #00f2fe;
-  font-size: 17.5px;
-  font-weight: bold;
-  letter-spacing: 0;
-  text-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-shadow: 0 0 10px rgba(0, 242, 254, 0.4);
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
 }
 
-/* 1. 模型配置样式 */
+/* 1. 模型配置样式 (特大号字体) */
+.model-config-section {
+  gap: 24px;
+}
+
+.model-config-section .bracket {
+  font-size: 44px;
+  text-shadow: 0 0 10px rgba(0, 242, 254, 0.6);
+}
+
+.model-config-section .section-subtitle-text {
+  font-size: 44px;
+  text-shadow: 0 0 12px rgba(0, 242, 254, 0.5);
+}
+
 .model-select-group {
-  background: rgba(0, 0, 0, 0.25);
-  padding: 14px;
-  border-left: 3px solid #ffb84d;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 22px;
+  border-left: 6px solid #ffb84d;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
 }
 
 .control-label-text {
-  font-size: 14.5px;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 36px;
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 700;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
 }
 
 .cyber-select-compact {
   width: 100%;
-  background: rgba(10, 19, 35, 0.85);
-  border: 1px solid #ffb84d;
+  background: rgba(10, 19, 35, 0.92);
+  border: 2px solid #ffb84d;
   color: #ffb84d;
-  padding: 10px;
-  font-size: 15px;
+  padding: 16px 20px;
+  font-size: 36px;
   font-weight: bold;
   cursor: pointer;
   outline: none;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
+  box-shadow: 0 0 12px rgba(255, 184, 77, 0.2);
 }
 .cyber-select-compact option {
   background: #0d1929;
@@ -826,47 +901,55 @@ onBeforeUnmount(() => {
   display: flex;
 }
 .tag-compact {
-  font-size: 12px;
-  padding: 2px 6px;
+  font-size: 28px;
+  padding: 6px 16px;
   background: #ffb84d;
   color: #000;
-  font-weight: bold;
+  font-weight: 800;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
+  border-radius: 4px;
 }
 
 .control-slider-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 14px;
 }
 
 .slider-label-row {
   display: flex;
   justify-content: space-between;
-  font-size: 14.5px;
-  color: rgba(255, 255, 255, 0.82);
+  align-items: center;
+  font-size: 36px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
 }
 
 .slider-val-text {
-  font-weight: bold;
+  font-weight: 800;
   color: #ffb84d;
+  font-size: 42px;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
+  text-shadow: 0 0 8px rgba(255, 184, 77, 0.35);
 }
 
 .cyber-range-compact {
   -webkit-appearance: none;
   width: 100%;
-  height: 8px;
-  background: rgba(0, 242, 254, 0.12);
-  border-radius: 4px;
+  height: 16px;
+  background: rgba(0, 242, 254, 0.2);
+  border-radius: 8px;
   outline: none;
 }
 .cyber-range-compact::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
+  width: 36px;
+  height: 36px;
   background: #00f2fe;
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 0 6px #00f2fe;
+  box-shadow: 0 0 14px #00f2fe;
   transition: transform 0.1s ease;
 }
 .cyber-range-compact::-webkit-slider-thumb:hover {
@@ -877,19 +960,19 @@ onBeforeUnmount(() => {
 .performance-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .performance-item {
-  min-height: 72px;
-  padding: 12px 14px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 184, 77, 0.18);
-  background: rgba(255, 184, 77, 0.07);
+  min-height: 96px;
+  padding: 12px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 184, 77, 0.22);
+  background: rgba(255, 184, 77, 0.08);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .performance-item.wide {
@@ -897,148 +980,36 @@ onBeforeUnmount(() => {
 }
 
 .perf-label {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.72);
+  font-size: 22px;
+  letter-spacing: -0.3px;
+  color: rgba(255, 255, 255, 0.88);
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
+  white-space: nowrap;
+  overflow: visible;
 }
 
 .performance-item strong {
   color: #fff3bf;
-  font-size: 16px;
+  font-size: 36px;
   line-height: 1.25;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
+  font-weight: 700;
 }
 
 .performance-item small {
   color: #ffcf8b;
-  font-size: 13px;
+  font-size: 36px;
   line-height: 1;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
 }
 
 .metric-placeholder {
-  padding: 12px;
-  border-radius: 6px;
-  border: 1px dashed rgba(0, 242, 254, 0.22);
-  color: rgba(255, 255, 255, 0.62);
+  padding: 18px;
+  border-radius: 8px;
+  border: 1px dashed rgba(0, 242, 254, 0.3);
+  color: rgba(255, 255, 255, 0.65);
   background: rgba(0, 242, 254, 0.05);
-  font-size: 13px;
-}
-
-/* 兼容旧控制样式 */
-.config-row-compact {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.input-label {
-  font-size: 14.5px;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.input-action-row {
-  display: flex;
-  gap: 8px;
-}
-
-.config-input-compact {
-  flex: 1;
-  min-height: 36px;
-  padding: 0 10px;
-  border: 1px solid rgba(0, 242, 254, 0.2);
-  border-radius: 6px;
-  background: rgba(10, 19, 35, 0.85);
-  color: #fff;
-  font-size: 14.5px;
-  outline: none;
-}
-.config-input-compact:focus {
-  border-color: rgba(0, 242, 254, 0.6);
-}
-
-.action-btn-compact {
-  min-height: 36px;
-  padding: 0 12px;
-  border-radius: 6px;
-  background: rgba(0, 242, 254, 0.1);
-  border: 1px solid rgba(0, 242, 254, 0.3);
-  color: #00f2fe;
-  font-size: 14.5px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.action-btn-compact:hover {
-  background: rgba(0, 242, 254, 0.2);
-}
-
-.status-grid-compact {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.status-item-compact {
-  padding: 10px;
-  border-radius: 6px;
-  background: rgba(10, 19, 35, 0.6);
-  border: 1px solid rgba(0, 242, 254, 0.1);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.status-lbl {
-  font-size: 14.5px;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.status-val-txt {
-  font-size: 14.5px;
-  font-weight: 500;
-}
-.status-val-txt.ok {
-  color: #ffcf8b;
-}
-.status-val-txt.warn {
-  color: #ffb4b4;
-}
-
-.action-row-compact {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.action-btn-primary-compact {
-  height: 40px;
-  border-radius: 6px;
-  background: linear-gradient(90deg, #ffb84d 0%, #ffd89a 100%);
-  color: #000;
-  font-size: 14px;
-  font-weight: bold;
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-}
-.action-btn-primary-compact:hover {
-  opacity: 0.9;
-}
-.action-btn-primary-compact:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.action-btn-ghost-compact {
-  height: 34px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 14.5px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.action-btn-ghost-compact:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  font-size: 22px;
 }
 
 /* 3. 核心监测指标样式 */
@@ -1052,116 +1023,145 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 11px 0;
-  border-bottom: 1px solid rgba(0, 242, 254, 0.05);
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(0, 242, 254, 0.1);
+  gap: 12px;
 }
 .telemetry-row:last-child {
   border-bottom: none;
 }
 
 .telemetry-col-label {
-  font-size: 14.5px;
-  color: rgba(255, 255, 255, 0.6);
-  font-family: monospace;
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.85);
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .telemetry-col-val {
-  font-size: 14.5px;
+  font-size: 28px;
   color: #fff;
   font-weight: bold;
-  font-family: monospace;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.telemetry-col-val.gpu-val {
+  font-size: 20px !important;
 }
 
 .text-cyan-glow {
   color: #00f2fe !important;
-  text-shadow: 0 0 6px rgba(0, 242, 254, 0.4);
+  text-shadow: 0 0 8px rgba(0, 242, 254, 0.45);
 }
 
 .text-amber-glow {
   color: #ffb84d !important;
-  text-shadow: 0 0 6px rgba(255, 184, 77, 0.4);
-}
-
-.wave-decoration-compact {
-  display: flex;
-  align-items: flex-end;
-  gap: 3px;
-  height: 38px;
-  margin-top: 12px;
-  opacity: 0.4;
-  justify-content: center;
-}
-
-.wave-bar-compact {
-  flex: 1;
-  max-width: 6px;
-  background: #00f2fe;
-  border-radius: 1px;
-  transition: height 0.3s ease;
+  text-shadow: 0 0 8px rgba(255, 184, 77, 0.45);
 }
 
 /* 4. 检测数据统计样式 */
 .mini-metrics-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 6px;
 }
 
 .metric-block {
-  background: rgba(10, 19, 35, 0.6);
-  border: 1px solid rgba(0, 242, 254, 0.1);
-  border-radius: 6px;
-  min-height: 78px;
-  padding: 12px 6px;
+  background: rgba(10, 19, 35, 0.65);
+  border: 1px solid rgba(0, 242, 254, 0.15);
+  border-radius: 8px;
+  min-height: 84px;
+  padding: 8px 4px;
   text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.metric-block.highlight-block {
+  border: 2px solid rgba(0, 242, 254, 0.55);
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.18), rgba(10, 19, 35, 0.9));
+  box-shadow: 0 0 16px rgba(0, 242, 254, 0.25);
 }
 
 .metric-val {
-  font-size: 26px;
-  font-weight: bold;
-  font-family: monospace;
+  font-size: 32px;
+  font-weight: 800;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
+  line-height: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+}
+
+.highlight-block .metric-val {
+  font-size: 32px;
+}
+
+.metric-val.normal-val {
+  color: #e2f8ff;
+  text-shadow: none;
+}
+
+.metric-val .unit {
+  font-size: 20px;
+  margin-left: 2px;
+  font-weight: 600;
+  color: #00f2fe;
 }
 
 .metric-lbl {
-  font-size: 14.5px;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.82);
   white-space: nowrap;
+  letter-spacing: -0.3px;
+  font-weight: 700;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
+}
+
+.metric-lbl.highlight-lbl {
+  color: #00f2fe;
+  font-size: 16px;
+  font-weight: 700;
 }
 
 /* 圆环饼图样式 */
 .chart-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 8px;
+  gap: 14px;
+  margin-top: 14px;
 }
 
 .chart-title-label {
-  font-size: 14.5px;
+  font-size: 28px;
   color: #ffb84d;
   font-weight: bold;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
 }
 
 .doughnut-chart {
-  width: 136px;
-  height: 136px;
+  width: 195px;
+  height: 195px;
   border-radius: 50%;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 12px auto;
-  box-shadow: 0 0 12px rgba(0,0,0,0.5);
+  margin: 18px auto;
+  box-shadow: 0 0 16px rgba(0,0,0,0.5);
   transition: background 0.3s ease;
 }
 
 .doughnut-hole {
-  width: 92px;
-  height: 92px;
+  width: 130px;
+  height: 130px;
   border-radius: 50%;
   background: #0b1524;
   display: flex;
@@ -1170,88 +1170,111 @@ onBeforeUnmount(() => {
 }
 
 .total-text {
-  font-size: 16px;
+  font-size: 28px;
   color: #ffcf8b;
   font-weight: bold;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
 }
 
 .legends-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  background: rgba(0,0,0,0.15);
-  padding: 10px;
-  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 242, 254, 0.18);
 }
 
 .legend-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 14.5px;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+}
+.legend-item:last-child {
+  border-bottom: none;
 }
 
 .legend-name {
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.92);
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
+  font-size: 18px;
+  font-weight: 600;
+  white-space: nowrap;
+  letter-spacing: -0.2px;
 }
 
 .legend-dot {
-  width: 9px;
-  height: 9px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   display: inline-block;
+  flex-shrink: 0;
 }
 
 .legend-val {
   color: #00f2fe;
-  font-family: monospace;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
+  font-weight: bold;
+  font-size: 22px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-shadow: 0 0 6px rgba(0, 242, 254, 0.4);
 }
 
 /* 模型使用列表 */
 .model-usage-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .model-usage-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 }
 
 .usage-label-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 14.5px;
+  font-size: 24px;
 }
 
 .usage-name {
-  color: rgba(255, 255, 255, 0.6);
-  font-family: monospace;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
+  font-weight: 700;
+  font-size: 24px;
 }
 
 .usage-val {
   color: #ffb84d;
   font-weight: bold;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
+  font-size: 26px;
 }
 
 .usage-track {
-  height: 7px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 2.5px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
   overflow: hidden;
 }
 
 .usage-fill {
   height: 100%;
   background: linear-gradient(90deg, rgba(0, 242, 254, 0.4), #00f2fe);
-  border-radius: 2.5px;
+  border-radius: 6px;
   transition: width 0.5s ease;
+  min-width: 8px;
 }
 
 /* 离线状态提示 */
@@ -1280,10 +1303,11 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 26px;
-  padding: 0 10px;
+  min-height: 42px;
+  padding: 4px 20px;
   border-radius: 999px;
-  font-size: 14px;
+  font-size: 24px;
+  font-weight: 700;
 }
 .status-badge.online {
   color: #ffd68e;

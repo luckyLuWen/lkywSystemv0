@@ -416,7 +416,7 @@ onUnmounted(() => {
   font-size: 22px;
   color: #fff;
   font-weight: 800;
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
   min-width: 0;
   text-align: right;
   white-space: nowrap;
@@ -441,7 +441,7 @@ onUnmounted(() => {
 .status-item .model-status-value {
   font-size: 22px;
   font-weight: 800;
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
   white-space: normal;
   word-break: break-word;
   overflow: visible;
@@ -476,7 +476,7 @@ onUnmounted(() => {
 .summary-head strong {
   color: rgba(255, 193, 7, 0.9);
   font-size: 16px;
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
   letter-spacing: 0.08em;
 }
 
@@ -521,7 +521,7 @@ onUnmounted(() => {
 }
 
 .summary-item strong {
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
   font-size: 32px;
   font-weight: 800;
   line-height: 1;
@@ -548,7 +548,7 @@ onUnmounted(() => {
   margin-left: 6px;
   font-weight: 600;
   color: var(--text-dim);
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
   text-shadow: none;
 }
 

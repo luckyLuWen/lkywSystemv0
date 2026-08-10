@@ -145,9 +145,13 @@ const error = ref(null)
 const stats = ref(null)
 
 const CLASS_COLORS_MAP = {
+  carFire: '#E53935',
   car_fire: '#E53935',
+  lkywFire: '#C2185B',
   lkyw_fire: '#C2185B',
+  carNofire: '#FDD835',
   car_nofire: '#FDD835',
+  lkywNofire: '#FB8C00',
   lkyw_nofire: '#FB8C00',
   leak: '#EA80FC',
   noleak: '#B2FF59',
@@ -168,12 +172,16 @@ const CLASS_LABEL_ALIASES = {
   tank_leak: 'leak',
   no_leak: 'noleak',
   tank_normal: 'noleak',
-  carFire: 'car_fire',
-  lkywFire: 'lkyw_fire',
-  carNofire: 'car_nofire',
-  lkywNofire: 'lkyw_nofire',
-  car_normal: 'car_nofire',
-  lkyw_normal: 'lkyw_nofire'
+  carFire: 'carFire',
+  car_fire: 'carFire',
+  lkywFire: 'lkywFire',
+  lkyw_fire: 'lkywFire',
+  carNofire: 'carNofire',
+  car_nofire: 'carNofire',
+  lkywNofire: 'lkywNofire',
+  lkyw_nofire: 'lkywNofire',
+  car_normal: 'carNofire',
+  lkyw_normal: 'lkywNofire'
 }
 
 const normalizeClassLabel = (label) => {
@@ -195,15 +203,19 @@ const normalizedClassDistribution = computed(() => {
 
 
 const LABEL_ZH_MAP = {
-  car_fire: '轿车碰撞起火',
+  carFire: '小汽车碰撞起火',
+  car_fire: '小汽车碰撞起火',
+  lkywFire: '两客一危车辆碰撞起火',
   lkyw_fire: '两客一危车辆碰撞起火',
-  car_nofire: '轿车碰撞无火',
+  carNofire: '小汽车碰撞无火',
+  car_nofire: '小汽车碰撞无火',
+  lkywNofire: '两客一危车辆碰撞无火',
   lkyw_nofire: '两客一危车辆碰撞无火',
   leak: '危化品泄露',
   noleak: '未发现危化品泄露'
 }
 
-const CRASH_KEYS = ['car_fire', 'lkyw_fire', 'car_nofire', 'lkyw_nofire']
+const CRASH_KEYS = ['lkywFire', 'lkywNofire', 'carFire', 'carNofire', 'lkyw_fire', 'lkyw_nofire', 'car_fire', 'car_nofire']
 const LEAK_KEYS = ['leak', 'noleak']
 
 let _colorIdx = 0
@@ -398,7 +410,7 @@ onMounted(fetchStats)
 .stat-num {
   font-size: 48px;
   font-weight: 800;
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
   margin-bottom: 0;
   line-height: 1;
 }
@@ -523,7 +535,7 @@ onMounted(fetchStats)
   font-size: 20px;
   color: #b0bec5;
   font-weight: 700;
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
   letter-spacing: 0.5px;
   opacity: 0.95;
 }
@@ -531,7 +543,7 @@ onMounted(fetchStats)
 .legend-row strong {
   color: var(--primary-cyan);
   font-size: 26px;
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
   font-weight: 800;
 }
 

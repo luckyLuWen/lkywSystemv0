@@ -58,7 +58,7 @@
         >
         <div class="record-info">
           <div class="record-time">{{ formatTime(rec.timestamp) }}</div>
-          <div class="record-meta">
+          <div class="record-meta-row line-1">
             <span class="meta-tag task-tag">{{ displayTaskLabel(rec) }}</span>
             <span
               v-for="model in displayModelNames(rec)"
@@ -66,11 +66,13 @@
               class="meta-tag model-tag"
             >{{ model }}</span>
             <span class="meta-tag source-tag">{{ rec.source_type }}</span>
-            <span class="meta-tag param-tag">Conf: {{ formatParam(rec.conf_threshold) }}</span>
-            <span class="meta-tag param-tag">IOU: {{ formatParam(rec.iou_threshold) }}</span>
           </div>
-          <div class="record-labels" v-if="rec.labels && rec.labels.length">
-            <span v-for="label in rec.labels" :key="label" class="label-chip">{{ label }}</span>
+          <div class="record-meta-row line-2">
+            <span class="meta-tag param-tag">置信度阈值: {{ formatParam(rec.conf_threshold) }}</span>
+            <span class="meta-tag param-tag">IOU阈值: {{ formatParam(rec.iou_threshold) }}</span>
+            <template v-if="rec.labels && rec.labels.length">
+              <span v-for="label in rec.labels" :key="label" class="label-chip">{{ label }}</span>
+            </template>
           </div>
         </div>
         <div class="record-stats">
@@ -141,7 +143,7 @@
                 <span class="metric-value text-sm model-list-text">{{ displayModelNames(detail).join(' / ') }}</span>
               </div>
               <div class="metric-badge">
-                <span class="metric-label">置信度</span>
+                <span class="metric-label">置信度阈值</span>
                 <span class="metric-value">{{ formatParam(detail.conf_threshold) }}</span>
               </div>
               <div class="metric-badge">
@@ -185,7 +187,7 @@
                 <span class="metric-value text-sm model-list-text">{{ displayModelNames(detail).join(' / ') }}</span>
               </div>
               <div class="metric-badge">
-                <span class="metric-label">置信度</span>
+                <span class="metric-label">置信度阈值</span>
                 <span class="metric-value">{{ formatParam(detail.conf_threshold) }}</span>
               </div>
               <div class="metric-badge">
@@ -262,7 +264,7 @@ const modelOptions = [
   'SFGA-YOLO26M', 'YOLO26M', 'YOLO11M',
   'LCA-YOLO26N', 'YOLO26N', 'YOLO11N'
 ]
-const labelOptions = ['car_fire', 'lkyw_fire', 'car_nofire', 'lkyw_nofire', 'leak', 'noleak']
+const labelOptions = ['carFire', 'lkywFire', 'carNofire', 'lkywNofire', 'leak', 'noleak']
 const filters = reactive({
   model: '',
   label: '',
@@ -277,9 +279,9 @@ const formatTime = (ts) => {
 }
 
 const formatParam = (val) => {
-  if (val === undefined || val === null || val === '') return '0.25'
+  if (val === undefined || val === null || val === '') return '0.70'
   const num = Number(val)
-  return isNaN(num) ? '0.25' : num.toFixed(2)
+  return isNaN(num) ? '0.70' : num.toFixed(2)
 }
 
 const COMPOSITE_MODEL_PARTS = {
@@ -518,11 +520,19 @@ onMounted(loadRecords)
   flex-wrap: wrap;
 }
 
-.record-labels {
+.record-meta-row {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
   flex-wrap: wrap;
-  margin-top: 10px;
+}
+
+.record-meta-row.line-1 {
+  margin-top: 6px;
+}
+
+.record-meta-row.line-2 {
+  margin-top: 8px;
 }
 
 .label-chip {
@@ -530,7 +540,7 @@ onMounted(loadRecords)
   color: var(--accent-amber);
   border: 1px solid rgba(255, 193, 7, 0.28);
   background: rgba(255, 193, 7, 0.08);
-  padding: 6px 13px;
+  padding: 5px 13px;
   border-radius: 999px;
   font-weight: 700;
 }
@@ -545,6 +555,8 @@ onMounted(loadRecords)
 
 .meta-tag.model-tag {
   color: var(--text-main);
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
+  font-weight: 700;
   max-width: 520px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -558,14 +570,17 @@ onMounted(loadRecords)
 }
 
 .meta-tag.source-tag {
-  font-size: 24px;
+  font-size: 27px;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
+  color: var(--text-main);
+  font-weight: 700;
 }
 
 .meta-tag.param-tag {
   background: rgba(0, 229, 255, 0.12);
   color: var(--primary-cyan);
   border: 1px solid rgba(0, 229, 255, 0.35);
-  font-family: monospace, sans-serif;
+  font-family: 'Times New Roman', 'Microsoft YaHei', sans-serif;
   font-weight: 700;
   font-size: 22px;
 }
@@ -980,7 +995,7 @@ onMounted(loadRecords)
   color: #ffffff;
   font-size: 26px;
   font-weight: 700;
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
   text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
 }
 
