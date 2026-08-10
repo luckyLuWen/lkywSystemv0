@@ -36,7 +36,7 @@ const routeTitle = computed(() => {
   switch (route.path) {
     case '/realtime': return '事故监控中心'
     case '/sensor-manage': return '设备管理服务'
-    case '/coordination': return '救援推演与智能决策'
+    case '/coordination': return '协同响应指挥'
     case '/modeling': return '精细建模'
     case '/simulation': return '仿真推演'
     default: return ''
