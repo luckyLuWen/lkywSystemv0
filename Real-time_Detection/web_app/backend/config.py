@@ -23,7 +23,7 @@ class Config:
     }
     
     # 默认检测参数
-    DEFAULT_CONF = 0.25  # 置信度阈值
+    DEFAULT_CONF = 0.70  # 置信度阈值
     DEFAULT_IOU = 0.45   # IOU 阈值
     
     # CORS 配置

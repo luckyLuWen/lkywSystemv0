@@ -10,9 +10,13 @@ import numpy as np
 
 
 CLASS_COLORS = {
+    "carFire": (53, 57, 229),
     "car_fire": (53, 57, 229),
+    "lkywFire": (91, 24, 194),
     "lkyw_fire": (91, 24, 194),
+    "carNofire": (53, 216, 253),
     "car_nofire": (53, 216, 253),
+    "lkywNofire": (0, 140, 251),
     "lkyw_nofire": (0, 140, 251),
     "car_normal": (53, 216, 253),
     "lkyw_normal": (0, 140, 251),
@@ -58,7 +62,7 @@ def is_fire_class(class_name):
 
 
 class RTSPDetector:
-    def __init__(self, model_path, rtsp_url, camera_id="RTSP-01", on_detection=None, detect_frame_fn=None, conf_threshold=0.25, iou_threshold=0.45, model_name=None, detection_mode='single', task_type='collision'):
+    def __init__(self, model_path, rtsp_url, camera_id="RTSP-01", on_detection=None, detect_frame_fn=None, conf_threshold=0.70, iou_threshold=0.45, model_name=None, detection_mode='single', task_type='collision'):
         """
         初始化RTSP检测器
         """

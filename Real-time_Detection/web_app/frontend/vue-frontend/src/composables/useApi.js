@@ -13,7 +13,7 @@ export function useApi() {
     detectionMode: 'single',
     taskType: 'collision',
     model: '',
-    conf: 0.25,
+    conf: 0.70,
     iou: 0.45
   })
 

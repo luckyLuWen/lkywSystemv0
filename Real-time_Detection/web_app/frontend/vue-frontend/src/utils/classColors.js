@@ -1,7 +1,17 @@
 const CLASS_STYLES = {
+  carFire: {
+    background: '#E53935',
+    borderColor: '#FFCDD2',
+    color: '#ffffff'
+  },
   car_fire: {
     background: '#E53935',
     borderColor: '#FFCDD2',
+    color: '#ffffff'
+  },
+  lkywFire: {
+    background: '#C2185B',
+    borderColor: '#F8BBD0',
     color: '#ffffff'
   },
   lkyw_fire: {
@@ -9,10 +19,20 @@ const CLASS_STYLES = {
     borderColor: '#F8BBD0',
     color: '#ffffff'
   },
+  carNofire: {
+    background: '#FDD835',
+    borderColor: '#FFF59D',
+    color: '#1f2937'
+  },
   car_nofire: {
     background: '#FDD835',
     borderColor: '#FFF59D',
     color: '#1f2937'
+  },
+  lkywNofire: {
+    background: '#FB8C00',
+    borderColor: '#FFE0B2',
+    color: '#111827'
   },
   lkyw_nofire: {
     background: '#FB8C00',
@@ -54,16 +74,22 @@ const CLASS_STYLES = {
 const CLASS_CHINESE_MAP = {
   lkywfire: '两客一危车辆碰撞起火',
   lkyw_fire: '两客一危车辆碰撞起火',
+  lkywFire: '两客一危车辆碰撞起火',
   lkywnofire: '两客一危车辆碰撞无火',
   lkyw_nofire: '两客一危车辆碰撞无火',
+  lkywNofire: '两客一危车辆碰撞无火',
   lkywnormal: '两客一危车辆碰撞无火',
   lkyw_normal: '两客一危车辆碰撞无火',
+  lkywNormal: '两客一危车辆碰撞无火',
   carfire: '轿车碰撞起火',
   car_fire: '轿车碰撞起火',
+  carFire: '轿车碰撞起火',
   carnofire: '轿车碰撞无火',
   car_nofire: '轿车碰撞无火',
+  carNofire: '轿车碰撞无火',
   carnormal: '轿车碰撞无火',
   car_normal: '轿车碰撞无火',
+  carNormal: '轿车碰撞无火',
   leak: '危化品泄露',
   hazmat_leak: '危化品泄露',
   tank_leak: '危化品泄露',

@@ -4316,15 +4316,11 @@ function isCameraDetailView(level = accidentViewLevel.value) {
 }
 
 function isLight1CameraUnlocked() {
-  return light1Unlocked.value
-    && props.focusedPointId === 'accident_blue'
-    && isCameraDetailView()
+  return (light1Unlocked.value || props.focusedPointId === 'accident_blue') && accidentViewLevel.value !== 'far'
 }
 
 function isLight23CameraUnlocked() {
-  return light23Unlocked.value
-    && props.focusedPointId === 'accident_red'
-    && isCameraDetailView()
+  return (light23Unlocked.value || props.focusedPointId === 'accident_red') && accidentViewLevel.value !== 'far'
 }
 const accidentDetailPopup = reactive({
   show: false,
@@ -4566,8 +4562,11 @@ function openCameraStream(lightId = 'light1', movement) {
   const clickX = Number(movement?.position?.x) || width * 0.62
   const clickY = Number(movement?.position?.y) || height * 0.34
 
-  cameraStreamPopup.x = Math.min(Math.max(clickX + 22, 24), width - 500)
-  cameraStreamPopup.y = Math.min(Math.max(clickY + 72, 118), height - 430)
+  const popupHeight = 580
+  const popupWidth = 520
+  // 偏左排布定位，确保完全避开中央 3D 事故主体与右侧告警弹窗
+  cameraStreamPopup.x = Math.max(20, Math.min(clickX - popupWidth - 60, width - popupWidth - 360))
+  cameraStreamPopup.y = Math.min(Math.max(clickY - popupHeight / 2, 80), height - popupHeight - 90)
   cameraStreamPopup.show = true
   runCameraVideoDetection(lightId)
 }
@@ -4631,16 +4630,22 @@ function getStoryDetectionClassZh(className) {
   const labels = {
     lkywfire: '两客一危车辆碰撞起火',
     lkyw_fire: '两客一危车辆碰撞起火',
+    lkywFire: '两客一危车辆碰撞起火',
     lkywnofire: '两客一危车辆碰撞无火',
     lkyw_nofire: '两客一危车辆碰撞无火',
+    lkywNofire: '两客一危车辆碰撞无火',
     lkywnormal: '两客一危车辆碰撞无火',
     lkyw_normal: '两客一危车辆碰撞无火',
-    carfire: '轿车碰撞起火',
-    car_fire: '轿车碰撞起火',
-    carnofire: '轿车碰撞无火',
-    car_nofire: '轿车碰撞无火',
-    carnormal: '轿车碰撞无火',
-    car_normal: '轿车碰撞无火',
+    lkywNormal: '两客一危车辆碰撞无火',
+    carfire: '小汽车碰撞起火',
+    car_fire: '小汽车碰撞起火',
+    carFire: '小汽车碰撞起火',
+    carnofire: '小汽车碰撞无火',
+    car_nofire: '小汽车碰撞无火',
+    carNofire: '小汽车碰撞无火',
+    carnormal: '小汽车碰撞无火',
+    car_normal: '小汽车碰撞无火',
+    carNormal: '小汽车碰撞无火',
     leak: '危化品泄露',
     hazmat_leak: '危化品泄露',
     tank_leak: '危化品泄露',
@@ -11951,19 +11956,21 @@ async function triggerRescueMultiAgent() {
 
 .camera-stream-popup {
   position: absolute;
-  width: 460px;
+  width: 520px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
   border: 1px solid rgba(56, 189, 248, 0.42);
   border-radius: 8px;
-  background: rgba(3, 7, 18, 0.92);
+  background: rgba(3, 7, 18, 0.94);
   box-shadow: 0 10px 34px rgba(0, 0, 0, 0.62), 0 0 20px rgba(56, 189, 248, 0.16);
   z-index: 880;
-  overflow: hidden;
   backdrop-filter: blur(8px);
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
 }
 
 .camera-stream-header {
-  min-height: 42px;
-  padding: 8px 12px;
+  min-height: 48px;
+  padding: 10px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -11974,12 +11981,12 @@ async function triggerRescueMultiAgent() {
 .camera-title-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .camera-live-dot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: #22c55e;
   box-shadow: 0 0 10px #22c55e;
@@ -11987,13 +11994,17 @@ async function triggerRescueMultiAgent() {
 
 .camera-stream-title {
   color: #e0f2fe;
-  font-size: 17px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: 0;
 }
 
+.camera-stream-header .close-btn {
+  font-size: 22px;
+}
+
 .camera-stream-body {
-  padding: 10px;
+  padding: 12px;
 }
 
 .camera-video-wrap {
@@ -12042,7 +12053,7 @@ async function triggerRescueMultiAgent() {
 }
 
 .camera-box-label {
-  font-size: 3px;
+  font-size: 4px;
   font-weight: 700;
   paint-order: stroke;
   stroke: rgba(2, 6, 23, 0.9);
@@ -12063,32 +12074,34 @@ async function triggerRescueMultiAgent() {
 }
 
 .camera-info-grid {
-  margin-top: 10px;
+  margin-top: 12px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .camera-info-item {
-  min-height: 48px;
-  padding: 8px 10px;
+  min-height: 58px;
+  padding: 10px 14px;
   border-radius: 6px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(15, 23, 42, 0.64);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 4px;
+  gap: 5px;
 }
 
 .camera-info-item span {
-  color: rgba(226, 232, 240, 0.62);
-  font-size: 12px;
+  color: rgba(226, 232, 240, 0.75);
+  font-size: 17px;
+  font-weight: 600;
 }
 
 .camera-info-item strong {
   color: #f8fafc;
-  font-size: 15px;
+  font-size: 22px;
+  font-weight: 700;
   line-height: 1.15;
   white-space: nowrap;
   overflow: hidden;
@@ -12100,7 +12113,7 @@ async function triggerRescueMultiAgent() {
 }
 
 .camera-detection-panel {
-  margin-top: 10px;
+  margin-top: 12px;
   border: 1px solid rgba(56, 189, 248, 0.22);
   border-radius: 6px;
   background: rgba(8, 47, 73, 0.28);
@@ -12116,14 +12129,17 @@ async function triggerRescueMultiAgent() {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 10px 14px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.14);
   color: #e0f2fe;
-  font-size: 13px;
+  font-size: 19px;
+  font-weight: 600;
 }
 
 .camera-detection-head strong {
   color: #67e8f9;
+  font-size: 19px;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -12132,9 +12148,9 @@ async function triggerRescueMultiAgent() {
 }
 
 .camera-detection-body {
-  padding: 9px 10px;
-  color: rgba(226, 232, 240, 0.74);
-  font-size: 13px;
+  padding: 12px 14px;
+  color: rgba(226, 232, 240, 0.85);
+  font-size: 19px;
 }
 
 .camera-live-result-head {
@@ -12142,20 +12158,23 @@ async function triggerRescueMultiAgent() {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 7px;
-  color: rgba(226, 232, 240, 0.68);
+  margin-bottom: 8px;
+  color: rgba(226, 232, 240, 0.8);
+  font-size: 19px;
+  font-weight: 600;
 }
 
 .camera-live-result-head strong {
   color: #67e8f9;
-  font-size: 14px;
+  font-size: 20px;
+  font-weight: 700;
   white-space: nowrap;
 }
 
 .camera-live-result-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  gap: 8px;
 }
 
 .camera-live-result-item {
@@ -12164,10 +12183,12 @@ async function triggerRescueMultiAgent() {
   justify-content: space-between;
   gap: 8px;
   min-width: 0;
-  padding: 6px 8px;
+  padding: 8px 12px;
   border: 1px solid rgba(56, 189, 248, 0.24);
   border-radius: 4px;
   background: rgba(15, 23, 42, 0.58);
+  font-size: 19px;
+  font-weight: 600;
 }
 
 .camera-live-result-item span {
@@ -12176,12 +12197,14 @@ async function triggerRescueMultiAgent() {
   color: #e2e8f0;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 19px;
 }
 
 .camera-live-result-item strong {
   flex: 0 0 auto;
   color: #bae6fd;
-  font-size: 14px;
+  font-size: 19px;
+  font-weight: 700;
 }
 
 .camera-live-result-item.fire {
@@ -12203,10 +12226,11 @@ async function triggerRescueMultiAgent() {
 }
 
 .story-detection-alert {
-  width: 760px;
+  width: 840px;
   max-height: calc(100vh - 96px);
   transform: translateX(-50%);
   animation: storyDetectionPanelFadeIn 0.25s ease-out;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
 }
 
 @keyframes storyDetectionPanelFadeIn {
@@ -12249,16 +12273,17 @@ async function triggerRescueMultiAgent() {
 }
 
 .story-detection-alert .detection-popup-header {
-  min-height: 38px;
-  padding: 8px 12px;
+  min-height: 44px;
+  padding: 10px 16px;
 }
 
 .story-detection-alert .header-title {
-  font-size: 17px;
+  font-size: 22px;
+  font-weight: 700;
 }
 
 .story-detection-alert .close-btn {
-  font-size: 16px;
+  font-size: 22px;
 }
 
 .story-detection-alert.is-warning .pulse-dot {
@@ -12268,13 +12293,13 @@ async function triggerRescueMultiAgent() {
 
 .story-detection-content {
   align-items: flex-start;
-  gap: 14px;
-  padding: 10px 12px 12px;
+  gap: 16px;
+  padding: 12px 16px 16px;
 }
 
 .story-detection-img-container {
-  width: 410px;
-  height: 246px;
+  width: 440px;
+  height: 264px;
   border-color: rgba(255, 255, 255, 0.18);
 }
 
@@ -12289,8 +12314,12 @@ async function triggerRescueMultiAgent() {
 }
 
 .story-result-panel .panel-section-title {
-  font-size: 15px;
-  margin-bottom: 4px;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #93c5fd;
+  text-shadow: 0 0 6px rgba(56, 189, 248, 0.35);
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
 }
 
 .story-panel-title-row {
@@ -12302,8 +12331,9 @@ async function triggerRescueMultiAgent() {
 
 .story-panel-title-row .status-indicator {
   flex: 0 0 auto;
-  padding: 3px 8px;
-  font-size: 12px;
+  padding: 4px 12px;
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .story-model-row {
@@ -12311,15 +12341,16 @@ async function triggerRescueMultiAgent() {
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  padding: 5px 0;
+  padding: 6px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.09);
-  font-size: 16px;
+  font-size: 21px;
   color: #dbeafe;
 }
 
 .story-model-row strong {
   color: #f8fafc;
-  font-size: 16px;
+  font-size: 21px;
+  font-weight: 700;
   text-align: right;
 }
 
@@ -12337,14 +12368,14 @@ async function triggerRescueMultiAgent() {
 
 .story-confidence-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 10px;
   margin-top: 6px;
 }
 
 .story-confidence-card {
-  min-height: 68px;
-  padding: 10px 12px;
+  min-height: 76px;
+  padding: 10px 10px;
   border-radius: 6px;
   border: 1px solid rgba(148, 163, 184, 0.22);
   background: rgba(15, 23, 42, 0.58);
@@ -12360,8 +12391,8 @@ async function triggerRescueMultiAgent() {
 }
 
 .story-zh-banner {
-  margin-top: 8px;
-  padding: 10px 14px;
+  margin-top: 10px;
+  padding: 12px 16px;
   border-radius: 6px;
   border: 1px solid rgba(56, 189, 248, 0.4);
   background: rgba(14, 165, 233, 0.15);
@@ -12373,22 +12404,30 @@ async function triggerRescueMultiAgent() {
 
 .story-zh-banner strong {
   color: #38bdf8;
-  font-size: 17px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: 0.5px;
   line-height: 1.3;
 }
 
 .confidence-label {
-  color: rgba(226, 232, 240, 0.72);
-  font-size: 15px;
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 20px;
+  font-weight: 600;
 }
 
 .story-confidence-card strong {
   color: #f8fafc;
-  font-size: 24px;
-  line-height: 1.12;
+  font-size: 28px;
+  line-height: 1.15;
   letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.story-confidence-card.emphasis strong {
+  font-size: 28px;
 }
 
 .story-detection-alert.is-warning .story-confidence-card.emphasis strong {
@@ -12421,7 +12460,7 @@ async function triggerRescueMultiAgent() {
 .story-detection-items .detect-item {
   min-height: 28px;
   padding: 5px 8px;
-  font-size: 14px;
+  font-size: 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -12436,19 +12475,19 @@ async function triggerRescueMultiAgent() {
 
 .story-advice-bar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 96px;
+  grid-template-columns: minmax(0, 1fr) 110px;
   align-items: stretch;
-  gap: 10px;
-  margin: 0 12px 12px;
+  gap: 12px;
+  margin: 0 16px 16px;
 }
 
 .story-advice-main {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
+  grid-template-columns: 110px minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
-  min-height: 50px;
-  padding: 8px 10px;
+  gap: 14px;
+  min-height: 56px;
+  padding: 10px 14px;
   border-radius: 4px;
   border-left: 3px solid #f59e0b;
   background: rgba(245, 158, 11, 0.1);
@@ -12465,13 +12504,13 @@ async function triggerRescueMultiAgent() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 30px;
-  padding: 0 10px;
+  min-height: 36px;
+  padding: 0 12px;
   border-radius: 4px;
   border: 1px solid rgba(245, 158, 11, 0.48);
   background: rgba(245, 158, 11, 0.18);
   color: #fde68a;
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -12483,7 +12522,7 @@ async function triggerRescueMultiAgent() {
 }
 
 .story-advice-text {
-  font-size: 15px;
+  font-size: 20px;
   line-height: 1.45;
   font-weight: 600;
 }
@@ -12492,19 +12531,19 @@ async function triggerRescueMultiAgent() {
   width: 100%;
   height: auto !important;
   margin-top: 0 !important;
-  font-size: 14px !important;
+  font-size: 18px !important;
 }
 
 .story-report-box {
-  font-size: 14px;
+  font-size: 18px;
   line-height: 1.45;
-  padding: 7px 8px;
+  padding: 8px 10px;
 }
 
 .story-detection-alert .reset-btn {
-  height: 30px;
+  height: 36px;
   margin-top: 8px;
-  font-size: 14px;
+  font-size: 18px;
 }
 
 .detect-item.warning-event {

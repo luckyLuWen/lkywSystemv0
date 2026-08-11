@@ -27,7 +27,7 @@
       },
       "detection_config": {
         "enable_fire_detection": true,
-        "confidence_threshold": 0.25,
+        "confidence_threshold": 0.70,
         "alert_level": "high",
         "contact_person": "张三",
         "contact_phone": "13800138000"
@@ -60,7 +60,7 @@
       },
       "detection_config": {
         "enable_fire_detection": true,
-        "confidence_threshold": 0.25,
+        "confidence_threshold": 0.70,
         "alert_level": "high",
         "contact_person": "张三",
         "contact_phone": "13800138000"
@@ -126,7 +126,7 @@
       },
       "detection_config": {
         "enable_fire_detection": true,
-        "confidence_threshold": 0.25,
+        "confidence_threshold": 0.70,
         "alert_level": "critical",
         "contact_person": "王五",
         "contact_phone": "13700137000",

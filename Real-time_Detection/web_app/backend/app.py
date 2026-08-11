@@ -238,9 +238,13 @@ for name in MODEL_PATHS:
 
 # 类别颜色映射 (BGR格式，OpenCV使用BGR而非RGB)
 CLASS_COLORS = {
+    'carFire': (53, 57, 229),
     'car_fire': (53, 57, 229),       # 红色 - 普通车辆火灾
+    'lkywFire': (91, 24, 194),
     'lkyw_fire': (91, 24, 194),      # 紫红色 - 两客一危火灾
+    'carNofire': (53, 216, 253),
     'car_nofire': (53, 216, 253),    # 金黄色 - 普通车辆无火
+    'lkywNofire': (0, 140, 251),
     'lkyw_nofire': (0, 140, 251),    # 橙色 - 两客一危无火
     'car_normal': (53, 216, 253),
     'lkyw_normal': (0, 140, 251),
@@ -686,7 +690,7 @@ def detect_image():
 
         if model_name not in MODEL_PATHS:
             model_name = default_model
-        conf_threshold = float(request.form.get('conf', 0.25))
+        conf_threshold = float(request.form.get('conf', 0.70))
         iou_threshold = float(request.form.get('iou', 0.45))
 
         filename = build_safe_upload_name(file.filename)
@@ -782,7 +786,7 @@ def detect_batch():
         model_name = request.form.get('model', default_model)
         if model_name not in MODEL_PATHS:
             model_name = default_model
-        conf_threshold = float(request.form.get('conf', 0.25))
+        conf_threshold = float(request.form.get('conf', 0.70))
         iou_threshold = float(request.form.get('iou', 0.45))
 
         model = load_model(model_name)
@@ -907,7 +911,7 @@ def detect_video():
             selected_models = [name for name in COMPOSITE_MODEL_NAMES if name in MODEL_PATHS]
             if not selected_models:
                 selected_models = [model_name]
-        conf_threshold = float(request.form.get('conf', 0.25))
+        conf_threshold = float(request.form.get('conf', 0.70))
         iou_threshold = float(request.form.get('iou', 0.45))
         frame_interval = int(request.form.get('interval', 30))
         frame_interval = max(frame_interval, 1)
@@ -1068,7 +1072,7 @@ def detect_webcam():
             if not selected_models:
                 selected_models = [model_name]
 
-        conf_threshold = float(data.get('conf', 0.25))
+        conf_threshold = float(data.get('conf', 0.70))
         iou_threshold = float(data.get('iou', 0.45))
 
         img_bytes = base64.b64decode(image_data.split(',')[1])
@@ -1286,7 +1290,7 @@ def start_rtsp_detector(data):
     model_name = data.get('model') or list(MODEL_PATHS.keys())[0]
     detection_mode = data.get('detection_mode') or 'single'
     task_type = data.get('task_type') or 'collision'
-    conf_threshold = float(data.get('conf') if data.get('conf') is not None else 0.25)
+    conf_threshold = float(data.get('conf') if data.get('conf') is not None else 0.70)
     iou_threshold = float(data.get('iou') if data.get('iou') is not None else 0.45)
 
     if not rtsp_url:

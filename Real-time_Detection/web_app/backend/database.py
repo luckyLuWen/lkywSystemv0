@@ -41,10 +41,10 @@ COMPOSITE_MODEL_COMPONENTS = {
 
 
 LABEL_ALIASES = {
-    'car_fire': ['car_fire', 'carFire'],
-    'lkyw_fire': ['lkyw_fire', 'lkywFire'],
-    'car_nofire': ['car_nofire', 'carNofire', 'car_normal', 'carNormal'],
-    'lkyw_nofire': ['lkyw_nofire', 'lkywNofire', 'lkyw_normal', 'lkywNormal'],
+    'carFire': ['carFire', 'car_fire'],
+    'lkywFire': ['lkywFire', 'lkyw_fire'],
+    'carNofire': ['carNofire', 'car_nofire', 'car_normal', 'carNormal'],
+    'lkywNofire': ['lkywNofire', 'lkyw_nofire', 'lkyw_normal', 'lkywNormal'],
     'leak': ['leak', 'accident', 'hazmat_leak', 'tank_leak'],
     'noleak': ['noleak', 'normal', 'no_leak', 'tank_normal'],
 }
