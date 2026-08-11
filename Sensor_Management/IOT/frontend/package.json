@@ -9,7 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@cycjimmy/jsmpeg-player": "^6.1.2",
+    "axios": "^1.19.0",
     "echarts": "^6.0.0",
+    "element-plus": "^2.14.4",
     "flv.js": "^1.6.2",
     "vue": "^3.5.24",
     "vue-router": "^4.6.4"
