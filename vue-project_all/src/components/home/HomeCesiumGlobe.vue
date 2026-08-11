@@ -269,7 +269,7 @@
               :style="currentScene === 'truck' ? 'flex: 1; padding: 6px; font-size: 13px; background: rgba(0, 242, 254, 0.25); border: 1px solid #00f2fe; color: #00f2fe; font-weight: bold; border-radius: 4px; cursor: pointer; text-shadow: 0 0 5px rgba(0,242,254,0.5);' : 'flex: 1; padding: 6px; font-size: 13px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #aaa; cursor: pointer; border-radius: 4px;'"
               @click="$emit('accident-picked', 'accident_blue')"
             >
-              🚚 货车追尾现场
+              🚌 客车追尾现场
             </button>
             <button 
               :style="currentScene === 'tanker' ? 'flex: 1; padding: 6px; font-size: 13px; background: rgba(255, 100, 100, 0.25); border: 1px solid #ff6464; color: #ff6464; font-weight: bold; border-radius: 4px; cursor: pointer; text-shadow: 0 0 5px rgba(255,100,100,0.5);' : 'flex: 1; padding: 6px; font-size: 13px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #aaa; cursor: pointer; border-radius: 4px;'"
@@ -520,7 +520,7 @@
               :class="{ active: cameraAdjust.scene === 'truck' }" 
               @click="switchCameraScene('truck')"
             >
-              🚚 货车追尾现场
+              🚌 客车追尾现场
             </button>
             <button 
               :class="{ active: cameraAdjust.scene === 'tanker' }" 
@@ -2182,15 +2182,8 @@
           <small>请先在协同响应面板中运行多智能体寻优</small>
         </div>
 
-        <!-- 主体：终端日志 + 决策矩阵 -->
+        <!-- 主体：决策矩阵 -->
         <template v-else>
-          <!-- 终端打字日志 -->
-          <div class="alp-terminal">
-            <div class="alp-log-line" style="animation-delay:0.1s"><span class="log-tag tag-sys">[SYS]</span> 启动多智能体并发寻优... 正在获取区域 OSM 路网拓扑...</div>
-            <div class="alp-log-line" style="animation-delay:0.6s"><span class="log-tag tag-sys">[SYS]</span> Dijkstra 加权算法启动，执行动态路阻因子剔除...</div>
-            <div class="alp-log-line" style="animation-delay:1.2s"><span class="log-tag tag-ok">[OK ]</span> 真实拓扑加权寻优比对完成，决策结果已落地。</div>
-          </div>
-
           <!-- Tab 按钮切换条 -->
           <div class="alp-tabs">
             <button
@@ -5105,6 +5098,15 @@ function updateModelsReadyStatus() {
           modelsReadyStatus[entity.id] = true;
           changed = true;
           console.log(`[Cesium] 检测到模型就绪: ${entity.id}`);
+          if (entity.id === 'model_normal' && props.activePhaseIndex === 1 && currentScene.value === 'truck') {
+            playEntityAnimation(entity, false, 4);
+          } else if (entity.id === 'tanker_normal' && props.activePhaseIndex === 1 && currentScene.value === 'tanker') {
+            playEntityAnimation(entity, false, 4);
+          } else if (entity.id === 'model_accident' && props.activePhaseIndex >= 3 && currentScene.value === 'truck') {
+            freezeEntityAtEnd(entity);
+          } else if (entity.id === 'tanker_accident' && props.activePhaseIndex >= 3 && currentScene.value === 'tanker') {
+            freezeEntityAtEnd(entity);
+          }
         }
 
         // 核心修复逻辑：如果是无人机，且可见，则强制要求以高速持续旋转
@@ -5157,7 +5159,7 @@ const scenarioPoints = {
   gateway: { id: 'gateway', label: '边缘传感网关', longitude: 114.3524, latitude: 30.5442, color: '#00e5ff' },
   detection: { id: 'detection', label: '检测现场', longitude: 114.389, latitude: 30.5282, color: '#ffb84d' },
   response: { id: 'response', label: '协同处置区域', longitude: 114.3348, latitude: 30.5638, color: '#8cf7c5' },
-  accident_blue: { id: 'accident_blue', label: '货车追尾现场', longitude: 113.104833, latitude: 30.385469, color: '#ffea00' }, // 改为黄色
+  accident_blue: { id: 'accident_blue', label: '客车追尾现场', longitude: 113.104833, latitude: 30.385469, color: '#ffea00' }, // 改为黄色
   accident_red: { id: 'accident_red', label: '油罐车泄露现场', longitude: 114.894472, latitude: 30.632203, color: '#00e5ff' },  // 改为蓝色
 }
 
@@ -7397,13 +7399,18 @@ function updateTruckSequence(phaseIndex, pointId = '') {
       }
     })
     
-    // 无人机阶段（阶段6、7、8）不播放动画，保持事故发生后的最后一帧
-    if (phaseIndex < 6 && (isModelChanged || isInitialSwitch)) {
-      const entity = truckEntities.find(e => e.id === targetModelId)
-      if (entity) {
-        const durationMap = { 1: 3, 2: 2, 3: 3, 4: 3, 5: 3 }
-        const duration = durationMap[phaseIndex] || 3
-        playEntityAnimation(entity, false, duration)
+    const entity = truckEntities.find(e => e.id === targetModelId)
+    if (entity) {
+      if (phaseIndex === 1) {
+        // 阶段 1：正常行驶阶段，只播放一次正常行驶动画并在终点定格（不循环闪回）
+        playEntityAnimation(entity, false, 4)
+      } else if (phaseIndex === 2) {
+        // 阶段 2：事故发生瞬间，播放撞击追尾/倒塌动画过程（只播一次并在最后定格）
+        playEntityAnimation(entity, false, 2)
+      } else if (phaseIndex >= 3) {
+        // 阶段 3 及之后（无人机出动、无人机侦察、次生灾害、无人感知等全部后续阶段）：
+        // 事故已经发生完毕，两车必须定格在事故发生后的最后一帧（倒塌撞毁状态）
+        freezeEntityAtEnd(entity)
       }
     }
   } else {
@@ -7480,9 +7487,9 @@ function updateTankerSequence(phaseIndex, pointId = '') {
   const targetModelId = tankerPhaseToModelMap[phaseIndex] || null
 
   const isModelChanged = targetModelId !== currentActiveTankerModelId
-  const isInitialSwitch = (phaseIndex <= 1 && lastPhaseIndex <= 1 && phaseIndex !== lastPhaseIndex)
+  const isInitialSwitch = (phaseIndex <= 1 && lastTankerPhaseIndex <= 1 && phaseIndex !== lastTankerPhaseIndex)
 
-  if (targetModelId && (isModelChanged || isInitialSwitch)) {
+  if (targetModelId) {
     tankerEntities.forEach(entity => {
       const isTarget = entity.id === targetModelId
       if (isTarget) {
@@ -7491,11 +7498,19 @@ function updateTankerSequence(phaseIndex, pointId = '') {
         entity.show = !modelsReadyStatus[entity.id]
       }
     })
-      const entity = tankerEntities.find(e => e.id === targetModelId)
-      if (entity) {
-        const durationMap = { 1: 3, 2: 2, 3: 3, 4: 3, 5: 3, 6: 3 }
-        const duration = durationMap[phaseIndex] || 3
-        playEntityAnimation(entity, false, duration)
+    const entity = tankerEntities.find(e => e.id === targetModelId)
+    if (entity) {
+      if (phaseIndex === 1) {
+        // 阶段 1：正常行驶阶段，只播放一次正常行驶动画并在终点定格（不循环闪回）
+        playEntityAnimation(entity, false, 4)
+      } else if (phaseIndex === 2) {
+        // 阶段 2：事故发生（侧翻）瞬间，播放侧翻动画过程（只播一次并在最后定格）
+        playEntityAnimation(entity, false, 2)
+      } else if (phaseIndex >= 3) {
+        // 阶段 3 及之后（无人机出动、无人机侦察、次生灾害泄露/弥漫等）：
+        // 事故已发生完毕，油罐车必须定格在侧翻后的最后一帧状态
+        freezeEntityAtEnd(entity)
+      }
     }
   } else if (!targetModelId) {
     // 阶段0（仿真开始）：对于未加载就绪的模型，保持 show = true 允许 Cesium 静默预加载 GLB
@@ -7534,9 +7549,55 @@ function updateTankerSequence(phaseIndex, pointId = '') {
   }
 }
 
-function playEntityAnimation(entity, loop = false, duration = 0, speedMultiplier = 1.0) {
+// 强制将模型动画定格在事故发生后的最后一帧（倒塌/侧翻/撞毁完成状态）
+function freezeEntityAtEnd(entity) {
   if (!viewer || !entity) return;
 
+  const tryFreeze = (attemptsLeft) => {
+    if (attemptsLeft <= 0) return;
+
+    try {
+      let p = primitiveCache.get(entity.id);
+      if (!p) {
+        p = findModelPrimitive(viewer.scene.primitives, entity);
+        if (!p) p = findModelPrimitive(viewer.scene.groundPrimitives, entity);
+        if (p) primitiveCache.set(entity.id, p);
+      }
+
+      const isReady = p && (
+        p.ready || 
+        (p.readyPromise && p.readyPromise.state === 'fulfilled') || 
+        p._ready || 
+        (p.model && p.model.ready)
+      );
+
+      if (p && isReady && p.activeAnimations && typeof p.activeAnimations.addAll === 'function') {
+        p.activeAnimations.removeAll();
+        // 关键：将起始和结束时间均置于过去的时间区间，Cesium 检测到当前时间已超过 stopTime 且 removeOnStop 为 false，
+        // 会立即将模型所有骨骼/关节/节点变换强制锁定在动画最后一帧（倒塌/侧翻撞毁状态），
+        // 无论当前时钟处于运行还是暂停状态均能立即生效并保持定格！
+        const pastStart = Cesium.JulianDate.addSeconds(viewer.clock.currentTime, -200, new Cesium.JulianDate());
+        const pastStop = Cesium.JulianDate.addSeconds(viewer.clock.currentTime, -100, new Cesium.JulianDate());
+        p.activeAnimations.addAll({
+          loop: Cesium.ModelAnimationLoop.NONE,
+          startTime: pastStart,
+          stopTime: pastStop,
+          removeOnStop: false
+        });
+        p._playingLoopEntityId = null;
+      } else {
+        setTimeout(() => tryFreeze(attemptsLeft - 1), 200);
+      }
+    } catch (error) {
+      console.warn('freezeEntityAtEnd warning:', error.message);
+    }
+  };
+
+  tryFreeze(15);
+}
+
+function playEntityAnimation(entity, loop = false, duration = 0, speedMultiplier = 1.0) {
+  if (!viewer || !entity) return;
 
   const tryPlay = (attemptsLeft) => {
     if (attemptsLeft <= 0) {
@@ -7560,10 +7621,6 @@ function playEntityAnimation(entity, loop = false, duration = 0, speedMultiplier
       );
 
       if (p && isReady && p.activeAnimations && typeof p.activeAnimations.addAll === 'function') {
-        // 如果该模型已经在循环播放相同的动画，避免重复拆刷动画导致卡顿
-        if (loop && p.activeAnimations.length > 0 && p._playingLoopEntityId === entity.id) {
-          return;
-        }
         try {
           p.activeAnimations.removeAll();
           const options = {
@@ -7971,7 +8028,7 @@ function addEventEntities() {
   // 📡 接入 jizhan.glb 3D 5G通信基站模型 (货车追尾事故现场)
   viewer.entities.add({
     id: 'jizhan-glb-entity',
-    name: '货车追尾现场5G通信基站模型',
+    name: '客车追尾现场5G通信基站模型',
     show: new Cesium.CallbackProperty(() => {
       return currentScene.value === 'truck' && jizhanAdjust.show;
     }, false),
@@ -13915,13 +13972,12 @@ async function triggerRescueMultiAgent() {
   flex: 1;
 }
 /* =========================================================
-   🌟 立体传感网协同矩阵 面板样式
+   /* =========================================================
+   🌟 立体传感网协同矩阵 面板样式 (特大号 微软雅黑版)
    ========================================================= */
 .sensor-fusion-panel {
-  position: absolute;
-  top: 80px;
-  left: 20px;
-  width: 420px; /* 宽度保持 420px */
+  /* 这里面的绝对定位 top 和 left 我帮你去掉了，因为我们前面用了 Flex 弹性盒子包裹，不需要再写死定位了，否则会乱跑 */
+  width: 420px !important; /* 稍微加宽一点点以容纳大字体 */
   background: rgba(6, 14, 28, 0.85);
   border: 1px solid rgba(0, 229, 255, 0.4);
   border-radius: 8px;
@@ -13929,33 +13985,42 @@ async function triggerRescueMultiAgent() {
   backdrop-filter: blur(12px);
   z-index: 900; 
   color: #fff;
-  font-family: -apple-system, sans-serif;
-  font-size: 20px; /* 🚨 新增：整体基础字体放大到 16px */
-  line-height: 1.6; /* 🚨 新增：增加行高，让大文字阅读更舒适 */
+  
+  /* 🚨 核心修改 1：把 -apple-system 换成了强制 微软雅黑 */
+  font-family: "Microsoft YaHei", "微软雅黑", sans-serif !important;
+  font-size: 20px; 
+  line-height: 1.8 !important; /* 行高拉大，阅读更舒服 */
   overflow: hidden;
   pointer-events: auto;
 }
-/* 🚨 暴力/精准覆盖：强制放大面板内部的各种文字元素 */
+
+/* 🚨 核心修改 2：暴力覆盖！让面板里面所有的标签必须服从微软雅黑 */
+.sensor-fusion-panel * {
+  font-family: "Microsoft YaHei", "微软雅黑", sans-serif !important;
+}
 
 /* 1. 放大普通文本、标签和数值 */
 .sensor-fusion-panel span,
 .sensor-fusion-panel p,
 .sensor-fusion-panel div {
-  font-size: 18px !important; /* 使用 !important 强制打破原有的较小字号限制 */
+  font-size: 18px !important; 
 }
 
-/* 2. 单独把标题放得更大，拉开视觉层次 */
+/* 2. 单独把主标题放得更大，拉开视觉层次 */
 .sensor-fusion-panel .title,
 .sensor-fusion-panel h3,
 .sensor-fusion-panel h4 {
-  font-size: 22px !important;
-  font-weight: bold;
+  font-size: 24px !important; /* 标题拉满到 24px */
+  font-weight: bold !important;
+  letter-spacing: 2px !important; /* 加点字间距，看着更大气 */
 }
 
-/* 3. 如果里面有数据高亮（比如你环境监测阵列的 TVOC、CO 数值），可以单独微调 */
+/* 3. 关键数据高亮（如：置信度 98.5% 或 预警文字） */
 .sensor-fusion-panel .value,
-.sensor-fusion-panel .text-cyan {
-  font-size: 20px !important;
+.sensor-fusion-panel .text-cyan,
+.sensor-fusion-panel .text-red {
+  font-size: 22px !important; /* 数据数值放大到 22px */
+  font-weight: bold !important;
 }
 .fusion-header {
   display: flex;
@@ -15409,6 +15474,42 @@ async function triggerRescueMultiAgent() {
   box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
 }
 
+/* 候选节点动态剔除名录样式 (二级标题与各节点字号放大) */
+.alp-losers { 
+  border-top: 1px dashed rgba(255,255,255,0.12); 
+  padding-top: 12px; 
+  margin-top: 10px;
+  font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
+}
+.alp-losers-title { 
+  font-size: var(--hud-h2-font-size, 16px); 
+  font-weight: 700;
+  color: #00ffff; 
+  margin-bottom: 10px; 
+  letter-spacing: 0.5px;
+  font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
+  text-shadow: 0 0 6px rgba(0, 255, 255, 0.3);
+}
+.alp-loser-item { 
+  background: rgba(239, 68, 68, 0.08);
+  border-left: 3px solid rgba(239, 68, 68, 0.5);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 8px; 
+}
+.alp-loser-item:last-child { margin-bottom: 0; }
+.alp-loser-name { 
+  font-size: 15px; 
+  color: #ffffff; 
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+.alp-loser-reason { 
+  font-size: 14px; 
+  color: #fca5a5; 
+  margin-top: 4px;
+  line-height: 1.4;
+}
 
 /* 📹 全阶段相机视角微调工具 弹窗面板 */
 .camera-adjust-modal {
@@ -15775,28 +15876,33 @@ async function triggerRescueMultiAgent() {
    阶段 9：传感网原型解析悬浮窗 (图片版)
 ========================================== */
 /* 弹窗整体容器 */
+/* ==========================================
+   阶段 9：传感网原型解析悬浮窗 (图片版) - 特大字体版
+========================================== */
+/* 弹窗整体容器 */
 .prototype-magnifier-popup {
-position: absolute; 
-  
-  /* 🚨 同时减小 top 和 left 的值 */
-  top: 40px;    /* 比刚才的 70px 更靠上 */
-  left: 80px;  /* 比刚才的 380px 更靠左 */
-  
+  position: absolute; 
+  top: 40px;    
+  left: 80px;  
   transform: none; 
-
-  /* ------ 保持原有样式 ------ */
   background: rgba(10, 20, 35, 0.9);
   border: 1px solid rgba(0, 229, 255, 0.5);
   box-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
   border-radius: 8px;
-  width: 800px;
+  width: 900px; /* 🚨 弹窗拉宽到 900px，防止特大字体挤换行 */
   z-index: 1000;
   backdrop-filter: blur(10px);
 }
 
+/* 🚨 核武器：强制该弹窗内所有元素的字体必须是微软雅黑！ */
+.prototype-magnifier-popup,
+.prototype-magnifier-popup * {
+  font-family: "Microsoft YaHei", "微软雅黑", sans-serif !important;
+}
+
 /* 头部标题区域 */
 .prototype-magnifier-popup .popup-header {
-  padding: 12px 16px;
+  padding: 16px 20px;
   border-bottom: 1px solid rgba(45, 183, 245, 0.3);
   background: linear-gradient(90deg, rgba(45, 183, 245, 0.15) 0%, transparent 100%);
   display: flex;
@@ -15806,22 +15912,22 @@ position: absolute;
 }
 
 .prototype-magnifier-popup .popup-header .icon {
-  font-size: 18px;
-  margin-right: 8px;
+  font-size: 26px !important; /* 🚨 图标调大 */
+  margin-right: 12px;
 }
 
 .prototype-magnifier-popup .popup-header .title {
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 24px !important; /* 🚨 主标题特大 */
+  font-weight: bold !important;
   flex: 1;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
 }
 
 .prototype-magnifier-popup .close-btn {
   background: none;
   border: none;
   color: #8fa5c0;
-  font-size: 22px;
+  font-size: 28px !important; 
   cursor: pointer;
   transition: color 0.3s;
   line-height: 1;
@@ -15834,15 +15940,15 @@ position: absolute;
 /* 主体内容布局 */
 .prototype-magnifier-popup .popup-body {
   display: flex;
-  padding: 24px;
-  gap: 24px;
-  align-items: center; /* 垂直居中对齐 */
+  padding: 28px;
+  gap: 30px;
+  align-items: center; 
 }
 
 /* 左侧图片容器 */
 .prototype-magnifier-popup .prototype-image-container {
-  width: 280px; /* 控制图片区域的宽度 */
-  height: 200px;
+  width: 320px; /* 🚨 图片区域也随之拉宽 */
+  height: 230px;
   flex-shrink: 0;
   display: flex;
   justify-content: center;
@@ -15850,63 +15956,64 @@ position: absolute;
   background: rgba(16, 40, 70, 0.4);
   border: 1px dashed rgba(45, 183, 245, 0.4);
   border-radius: 6px;
-  padding: 10px;
+  padding: 12px;
   box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
 }
 
-/* 自定义抠图样式 */
 .prototype-magnifier-popup .custom-prototype-img {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  /* 给透明底的抠图加上赛博发光轮廓，自动捕捉你抠图的边缘 */
   filter: drop-shadow(0 0 6px rgba(45, 183, 245, 0.6));
 }
 
 /* 右侧文本介绍样式 */
 .prototype-magnifier-popup .prototype-desc {
   flex: 1;
-  color: #a0d8ef; /* 柔和的科技蓝白 */
-  font-size: 13px;
-  line-height: 1.6;
+  color: #a0d8ef; 
+  font-size: 18px !important; /* 🚨 正文基础字号特大 */
+  line-height: 1.8 !important; 
 }
 
 .prototype-magnifier-popup .desc-title {
   color: #00e5ff;
   margin-top: 0;
-  margin-bottom: 12px;
-  font-size: 16px;
-  font-weight: bold;
-  border-left: 3px solid #00e5ff;
-  padding-left: 8px;
+  margin-bottom: 18px !important;
+  font-size: 22px !important; /* 🚨 小标题特大 */
+  font-weight: bold !important;
+  border-left: 4px solid #00e5ff;
+  padding-left: 10px;
 }
 
 .prototype-magnifier-popup .desc-list {
-  padding-left: 16px;
+  padding-left: 20px;
   margin: 0;
-  list-style-type: none; /* 使用自定义的发光圆点 */
+  list-style-type: none; 
 }
 
 .prototype-magnifier-popup .desc-list li {
-  margin-bottom: 12px;
+  margin-bottom: 16px !important;
   position: relative;
+  font-size: 18px !important; /* 🚨 列表文字特大 */
 }
 
 /* 列表自定义发光圆点 */
 .prototype-magnifier-popup .desc-list li::before {
   content: "";
   position: absolute;
-  left: -14px;
-  top: 6px;
-  width: 5px;
-  height: 5px;
+  left: -18px;
+  top: 10px; 
+  width: 8px;
+  height: 8px;
   background: #2db7f5;
   border-radius: 50%;
-  box-shadow: 0 0 5px #2db7f5;
+  box-shadow: 0 0 6px #2db7f5;
 }
 
 .prototype-magnifier-popup .desc-list strong {
   color: #fff;
+  font-size: 20px !important; /* 🚨 重点前缀词特大 */
+  font-weight: bold !important;
 }
 .phase-desc-card {
   position: absolute;
@@ -16589,20 +16696,25 @@ position: absolute;
 .cmp-title-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
-.cmp-icon { font-size: 15px; }
+.cmp-icon {
+  font-size: 20px;
+  filter: drop-shadow(0 0 6px rgba(0, 242, 254, 0.6));
+}
 .cmp-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #00d4ff;
+  font-size: var(--hud-h1-font-size, 20px);
+  font-weight: var(--hud-h1-font-weight, 700);
+  color: var(--hud-h1-color, #00f2fe);
   letter-spacing: 0.5px;
   flex: 1;
+  text-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
 }
 .cmp-pulse {
-  width: 8px; height: 8px;
+  width: 9px; height: 9px;
   border-radius: 50%;
-  background: #00d4ff;
+  background: #00f2fe;
+  box-shadow: 0 0 8px #00f2fe;
   animation: cmp-blink 1s infinite;
 }
 @keyframes cmp-blink {
@@ -16611,46 +16723,48 @@ position: absolute;
 }
 .cmp-scene-label {
   margin-top: 4px;
-  font-size: 11px;
-  color: rgba(255,255,255,0.55);
+  font-size: var(--hud-subtitle-font-size, 13px);
+  color: rgba(226, 241, 255, 0.75);
   letter-spacing: 0.3px;
 }
 
-/* 分区标题 */
+/* 分区标题 (二级标题 16px) */
 .cmp-section-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: rgba(0, 212, 255, 0.75);
+  font-size: var(--hud-h2-font-size, 16px);
+  font-weight: var(--hud-h2-font-weight, 600);
+  color: var(--hud-h2-color, #e2f1ff);
+  margin-top: 10px;
   margin-bottom: 6px;
   letter-spacing: 0.4px;
+  text-shadow: 0 0 6px rgba(0, 242, 254, 0.3);
 }
 
 /* 指标网格 */
 .cmp-metrics-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 8px;
 }
 .cmp-metric-card {
   background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: 8px;
-  padding: 7px 8px 5px;
+  padding: 8px 10px 6px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   transition: background 0.2s;
 }
-.cmp-metric-card:hover { background: rgba(0,212,255,0.07); }
-.cmp-metric-card.cmp-perfect { border-color: rgba(52,211,153,0.35); }
+.cmp-metric-card:hover { background: rgba(0,242,254,0.08); }
+.cmp-metric-card.cmp-perfect { border-color: rgba(52,211,153,0.45); }
 .cmp-val {
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.1;
 }
-.cmp-val small { font-size: 10px; font-weight: 400; margin-left: 2px; opacity: 0.8; }
-.cmp-lbl { font-size: 10px; color: rgba(255,255,255,0.5); }
-.cmp-cyan  { color: #22d3ee; }
+.cmp-val small { font-size: 13px; font-weight: 500; margin-left: 2px; opacity: 0.85; }
+.cmp-lbl { font-size: 13px; color: rgba(226, 241, 255, 0.75); }
+.cmp-cyan  { color: #00ffff; }
 .cmp-amber { color: #fbbf24; }
 .cmp-green { color: #34d399; }
 .cmp-purple{ color: #a78bfa; }
@@ -16658,18 +16772,18 @@ position: absolute;
 
 /* 算法对比行 */
 .cmp-compare-row {
-  margin-top: 8px;
-  font-size: 10.5px;
-  color: rgba(255,255,255,0.5);
+  margin-top: 10px;
+  font-size: 13px;
+  color: rgba(226, 241, 255, 0.8);
   line-height: 1.6;
 }
 .cmp-compare-badge {
   display: inline-block;
-  padding: 0 5px;
+  padding: 2px 6px;
   border-radius: 4px;
-  background: rgba(0,212,255,0.12);
-  color: #00d4ff;
-  font-size: 10px;
+  background: rgba(0,242,254,0.15);
+  color: #00ffff;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -16678,11 +16792,11 @@ position: absolute;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255,255,255,0.06);
-  font-size: 11px;
-  color: rgba(255,255,255,0.6);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  font-size: 13px;
+  color: rgba(226, 241, 255, 0.8);
   flex-wrap: wrap;
 }
 .cmp-tag-warn {
@@ -16740,7 +16854,7 @@ position: absolute;
   position: absolute;
   top: 20px;
   right: 20px;
-  width: 330px;
+  width: 420px;
   max-height: calc(100vh - 60px);
   z-index: 9200;
   pointer-events: auto;
@@ -16752,7 +16866,7 @@ position: absolute;
   backdrop-filter: blur(16px);
   display: flex;
   flex-direction: column;
-  font-family: 'Inter', 'SF Pro Display', 'Microsoft YaHei', sans-serif;
+  font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
   color: rgba(255,255,255,0.92);
 }
 
@@ -16777,98 +16891,80 @@ position: absolute;
 .alp-title-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
-.alp-icon { font-size: 20px; flex-shrink: 0; }
-.alp-title-text { flex: 1; display: flex; flex-direction: column; }
+.alp-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px rgba(0, 242, 254, 0.6));
+}
+.alp-title-text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .alp-title {
-  font-size: 16px;
-  font-weight: 750;
-  color: #38bdf8;
-  letter-spacing: 0.6px;
+  font-size: var(--hud-h1-font-size, 20px);
+  font-weight: var(--hud-h1-font-weight, 700);
+  color: var(--hud-h1-color, #00f2fe);
+  letter-spacing: 0.5px;
   line-height: 1.25;
+  white-space: nowrap;
+  text-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
 }
 .alp-subtitle {
-  font-size: 11px;
-  color: #64748b;
-  font-family: 'Consolas', Monaco, monospace;
+  font-size: var(--hud-subtitle-font-size, 13px);
+  color: rgba(226, 241, 255, 0.7);
+  font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
   margin-top: 3px;
   letter-spacing: 0.3px;
+  white-space: nowrap;
 }
 .alp-badge {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  padding: 4px 8px;
+  padding: 4px 9px;
   border-radius: 6px;
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(16, 185, 129, 0.12);
   color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  border: 1px solid rgba(16, 185, 129, 0.3);
   letter-spacing: 0.5px;
+  font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
+  white-space: nowrap;
 }
-
-/* 终端日志区 */
-.alp-terminal {
-  font-family: 'Consolas', 'Fira Code', Menlo, monospace;
-  font-size: 12.5px;
-  color: #cbd5e1;
-  background: rgba(8, 16, 32, 0.85);
-  padding: 12px 14px;
-  border-left: 3px solid #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.15);
-  border-left-width: 4px;
-  margin: 14px 14px 4px;
-  border-radius: 6px;
-  flex-shrink: 0;
-  box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
-}
-.alp-log-line {
-  margin-bottom: 4px;
-  opacity: 0;
-  animation: alpFadeLog 0.3s forwards;
-  line-height: 1.6;
-}
-.alp-log-line:last-child { margin-bottom: 0; }
-.log-tag { font-weight: 700; margin-right: 6px; }
-.tag-sys { color: #38bdf8; }
-.tag-ok { color: #34d399; }
-@keyframes alpFadeLog { to { opacity: 1; } }
 
 /* Tab 切换栏 */
 .alp-tabs {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 4px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 10px 14px;
   background: rgba(15, 23, 42, 0.4);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   flex-shrink: 0;
 }
 .alp-tab-btn {
   flex: 1;
-  background: rgba(30, 41, 59, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
   color: #cbd5e1;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
-  padding: 5px 0;
+  padding: 6px 0;
   cursor: pointer;
   transition: all 0.25s ease;
   text-align: center;
-  font-family: inherit;
+  font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
 }
 .alp-tab-btn:hover {
   color: #ffffff;
-  background: rgba(30, 41, 59, 0.7);
-  border-color: rgba(56, 189, 248, 0.2);
+  background: rgba(30, 41, 59, 0.8);
+  border-color: rgba(56, 189, 248, 0.3);
 }
 .alp-tab-btn.active {
   background: rgba(15, 23, 42, 0.85);
   color: var(--btn-color);
   border: 1px solid var(--btn-color);
-  box-shadow: 0 0 6px var(--btn-color);
+  box-shadow: 0 0 8px var(--btn-color);
   font-weight: 700;
 }
 
@@ -16877,6 +16973,7 @@ position: absolute;
   overflow-y: auto;
   padding: 12px;
   flex: 1;
+  font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
 }
 .alp-decision-single::-webkit-scrollbar { width: 4px; }
 .alp-decision-single::-webkit-scrollbar-thumb { background: rgba(56,189,248,0.25); border-radius: 2px; }
@@ -16887,9 +16984,10 @@ position: absolute;
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-left: 4px solid var(--alp-color);
   border-radius: 8px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   overflow: hidden;
+  font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
 }
 .alp-agent-card:hover {
   transform: translateY(-2px);
@@ -16907,79 +17005,57 @@ position: absolute;
   border-radius: 8px;
 }
 
-/* 头部：改用纵向排列，彻底解决左右拉伸导致的折行和文字重合问题 */
+/* 头部：改用纵向排列 */
 .alp-agent-head {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
-  margin-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  padding-bottom: 8px;
+  gap: 6px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 10px;
 }
 .alp-agent-label {
-  font-size: 14px;
-  font-weight: 750;
+  font-size: 18px;
+  font-weight: 700;
   color: var(--alp-color);
   letter-spacing: 0.5px;
+  font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
 }
 .alp-agent-winner {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: #e2e8f0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
   line-height: 1.4;
+  font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
 }
 
 /* 指标区 */
 .alp-stats {
-  background: rgba(15, 23, 42, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.03);
-  border-radius: 6px;
-  padding: 8px 10px;
-  margin-bottom: 10px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
 }
 .alp-stat-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12.5px;
-  color: #94a3b8;
-  margin-bottom: 5px;
+  font-size: 14px;
+  color: #cbd5e1;
+  margin-bottom: 8px;
+  font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
 }
 .alp-stat-row:last-child { margin-bottom: 0; }
-.alp-highlight { color: #e2e8f0; }
-.alp-highlight .stat-val { color: #38bdf8; font-weight: 700; }
-.stat-lbl { font-size: 12px; }
-.stat-val { font-family: 'Consolas', monospace; font-size: 13px; color: #cbd5e1; }
+.alp-highlight { color: #ffffff; }
+.alp-highlight .stat-val { color: #00ffff; font-weight: 700; }
+.stat-lbl { font-size: 14px; font-weight: 600; color: #e2e8f0; }
+.stat-val { font-family: 'Microsoft YaHei', '微软雅黑', sans-serif; font-size: 15px; font-weight: 700; color: #cbd5e1; }
 
-/* 淘汰名录样式升级：加边框与柔和淡红底色，提升表格质感 */
-.alp-losers { 
-  border-top: 1px dashed rgba(255,255,255,0.08); 
-  padding-top: 10px; 
-  margin-top: 6px;
-}
-.alp-losers-title { 
-  font-size: 11px; 
-  font-weight: 700;
-  color: #64748b; 
-  margin-bottom: 8px; 
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-.alp-loser-item { 
-  background: rgba(239, 68, 68, 0.03);
-  border-left: 2px solid rgba(239, 68, 68, 0.25);
-  border-radius: 4px;
-  padding: 6px 8px;
-  margin-bottom: 6px; 
-}
-.alp-loser-item:last-child { margin-bottom: 0; }
-.alp-loser-name { 
-  font-size: 12px; 
-  color: #cbd5e1; 
-  font-weight: 600;
-  letter-spacing: 0.2px;
-}
+
 .alp-loser-reason { 
   font-size: 11px; 
   color: #f87171; 
