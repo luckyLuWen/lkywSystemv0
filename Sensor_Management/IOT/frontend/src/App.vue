@@ -85,15 +85,18 @@ const connectWS = () => {
 // === 菜单控制状态变量整合 ===
 const isOverviewOpen = ref(true)
 const isLogicMenuOpen = ref(false)
-const isNodeGroupOpen = ref(false) // 统一接管感知单元A和B的菜单展开状态
+const isNodeGroupOpen = ref(false) 
 const isFixedNodeGroupOpen = ref(false)
 const isDroneGroupOpen = ref(false)
+const isCameraGroupOpen = ref(false) // 新增：海康摄像头菜单组状态
 
 const toggleOverview = () => { isOverviewOpen.value = !isOverviewOpen.value }
 const toggleLogicMenu = () => { isLogicMenuOpen.value = !isLogicMenuOpen.value }
 const toggleNodeGroup = () => { isNodeGroupOpen.value = !isNodeGroupOpen.value }
 const toggleFixedNodeGroup = () => { isFixedNodeGroupOpen.value = !isFixedNodeGroupOpen.value }
 const toggleDroneGroup = () => { isDroneGroupOpen.value = !isDroneGroupOpen.value }
+const toggleCameraGroup = () => { isCameraGroupOpen.value = !isCameraGroupOpen.value } // 新增：切换方法
+
 onMounted(() => {
   connectWS()
   refreshGatewayState()
@@ -161,7 +164,7 @@ onUnmounted(() => {
             <router-link to="/node8" class="nav-item sub-item">固定监测站-003</router-link>
             <router-link to="/node9" class="nav-item sub-item">固定监测站-004</router-link>
             <router-link to="/node10" class="nav-item sub-item">固定监测站-005</router-link>
-            </div>
+          </div>
         </div>
 
         <div class="nav-group">
@@ -170,14 +173,23 @@ onUnmounted(() => {
             <span class="arrow">{{ isDroneGroupOpen ? '▼' : '▶' }}</span>
           </div>
           <div v-if="isDroneGroupOpen" class="sub-menu">
-            <!-- 对应 DroneView.vue -->
             <router-link to="/drone" class="nav-item sub-item">空域监测节点-001</router-link>
-            <!-- 对应 DroneView1.vue (修正了原描述中的 DroneView.1vue) -->
             <router-link to="/drone1" class="nav-item sub-item">空域监测节点-002</router-link>
-            <!-- 对应 DroneView2.vue -->
             <router-link to="/drone2" class="nav-item sub-item">空域监测节点-003</router-link>
           </div>
         </div>
+
+        <!-- ====== 新增：视频监控设备节点 ====== -->
+        <div class="nav-group">
+          <div class="nav-item group-title" @click="toggleCameraGroup">
+            <span>视频监控设备节点</span>
+            <span class="arrow">{{ isCameraGroupOpen ? '▼' : '▶' }}</span>
+          </div>
+          <div v-if="isCameraGroupOpen" class="sub-menu">
+            <router-link to="/hik-camera" class="nav-item sub-item">海康威视监控终端</router-link>
+          </div>
+        </div>
+        
       </nav>
 
       <div class="footer">
