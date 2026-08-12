@@ -14,7 +14,13 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@high-fidelity': fileURLToPath(new URL('../High-Fidelity Modeling', import.meta.url))
     },
   },
+  server: {
+    fs: {
+      allow: ['..']
+    }
+  }
 })
