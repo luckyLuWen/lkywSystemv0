@@ -18,7 +18,7 @@
       <div v-if="!onlyControl" class="card-section model-config-section">
         <div class="section-title-wrapper">
           <span class="bracket">[</span>
-          <h2 class="section-subtitle-text" style="font-size: 30px;">模型配置</h2>
+          <h2 class="section-subtitle-text">模型配置</h2>
           <span class="bracket">]</span>
         </div>
 
@@ -37,7 +37,7 @@
 
         <div class="control-slider-group">
           <div class="slider-label-row">
-            <span style="font-size: 28px;">置信度设置</span>
+            <span>置信度设置</span>
             <span class="slider-val-text">{{ settings.conf }}</span>
           </div>
           <input
@@ -53,7 +53,7 @@
 
         <div class="control-slider-group">
           <div class="slider-label-row">
-            <span style="font-size: 28px;">IOU阈值设置</span>
+            <span>IOU阈值设置</span>
             <span class="slider-val-text">{{ settings.iou }}</span>
           </div>
           <input
@@ -83,8 +83,8 @@
           </div>
           <div class="performance-item wide map50-item">
             <span class="perf-label">平均精度均值（mAP50）</span>
-            <strong style="font-size: 24px !important;">≥85%</strong>
-            <small style="font-size: 36px !important;">{{ formatMetric(selectedModelPerformance.map50) }}</small>
+            <strong style="font-size: 20px !important;">≥85%</strong>
+            <small style="font-size: 30px !important;">{{ formatMetric(selectedModelPerformance.map50) }}</small>
           </div>
           <div class="performance-item">
             <span class="perf-label">精确率（Precision）</span>
@@ -175,7 +175,11 @@
 
         <!-- 饼图类别分布 (Conic Gradient) -->
         <div v-if="Object.keys(displayClassDistribution || {}).length > 0" class="chart-section">
-          <span class="chart-title-label">类别分布</span>
+          <div class="section-title-wrapper">
+            <span class="bracket">[</span>
+            <h4 class="section-subtitle-text">类别分布</h4>
+            <span class="bracket">]</span>
+          </div>
           <div class="doughnut-chart" :style="{ background: doughnutGradient }">
             <div class="doughnut-hole">
               <span class="total-text">{{ displayClassTotal }}次</span>
@@ -200,7 +204,11 @@
 
         <!-- 模型使用分布 -->
         <div v-if="scenarioModelUsage.length > 0" class="chart-section">
-          <span class="chart-title-label">模型使用分布</span>
+          <div class="section-title-wrapper">
+            <span class="bracket">[</span>
+            <h4 class="section-subtitle-text">模型使用分布</h4>
+            <span class="bracket">]</span>
+          </div>
           <div class="model-usage-list">
             <div
               v-for="item in scenarioModelUsage"
@@ -777,17 +785,17 @@ onBeforeUnmount(() => {
 
 .detection-card-title {
   margin: 0;
-  color: #ffcf8b;
-  font-size: 35px !important;
-  font-weight: 800 !important;
+  color: #ffffff;
+  font-size: 26px !important;
+  font-weight: 700 !important;
   line-height: 1.2 !important;
   font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
-  text-shadow: 0 0 10px rgba(255, 207, 139, 0.35) !important;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.35) !important;
 }
 
 .detection-card-subtitle {
-  margin: 8px 0 0 0;
-  font-size: 28px !important;
+  margin: 6px 0 0 0;
+  font-size: 22px !important;
   color: rgba(255, 255, 255, 0.82) !important;
   word-break: break-all !important;
   font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
@@ -833,7 +841,7 @@ onBeforeUnmount(() => {
 .bracket {
   color: #00f2fe;
   font-weight: bold;
-  font-size: 32px;
+  font-size: 27px !important;
   text-shadow: 0 0 8px rgba(0, 242, 254, 0.5);
   font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
 }
@@ -841,39 +849,39 @@ onBeforeUnmount(() => {
 .section-subtitle-text {
   margin: 0;
   color: #00f2fe;
-  font-size: 30px;
+  font-size: 27px !important;
   font-weight: 800;
   letter-spacing: 1px;
   text-shadow: 0 0 10px rgba(0, 242, 254, 0.4);
   font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
 }
 
-/* 1. 模型配置样式 (特大号字体) */
+/* 1. 模型配置样式 */
 .model-config-section {
-  gap: 24px;
+  gap: 18px;
 }
 
 .model-config-section .bracket {
-  font-size: 44px;
+  font-size: 27px !important;
   text-shadow: 0 0 10px rgba(0, 242, 254, 0.6);
 }
 
 .model-config-section .section-subtitle-text {
-  font-size: 44px;
+  font-size: 27px !important;
   text-shadow: 0 0 12px rgba(0, 242, 254, 0.5);
 }
 
 .model-select-group {
   background: rgba(0, 0, 0, 0.3);
-  padding: 22px;
-  border-left: 6px solid #ffb84d;
+  padding: 16px;
+  border-left: 5px solid #ffb84d;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .control-label-text {
-  font-size: 36px;
+  font-size: 30px;
   color: rgba(255, 255, 255, 0.95);
   font-weight: 700;
   font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
@@ -883,9 +891,9 @@ onBeforeUnmount(() => {
   width: 100%;
   background: rgba(10, 19, 35, 0.92);
   border: 2px solid #ffb84d;
-  color: #ffb84d;
-  padding: 16px 20px;
-  font-size: 36px;
+  color: #ffffff;
+  padding: 12px 16px;
+  font-size: 30px;
   font-weight: bold;
   cursor: pointer;
   outline: none;
@@ -894,15 +902,15 @@ onBeforeUnmount(() => {
 }
 .cyber-select-compact option {
   background: #0d1929;
-  color: #ffb84d;
+  color: #ffffff;
 }
 
 .tag-row {
   display: flex;
 }
 .tag-compact {
-  font-size: 28px;
-  padding: 6px 16px;
+  font-size: 23px;
+  padding: 5px 14px;
   background: #ffb84d;
   color: #000;
   font-weight: 800;
@@ -913,14 +921,14 @@ onBeforeUnmount(() => {
 .control-slider-group {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .slider-label-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 36px;
+  font-size: 24px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.95);
   font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
@@ -928,24 +936,24 @@ onBeforeUnmount(() => {
 
 .slider-val-text {
   font-weight: 800;
-  color: #ffb84d;
-  font-size: 42px;
+  color: #ffffff;
+  font-size: 35px;
   font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
-  text-shadow: 0 0 8px rgba(255, 184, 77, 0.35);
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.35);
 }
 
 .cyber-range-compact {
   -webkit-appearance: none;
   width: 100%;
-  height: 16px;
+  height: 14px;
   background: rgba(0, 242, 254, 0.2);
-  border-radius: 8px;
+  border-radius: 7px;
   outline: none;
 }
 .cyber-range-compact::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   background: #00f2fe;
   border-radius: 50%;
   cursor: pointer;
@@ -956,7 +964,7 @@ onBeforeUnmount(() => {
   transform: scale(1.25);
 }
 
-/* 2. 模型性能指标样式 */
+/* 2. 模型性能指标样式 (1.2x 缩小调整) */
 .performance-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -964,15 +972,15 @@ onBeforeUnmount(() => {
 }
 
 .performance-item {
-  min-height: 96px;
-  padding: 12px 8px;
+  min-height: 80px;
+  padding: 10px 8px;
   border-radius: 8px;
   border: 1px solid rgba(255, 184, 77, 0.22);
   background: rgba(255, 184, 77, 0.08);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .performance-item.wide {
@@ -980,7 +988,7 @@ onBeforeUnmount(() => {
 }
 
 .perf-label {
-  font-size: 22px;
+  font-size: 18px;
   letter-spacing: -0.3px;
   color: rgba(255, 255, 255, 0.88);
   font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
@@ -989,27 +997,27 @@ onBeforeUnmount(() => {
 }
 
 .performance-item strong {
-  color: #fff3bf;
-  font-size: 36px;
+  color: #ffffff;
+  font-size: 30px;
   line-height: 1.25;
   font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
   font-weight: 700;
 }
 
 .performance-item small {
-  color: #ffcf8b;
-  font-size: 36px;
+  color: #ffffff;
+  font-size: 30px;
   line-height: 1;
   font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
 }
 
 .metric-placeholder {
-  padding: 18px;
+  padding: 15px;
   border-radius: 8px;
   border: 1px dashed rgba(0, 242, 254, 0.3);
   color: rgba(255, 255, 255, 0.65);
   background: rgba(0, 242, 254, 0.05);
-  font-size: 22px;
+  font-size: 18px;
 }
 
 /* 3. 核心监测指标样式 */
@@ -1032,7 +1040,7 @@ onBeforeUnmount(() => {
 }
 
 .telemetry-col-label {
-  font-size: 24px;
+  font-size: 22px;
   color: rgba(255, 255, 255, 0.85);
   font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
   white-space: nowrap;
@@ -1040,7 +1048,7 @@ onBeforeUnmount(() => {
 }
 
 .telemetry-col-val {
-  font-size: 28px;
+  font-size: 25px;
   color: #fff;
   font-weight: bold;
   font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
@@ -1058,8 +1066,8 @@ onBeforeUnmount(() => {
 }
 
 .text-amber-glow {
-  color: #ffb84d !important;
-  text-shadow: 0 0 8px rgba(255, 184, 77, 0.45);
+  color: #ffffff !important;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.45);
 }
 
 /* 4. 检测数据统计样式 */
@@ -1140,7 +1148,7 @@ onBeforeUnmount(() => {
 
 .chart-title-label {
   font-size: 28px;
-  color: #ffb84d;
+  color: #ffffff;
   font-weight: bold;
   margin-bottom: 6px;
   font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
@@ -1171,7 +1179,7 @@ onBeforeUnmount(() => {
 
 .total-text {
   font-size: 28px;
-  color: #ffcf8b;
+  color: #ffffff;
   font-weight: bold;
   font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
 }
@@ -1256,7 +1264,7 @@ onBeforeUnmount(() => {
 }
 
 .usage-val {
-  color: #ffb84d;
+  color: #ffffff;
   font-weight: bold;
   font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif !important;
   font-size: 26px;
@@ -1306,11 +1314,11 @@ onBeforeUnmount(() => {
   min-height: 42px;
   padding: 4px 20px;
   border-radius: 999px;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
 }
 .status-badge.online {
-  color: #ffd68e;
+  color: #ffffff;
   background: rgba(255, 184, 77, 0.16);
   border: 1px solid rgba(255, 184, 77, 0.24);
 }

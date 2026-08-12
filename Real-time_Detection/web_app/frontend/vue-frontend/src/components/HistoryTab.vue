@@ -564,7 +564,7 @@ onMounted(loadRecords)
 }
 
 .meta-tag.task-tag {
-  color: var(--accent-amber);
+  color: #ffffff;
   border: 1px solid rgba(255, 193, 7, 0.24);
   background: rgba(255, 193, 7, 0.08);
 }
