@@ -25,6 +25,9 @@ import DroneView from '../views/DroneView.vue'
 import DroneView1 from '../views/DroneView1.vue'
 import DroneView2 from '../views/DroneView2.vue'
 
+// 4. 新增：海康监控组件 (假设你把刚刚的文件存在了 views 目录下)
+import HikVisionConsole from '../views/HikVisionConsole.vue'
+
 const routes = [
   // --- 核心入口 ---
   { path: '/', component: Overview },
@@ -50,10 +53,14 @@ const routes = [
   { path: '/node10', component: Node7View },
   { path: '/drone', component: DroneView },
   { path: '/drone1', component: DroneView1 },
-  { path: '/drone2', component: DroneView2 }
+  { path: '/drone2', component: DroneView2 },
+
+  // --- 新增：海康视频监控路由 ---
+  { path: '/hik-camera', component: HikVisionConsole }
 ]
 
 const router = createRouter({
+  // 注意：你这里使用的是 WebHashHistory，所以访问链接带 #
   history: createWebHashHistory(),
   routes
 })

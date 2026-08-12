@@ -13,6 +13,8 @@ const routes = [
   { path: '/sensor-manage', component: SensorManage },
   { path: '/coordination', component: CoordinationView },
   { path: '/modeling', component: ModelingView },
+  { path: '/modeling-1', redirect: '/modeling?sys=1' },
+  { path: '/modeling-2', redirect: '/modeling?sys=2' },
   { path: '/simulation', component: SimulationView },
 ]
 

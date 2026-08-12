@@ -156,7 +156,7 @@
       // 2. 高速公路：货车追尾模型
       createModel(
         'model_crash', 
-        '高速公路-货车追尾现场', 
+        '高速公路-客车追尾现场', 
         113.104833, 
         30.385469, 
         './models/truck_collision_scene.glb', // <--- 【此处替换为货车追尾模型路径】
@@ -193,7 +193,7 @@
 
       createAccidentPoint(
         'accident_crash', 
-        '高速公路-货车追尾现场', 
+        '高速公路-客车追尾现场', 
         113.104833, 
         30.385469, 
         './video/accident10001-0120.mp4'
@@ -214,7 +214,7 @@
             videoTitle = '市区道路-油罐车泄漏现场 - 实时监控';
           } else if (entity.id === 'model_crash' || entity.id === 'accident_crash') {
             videoPath = './video/accident10001-0120.mp4';
-            videoTitle = '高速公路-货车追尾现场 - 实时监控';
+            videoTitle = '高速公路-客车追尾现场 - 实时监控';
           }
           
           if (videoPath) {
