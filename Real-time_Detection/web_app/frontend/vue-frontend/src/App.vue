@@ -217,6 +217,10 @@ const buildTrendPoints = (series, minSpan = 10) => {
 }
 
 const MODEL_DISPLAY_FALLBACKS = {
+  YOLO26M: 'YOLO26M',
+  YOLO26N: 'YOLO26N',
+  YOLO11M: 'YOLO11M',
+  YOLO11N: 'YOLO11N',
   yolo26M: 'YOLO26M',
   yolo26N: 'YOLO26N',
   yolo11M: 'YOLO11M',
@@ -227,12 +231,16 @@ const MODEL_DISPLAY_FALLBACKS = {
 
 const formatLoadedModelName = (name) => {
   if (!name) return ''
+  const str = String(name).trim().replace(/（.*?）|\(.*?\)/g, '')
+  if (/^yolo/i.test(str)) {
+    return str.toUpperCase()
+  }
   const found = availableModels.value?.find(m => m.name === name || m.display_name === name)
   if (found && (found.display_name || found.name)) {
-    return String(found.display_name || found.name).replace(/（.*?）|\(.*?\)/g, '')
+    const res = String(found.display_name || found.name).replace(/（.*?）|\(.*?\)/g, '')
+    return /^yolo/i.test(res) ? res.toUpperCase() : res
   }
-  const clean = String(name).replace(/（.*?）|\(.*?\)/g, '')
-  return MODEL_DISPLAY_FALLBACKS[clean] || MODEL_DISPLAY_FALLBACKS[clean.toLowerCase()] || clean
+  return MODEL_DISPLAY_FALLBACKS[str] || MODEL_DISPLAY_FALLBACKS[str.toLowerCase()] || str
 }
 
 const currentActiveModelDisplay = computed(() => {
@@ -587,7 +595,7 @@ onUnmounted(() => {
 }
 
 .trend-head strong {
-  color: #fff3bf;
+  color: #ffffff;
   font-size: 23px;
   font-weight: 800;
   white-space: nowrap;
@@ -669,7 +677,7 @@ onUnmounted(() => {
 .footer-badge.highlight {
   background: rgba(255, 193, 7, 0.12);
   border: 1px solid rgba(255, 193, 7, 0.35);
-  color: #ffc107;
+  color: #ffffff;
   box-shadow: 0 0 12px rgba(255, 193, 7, 0.15);
 }
 

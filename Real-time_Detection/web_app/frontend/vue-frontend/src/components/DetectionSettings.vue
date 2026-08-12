@@ -104,13 +104,24 @@ const taskLabels = {
 }
 
 const filteredModels = computed(() => {
-  return props.availableModels.filter(model => (model.task_type || 'collision') === props.settings?.taskType)
+  const currentTask = props.settings?.taskType || 'collision'
+  const list = props.availableModels.filter(model => (model.task_type || 'collision') === currentTask)
+  const uniqueList = []
+  const seen = new Set()
+  for (const item of list) {
+    const label = getModelLabel(item)
+    if (label && !seen.has(label)) {
+      seen.add(label)
+      uniqueList.push(item)
+    }
+  }
+  return uniqueList
 })
 
 const compositeModels = computed(() => {
   const modelNames = ['SFGA-YOLO26M', 'LCA-YOLO26N']
   return modelNames
-    .map(name => props.availableModels.find(model => model.name === name))
+    .map(name => props.availableModels.find(model => model.name === name || model.display_name === name))
     .filter(Boolean)
 })
 
@@ -122,8 +133,13 @@ const modeHint = computed(() => {
 })
 
 const getModelLabel = (model) => {
+  if (!model) return ''
   const raw = model.display_name || model.name || ''
-  return String(raw).replace(/（.*?）|\(.*?\)/g, '')
+  const clean = String(raw).replace(/（.*?）|\(.*?\)/g, '')
+  if (/^yolo/i.test(clean)) {
+    return clean.toUpperCase()
+  }
+  return clean
 }
 
 watch(
@@ -218,7 +234,7 @@ watch(
   min-height: 69px;
   border: 1px solid rgba(255, 179, 0, 0.62);
   background: rgba(0, 0, 0, 0.32);
-  color: var(--accent-amber);
+  color: #ffffff;
   padding: 0 18px;
   font-size: 30px;
   font-weight: 900;
@@ -229,7 +245,7 @@ watch(
 
 .cyber-select option {
   background: #071827;
-  color: var(--accent-amber);
+  color: #ffffff;
 }
 
 .composite-models {
@@ -255,7 +271,7 @@ watch(
 }
 
 .composite-model strong {
-  color: var(--accent-amber);
+  color: #ffffff;
   font-size: 22px;
   line-height: 1.15;
   overflow-wrap: anywhere;
@@ -298,7 +314,7 @@ watch(
 
 .control-label strong {
   font-size: 38px;
-  color: var(--accent-amber);
+  color: #ffffff;
 }
 
 .cyber-range {

@@ -120,18 +120,22 @@ MODEL_TASKS = {
 
 MODEL_DISPLAY_NAMES = {
     PRIMARY_MODEL_NAME: 'SFGA-YOLO26M',
-    'yolo26M': 'YOLO26M',
-    'yolo11M': 'YOLO11M',
+    'YOLO26M': 'YOLO26M',
+    'YOLO11M': 'YOLO11M',
     HAZMAT_PRIMARY_MODEL_NAME: 'LCA-YOLO26N',
-    'yolo26N': 'YOLO26N',
-    'yolo11N': 'YOLO11N',
+    'YOLO26N': 'YOLO26N',
+    'YOLO11N': 'YOLO11N',
 }
 
 MODEL_TASK_TYPES = {
     PRIMARY_MODEL_NAME: 'collision',
+    'YOLO26M': 'collision',
+    'YOLO11M': 'collision',
+    HAZMAT_PRIMARY_MODEL_NAME: 'hazmat',
+    'YOLO26N': 'hazmat',
+    'YOLO11N': 'hazmat',
     'yolo26M': 'collision',
     'yolo11M': 'collision',
-    HAZMAT_PRIMARY_MODEL_NAME: 'hazmat',
     'yolo26N': 'hazmat',
     'yolo11N': 'hazmat',
 }
@@ -145,7 +149,7 @@ MODEL_PERFORMANCE = {
         'precision': 0.8944,
         'test_set': 'LKYWDetection Test set',
     },
-    'yolo26M': {
+    'YOLO26M': {
         'model_name': 'YOLO26M',
         'map50': 0.9044,
         'map50_95': 0.5651,
@@ -153,7 +157,7 @@ MODEL_PERFORMANCE = {
         'precision': 0.8552,
         'test_set': 'LKYWDetection Test set',
     },
-    'yolo11M': {
+    'YOLO11M': {
         'model_name': 'YOLO11M',
         'map50': 0.9052,
         'map50_95': 0.5813,
@@ -169,7 +173,7 @@ MODEL_PERFORMANCE = {
         'precision': 0.88100,
         'test_set': 'TankTruckLeak Test set',
     },
-    'yolo26N': {
+    'YOLO26N': {
         'model_name': 'YOLO26N',
         'map50': 0.85038,
         'map50_95': 0.50797,
@@ -177,7 +181,7 @@ MODEL_PERFORMANCE = {
         'precision': 0.88877,
         'test_set': 'TankTruckLeak Test set',
     },
-    'yolo11N': {
+    'YOLO11N': {
         'model_name': 'YOLO11N',
         'map50': 0.83507,
         'map50_95': 0.53197,
@@ -192,17 +196,29 @@ COMPOSITE_MODEL_NAMES = [PRIMARY_MODEL_NAME, HAZMAT_PRIMARY_MODEL_NAME]
 
 MODEL_WEIGHT_FOLDERS = {
     PRIMARY_MODEL_NAME: 'yolo26m_BestPt_1',
+    'YOLO26M': PRIMARY_MODEL_NAME,
     'yolo26M': PRIMARY_MODEL_NAME,
+    'YOLO11M': 'yolo11m_BestPt_0',
     'yolo11M': 'yolo11m_BestPt_0',
     HAZMAT_PRIMARY_MODEL_NAME: HAZMAT_PRIMARY_MODEL_NAME,
+    'YOLO26N': 'yolo26n_BestPt_0',
     'yolo26N': 'yolo26n_BestPt_0',
+    'YOLO11N': 'yolo11n_BestPt_0',
     'yolo11N': 'yolo11n_BestPt_0',
 }
 
 
 def get_model_display_name(model_name):
+    if not model_name:
+        return ''
     if model_name in MODEL_DISPLAY_NAMES:
         return MODEL_DISPLAY_NAMES[model_name]
+    up = str(model_name).upper()
+    if up in MODEL_DISPLAY_NAMES:
+        return MODEL_DISPLAY_NAMES[up]
+    if up.startswith('YOLO'):
+        return up
+    return str(model_name).split('_')[0]
     return model_name.split('_')[0]
 
 
@@ -459,18 +475,24 @@ def load_model(model_name):
 def get_models():
     """Get available models"""
     available_models = []
+    seen = set()
     for name, raw_path in MODEL_PATHS.items():
+        disp_name = get_model_display_name(name)
+        norm_key = (disp_name or name).upper()
+        if norm_key in seen:
+            continue
         model_path = resolve_path(raw_path)
         if model_path.exists():
+            seen.add(norm_key)
             available_models.append({
-                'name': name,
-                'display_name': get_model_display_name(name),
+                'name': disp_name or name,
+                'display_name': disp_name or name,
                 'path': raw_path,
                 'size': model_path.stat().st_size / (1024 * 1024),  # Size in MB
-                'is_primary': name in (PRIMARY_MODEL_NAME, HAZMAT_PRIMARY_MODEL_NAME),
-                'task_type': MODEL_TASK_TYPES.get(name, 'collision'),
-                'task_label': MODEL_TASKS.get(MODEL_TASK_TYPES.get(name, 'collision'), '客车追尾现场'),
-                'performance': MODEL_PERFORMANCE.get(name),
+                'is_primary': name in (PRIMARY_MODEL_NAME, HAZMAT_PRIMARY_MODEL_NAME) or disp_name in (PRIMARY_MODEL_NAME, HAZMAT_PRIMARY_MODEL_NAME),
+                'task_type': MODEL_TASK_TYPES.get(disp_name, MODEL_TASK_TYPES.get(name, 'collision')),
+                'task_label': MODEL_TASKS.get(MODEL_TASK_TYPES.get(disp_name, MODEL_TASK_TYPES.get(name, 'collision')), '客车追尾现场'),
+                'performance': MODEL_PERFORMANCE.get(disp_name) or MODEL_PERFORMANCE.get(name),
             })
     return jsonify({'models': available_models})
 

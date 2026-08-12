@@ -169,7 +169,7 @@ const formatPercent = (value) => {
 
 .metric-item strong {
   display: block;
-  color: #fff3bf;
+  color: #ffffff;
   font-size: 25px;
   line-height: 1.16;
   text-align: right;
