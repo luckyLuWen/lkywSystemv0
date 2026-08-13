@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "cesium": "^1.140.0",
+    "three": "^0.185.1",
     "vite-plugin-cesium": "^1.2.23",
     "vue": "^3.5.31",
     "vue-router": "^4.6.4"

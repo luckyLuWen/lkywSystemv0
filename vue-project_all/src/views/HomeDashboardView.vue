@@ -57,6 +57,7 @@
               :accidents="accidentPoints"
               :phases-ready="phasesReady"
               @locate="handleLocate"
+              @phase-click="handlePhaseClick"
             />
           </div>
         </div>
@@ -896,6 +897,12 @@ watch(
     }
   }
 )
+
+function handlePhaseClick(idx) {
+  if (globeRef.value && typeof globeRef.value.triggerPhaseReplay === 'function') {
+    globeRef.value.triggerPhaseReplay(idx)
+  }
+}
 </script>
 <style scoped>
 /* Main Layout structure */
