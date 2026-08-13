@@ -1,6 +1,7 @@
 <!--
 ================================================================================
   精细三维建模系统 2 (ModelingSystem2.vue)
+<<<<<<< HEAD
   【独立空白界面】
   根据需求，系统 2 保持为一个干净的空白界面（预留给后续新系统接入）。
   完全独立自包含，不含冗余功能。
@@ -40,10 +41,20 @@
         </div>
       </div>
     </main>
+=======
+  【两客一危事故车辆精细重建与测量评估系统】
+  挂载运行来自 High-Fidelity Modeling 文件夹中的高精度三维建模子系统。
+================================================================================
+-->
+<template>
+  <div class="modeling-system-2-container">
+    <HighFidelityModelingApp />
+>>>>>>> origin/develop
   </div>
 </template>
 
 <script setup>
+<<<<<<< HEAD
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -54,6 +65,13 @@ const goHome = () => {
 
 <style scoped>
 .modeling-system-2-blank {
+=======
+import HighFidelityModelingApp from '@high-fidelity/src/HighFidelityModelingApp.vue'
+</script>
+
+<style scoped>
+.modeling-system-2-container {
+>>>>>>> origin/develop
   width: 100%;
   height: 100%;
   background-color: #020710;
@@ -62,6 +80,7 @@ const goHome = () => {
   flex-direction: column;
   position: relative;
   overflow: hidden;
+<<<<<<< HEAD
   font-family: 'Outfit', 'Inter', -apple-system, sans-serif;
 }
 
@@ -219,5 +238,7 @@ const goHome = () => {
   margin: 0;
   font-size: 14px;
   color: rgba(255, 255, 255, 0.45);
+=======
+>>>>>>> origin/develop
 }
 </style>

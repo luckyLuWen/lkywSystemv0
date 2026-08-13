@@ -31,7 +31,11 @@
           @click="setSystem('2')"
         >
           <span class="btn-indicator" v-if="currentSystem === '2'"></span>
+<<<<<<< HEAD
           <span>精细建模系统 2 (空白预留)</span>
+=======
+          <span>精细三维建模系统 2 (两客一危专版)</span>
+>>>>>>> origin/develop
         </button>
       </div>
     </div>

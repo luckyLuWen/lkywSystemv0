@@ -28,7 +28,7 @@
           <input v-model.number="frameInterval" type="number" min="1" max="600" step="1">
         </label>
         <div class="option-summary">
-          当前模型：<strong>{{ props.settings.model || '未选择' }}</strong>，每 <strong>{{ normalizedInterval }}</strong> 帧检测一次
+          当前模型：<strong>{{ cleanModelName(props.settings.model) || '未选择' }}</strong>，每 <strong>{{ normalizedInterval }}</strong> 帧检测一次
         </div>
       </div>
       <div v-if="!loading && !result" class="button-group">
@@ -64,7 +64,7 @@
         </div>
         <div class="info-box">
           <h4>模型</h4>
-          <p class="stat-value model-value">{{ result.model || props.settings.model }}</p>
+          <p class="stat-value model-value">{{ cleanModelName(result.model || props.settings.model) }}</p>
         </div>
         <div class="info-box">
           <h4>抽帧间隔</h4>
@@ -130,6 +130,19 @@ const pendingVideoUrl = ref('')
 const loading = ref(false)
 const result = ref(null)
 const frameInterval = ref(30)
+
+const cleanModelName = (name) => {
+  if (!name) return ''
+  const str = String(name).trim().replace(/（.*）$/, '')
+  if (/^yolo/i.test(str)) {
+    return str.toUpperCase()
+  }
+  const MAP = {
+    'sfga-yolo26m': 'SFGA-YOLO26M',
+    'lca-yolo26n': 'LCA-YOLO26N'
+  }
+  return MAP[str.toLowerCase()] || str
+}
 
 const normalizedInterval = computed(() => {
   const value = Number(frameInterval.value) || 30
@@ -549,7 +562,7 @@ const startDetection = async () => {
 }
 
 .frame-info-item .count-highlight {
-  color: var(--accent-amber);
+  color: #ffffff;
   font-size: 24px;
   font-weight: 700;
 }
