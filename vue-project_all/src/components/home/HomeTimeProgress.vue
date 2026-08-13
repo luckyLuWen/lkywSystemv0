@@ -106,7 +106,7 @@ const props = defineProps({
   phasesReady: { type: Array, default: () => [] }
 })
 
-const emit = defineEmits(['update:modelValue', 'update:accidentIndex', 'locate'])
+const emit = defineEmits(['update:modelValue', 'update:accidentIndex', 'locate', 'phaseClick'])
 
 const isPlaying = ref(false)
 const forceReady = ref(false)
@@ -119,9 +119,9 @@ const TRUCK_PHASE_DESC = [
   { shortLabel: '车辆正常行驶', time: '14:05', description: '2011年7月4日凌晨4时许，大型旅游客车（鄂AE3892，载52人含5名儿童）正沿应急车道下客，后方满载冬瓜的货车以超限速度跟驰驶来。' },
   { shortLabel: '事故发生', time: '14:12', description: '货车驾驶员因疲劳驾驶未保持安全车距，避让不及追尾客车。车载边缘网关实时采集碰撞冲击数据并触发一级告警。' },
   { shortLabel: '无人机出动', time: '14:14', description: '指挥中心启动空中响应机制，应用三维空间 B 样条曲线平滑算法（B-Spline）规划最优航向，无人机从消防站快速起飞飞往事故现场。' },
-  { shortLabel: '无人机侦察', time: '14:15', description: '无人机率先飞抵现场并执行低空巡查，实时回传高清画面与倾斜摄影数据，辅助指挥中心精确研判事故伤亡与现场态势。' },
-  { shortLabel: '次生灾害·烟雾', time: '14:18', description: '事故车辆碰撞后发动机舱过热冒烟，烟雾快速上升扩散。传感器检测到异常烟雾浓度，指挥中心推送应急预警。' },
-  { shortLabel: '次生灾害·起火', time: '14:26', description: '燃油泄漏引燃发动机舱，现场火势急剧增大并向车身蔓延。温度传感器数据急剧攀升，协同响应系统推送消防联合扑救指令。' },
+  { shortLabel: '无人机侦察', time: '14:15', description: '无人机根据路线到达现场，准备进行数据采集' },
+  { shortLabel: '次生灾害·烟雾', time: '14:18', description: '事故车辆碰撞后发动机舱过热冒烟，烟雾快速上升扩散。传感器检测到异常烟雾浓度，指挥中心推送应急预警。无人机率先抵达现场并执行低空巡查，实时回传高清画面与倾斜摄影数据。' },
+  { shortLabel: '次生灾害·起火', time: '14:26', description: '燃油泄露引燃发动机舱，现场火势急剧增大并向车身蔓延。' },
   { shortLabel: '无人装备出动', time: '14:30', description: '开启车机协同动态推演，采用 RCD/A* 寻优算法避绕路阻与禁飞区，无人车与无人机在时延与能耗约束下向现场高效协同集结。' },
   { shortLabel: '无人感知部署', time: '14:35', description: '无人装备抵达现场，按预规划坐标自动布设空地多维传感节点（地面监测点、空域监测点与固定监控点），形成现场感知覆盖网。' },
   { shortLabel: '无人感知执行', time: '14:40', description: '无人机与无人车在指定点位协同作业，与基站建立无线组网，形成“空-地-固定-基站”一体化传感网原型并持续回传环境数据。' },
@@ -193,6 +193,7 @@ function getPhaseOffset(index) {
 function selectPhase(index) {
   isPlaying.value = false // 点击任意阶段节点（含【仿真开始】）均为手动切换该节点，不自动推进时间轴
   emit('update:modelValue', index)
+  emit('phaseClick', index)
 }
 
 function onAccidentChange(event) {
@@ -227,16 +228,19 @@ watch([isPlaying, () => props.modelValue], ([playing, currentIdx]) => {
     let duration = 3000 // 默认 3 秒
 
     if (currentIdx === 0) {
-      duration = 2000 // 仿真开始
+      duration = 2500 // 仿真开始
     } else if (isTruck) {
-      // 货车专属逻辑 (保持用户原有设置)
-      if (currentIdx === 1 || currentIdx === 2) duration = 3000
-      else if (currentIdx >= 4 && currentIdx <= 6) duration = 3000 // 烟火灾害改为 3 秒
+      // 货车专属逻辑
+      if (currentIdx === 1) duration = 5500 // 正常行驶阶段完整播放（4秒动画+1.5秒展示，不再被3秒硬切断）
+      else if (currentIdx === 2) duration = 5000 // 事故发生碰撞动画完整播放
+      else if (currentIdx >= 4 && currentIdx <= 6) duration = 3000 // 烟火灾害 3 秒
       else if (currentIdx === 8) duration = 7000 // 无人感知部署阶段设为 7 秒，保证 6 秒飞行及停靠动画完整播放
       else if (currentIdx >= 7) duration = 3000 // 其他无人机阶段 3 秒
     } else {
-      // 油罐车专属逻辑 (完全分离)
-      if (currentIdx === 8) duration = 7000 // 无人感知部署阶段设为 7 秒
+      // 油罐车专属逻辑
+      if (currentIdx === 1) duration = 5500 // 正常行驶阶段完整播放
+      else if (currentIdx === 2) duration = 5000 // 事故发生侧翻动画完整播放
+      else if (currentIdx === 8) duration = 7000 // 无人感知部署阶段设为 7 秒
       else duration = 3000
     }
 

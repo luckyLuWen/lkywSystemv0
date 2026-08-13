@@ -15,7 +15,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@high-fidelity': fileURLToPath(new URL('../High-Fidelity Modeling', import.meta.url))
+      '@high-fidelity': fileURLToPath(new URL('../High-Fidelity Modeling', import.meta.url)),
+      'three': fileURLToPath(new URL('./node_modules/three', import.meta.url))
     },
   },
   server: {
