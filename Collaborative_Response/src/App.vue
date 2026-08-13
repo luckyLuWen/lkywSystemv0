@@ -985,7 +985,7 @@ onUnmounted(() => {
   height: 100vh;
   background: #020813;
   color: #cbd5e1;
-  font-family: 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', serif, sans-serif;
   overflow: hidden;
 }
 

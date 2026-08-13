@@ -67,12 +67,17 @@
           {{ isRightCollapsed ? '▶' : '◀' }}
         </button>
         <div v-if="activeRightTab !== 'detection'" class="sidebar-header">
-          <h2 class="sidebar-title">
-            {{ activeRightTab === 'sensor' ? '传感器数据' : activeRightTab === 'detection' ? '检测数据' : '规划数据' }}
-          </h2>
-          <!-- <span class="sidebar-subtitle">
-            {{ activeRightTab === 'sensor' ? 'Sensor Data Gateway' : activeRightTab === 'detection' ? 'Real-time Detection' : 'Collaborative Planning' }}
-          </span> -->
+          <div class="header-main-title">
+            <div class="header-title-block">
+              <h2 class="sidebar-title">
+                {{ activeRightTab === 'sensor' ? '传感器数据' : '协同响应 规划数据' }}
+              </h2>
+              <span class="sidebar-subtitle">
+                {{ activeRightTab === 'sensor' ? 'SENSOR DATA GATEWAY' : 'RESCUE COLLABORATIVE PLANNING DATA' }}
+              </span>
+            </div>
+            <span class="lkyw-hud-status-badge">● LIVE</span>
+          </div>
         </div>
         <div class="sidebar-content right-sidebar-flex-content">
           <div class="right-tab-panel">
@@ -449,7 +454,6 @@
             </div>
 
             <div v-else-if="activeRightTab === 'planning'" class="planning-data-panel">
-              <div class="sensor-section-title">协同响应规划</div>
               <CollaborativeResponseCard :scenario="currentAccidentId === 'rear-end' ? 'crash' : 'leak'" />
             </div>
           </div>
@@ -1182,6 +1186,9 @@ watch(
   background: rgba(0, 0, 0, 0.25);
   border-radius: 12px 12px 0 0;
   position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .sidebar-header::before {
@@ -1196,22 +1203,55 @@ watch(
   box-shadow: 0 0 8px rgba(0, 242, 254, 0.7);
 }
 
+.header-main-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+
+.header-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
 .sidebar-title {
   margin: 0;
-  font-size: 18px;
+  font-size: 26px;
   font-weight: 700;
   color: #ffffff;
   letter-spacing: 0.5px;
+  font-family: "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .sidebar-subtitle {
-  font-size: 14.5px;
+  font-size: 16px;
   color: #00f2fe;
   text-transform: uppercase;
   letter-spacing: 1px;
   display: inline-block;
   margin-top: 3px;
   opacity: 0.85;
+  font-family: "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.right-sidebar .lkyw-hud-status-badge,
+.left-sidebar .lkyw-hud-status-badge {
+  font-size: 15px;
+  font-family: monospace;
+  font-weight: bold;
+  color: #00ffaa;
+  background: rgba(0, 255, 170, 0.12);
+  border: 1px solid rgba(0, 255, 170, 0.35);
+  padding: 4px 14px;
+  border-radius: 4px;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+  box-shadow: 0 0 8px rgba(0, 255, 170, 0.2);
 }
 
 .sidebar-content {
@@ -1318,9 +1358,10 @@ watch(
   border-radius: 8px !important;
 }
 
-.left-sidebar :deep(.card-title) {
+.left-sidebar :deep(.card-title),
+.right-sidebar :deep(.card-title) {
   color: #ffffff !important;
-  font-size: 16px !important;
+  font-size: 22px !important;
   font-weight: 700 !important;
   text-shadow: 0 0 6px rgba(0, 242, 254, 0.3);
 }

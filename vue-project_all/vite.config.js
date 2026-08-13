@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [
     vue(),
     cesium(),
-    vueDevTools(),
+    // vueDevTools(),
   ],
   resolve: {
     alias: {

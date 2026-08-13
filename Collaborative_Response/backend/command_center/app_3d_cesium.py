@@ -198,8 +198,8 @@ def save_to_czml(uav_df, car_df):
     czml = [{"id": "document", "version": "1.0", "clock": {"interval": avail, "currentTime": start_str, "multiplier": 190, "range": "LOOP_STOP"}}]
     
     # 静态地标
-    czml.append({"id": "StartMarker", "position": {"cartographicDegrees": [START_POINT[1], START_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [0,255,0,255]}}, "label": {"text": "救援基地", "font": "16px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}}})
-    czml.append({"id": "EndMarker", "position": {"cartographicDegrees": [END_POINT[1], END_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [255,0,0,255]}}, "label": {"text": "事故现场", "font": "16px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}}})
+    czml.append({"id": "StartMarker", "position": {"cartographicDegrees": [START_POINT[1], START_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [0,255,0,255]}}, "label": {"text": "救援基地", "font": "16px Times New Roman, Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}}})
+    czml.append({"id": "EndMarker", "position": {"cartographicDegrees": [END_POINT[1], END_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [255,0,0,255]}}, "label": {"text": "事故现场", "font": "16px Times New Roman, Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}}})
 
     # 路径线
     uav_line = []
@@ -217,7 +217,7 @@ def save_to_czml(uav_df, car_df):
         "id": "UAV", "name": "无人机 (B-Spline)", "availability": avail,
         "position": {"epoch": start_str, "cartographicDegrees": uav_pos, "interpolationAlgorithm": "LINEAR", "interpolationDegree": 1},
         "point": {"pixelSize": 15, "color": {"rgba": [255, 0, 0, 255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 2},
-        "label": {"text": "无人机", "font": "14px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -25]}}
+        "label": {"text": "无人机", "font": "14px Times New Roman, Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -25]}}
     })
 
     car_pos = []
@@ -226,7 +226,7 @@ def save_to_czml(uav_df, car_df):
         "id": "Car", "name": "无人车", "availability": avail,
         "position": {"epoch": start_str, "cartographicDegrees": car_pos, "interpolationAlgorithm": "LINEAR", "interpolationDegree": 1},
         "point": {"pixelSize": 15, "color": {"rgba": [0, 0, 255, 255]}, "outlineColor": {"rgba": [255,255,255,255]}, "outlineWidth": 2},
-        "label": {"text": "无人车", "font": "14px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -25]}}
+        "label": {"text": "无人车", "font": "14px Times New Roman, Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -25]}}
     })
 
     # 障碍物

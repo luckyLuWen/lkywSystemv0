@@ -5,9 +5,9 @@
       <div class="card-head">
         <div>
           <h3 class="card-title">协同响应规划</h3>
-          <p class="card-subtitle">{{ strategyMetrics.end_point_name }}</p>
+          <p class="card-subtitle">{{ strategyMetrics.end_point_name }} <span class="en-subtag">DYNAMIC SCENARIO</span></p>
         </div>
-        <span class="status-badge online">数据就绪</span>
+        <span class="status-badge online">● 数据就绪 READY</span>
       </div>
 
       <!-- ===== 滚动内容区 ===== -->
@@ -18,6 +18,7 @@
           <div class="section-title-wrapper">
             <span class="bracket">[</span>
             <h4 class="section-subtitle-text">场景概况</h4>
+            <span class="section-en-subtitle">SCENARIO OVERVIEW</span>
             <span class="bracket">]</span>
           </div>
           <div class="info-table">
@@ -41,6 +42,7 @@
           <div class="section-title-wrapper">
             <span class="bracket">[</span>
             <h4 class="section-subtitle-text">救援点选取</h4>
+            <span class="section-en-subtitle">RESCUE POINT SELECTION</span>
             <span class="bracket">]</span>
           </div>
           <div class="candidate-list">
@@ -62,6 +64,7 @@
           <div class="section-title-wrapper">
             <span class="bracket">[</span>
             <h4 class="section-subtitle-text">协同效能指标</h4>
+            <span class="section-en-subtitle">COLLABORATIVE PERFORMANCE METRICS</span>
             <span class="bracket">]</span>
           </div>
 
@@ -114,6 +117,7 @@
           <div class="section-title-wrapper">
             <span class="bracket">[</span>
             <h4 class="section-subtitle-text">环境约束与参数</h4>
+            <span class="section-en-subtitle">ENVIRONMENTAL CONSTRAINTS & PARAMETERS</span>
             <span class="bracket">]</span>
           </div>
           <div class="env-grid">
@@ -143,6 +147,7 @@
           <div class="section-title-wrapper">
             <span class="bracket">[</span>
             <h4 class="section-subtitle-text">路径规划摘要</h4>
+            <span class="section-en-subtitle">ROUTE PLANNING SUMMARY</span>
             <span class="bracket">]</span>
           </div>
           <div class="info-table">
@@ -292,31 +297,48 @@ onBeforeUnmount(() => {
 
 .card-title {
   margin: 0;
-  color: #93c5fd;
-  font-size: 18px;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
   line-height: 1.2;
+  font-family: "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .card-subtitle {
   margin: 4px 0 0 0;
-  font-size: 14.5px;
-  color: rgba(255, 255, 255, 0.72);
+  font-size: 15px;
+  color: #00f2fe;
+  letter-spacing: 0.5px;
+  opacity: 0.9;
+  font-family: "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.en-subtag {
+  font-size: 12px;
+  color: #64748b;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  margin-left: 6px;
+  text-transform: uppercase;
 }
 
 .status-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 26px;
-  padding: 0 10px;
-  border-radius: 999px;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 4px;
   font-size: 14px;
+  font-family: monospace;
+  font-weight: bold;
 }
 
 .status-badge.online {
-  color: #93c5fd;
-  background: rgba(96, 165, 250, 0.16);
-  border: 1px solid rgba(96, 165, 250, 0.24);
+  color: #00ffaa;
+  background: rgba(0, 255, 170, 0.12);
+  border: 1px solid rgba(0, 255, 170, 0.35);
+  box-shadow: 0 0 8px rgba(0, 255, 170, 0.2);
 }
 
 /* ===== 滚动容器 ===== */
@@ -359,18 +381,30 @@ onBeforeUnmount(() => {
 }
 
 .bracket {
-  color: #60a5fa;
+  color: #00f2fe;
   font-weight: bold;
-  font-size: 18px;
-  text-shadow: 0 0 6px rgba(96, 165, 250, 0.5);
+  font-size: 20px;
+  text-shadow: 0 0 8px rgba(0, 242, 254, 0.5);
 }
 
 .section-subtitle-text {
   margin: 0;
-  color: #60a5fa;
-  font-size: 17.5px;
+  color: #00f2fe;
+  font-size: 19px;
   font-weight: bold;
   letter-spacing: 0.5px;
+  text-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
+  font-family: "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.section-en-subtitle {
+  font-size: 13.5px;
+  color: #64748b;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: 1px;
+  margin-left: 6px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 /* ===== 信息表格 ===== */
@@ -392,16 +426,17 @@ onBeforeUnmount(() => {
 }
 
 .info-label {
-  font-size: 14.5px;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+  color: #94a3b8;
+  font-weight: 500;
 }
 
 .info-val {
-  font-size: 14.5px;
+  font-size: 16px;
   color: #fff;
   font-weight: 600;
   text-align: right;
-  max-width: 220px;
+  max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -442,28 +477,29 @@ onBeforeUnmount(() => {
 }
 
 .metric-val {
-  font-size: 26px;
+  font-size: 28px;
   font-weight: bold;
   font-family: 'JetBrains Mono', Consolas, monospace;
-  color: #e2e8f0;
+  color: #ffffff;
 }
 
 .metric-val small {
-  font-size: 12px;
-  font-weight: 500;
-  color: #94a3b8;
+  font-size: 14px;
+  font-weight: bold;
+  color: #00f2fe;
 }
 
-.metric-val.text-cyan { color: #60a5fa; }
+.metric-val.text-cyan { color: #00f2fe; }
 .metric-val.text-amber { color: #fbbf24; }
 .metric-val.text-green { color: #34d399; }
-.metric-val.text-purple { color: #a78bfa; }
+.metric-val.text-purple { color: #c084fc; }
 .metric-val.text-pink { color: #f472b6; }
-.metric-val.dim { font-size: 17px; color: #cbd5e1; }
+.metric-val.dim { font-size: 18px; color: #cbd5e1; }
 
 .metric-lbl {
   font-size: 15px;
-  color: rgba(255, 255, 255, 0.65);
+  color: #94a3b8;
+  font-weight: 500;
   white-space: nowrap;
 }
 
