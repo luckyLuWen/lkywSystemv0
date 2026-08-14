@@ -6110,17 +6110,15 @@ async function initViewer() {
   console.log('[Cesium] 容器尺寸:', containerRef.value.offsetWidth, 'x', containerRef.value.offsetHeight)
   
   // 屏蔽 Cesium 默认的红色崩溃弹窗，由 Vue 捕获并友好提示
-  if (Cesium) {
-    if (typeof Cesium['showHtmlErrorPanel'] === 'function') {
-      Cesium['showHtmlErrorPanel'] = function(title, message, error) {
-        console.error('[Cesium Widget Error]', title, message, error);
-      };
-    }
-    if (Cesium.CesiumWidget && Cesium.CesiumWidget.prototype) {
-      Cesium.CesiumWidget.prototype.showErrorPanel = function(title, message, error) {
-        console.error('[Cesium Widget Proto Error Blocked]', title, message, error);
-      };
-    }
+  if (typeof window !== 'undefined' && window.Cesium && typeof window.Cesium.showHtmlErrorPanel === 'function') {
+    window.Cesium.showHtmlErrorPanel = function(title, message, error) {
+      console.error('[Cesium Widget Error]', title, message, error);
+    };
+  }
+  if (Cesium && Cesium.CesiumWidget && Cesium.CesiumWidget.prototype) {
+    Cesium.CesiumWidget.prototype.showErrorPanel = function(title, message, error) {
+      console.error('[Cesium Widget Proto Error Blocked]', title, message, error);
+    };
   }
 
   try {

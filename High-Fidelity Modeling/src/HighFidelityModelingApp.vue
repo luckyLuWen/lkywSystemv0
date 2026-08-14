@@ -12,21 +12,31 @@
         </div>
       </div>
 
-      <!-- 步骤流程指示器 (Step 1 -> Step 2 -> Step 3) -->
+      <!-- 步骤流程指示器 (Step 1 -> Step 2 -> Step 3 -> Step 4 -> Step 5) -->
       <div class="workflow-steps-bar">
         <div class="step-pill" :class="{ active: currentStep === 1, completed: currentStep > 1 }">
           <span class="step-num">1</span>
-          <span class="step-label">数据集导入签发</span>
+          <span class="step-label">数据集导入</span>
         </div>
         <div class="step-divider"></div>
         <div class="step-pill" :class="{ active: currentStep === 2, completed: currentStep > 2 }">
           <span class="step-num">2</span>
-          <span class="step-label">Pipeline 重建解算</span>
+          <span class="step-label">Pipeline 重建</span>
         </div>
         <div class="step-divider"></div>
-        <div class="step-pill" :class="{ active: currentStep === 3, completed: currentStep === 3 }">
+        <div class="step-pill" :class="{ active: currentStep === 3, completed: currentStep > 3 }">
           <span class="step-num">3</span>
-          <span class="step-label">事故现场 3D 成果展示</span>
+          <span class="step-label">3D 成果展示</span>
+        </div>
+        <div class="step-divider"></div>
+        <div class="step-pill" :class="{ active: currentStep === 4, completed: currentStep > 4 }">
+          <span class="step-num">4</span>
+          <span class="step-label">事故车辆空间测量</span>
+        </div>
+        <div class="step-divider"></div>
+        <div class="step-pill" :class="{ active: currentStep === 5 }">
+          <span class="step-num">5</span>
+          <span class="step-label">评估报告导出</span>
         </div>
       </div>
       
@@ -45,7 +55,7 @@
         </select>
 
         <button 
-          v-if="currentStep !== 3"
+          v-if="currentStep < 3"
           class="action-btn" 
           @click="startReconstruction" 
           :disabled="isReconstructing"
@@ -64,7 +74,7 @@
       </div>
     </header>
 
-    <!-- 工作流主展示视图 (步骤 1 / 2 展示 DatasetUploader；步骤 3 展示 ReconstructionViewer3D) -->
+    <!-- 工作流主展示视图 (步骤 1 / 2 展示 DatasetUploader；步骤 3/4/5 展示 ReconstructionViewer3D) -->
     <main class="app-viewport">
       <!-- 步骤 1 & 步骤 2：数据集导入与重建锁定状态 -->
       <div v-if="currentStep === 1 || currentStep === 2" class="step-view-container" :class="{ 'is-locked': isReconstructing }">
@@ -78,10 +88,12 @@
         <DatasetUploader />
       </div>
 
-      <!-- 【实现要点 - 步骤三】：接收到 [SUCCESS] / status: completed 信号后自动展示 3D 画布容器 -->
-      <div v-else-if="currentStep === 3" class="step3-canvas-viewport">
+      <!-- 步骤 3、4、5：3D 画布与空间测量 / 报告视图 -->
+      <div v-else class="step3-canvas-viewport">
         <ReconstructionViewer3D 
           :model-url="reconstructedModelUrl" 
+          :active-step="currentStep"
+          @update-step="(s) => currentStep = s"
           @reset-step="resetToStep1"
         />
       </div>
