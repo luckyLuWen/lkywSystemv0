@@ -140,13 +140,12 @@
           <model-viewer
             v-if="scriptLoaded"
             ref="modelViewerRef"
-            autoplay
             :src="currentModel.uri"
             camera-controls
             interaction-prompt="none"
-            :auto-rotate="autoRotate"
-            :auto-rotate-delay="0"
-            :rotation-per-second="rotateSpeed + 'rad'"
+            :auto-rotate="autoRotate ? '' : null"
+            :auto-rotate-delay="3000"
+            :rotation-per-second="autoRotate ? (rotateSpeed + 'rad') : '0rad'"
             :camera-orbit="cameraOrbit"
             :camera-target="cameraTarget"
             shadow-intensity="1.5"
@@ -163,12 +162,21 @@
         <div class="viewport-hud-bottom">
           <div class="control-group">
             <button 
-              class="control-btn" 
-              :class="{ active: autoRotate }"
+              class="control-btn rotate-toggle-btn" 
+              :class="{ active: autoRotate, paused: !autoRotate }"
               @click="toggleAutoRotate"
-              title="开启/关闭视角自动环绕"
+              :title="autoRotate ? '点击暂停视角自动环绕' : '点击开启视角自动环绕'"
             >
-              {{ autoRotate ? '环绕中' : '自动环绕' }}
+              <span class="btn-icon">{{ autoRotate ? '⏸️' : '▶️' }}</span>
+              <span>{{ autoRotate ? '暂停环绕' : '开启环绕' }}</span>
+            </button>
+            <button 
+              class="control-btn" 
+              @click="resetCamera"
+              title="重置为初始默认视角"
+            >
+              <span class="btn-icon">🔄</span>
+              <span>重置视角</span>
             </button>
           </div>
           
@@ -227,7 +235,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -414,7 +422,8 @@ const resetCamera = () => {
   } else {
     cameraTarget.value = 'auto auto auto'
   }
-  autoRotate.value = true
+  autoRotate.value = false
+  applyAutoRotateState(false)
 }
 
 // Switch Scenes (Truck <-> Tanker)
@@ -426,15 +435,48 @@ const switchScene = (key) => {
   loadMetadata()
 }
 
+// Synchronize autoRotate state directly to model-viewer DOM element & property
+const applyAutoRotateState = (val) => {
+  const mv = modelViewerRef.value
+  if (!mv) return
+  try {
+    mv.autoRotate = !!val
+    if (val) {
+      mv.setAttribute('auto-rotate', '')
+      mv.rotationPerSecond = `${rotateSpeed.value}rad`
+    } else {
+      mv.removeAttribute('auto-rotate')
+      mv.rotationPerSecond = '0rad'
+    }
+  } catch (err) {
+    console.warn('[ModelViewer] applyAutoRotateState error:', err)
+  }
+}
+
+watch(autoRotate, (newVal) => {
+  applyAutoRotateState(newVal)
+})
+
+watch(rotateSpeed, (newSpeed) => {
+  const mv = modelViewerRef.value
+  if (mv && autoRotate.value) {
+    mv.rotationPerSecond = `${newSpeed}rad`
+  }
+})
+
 // Toggle Auto Rotate
 const toggleAutoRotate = () => {
   autoRotate.value = !autoRotate.value
+  applyAutoRotateState(autoRotate.value)
 }
 
 // Model Load Handler
 const onModelLoad = () => {
   const modelViewer = modelViewerRef.value
   if (!modelViewer) return
+
+  // Sync auto rotate state when new model is loaded
+  applyAutoRotateState(autoRotate.value)
 
   const animations = modelViewer.availableAnimations
   if (animations && animations.length > 0) {
@@ -1007,6 +1049,9 @@ onMounted(() => {
   cursor: pointer;
   font-weight: 600;
   transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .control-btn:hover {
@@ -1020,6 +1065,19 @@ onMounted(() => {
   border-color: #00f2fe;
   color: #ffffff;
   box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+}
+
+.rotate-toggle-btn.paused {
+  background: rgba(255, 180, 0, 0.14);
+  border-color: rgba(255, 180, 0, 0.45);
+  color: #ffca28;
+}
+
+.rotate-toggle-btn.paused:hover {
+  background: rgba(255, 180, 0, 0.24);
+  border-color: #ffca28;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(255, 202, 40, 0.35);
 }
 
 .anim-action-btn.active {
