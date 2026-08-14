@@ -1,52 +1,107 @@
 <template>
   <div class="high-fidelity-app-root">
-    <!-- 头部导航 -->
+    <!-- 头部导航与步骤指示器 -->
     <header class="app-header">
       <div class="header-branding">
         <div class="brand-title-group">
           <div class="title-row">
-            <h1>精细三维建模系统 2</h1>
+            <h1>精细三维建模系统</h1>
             <span class="system-tag">两客一危专版</span>
           </div>
           <span class="brand-sub">Fine-Grained 3D Reconstruction & Spatial Measurement System</span>
         </div>
       </div>
+
+      <!-- 步骤流程指示器 (Step 1 -> Step 2 -> Step 3) -->
+      <div class="workflow-steps-bar">
+        <div class="step-pill" :class="{ active: currentStep === 1, completed: currentStep > 1 }">
+          <span class="step-num">1</span>
+          <span class="step-label">数据集导入签发</span>
+        </div>
+        <div class="step-divider"></div>
+        <div class="step-pill" :class="{ active: currentStep === 2, completed: currentStep > 2 }">
+          <span class="step-num">2</span>
+          <span class="step-label">Pipeline 重建解算</span>
+        </div>
+        <div class="step-divider"></div>
+        <div class="step-pill" :class="{ active: currentStep === 3, completed: currentStep === 3 }">
+          <span class="step-num">3</span>
+          <span class="step-label">事故现场 3D 成果展示</span>
+        </div>
+      </div>
       
-      <!-- 触发操作 -->
+      <!-- 触发操作与模型选项 -->
       <div class="header-actions">
+        <select 
+          v-if="currentStep === 1" 
+          v-model="selectedModelPreset" 
+          class="preset-select" 
+          :disabled="isReconstructing"
+        >
+          <option value="/Dashboard/models/Accident_Occur1.glb">🚗 事故车辆重建: 客车追尾撞击现场</option>
+          <option value="/Dashboard/models/Side_roll_Tanker.glb">🚚 事故车辆重建: 油罐车侧翻泄露现场</option>
+          <option value="/Dashboard/models/Normal_Drive.glb">🚌 基础车辆模型: 巡航长途大客车</option>
+          <option value="/Dashboard/models/recure car.glb">🚑 应急救援装备: 1号无人侦察车</option>
+        </select>
+
         <button 
+          v-if="currentStep !== 3"
           class="action-btn" 
           @click="startReconstruction" 
           :disabled="isReconstructing"
         >
-          {{ isReconstructing ? '重建进行中...' : '开始三维重建' }}
+          <span class="btn-icon">{{ isReconstructing ? '⚙️' : '🚀' }}</span>
+          {{ isReconstructing ? '重建 Pipeline 执行中...' : '开始三维重建' }}
+        </button>
+
+        <button 
+          v-else
+          class="action-btn secondary-btn"
+          @click="resetToStep1"
+        >
+          <span class="btn-icon">↺</span> 重新导入数据集
         </button>
       </div>
     </header>
 
-    <!-- 工作流主展示视图 -->
+    <!-- 工作流主展示视图 (步骤 1 / 2 展示 DatasetUploader；步骤 3 展示 ReconstructionViewer3D) -->
     <main class="app-viewport">
-      <!-- 界面锁定逻辑：通过 is-locked class 和内部遮罩层实现物理与视觉双重锁定 -->
-      <div class="step-view-container" :class="{ 'is-locked': isReconstructing }">
+      <!-- 步骤 1 & 步骤 2：数据集导入与重建锁定状态 -->
+      <div v-if="currentStep === 1 || currentStep === 2" class="step-view-container" :class="{ 'is-locked': isReconstructing }">
         <div class="lock-overlay" v-if="isReconstructing">
-          <span class="lock-text">🔒 控件已锁定，后台正在执行重建任务...</span>
+          <div class="lock-card">
+            <div class="lock-spinner"></div>
+            <span class="lock-text">🔒 控件已锁定，后台算法引擎正在执行 MVS/SFM 三维重建任务...</span>
+            <span class="lock-sub">请观察下方控制台推流日志，完成后将自动呈现 3D 模型</span>
+          </div>
         </div>
         <DatasetUploader />
       </div>
+
+      <!-- 【实现要点 - 步骤三】：接收到 [SUCCESS] / status: completed 信号后自动展示 3D 画布容器 -->
+      <div v-else-if="currentStep === 3" class="step3-canvas-viewport">
+        <ReconstructionViewer3D 
+          :model-url="reconstructedModelUrl" 
+          @reset-step="resetToStep1"
+        />
+      </div>
     </main>
 
-    <!-- 仿真日志终端面板 -->
+    <!-- 【交互说明】：当接收到 [SUCCESS] / status: completed 信号时，自动销毁/隐藏日志面板 -->
     <transition name="slide-up">
-      <div class="log-console-panel" v-if="logs.length > 0">
-        <!-- 顶部固定显示虚拟算法引擎版本 -->
+      <div class="log-console-panel" v-if="showLogConsole && logs.length > 0">
+        <!-- 顶部固定显示算法引擎版本 -->
         <div class="console-header">
           <div class="header-left">
             <span class="console-title">🚀 任务执行日志 (Console)</span>
             <span class="engine-version">lkywReconEngine v1.1.0 (Edge Node A)</span>
           </div>
-          <span class="console-status" :class="{ running: isReconstructing }">
-            {{ isReconstructing ? 'RECEIVING STREAM...' : 'CONNECTION CLOSED' }}
-          </span>
+          <div class="header-right">
+            <span class="console-status" :class="{ running: isReconstructing }">
+              {{ isReconstructing ? 'RECEIVING STREAM...' : 'TASK COMPLETED' }}
+            </span>
+            <button class="close-console-btn" @click="showLogConsole = false" title="隐藏控制台">✕</button>
+          </div>
         </div>
         
         <!-- 日志滚动区 -->
@@ -75,12 +130,19 @@
 
 <script setup>
 import DatasetUploader from './components/DatasetUploader.vue'
+import ReconstructionViewer3D from './components/ReconstructionViewer3D.vue'
 import { ref, nextTick, onBeforeUnmount } from 'vue'
 
 // ================= 状态管理 =================
+const currentStep = ref(1) // 1: 导入 | 2: 重建中 | 3: 3D展示
 const isReconstructing = ref(false)
+const showLogConsole = ref(false)
 const logs = ref([])
 const logContainerRef = ref(null)
+
+const selectedModelPreset = ref('/Dashboard/models/Accident_Occur1.glb')
+const reconstructedModelUrl = ref('/Dashboard/models/Accident_Occur1.glb')
+
 let currentWsMock = null
 
 // 格式化时间 [HH:mm:ss]
@@ -96,65 +158,76 @@ const appendLog = async (logData) => {
     text: logData.text
   })
   
-  // 监听容器高度，新日志到达时自动滚动到底部
+  // 自动滚动到底部
   await nextTick()
   if (logContainerRef.value) {
     logContainerRef.value.scrollTop = logContainerRef.value.scrollHeight
   }
 }
 
+// 重置回步骤 1
+const resetToStep1 = () => {
+  currentStep.value = 1
+  isReconstructing.value = false
+  showLogConsole.value = false
+  logs.value = []
+  if (currentWsMock) {
+    currentWsMock.close()
+  }
+}
+
 // ================= 虚拟 WebSocket 后端服务 =================
-// 模拟创建一个真实的 WS 连接对象，处理长连接的推流逻辑
 class MockReconstructionWebSocket {
-  constructor(url) {
+  constructor(url, targetModelUrl) {
     this.url = url
+    this.targetModelUrl = targetModelUrl
     this.onmessage = null
     this.onclose = null
     this.isAborted = false
     
     // 配置标准序列与可信耗时等待 (单位: ms)
     this.pipelineSteps = [
-      { type: 'INFO', text: '初始化重建任务，Task ID: RECON-90210...', wait: 800 },
-      { type: 'INFO', text: '开始读取无人机(UAV)图像数据，共计 342 张...', wait: 2000 },
-      { type: 'INFO', text: '开始读取无人车(UGV)图像数据，共计 156 张...', wait: 1500 },
-      { type: 'INFO', text: '图像预处理与去畸变 (Image Undistortion) 完成.', wait: 3500 },
-      { type: 'INFO', text: '开始 SIFT特征提取 (Feature Extraction)...', wait: 3000 },
-      { type: 'INFO', text: '特征匹配 (Feature Matching) 与几何校验中...', wait: 4000 },
-      { type: 'INFO', text: '运行 SFM (Structure from Motion) 生成稀疏点云 (Sparse Point Cloud)...', wait: 4500 },
-      { type: 'INFO', text: '运行 MVS (Multi-View Stereo) 构建密集点云 (Dense Point Cloud)...', wait: 4500 },
-      { type: 'INFO', text: '泊松表面重建 (Poisson Surface Reconstruction) 与网格化...', wait: 3000 },
-      { type: 'INFO', text: '纹理映射 (Texture Mapping) 完成.', wait: 2500 },
-      { type: 'INFO', text: '模型轻量化与标准格式转换 (glTF/3D Tiles export)...', wait: 2000 },
-      { type: 'SUCCESS', text: '3D重建Pipeline执行完毕，耗时 14m 23s.', wait: 1000 }
+      { type: 'INFO', text: '初始化重建任务，Task ID: RECON-90210...', wait: 600 },
+      { type: 'INFO', text: '开始读取无人机(UAV)多视角图像数据，共计 342 张...', wait: 1200 },
+      { type: 'INFO', text: '开始读取无人车(UGV)地面近景图像数据，共计 156 张...', wait: 1000 },
+      { type: 'INFO', text: '图像预处理与去畸变 (Image Undistortion) 完成.', wait: 1500 },
+      { type: 'INFO', text: '开始 SIFT 特征提取 (Feature Extraction)...', wait: 1800 },
+      { type: 'INFO', text: '特征匹配 (Feature Matching) 与几何约束校验中...', wait: 2000 },
+      { type: 'INFO', text: '运行 SFM (Structure from Motion) 生成稀疏点云 (Sparse Point Cloud)...', wait: 2200 },
+      { type: 'INFO', text: '运行 MVS (Multi-View Stereo) 构建密集点云 (Dense Point Cloud)...', wait: 2500 },
+      { type: 'INFO', text: '泊松表面重建 (Poisson Surface Reconstruction) 与多边形网格化...', wait: 1800 },
+      { type: 'INFO', text: '纹理映射 (Texture Mapping) 与 PBR 材质烘焙完成.', wait: 1500 },
+      { type: 'INFO', text: '模型轻量化导出为标准 glTF 2.0 / GLB 格式...', wait: 1200 },
+      { 
+        type: 'SUCCESS', 
+        status: 'completed', 
+        text: `3D重建Pipeline执行完毕，生成高精模型 ${targetModelUrl}，耗时 14m 23s.`, 
+        modelUrl: targetModelUrl, 
+        wait: 800 
+      }
     ]
   }
 
-  // 模拟发送指令
   send(command) {
     if (command === 'START') {
       this._startStreaming()
     }
   }
 
-  // 终止连接
   close() {
     this.isAborted = true
     if (this.onclose) this.onclose()
   }
 
-  // 内部：模拟服务器按时间轴不断推流数据
   async _startStreaming() {
     for (const step of this.pipelineSteps) {
       if (this.isAborted) break
-      // 模拟服务器执行耗时
       await new Promise(resolve => setTimeout(resolve, step.wait))
       
-      // 模拟收到 WS 推送事件
       if (this.onmessage && !this.isAborted) {
         this.onmessage({ data: JSON.stringify(step) })
       }
     }
-    // 推流结束，自动断开连接
     this.close()
   }
 }
@@ -163,30 +236,47 @@ class MockReconstructionWebSocket {
 const startReconstruction = () => {
   if (isReconstructing.value) return
   
-  // 1. 锁定界面并重置状态
+  // 1. 进入步骤 2，锁定界面并展示控制台
+  currentStep.value = 2
   isReconstructing.value = true
+  showLogConsole.value = true
   logs.value = []
 
-  // 2. 创建虚拟 WS 实例建立长连接
-  currentWsMock = new MockReconstructionWebSocket('wss://api.example.com/recon/stream')
+  // 2. 创建 WS 实例并传递目标模型 URL
+  currentWsMock = new MockReconstructionWebSocket(
+    'wss://api.example.com/recon/stream',
+    selectedModelPreset.value
+  )
   
   // 3. 监听后端推送的数据
   currentWsMock.onmessage = (event) => {
     const logData = JSON.parse(event.data)
     appendLog(logData)
+
+    // 【实现核心】：当接收到 SUCCESS 或 status: completed 信号时
+    if (logData.type === 'SUCCESS' || logData.status === 'completed') {
+      reconstructedModelUrl.value = logData.modelUrl || selectedModelPreset.value
+      
+      // 延时 1 秒后自动隐藏日志面板，展示 3D 画布容器
+      setTimeout(() => {
+        isReconstructing.value = false
+        showLogConsole.value = false // 销毁/隐藏日志面板
+        currentStep.value = 3        // 进入步骤三：展示 3D 画布容器
+      }, 1200)
+    }
   }
   
-  // 4. 监听连接关闭
   currentWsMock.onclose = () => {
-    // 收到 SUCCESS 后不断开控件锁定，或者你可以将这里设为 false
-    isReconstructing.value = false 
+    // 若未触发 SUCCESS 仍解锁
+    if (currentStep.value !== 3) {
+      isReconstructing.value = false
+    }
   }
   
-  // 5. 触发后端开始干活
+  // 4. 触发后端执行
   currentWsMock.send('START')
 }
 
-// 组件卸载时断开连接，防止内存泄漏
 onBeforeUnmount(() => {
   if (currentWsMock) {
     currentWsMock.close()
@@ -209,15 +299,14 @@ onBeforeUnmount(() => {
 }
 
 .app-header {
-  padding: 16px 24px;
+  padding: 14px 24px;
   background: rgba(4, 12, 26, 0.85);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(0, 229, 255, 0.15);
+  border-bottom: 1px solid rgba(0, 242, 254, 0.18);
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 20px;
-  flex-wrap: wrap;
   z-index: 10;
 }
 
@@ -242,25 +331,101 @@ onBeforeUnmount(() => {
   border-radius: 4px;
 }
 .brand-sub {
-  font-size: 11.5px;
+  font-size: 11px;
   color: #64748b;
   font-family: 'Courier New', monospace;
 }
 
+/* 步骤指示器 */
+.workflow-steps-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+.step-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748b;
+  transition: all 0.3s ease;
+}
+.step-pill .step-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+}
+.step-pill.active {
+  color: #00f2fe;
+  font-weight: 600;
+}
+.step-pill.active .step-num {
+  background: #00f2fe;
+  color: #020712;
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
+}
+.step-pill.completed {
+  color: #34d399;
+}
+.step-pill.completed .step-num {
+  background: rgba(52, 211, 153, 0.2);
+  color: #34d399;
+  border: 1px solid #34d399;
+}
+.step-divider {
+  width: 20px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.preset-select {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid #334155;
+  color: #38bdf8;
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+.preset-select option {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
 .action-btn {
-  background: transparent;
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(59, 130, 246, 0.2));
   border: 1px solid #00f2fe;
   color: #00f2fe;
-  padding: 8px 16px;
+  padding: 8px 18px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s;
+  font-size: 13.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.25s ease;
 }
 .action-btn:hover:not(:disabled) {
-  background: rgba(0, 242, 254, 0.15);
-  box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+  background: #00f2fe;
+  color: #020712;
+  box-shadow: 0 0 14px rgba(0, 242, 254, 0.5);
 }
 .action-btn:disabled {
   border-color: #475569;
@@ -268,66 +433,103 @@ onBeforeUnmount(() => {
   cursor: not-allowed;
   background: rgba(255,255,255,0.05);
 }
+.action-btn.secondary-btn {
+  border-color: #64748b;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.05);
+}
+.action-btn.secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
 
 /* =========== 中间工作区及锁定遮罩 =========== */
 .app-viewport {
   flex: 1;
-  padding: 24px;
+  padding: 20px;
   display: flex;
   justify-content: center;
-  overflow-y: auto; 
+  position: relative;
+  overflow: hidden; 
 }
 .step-view-container {
   width: 100%;
   position: relative;
   transition: opacity 0.3s;
+  overflow-y: auto;
 }
-
-/* 当处于锁定状态时，阻止内部所有事件穿透，并降低透明度 */
 .step-view-container.is-locked {
   pointer-events: none;
   opacity: 0.7;
 }
 
-/* 上传控件遮罩层UI */
+.step3-canvas-viewport {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 242, 254, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+/* 锁定遮罩层UI */
 .lock-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(2, 7, 18, 0.6);
-  backdrop-filter: blur(2px);
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(2, 7, 18, 0.75);
+  backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 20;
   border-radius: 8px;
 }
+.lock-card {
+  background: rgba(10, 18, 36, 0.95);
+  border: 1px solid #00f2fe;
+  padding: 24px 32px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 10px 30px rgba(0, 242, 254, 0.25);
+}
+.lock-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(0, 242, 254, 0.2);
+  border-top-color: #00f2fe;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
 .lock-text {
-  background: rgba(0, 0, 0, 0.8);
-  border: 1px solid #475569;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-size: 14px;
-  color: #fbbf24; /* 警告黄 */
-  font-weight: 500;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  font-size: 14.5px;
+  color: #00f2fe;
+  font-weight: 600;
+}
+.lock-sub {
+  font-size: 12px;
+  color: #94a3b8;
 }
 
 /* =========== 终端日志面板 =========== */
 .log-console-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
   height: 280px;
   background: #090e17;
-  border-top: 1px solid #1e293b;
+  border-top: 1px solid rgba(0, 242, 254, 0.3);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
-  z-index: 5;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.7);
+  z-index: 30;
 }
 
 .console-header {
-  padding: 8px 16px;
+  padding: 8px 20px;
   background: #101726;
   border-bottom: 1px solid #1e293b;
   display: flex;
@@ -341,12 +543,16 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 12px;
 }
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 
 .console-title {
   color: #94a3b8;
   font-weight: 600;
 }
-
 .engine-version {
   background: rgba(56, 189, 248, 0.1);
   color: #38bdf8;
@@ -366,24 +572,24 @@ onBeforeUnmount(() => {
   animation: pulse 1.5s infinite;
 }
 
+.close-console-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 14px;
+}
+.close-console-btn:hover {
+  color: #f87171;
+}
+
 .console-body {
   flex: 1;
-  padding: 16px;
+  padding: 16px 20px;
   overflow-y: auto;
   font-family: 'Fira Code', 'Courier New', monospace;
   font-size: 13px;
   line-height: 1.6;
-}
-
-.console-body::-webkit-scrollbar {
-  width: 8px;
-}
-.console-body::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.02);
-}
-.console-body::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 4px;
 }
 
 .log-line {
@@ -392,26 +598,11 @@ onBeforeUnmount(() => {
   gap: 8px;
   word-break: break-all;
 }
-
-.log-time {
-  color: #64748b;
-  flex-shrink: 0;
-}
-
-.log-tag {
-  font-weight: bold;
-  flex-shrink: 0;
-}
-.tag-info {
-  color: #38bdf8;
-}
-.tag-success {
-  color: #34d399;
-}
-
-.log-text {
-  color: #cbd5e1;
-}
+.log-time { color: #64748b; flex-shrink: 0; }
+.log-tag { font-weight: bold; flex-shrink: 0; }
+.tag-info { color: #38bdf8; }
+.tag-success { color: #34d399; }
+.log-text { color: #cbd5e1; }
 
 .log-cursor {
   display: inline-block;
@@ -421,6 +612,9 @@ onBeforeUnmount(() => {
   animation: blink 1s step-end infinite;
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
@@ -433,7 +627,7 @@ onBeforeUnmount(() => {
 
 .slide-up-enter-active,
 .slide-up-leave-active {
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transition: transform 0.35s ease, opacity 0.35s ease;
 }
 .slide-up-enter-from,
 .slide-up-leave-to {
