@@ -4,13 +4,37 @@ import expressWs from 'express-ws';
 import { spawn } from 'child_process';
 import cors from 'cors';
 import net from 'net';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 expressWs(app);
 app.use(cors())
 
-// ffmpeg 安装路径
-const ffmpegPath = "F:\\lkyw\\lkywSystemv0\\Sensor_Management\\IOT\\ffmpeg-7.1.1-essentials_build\\ffmpeg-7.1.1-essentials_build\\bin\\ffmpeg.exe";
+// 动态自动探测 ffmpeg 安装路径（支持多层嵌套解压目录）
+function findFFmpegPath() {
+  const possiblePaths = [
+    path.resolve(__dirname, '../../ffmpeg-7.1.1-essentials_build/ffmpeg-7.1.1-essentials_build/ffmpeg-7.1.1-essentials_build/bin/ffmpeg.exe'),
+    path.resolve(__dirname, '../../ffmpeg-7.1.1-essentials_build/ffmpeg-7.1.1-essentials_build/bin/ffmpeg.exe'),
+    path.resolve(__dirname, '../../ffmpeg-7.1.1-essentials_build/bin/ffmpeg.exe'),
+    "D:\\1\\liangkeyiwei_v1\\lkywSystemv0\\Sensor_Management\\IOT\\ffmpeg-7.1.1-essentials_build\\ffmpeg-7.1.1-essentials_build\\ffmpeg-7.1.1-essentials_build\\bin\\ffmpeg.exe",
+    "ffmpeg"
+  ];
+
+  for (const p of possiblePaths) {
+    if (p === "ffmpeg" || fs.existsSync(p)) {
+      return p;
+    }
+  }
+  return "ffmpeg";
+}
+
+const ffmpegPath = findFFmpegPath();
+console.log(`🎬 已定位 FFmpeg 路径: ${ffmpegPath}`);
 
 // 摄像机推流地址
 const cameraStreams = 'rtsp://admin:hik123456@192.168.0.186:554/Streaming/Channels/101';
@@ -62,27 +86,27 @@ app.post('/sensor/camera/connect', async (req, res) => {
     // 检查物理连接
     const physicalConnected = await checkCameraOnline(cameraStreams);
     cameraConnectionStatus.physical_connected = physicalConnected;
-    
+
     if (!physicalConnected) {
       return res.json({
-        code: -1, 
+        code: -1,
         message: "摄像头物理连接不可用，请检查设备连接和网络配置",
         connected: false
       });
     }
-    
+
     // 启用数据采集
     cameraConnectionStatus.connected = true;
     cameraConnectionStatus.data_collection = true;
     cameraConnectionStatus.last_check = new Date();
-    
+
     console.log("✅ 摄像头已接入");
     res.json({
-      code: 0, 
+      code: 0,
       message: "摄像头接入成功",
       connected: true
     });
-    
+
   } catch (error) {
     console.error("摄像头接入错误:", error);
     res.json({
@@ -98,10 +122,10 @@ app.post('/sensor/camera/disconnect', (req, res) => {
   cameraConnectionStatus.connected = false;
   cameraConnectionStatus.data_collection = false;
   cameraConnectionStatus.last_check = new Date();
-  
+
   console.log("⏸️ 摄像头已断开");
   res.json({
-    code: 0, 
+    code: 0,
     message: "摄像头断开成功",
     connected: false
   });
@@ -113,7 +137,7 @@ app.get('/sensor/camera/status', async (req, res) => {
     const physicalConnected = await checkCameraOnline(cameraStreams);
     cameraConnectionStatus.physical_connected = physicalConnected;
     cameraConnectionStatus.last_check = new Date();
-    
+
     res.json({
       code: 0,
       connected: cameraConnectionStatus.connected,
@@ -170,7 +194,12 @@ app.ws('/stream/hik', async (ws, req) => {
     '-r', '25',
     '-'
   ]);
-  
+
+  // FFmpeg 异常捕获
+  ffmpeg.on('error', (err) => {
+    console.error('❌ FFmpeg 启动/执行异常:', err.message);
+  });
+
   // 将 FFmpeg 输出的流数据推送到前端 WebSocket
   ffmpeg.stdout.on('data', (chunk) => {
     if (ws.readyState === 1) {
