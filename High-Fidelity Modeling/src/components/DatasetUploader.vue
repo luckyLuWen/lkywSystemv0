@@ -237,12 +237,20 @@ const datasetResult = ref({
 // 支持的扩展名列表
 const validExtensions = ['.zip', '.tar.gz', '.tar', '.7z', '.jpg', '.jpeg', '.png', '.webp', '.bmp']
 
-// 点击输入框
-const triggerFileInput = () => {
-  if (fileInputRef.value) fileInputRef.value.click()
+// 点击“选择数据集压缩包” -> 弹出操作系统的文件选择管理器
+const handleSelectZip = () => {
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+    fileInputRef.value.click()
+  }
 }
-const triggerFolderInput = () => {
-  if (folderInputRef.value) folderInputRef.value.click()
+
+// 点击“选择图片文件夹” -> 弹出操作系统的文件夹选择管理器
+const handleSelectFolder = () => {
+  if (folderInputRef.value) {
+    folderInputRef.value.value = ''
+    folderInputRef.value.click()
+  }
 }
 
 // ⚡ 一键载入默认示例数据集包 (public/Dashboard/zip)
