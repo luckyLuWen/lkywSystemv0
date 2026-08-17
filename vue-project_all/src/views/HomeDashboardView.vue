@@ -2362,4 +2362,55 @@ function handlePhaseClick(idx) {
   margin: 2px 0;
   font-family: var(--font-family-mono);
 }
+.sidebar-title {
+  font-size: 30px !important; 
+  font-weight: bold !important;
+  text-shadow: 0 0 6px rgba(0, 242, 254, 0.4) !important; /* 顺便加个发光效果更醒目 */
+}
+/* ==========================================
+   强效放大专用：直接强制覆盖原有的所有字号
+   ========================================== */
+
+/* 1. 所有的主标题（地面移动、固定环境、组网效能等） - 明显放大 */
+.sensor-section-title {
+  font-size: 26px !important; 
+  font-weight: bold !important;
+}
+.panel-header h3 {
+  font-size: 26px !important; 
+  font-weight: bold !important;
+}
+
+/* 2. 卡片大标题（如：地面感知单元-001） - 放大 */
+.ugv-card .ugv-title {
+  font-size: 26px !important; 
+}
+
+/* 3. 卡片里的标签文字（如：温度、湿度、风速） - 放大 */
+.ugv-card .ugv-label,
+.meteorology-card .met-label,
+.c-lbl,
+.cap-item > div > div:first-child,
+.stat-box span:first-child {
+  font-size: 20px !important; 
+}
+
+/* 4. 卡片里的具体数值（如：24.5、3.2m/s） - 超大高亮 */
+.ugv-card .ugv-value,
+.meteorology-card .met-val,
+.c-val,
+.highlight {
+  font-size: 30px !important; 
+}
+
+/* 5. 底部效能标题和小字 - 适当放大 */
+.cap-title {
+  font-size: 26px !important; 
+}
+.mini-status {
+  font-size: 24px !important; 
+}
+.ugv-card .ugv-footer {
+  font-size: 18px !important; 
+}
 </style>
