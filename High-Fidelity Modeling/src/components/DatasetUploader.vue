@@ -52,13 +52,28 @@
             <span class="tag">多视角照片: .jpg / .png / .webp</span>
           </div>
 
-          <div class="action-buttons">
-            <button class="btn btn-primary" @click="handleSelectZip">
-              <span class="btn-icon">📦</span> 选择数据集压缩包
-            </button>
-            <button class="btn btn-secondary" @click="handleSelectFolder">
-              <span class="btn-icon">📂</span> 选择图片文件夹
-            </button>
+          <div class="action-buttons-grid">
+            <div class="action-btn-card">
+              <button class="btn btn-primary btn-block" @click="triggerFileInput">
+                <span class="btn-icon">📦</span> 选择数据集压缩包
+              </button>
+              <div class="preset-default-row" @click="loadPresetZip" title="点击一键直接载入默认压缩包">
+                <span class="preset-label">默认路径:</span>
+                <code class="preset-path">Dashboard/zip</code>
+                <span class="quick-badge">⚡ 一键载入</span>
+              </div>
+            </div>
+
+            <div class="action-btn-card">
+              <button class="btn btn-secondary btn-block" @click="triggerFolderInput">
+                <span class="btn-icon">📂</span> 选择图片文件夹
+              </button>
+              <div class="preset-default-row" @click="loadPresetImages" title="点击一键直接载入默认图片集">
+                <span class="preset-label">默认路径:</span>
+                <code class="preset-path">Dashboard/images2</code>
+                <span class="quick-badge">⚡ 一键载入</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -236,6 +251,36 @@ const handleSelectFolder = () => {
     folderInputRef.value.value = ''
     folderInputRef.value.click()
   }
+}
+
+// ⚡ 一键载入默认示例数据集包 (public/Dashboard/zip)
+const loadPresetZip = () => {
+  currentFileName.value = 'accident_truck_dataset.zip (默认示范包: public/Dashboard/zip)'
+  startSimulatedUpload({
+    filename: 'accident_truck_dataset.zip',
+    imageCount: 248,
+    fileSizeMB: '156.8',
+    prefix: 'LK-COACH',
+    presetInfo: {
+      source: 'public/Dashboard/zip/accident_truck_dataset.zip',
+      modelType: '仙桃市追尾事故客车'
+    }
+  })
+}
+
+// ⚡ 一键载入默认示例图片集 (public/Dashboard/images2)
+const loadPresetImages = () => {
+  currentFileName.value = '[多视角图片集] public/Dashboard/images2/'
+  startSimulatedUpload({
+    filename: 'public/Dashboard/images2/',
+    imageCount: 180,
+    fileSizeMB: '94.2',
+    prefix: 'LK-HAZMAT',
+    presetInfo: {
+      source: 'public/Dashboard/images2/',
+      modelType: '重型危化品槽罐车'
+    }
+  })
 }
 
 // 拖拽处理
@@ -544,11 +589,58 @@ const progressStatusText = computed(() => {
   border-radius: 20px;
 }
 
-.action-buttons {
+.action-buttons-grid {
   display: flex;
   justify-content: center;
-  gap: 16px;
+  gap: 20px;
   flex-wrap: wrap;
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.action-btn-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 280px;
+}
+
+.btn-block {
+  width: 100%;
+  justify-content: center;
+}
+
+.preset-default-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px dashed rgba(0, 242, 254, 0.35);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 11.5px;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preset-default-row:hover {
+  background: rgba(0, 242, 254, 0.1);
+  border-color: #00f2fe;
+  color: #f1f5f9;
+}
+
+.preset-path {
+  color: #38bdf8;
+  font-family: "Consolas", monospace;
+  font-size: 11px;
+}
+
+.quick-badge {
+  color: #00ffaa;
+  font-weight: bold;
+  font-size: 11px;
 }
 
 /* 按钮样式 */

@@ -152,7 +152,8 @@ const logContainerRef = ref(null)
 
 const selectedModelPreset = ref('/Dashboard/models/Accident_Occur1.glb')
 const reconstructedModelUrl = ref('/Dashboard/models/Accident_Occur1.glb')
-
+const uavImageCount = ref(248) // 替换为你想要的一致数字
+const ugvImageCount = ref(180) // 替换为你想要的一致数字
 let currentWsMock = null
 
 // 格式化时间 [HH:mm:ss]
@@ -188,7 +189,7 @@ const resetToStep1 = () => {
 
 // ================= 虚拟 WebSocket 后端服务 =================
 class MockReconstructionWebSocket {
-  constructor(url, targetModelUrl) {
+  constructor(url, targetModelUrl, uavCount, ugvCount) {
     this.url = url
     this.targetModelUrl = targetModelUrl
     this.onmessage = null
@@ -198,8 +199,11 @@ class MockReconstructionWebSocket {
     // 配置标准序列与可信耗时等待 (单位: ms)
     this.pipelineSteps = [
       { type: 'INFO', text: '初始化重建任务，Task ID: RECON-90210...', wait: 600 },
-      { type: 'INFO', text: '开始读取无人机(UAV)多视角图像数据，共计 342 张...', wait: 1200 },
-      { type: 'INFO', text: '开始读取无人车(UGV)地面近景图像数据，共计 156 张...', wait: 1000 },
+      
+      // 👇 修改：使用反引号(``) 和 ${} 动态插入影像数量
+      { type: 'INFO', text: `开始读取无人机(UAV)多视角图像数据，共计 ${uavCount} 张...`, wait: 1200 },
+      { type: 'INFO', text: `开始读取无人车(UGV)地面近景图像数据，共计 ${ugvCount} 张...`, wait: 1000 },
+      
       { type: 'INFO', text: '图像预处理与去畸变 (Image Undistortion) 完成.', wait: 1500 },
       { type: 'INFO', text: '开始 SIFT 特征提取 (Feature Extraction)...', wait: 1800 },
       { type: 'INFO', text: '特征匹配 (Feature Matching) 与几何约束校验中...', wait: 2000 },
@@ -241,8 +245,6 @@ class MockReconstructionWebSocket {
     this.close()
   }
 }
-
-// ================= 交互逻辑 =================
 const startReconstruction = () => {
   if (isReconstructing.value) return
   
@@ -252,10 +254,13 @@ const startReconstruction = () => {
   showLogConsole.value = true
   logs.value = []
 
-  // 2. 创建 WS 实例并传递目标模型 URL
+  // 👇 关键修改在这里：必须把 uavImageCount.value 和 ugvImageCount.value 传进去！
+  // 注意一定不能漏掉 .value
   currentWsMock = new MockReconstructionWebSocket(
     'wss://api.example.com/recon/stream',
-    selectedModelPreset.value
+    selectedModelPreset.value,
+    uavImageCount.value,  // 第3个参数：无人机照片数量
+    ugvImageCount.value   // 第4个参数：无人车照片数量
   )
   
   // 3. 监听后端推送的数据
@@ -263,21 +268,20 @@ const startReconstruction = () => {
     const logData = JSON.parse(event.data)
     appendLog(logData)
 
-    // 【实现核心】：当接收到 SUCCESS 或 status: completed 信号时
+    // 当接收到 SUCCESS 或 status: completed 信号时
     if (logData.type === 'SUCCESS' || logData.status === 'completed') {
       reconstructedModelUrl.value = logData.modelUrl || selectedModelPreset.value
       
-      // 延时 1 秒后自动隐藏日志面板，展示 3D 画布容器
+      // 延时自动隐藏日志面板，展示 3D 画布容器
       setTimeout(() => {
         isReconstructing.value = false
-        showLogConsole.value = false // 销毁/隐藏日志面板
-        currentStep.value = 3        // 进入步骤三：展示 3D 画布容器
+        showLogConsole.value = false 
+        currentStep.value = 3        
       }, 1200)
     }
   }
   
   currentWsMock.onclose = () => {
-    // 若未触发 SUCCESS 仍解锁
     if (currentStep.value !== 3) {
       isReconstructing.value = false
     }
