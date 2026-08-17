@@ -50,8 +50,6 @@
         >
           <option value="/Dashboard/models/Accident_Occur1.glb">🚗 事故车辆重建: 客车追尾撞击现场</option>
           <option value="/Dashboard/models/Side_roll_Tanker.glb">🚚 事故车辆重建: 油罐车侧翻泄露现场</option>
-          <option value="/Dashboard/models/Normal_Drive.glb">🚌 基础车辆模型: 巡航长途大客车</option>
-          <option value="/Dashboard/models/recure car.glb">🚑 应急救援装备: 1号无人侦察车</option>
         </select>
 
         <button 
