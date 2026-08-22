@@ -3,9 +3,9 @@
     <div class="card-head">
       <div>
         <h3 class="card-title">多智能体全局寻优决策日志</h3>
-        <p class="card-subtitle">Global Optimization Log</p>
+        <p class="card-subtitle">MULTI-AGENT GLOBAL OPTIMIZATION LOG</p>
       </div>
-      <span class="status-badge settled">决策已锚定</span>
+      <span class="status-badge settled">● 决策已锚定 SETTLED</span>
     </div>
 
     <div class="scroll-container log-container">
@@ -102,21 +102,25 @@ const props = defineProps({
 }
 .card-title {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #f1f5f9;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
   letter-spacing: 0.5px;
+  font-family: "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 .card-subtitle {
-  margin: 2px 0 0;
-  font-size: 12.5px;
-  color: #94a3b8;
-  font-family: 'Courier New', Courier, monospace;
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: #00f2fe;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 .status-badge {
-  font-size: 11.5px;
-  font-weight: 600;
-  padding: 4px 8px;
+  font-size: 13.5px;
+  font-family: monospace;
+  font-weight: bold;
+  padding: 4px 10px;
   border-radius: 4px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -129,7 +133,8 @@ const props = defineProps({
 .status-badge.settled {
   background: rgba(16, 185, 129, 0.15);
   color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
 }
 .pulse {
   animation: pulse-border 1.5s infinite;
@@ -149,8 +154,8 @@ const props = defineProps({
 .scroll-container::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.2); border-radius: 2px; }
 
 .terminal-logs {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 12.5px;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 14px;
   color: #cbd5e1;
   background: rgba(0, 0, 0, 0.35);
   padding: 10px 12px;
@@ -162,7 +167,7 @@ const props = defineProps({
   margin-bottom: 4px;
   opacity: 0;
   animation: fadeInLog 0.3s forwards;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 .log-line span {
   color: #38bdf8;
@@ -191,14 +196,14 @@ const props = defineProps({
   margin-bottom: 10px;
 }
 .agent-label {
-  font-size: 13.5px;
+  font-size: 15.5px;
   font-weight: 700;
   color: var(--agent-color);
 }
 .agent-winner-name {
-  font-size: 14.5px;
+  font-size: 16px;
   font-weight: 600;
-  color: #e2e8f0;
+  color: #ffffff;
 }
 .winner-stats {
   background: rgba(0, 0, 0, 0.2);
@@ -209,7 +214,7 @@ const props = defineProps({
 .stat-row {
   display: flex;
   justify-content: space-between;
-  font-size: 12.5px;
+  font-size: 14.5px;
   color: #cbd5e1;
   margin-bottom: 5px;
 }
@@ -218,26 +223,31 @@ const props = defineProps({
   color: #38bdf8;
   font-weight: 600;
 }
+.stat-val {
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-weight: bold;
+}
 .losers-section {
   border-top: 1px dashed rgba(148, 163, 184, 0.2);
   padding-top: 8px;
 }
 .losers-title {
-  font-size: 11.5px;
-  color: #94a3b8;
+  font-size: 13px;
+  font-weight: bold;
+  color: #f87171;
   margin-bottom: 6px;
 }
 .loser-item {
   margin-bottom: 6px;
 }
 .loser-name {
-  font-size: 12.5px;
+  font-size: 14px;
   color: #cbd5e1;
   font-weight: 500;
 }
 .loser-reason {
-  font-size: 11.5px;
-  color: #f87171;
+  font-size: 13px;
+  color: #ff8f8f;
   margin-left: 14px;
   margin-top: 2px;
 }

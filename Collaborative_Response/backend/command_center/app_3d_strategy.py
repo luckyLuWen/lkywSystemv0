@@ -506,7 +506,7 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
                 ).add_to(m)
                 # 详细弹出面板
                 popup_html = f'''
-                    <div style="font-family:Microsoft YaHei,sans-serif;min-width:220px">
+                    <div style="font-family:'Times New Roman', 'Microsoft YaHei', '微软雅黑', serif, sans-serif;min-width:220px">
                       <div style="font-size:14px;font-weight:700;color:#dc2626;margin-bottom:8px;
                                   border-bottom:2px solid #dc2626;padding-bottom:4px">
                         &#x1F6AB; {info}</div>
@@ -562,7 +562,7 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
         ).add_to(m)
         # 内部填充 + 外边框
         cong_popup = f'''
-            <div style="font-family:Microsoft YaHei,sans-serif;min-width:200px">
+            <div style="font-family:'Times New Roman', 'Microsoft YaHei', '微软雅黑', serif, sans-serif;min-width:200px">
               <div style="font-size:14px;font-weight:700;color:#2563eb;margin-bottom:6px;
                           border-bottom:2px solid #2563eb;padding-bottom:4px">
                 &#x1F6D1; {cong_name}</div>
@@ -767,7 +767,7 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
     <div style="position: fixed; top: 96px; left: 20px; z-index: 1000; width: 310px;
                 background: rgba(2, 12, 26, 0.88); padding: 14px 16px; border-radius: 10px;
                 border: 1px solid rgba(0, 242, 254, 0.25); backdrop-filter: blur(12px);
-                box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 0 15px rgba(0, 242, 254, 0.05); font-family: 'Microsoft YaHei', sans-serif; color: #cbd5e1;">
+                box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 0 15px rgba(0, 242, 254, 0.05); font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', serif, sans-serif; color: #cbd5e1;">
         <div style="font-size: 16px; font-weight: 700; color: #00f2fe; margin-bottom: 4px;
                     letter-spacing: 1px; text-align: center; text-shadow: 0 0 8px rgba(0, 242, 254, 0.3);">协同效能评估</div>
         <div id="eta-display" style="text-align:center;font-size:13px;font-weight:700;color:#fbbf24;margin-bottom:6px;">预计到达 --:--</div>
@@ -1035,7 +1035,7 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
             border-radius: 12px;
             padding: 12px 14px;
             backdrop-filter: blur(20px);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+            font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', serif, sans-serif;
             color: #cbd5e1;
             user-select: none;
         }}

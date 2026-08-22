@@ -52,13 +52,28 @@
             <span class="tag">多视角照片: .jpg / .png / .webp</span>
           </div>
 
-          <div class="action-buttons">
-            <button class="btn btn-primary" @click="triggerFileInput">
-              <span class="btn-icon">📦</span> 选择数据集压缩包
-            </button>
-            <button class="btn btn-secondary" @click="triggerFolderInput">
-              <span class="btn-icon">📂</span> 选择图片文件夹
-            </button>
+          <div class="action-buttons-grid">
+            <div class="action-btn-card">
+              <button class="btn btn-primary btn-block" @click="triggerFileInput">
+                <span class="btn-icon">📦</span> 选择数据集压缩包
+              </button>
+              <div class="preset-default-row" @click="loadPresetZip" title="点击一键直接载入默认压缩包">
+                <span class="preset-label">默认路径:</span>
+                <code class="preset-path">Dashboard/zip</code>
+                <span class="quick-badge">⚡ 一键载入</span>
+              </div>
+            </div>
+
+            <div class="action-btn-card">
+              <button class="btn btn-secondary btn-block" @click="triggerFolderInput">
+                <span class="btn-icon">📂</span> 选择图片文件夹
+              </button>
+              <div class="preset-default-row" @click="loadPresetImages" title="点击一键直接载入默认图片集">
+                <span class="preset-label">默认路径:</span>
+                <code class="preset-path">Dashboard/images2</code>
+                <span class="quick-badge">⚡ 一键载入</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -131,15 +146,23 @@
             </div>
           </div>
 
-          <!-- 详细元数据网格 -->
+          <!-- 详细元数据网格 (区分无人机/无人车视角图像数量) -->
           <div class="metadata-grid">
             <div class="meta-item">
               <span class="meta-lbl">事故归属类型</span>
               <span class="meta-val text-yellow">{{ datasetResult.accidentCategory }}</span>
             </div>
             <div class="meta-item">
-              <span class="meta-lbl">包含图像帧数</span>
+              <span class="meta-lbl">包含图像总帧数</span>
               <span class="meta-val text-cyan">{{ datasetResult.imageCount }} 张多视角帧</span>
+            </div>
+            <div class="meta-item highlight-uav-item">
+              <span class="meta-lbl">🚁 无人机(UAV)视角图像数</span>
+              <span class="meta-val text-uav"><b>{{ datasetResult.uavCount }}</b> 张 (高空/俯瞰/倾斜)</span>
+            </div>
+            <div class="meta-item highlight-ugv-item">
+              <span class="meta-lbl">🚜 无人车(UGV)视角图像数</span>
+              <span class="meta-val text-amber"><b>{{ datasetResult.ugvCount }}</b> 张 (地面/近景/特写)</span>
             </div>
             <div class="meta-item">
               <span class="meta-lbl">数据集总大小</span>
@@ -160,6 +183,68 @@
           </div>
         </div>
 
+        <!-- 【步骤一交互增强】：已导入多视角图像预览集 (按无人机/无人车视角分类) -->
+        <div class="image-gallery-section">
+          <div class="gallery-header">
+            <div class="gallery-title-box">
+              <span class="gallery-icon">📸</span>
+              <div>
+                <h4 class="gallery-title">已导入“两客一危”事故车辆多视角图像集</h4>
+                <p class="gallery-subtitle">
+                  拆解视角: <b>🚁 无人机视角 ({{ uavImageList.length }} 帧)</b> | <b>🚜 无人车视角 ({{ ugvImageList.length }} 帧)</b> | 点击筛选分类与放大
+                </p>
+              </div>
+            </div>
+
+            <!-- 无人机/无人车视角分类切换卡 -->
+            <div class="gallery-filter-tabs">
+              <button 
+                class="filter-tab" 
+                :class="{ active: perspectiveFilter === 'all' }"
+                @click="perspectiveFilter = 'all'"
+              >
+                全部视角 ({{ imagePreviewList.length }})
+              </button>
+              <button 
+                class="filter-tab tab-uav-filter" 
+                :class="{ active: perspectiveFilter === 'uav' }"
+                @click="perspectiveFilter = 'uav'"
+              >
+                🚁 无人机(UAV)视角 ({{ uavImageList.length }})
+              </button>
+              <button 
+                class="filter-tab tab-ugv-filter" 
+                :class="{ active: perspectiveFilter === 'ugv' }"
+                @click="perspectiveFilter = 'ugv'"
+              >
+                🚜 无人车(UGV)视角 ({{ ugvImageList.length }})
+              </button>
+            </div>
+          </div>
+
+          <div class="thumbnail-grid">
+            <div 
+              v-for="(img, idx) in filteredImageList" 
+              :key="idx" 
+              class="thumb-card"
+              @click="openImageViewer(imagePreviewList.indexOf(img))"
+              title="点击查看全图与视角参数"
+            >
+              <div class="thumb-img-wrapper">
+                <img :src="img.url" :alt="img.name" class="thumb-img" />
+                <div class="thumb-overlay">
+                  <span class="zoom-btn">🔍 点击查看大图</span>
+                </div>
+                <span class="thumb-angle-tag" :class="img.tagClass">{{ img.angleTag }}</span>
+              </div>
+              <div class="thumb-info">
+                <span class="thumb-name" :title="img.name">{{ img.name }}</span>
+                <span class="thumb-meta">{{ img.res }} | {{ img.size }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 底部控制按钮 -->
         <div class="completed-actions">
           <button class="btn btn-secondary" @click="resetUploader">
@@ -171,6 +256,58 @@
         </div>
       </div>
     </div>
+
+    <!-- 🖼️ 图片大图放大查看器 Modal (Lightbox Viewer) -->
+    <transition name="modal-fade">
+      <div v-if="activePreviewIndex !== null" class="image-viewer-modal" @click.self="closeImageViewer">
+        <div class="viewer-dialog">
+          <div class="viewer-header">
+            <div class="viewer-title-group">
+              <span class="viewer-icon">📷</span>
+              <span class="viewer-filename">{{ currentPreviewImage?.name }}</span>
+              <span class="viewer-tag" :class="currentPreviewImage?.tagClass">{{ currentPreviewImage?.angleTag }}</span>
+            </div>
+            <button class="viewer-close-btn" @click="closeImageViewer" title="关闭预览 (Esc)">✕</button>
+          </div>
+
+          <div class="viewer-body">
+            <button 
+              class="nav-btn prev-btn" 
+              @click="prevImage" 
+              :disabled="activePreviewIndex === 0"
+              title="上一张图片"
+            >
+              ❮
+            </button>
+            
+            <div class="main-image-wrapper">
+              <img :src="currentPreviewImage?.url" :alt="currentPreviewImage?.name" class="main-preview-img" />
+            </div>
+
+            <button 
+              class="nav-btn next-btn" 
+              @click="nextImage" 
+              :disabled="activePreviewIndex === imagePreviewList.length - 1"
+              title="下一张图片"
+            >
+              ❯
+            </button>
+          </div>
+
+          <div class="viewer-footer">
+            <div class="meta-row">
+              <span class="meta-chip">分辨率: <b>{{ currentPreviewImage?.res }}</b></span>
+              <span class="meta-chip">大小: <b>{{ currentPreviewImage?.size }}</b></span>
+              <span class="meta-chip">采集设备: <b>{{ currentPreviewImage?.device }}</b></span>
+              <span class="meta-chip">视角方位: <b>{{ currentPreviewImage?.perspective }}</b></span>
+            </div>
+            <div class="viewer-counter">
+              <b>{{ activePreviewIndex + 1 }}</b> / {{ imagePreviewList.length }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
 
     <!-- 错误拦截提示 Toast -->
     <transition name="toast-fade">
@@ -197,6 +334,132 @@ const isCopied = ref(false)
 const fileInputRef = ref(null)
 const folderInputRef = ref(null)
 
+// 📸 图像预览与放大查看器状态
+const imagePreviewList = ref([])
+const activePreviewIndex = ref(null)
+const perspectiveFilter = ref('all') // 'all' | 'uav' | 'ugv'
+let rawUploadedFiles = []
+
+const uavImageList = computed(() => {
+  return imagePreviewList.value.filter(img => img.perspectiveType === 'uav')
+})
+
+const ugvImageList = computed(() => {
+  return imagePreviewList.value.filter(img => img.perspectiveType === 'ugv')
+})
+
+const filteredImageList = computed(() => {
+  if (perspectiveFilter.value === 'uav') return uavImageList.value
+  if (perspectiveFilter.value === 'ugv') return ugvImageList.value
+  return imagePreviewList.value
+})
+
+const currentPreviewImage = computed(() => {
+  if (activePreviewIndex.value === null || !imagePreviewList.value.length) return null
+  return imagePreviewList.value[activePreviewIndex.value]
+})
+
+const openImageViewer = (index) => {
+  activePreviewIndex.value = index
+}
+
+const closeImageViewer = () => {
+  activePreviewIndex.value = null
+}
+
+const prevImage = () => {
+  if (activePreviewIndex.value > 0) {
+    activePreviewIndex.value--
+  }
+}
+
+const nextImage = () => {
+  if (activePreviewIndex.value < imagePreviewList.value.length - 1) {
+    activePreviewIndex.value++
+  }
+}
+
+// 默认预设演示图片集 (包含无人机/无人车多视角高精图像)
+const defaultPresetImages = [
+  {
+    name: 'UAV_Cam_01_Overview.png',
+    url: '/Dashboard/images2/uav_aerial_photo.png',
+    size: '0.91 MB',
+    res: '4096 x 2160',
+    angleTag: 'UAV 4K 俯瞰帧',
+    tagClass: 'tag-uav',
+    perspectiveType: 'uav',
+    device: 'DJI M300 RTK 搭载 Zenmuse H20T',
+    perspective: '俯瞰正交全景 (Pitch: -90°)'
+  },
+  {
+    name: 'UAV_Ground_02_SideAngle.png',
+    url: '/Dashboard/images2/tanker_aerial_photo.png',
+    size: '0.94 MB',
+    res: '3840 x 2160',
+    angleTag: 'UAV 45° 倾斜帧',
+    tagClass: 'tag-uav',
+    perspectiveType: 'uav',
+    device: 'DJI M300 RTK 搭载 Zenmuse H20T',
+    perspective: '侧前方45度视角 (Pitch: -45°)'
+  },
+  {
+    name: 'UGV_Impact_Detail_03.png',
+    url: '/Dashboard/images2/tanker-accident-detection.png',
+    size: '0.86 MB',
+    res: '1920 x 1080',
+    angleTag: 'UGV 地面撞击近景帧',
+    tagClass: 'tag-ugv',
+    perspectiveType: 'ugv',
+    device: '1号无人侦察车 激光与光学防爆摄像头',
+    perspective: '罐体前侧碰撞深度凹陷区'
+  },
+  {
+    name: 'UAV_Feature_Matching_04.png',
+    url: '/Dashboard/images2/story-accident-detection.png',
+    size: '3.12 MB',
+    res: '3840 x 2160',
+    angleTag: 'UAV 多视角匹配帧',
+    tagClass: 'tag-uav',
+    perspectiveType: 'uav',
+    device: '边缘计算节点 SIFT 特征云端融合',
+    perspective: '多维坐标匹配与密集点云对齐'
+  },
+  {
+    name: 'UGV_Leak_Area_Detail_05.png',
+    url: '/Dashboard/images2/tanker-leak-detection.png',
+    size: '2.68 MB',
+    res: '2560 x 1440',
+    angleTag: 'UGV 泄漏处特写帧',
+    tagClass: 'tag-ugv',
+    perspectiveType: 'ugv',
+    device: '1号无人侦察车 防爆气体/红外监控',
+    perspective: '罐体阀门与右侧板撕裂口近景'
+  },
+  {
+    name: 'UAV_Diffusion_Panorama_06.png',
+    url: '/Dashboard/images2/tanker-diffusion-detection.png',
+    size: '4.18 MB',
+    res: '3840 x 2160',
+    angleTag: 'UAV 扩散全景视角帧',
+    tagClass: 'tag-uav',
+    perspectiveType: 'uav',
+    device: '无人机高空长焦红外相机',
+    perspective: '现场次生灾害气体扩散边界'
+  },
+  {
+    name: 'UGV_Thermal_Infrared_07.png',
+    url: '/Dashboard/images2/story-fire-detection.png',
+    size: '2.80 MB',
+    res: '1920 x 1080',
+    angleTag: 'UGV 热成像光谱融合帧',
+    tagClass: 'tag-ugv',
+    perspectiveType: 'ugv',
+    device: '1号无人侦察车 FLIR 热成像仪',
+    perspective: '事故车辆受损区域热红外温差'
+  }
+]
+
 // 进度监控数据
 const progressPercentage = ref(0)
 const transferredMB = ref('0.0')
@@ -222,12 +485,50 @@ const datasetResult = ref({
 // 支持的扩展名列表
 const validExtensions = ['.zip', '.tar.gz', '.tar', '.7z', '.jpg', '.jpeg', '.png', '.webp', '.bmp']
 
-// 点击输入框
-const triggerFileInput = () => {
-  if (fileInputRef.value) fileInputRef.value.click()
+// 点击“选择数据集压缩包” -> 弹出操作系统的文件选择管理器
+const handleSelectZip = () => {
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+    fileInputRef.value.click()
+  }
 }
-const triggerFolderInput = () => {
-  if (folderInputRef.value) folderInputRef.value.click()
+
+// 点击“选择图片文件夹” -> 弹出操作系统的文件夹选择管理器
+const handleSelectFolder = () => {
+  if (folderInputRef.value) {
+    folderInputRef.value.value = ''
+    folderInputRef.value.click()
+  }
+}
+
+// ⚡ 一键载入默认示例数据集包 (public/Dashboard/zip)
+const loadPresetZip = () => {
+  currentFileName.value = 'accident_truck_dataset.zip (默认示范包: public/Dashboard/zip)'
+  startSimulatedUpload({
+    filename: 'accident_truck_dataset.zip',
+    imageCount: 248,
+    fileSizeMB: '156.8',
+    prefix: 'LK-COACH',
+    presetInfo: {
+      source: 'public/Dashboard/zip/accident_truck_dataset.zip',
+      modelType: '仙桃市追尾事故客车'
+    }
+  })
+}
+
+// ⚡ 一键载入默认示例图片集 (public/Dashboard/images2)
+const loadPresetImages = () => {
+  currentFileName.value = '[多视角图片集] public/Dashboard/images2/'
+  startSimulatedUpload({
+    filename: 'public/Dashboard/images2/',
+    imageCount: 180,
+    fileSizeMB: '94.2',
+    prefix: 'LK-HAZMAT',
+    presetInfo: {
+      source: 'public/Dashboard/images2/',
+      modelType: '重型危化品槽罐车'
+    }
+  })
 }
 
 // 拖拽处理
@@ -277,7 +578,8 @@ const processSelectedFiles = (files, isFolder = false) => {
     return
   }
 
-  // 校验通过，启动传输动画
+  // 校验通过，记录文件并启动传输动画
+  rawUploadedFiles = files
   const firstFile = files[0]
   currentFileName.value = isFolder ? `[文件夹] ${firstFile.webkitRelativePath.split('/')[0] || '两客一危图像数据集'}` : firstFile.name
   
@@ -331,6 +633,31 @@ const startSimulatedUpload = ({ filename, imageCount, fileSizeMB, prefix, preset
 // 上传完成生成电子凭证 ID
 const finishUpload = ({ filename, imageCount, fileSizeMB, prefix, presetInfo }) => {
   uploadState.value = 'completed'
+
+  // 📷 填充多视角图像预览列表
+  const localImageFiles = rawUploadedFiles.filter(f => {
+    const ext = '.' + f.name.split('.').pop().toLowerCase()
+    return ['.jpg', '.jpeg', '.png', '.webp', '.bmp'].includes(ext)
+  })
+
+  if (localImageFiles.length > 0) {
+    imagePreviewList.value = localImageFiles.map((file, idx) => {
+      const isUav = idx % 2 === 0
+      return {
+        name: file.name,
+        url: URL.createObjectURL(file),
+        size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+        res: '3840 x 2160',
+        angleTag: isUav ? 'UAV 4K 视角' : 'UGV 地面视角',
+        tagClass: isUav ? 'tag-uav' : 'tag-ugv',
+        perspectiveType: isUav ? 'uav' : 'ugv',
+        device: isUav ? 'DJI M300 RTK 搭载 Zenmuse H20T' : '1号无人侦察车 (UGV)',
+        perspective: `环绕视角 #${idx + 1} (${(idx * 35) % 360}° 方位角)`
+      }
+    })
+  } else {
+    imagePreviewList.value = defaultPresetImages
+  }
   
   const now = new Date()
   const dateStr = now.getFullYear().toString() +
@@ -357,13 +684,20 @@ const finishUpload = ({ filename, imageCount, fileSizeMB, prefix, presetInfo }) 
     accidentCategory = '两客一危 - 道路侧翻事故'
   }
 
+  const totalCount = imageCount || 342
+  const ratioUav = uavImageList.value.length / (imagePreviewList.value.length || 1)
+  const uavCountVal = Math.round(totalCount * ratioUav)
+  const ugvCountVal = totalCount - uavCountVal
+
   datasetResult.value = {
     id: datasetId,
     categoryLabel,
     categoryClass,
     vehicleModel,
     accidentCategory,
-    imageCount: imageCount || 342,
+    imageCount: totalCount,
+    uavCount: uavCountVal,
+    ugvCount: ugvCountVal,
     fileSize: `${fileSizeMB} MB`,
     md5Hash: generateMockMD5(),
     timestamp: now.toLocaleString('zh-CN')
@@ -536,11 +870,58 @@ const progressStatusText = computed(() => {
   border-radius: 20px;
 }
 
-.action-buttons {
+.action-buttons-grid {
   display: flex;
   justify-content: center;
-  gap: 16px;
+  gap: 20px;
   flex-wrap: wrap;
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.action-btn-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 280px;
+}
+
+.btn-block {
+  width: 100%;
+  justify-content: center;
+}
+
+.preset-default-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px dashed rgba(0, 242, 254, 0.35);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 11.5px;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preset-default-row:hover {
+  background: rgba(0, 242, 254, 0.1);
+  border-color: #00f2fe;
+  color: #f1f5f9;
+}
+
+.preset-path {
+  color: #38bdf8;
+  font-family: "Consolas", monospace;
+  font-size: 11px;
+}
+
+.quick-badge {
+  color: #00ffaa;
+  font-weight: bold;
+  font-size: 11px;
 }
 
 /* 按钮样式 */
@@ -810,7 +1191,62 @@ const progressStatusText = computed(() => {
 .text-cyan { color: #00f2fe; }
 .text-blue { color: #38bdf8; }
 .text-green { color: #34d399; }
+.text-uav { color: #00f2fe; }
+.text-amber { color: #fbbf24; }
 .font-mono { font-family: monospace; font-size: 12px; }
+
+.highlight-uav-item {
+  background: rgba(0, 242, 254, 0.06) !important;
+  border: 1px solid rgba(0, 242, 254, 0.3) !important;
+}
+
+.highlight-ugv-item {
+  background: rgba(251, 191, 36, 0.06) !important;
+  border: 1px solid rgba(251, 191, 36, 0.3) !important;
+}
+
+.gallery-filter-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.filter-tab {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-tab:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.filter-tab.active {
+  background: #00f2fe;
+  color: #020712;
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.4);
+}
+
+.filter-tab.tab-uav-filter.active {
+  background: #00f2fe;
+  color: #020712;
+}
+
+.filter-tab.tab-ugv-filter.active {
+  background: #fbbf24;
+  color: #020712;
+}
 
 .completed-actions {
   display: flex;
@@ -844,4 +1280,302 @@ const progressStatusText = computed(() => {
 
 .toast-fade-enter-active, .toast-fade-leave-active { transition: all 0.3s ease; }
 .toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translateY(10px); }
+
+/* 📸 图像预览集与查看器样式 */
+.image-gallery-section {
+  margin-top: 20px;
+  margin-bottom: 24px;
+  background: rgba(2, 11, 24, 0.7);
+  border: 1px solid rgba(0, 242, 254, 0.2);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+.gallery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gallery-title-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gallery-icon {
+  font-size: 22px;
+}
+
+.gallery-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #00f2fe;
+}
+
+.gallery-subtitle {
+  margin: 2px 0 0 0;
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+.gallery-badge {
+  font-size: 11px;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.thumbnail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  gap: 12px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.thumb-card {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.thumb-card:hover {
+  transform: translateY(-3px);
+  border-color: #00f2fe;
+  box-shadow: 0 8px 20px rgba(0, 242, 254, 0.25);
+}
+
+.thumb-img-wrapper {
+  position: relative;
+  width: 100%;
+  height: 95px;
+  background: #090f1d;
+  overflow: hidden;
+}
+
+.thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.thumb-card:hover .thumb-img {
+  transform: scale(1.08);
+}
+
+.thumb-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(2, 12, 27, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.thumb-card:hover .thumb-overlay {
+  opacity: 1;
+}
+
+.zoom-btn {
+  font-size: 11px;
+  font-weight: 600;
+  color: #00f2fe;
+  background: rgba(0, 242, 254, 0.2);
+  border: 1px solid #00f2fe;
+  padding: 3px 8px;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+}
+
+.thumb-angle-tag {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  backdrop-filter: blur(4px);
+}
+.tag-uav { background: rgba(0, 242, 254, 0.85); color: #020712; }
+.tag-ugv { background: rgba(251, 191, 36, 0.85); color: #020712; }
+.tag-feature { background: rgba(52, 211, 153, 0.85); color: #020712; }
+.tag-thermal { background: rgba(248, 113, 113, 0.85); color: #020712; }
+
+.thumb-info {
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(8, 15, 30, 0.9);
+}
+
+.thumb-name {
+  font-size: 11px;
+  color: #e2e8f0;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.thumb-meta {
+  font-size: 10px;
+  color: #64748b;
+  font-family: monospace;
+}
+
+/* 🖼️ 大图查看器 Lightbox Modal */
+.image-viewer-modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(2, 7, 18, 0.92);
+  backdrop-filter: blur(12px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.viewer-dialog {
+  width: 960px;
+  max-width: 95vw;
+  max-height: 92vh;
+  background: #091122;
+  border: 1px solid rgba(0, 242, 254, 0.4);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(0, 242, 254, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.viewer-header {
+  padding: 14px 20px;
+  background: #0f172a;
+  border-bottom: 1px solid rgba(0, 242, 254, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.viewer-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.viewer-icon { font-size: 18px; }
+.viewer-filename { font-size: 14px; font-weight: 700; color: #ffffff; font-family: monospace; }
+.viewer-tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+
+.viewer-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 20px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.viewer-close-btn:hover { color: #f87171; }
+
+.viewer-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: #040914;
+  position: relative;
+  overflow: hidden;
+}
+
+.main-image-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: 65vh;
+  overflow: hidden;
+}
+
+.main-preview-img {
+  max-width: 100%;
+  max-height: 65vh;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 242, 254, 0.15);
+}
+
+.nav-btn {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(0, 242, 254, 0.3);
+  color: #00f2fe;
+  font-size: 20px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 10;
+  margin: 0 10px;
+}
+.nav-btn:hover:not(:disabled) {
+  background: #00f2fe;
+  color: #020712;
+  box-shadow: 0 0 15px rgba(0, 242, 254, 0.5);
+}
+.nav-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  border-color: #334155;
+  color: #64748b;
+}
+
+.viewer-footer {
+  padding: 12px 20px;
+  background: #0f172a;
+  border-top: 1px solid #1e293b;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.meta-row {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+.meta-chip b { color: #00f2fe; }
+
+.viewer-counter {
+  font-size: 13px;
+  color: #cbd5e1;
+  font-family: monospace;
+}
+.viewer-counter b { color: #00f2fe; font-size: 15px; }
+
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.25s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
 </style>

@@ -344,11 +344,12 @@
                   <th>测量数值 / 维度</th>
                   <th>空间三维坐标 (X, Y, Z)</th>
                   <th>评估结论与合规判断</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="measurements.length === 0">
-                  <td colspan="6" class="no-data-td">暂无三维测量项（请在 3D 画布中使用测量工具栏拾取点/线/面）</td>
+                  <td colspan="7" class="no-data-td">暂无三维测量项（请在 3D 画布中使用测量工具栏拾取点/线/面）</td>
                 </tr>
                 <tr v-for="(m, index) in measurements" :key="m.id">
                   <td>{{ index + 1 }}</td>
@@ -369,6 +370,9 @@
                     <span v-else-if="m.type === 'area'" class="remark-tag remark-danger">地面投影影子覆盖</span>
                     <span v-else class="remark-tag remark-normal">结构定位正常</span>
                   </td>
+                  <td>
+                    <button class="delete-report-btn" @click="deleteMeasurement(m.id)" title="同步从场景与报表中移除">🗑️ 移除</button>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -385,11 +389,17 @@
         </div>
 
         <div class="report-footer">
-          <button class="report-action-btn secondary" @click="exportCSVData">
+          <button class="report-action-btn secondary" @click="exportTXTReport" title="纯文本 (TXT格式) 导出">
+            📝 导出 TXT 纯文本
+          </button>
+          <button class="report-action-btn secondary" @click="exportMDReport" title="Markdown (MD格式) 表格导出">
+            📑 导出 Markdown 报告
+          </button>
+          <button class="report-action-btn secondary" @click="exportCSVData" title="CSV 数据导出">
             💾 导出 CSV 数据
           </button>
-          <button class="report-action-btn primary" @click="printReport">
-            🖨️ 打印 / 导出 PDF 报告
+          <button class="report-action-btn primary" @click="printReport" title="打印/导出 PDF 报告">
+            🖨️ 打印 / 导出 PDF
           </button>
         </div>
       </div>
@@ -636,6 +646,91 @@ const estimateGroundPolygonPerimeter = (pts) => {
     len += Math.sqrt(dx * dx + dz * dz)
   }
   return len * modelScaleFactor.value
+}
+
+// 纯文本 (TXT 格式) 导出
+const exportTXTReport = () => {
+  let txt = `====================================================\n`
+  txt += `两客一危事故车辆 3D 精细测量与痕迹评估报告\n`
+  txt += `报告编号: REP-${Date.now()}\n`
+  txt += `生成时间: ${reportGenerateTime.value || new Date().toLocaleString()}\n`
+  txt += `事故车辆模型: ${getModelName(props.modelUrl)}\n`
+  txt += `网格规模: ${formatNumber(modelStats.value.vertices)} 顶点 / ${formatNumber(modelStats.value.faces)} 三角面\n`
+  txt += `====================================================\n\n`
+  txt += `【测量数据明细列表】\n`
+
+  if (measurements.value.length === 0) {
+    txt += `暂无三维测量项数据。\n`
+  } else {
+    measurements.value.forEach((m, idx) => {
+      const typeLabel = m.type === 'point' ? '点坐标' : m.type === 'line' ? '直线距离' : '地面投影面积'
+      txt += `测量项${idx + 1}: ${m.name} (${typeLabel}) - ${m.valueStr}\n`
+      m.points.forEach((p, pIdx) => {
+        txt += `   P${pIdx + 1}: X=${p.x.toFixed(2)}m, Y=${p.y.toFixed(2)}m, Z=${p.z.toFixed(2)}m\n`
+      })
+    })
+  }
+
+  txt += `\n【综合评估结论】\n`
+  txt += `最大深度侵入/形变距离: ${getMaxDeformationDistance()} m\n`
+  txt += `累计损毁地面正交投影面积: ${getTotalDamagedArea()} m²\n`
+  txt += `结构安全评估等级: LEVEL III (中重度受损)\n`
+
+  const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `LKYW_3D_Measurement_Report_${Date.now()}.txt`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(link.href)
+}
+
+// Markdown (MD 格式) 导出
+const exportMDReport = () => {
+  let md = `# 两客一危事故车辆 3D 精细测量与痕迹评估报告\n\n`
+  md += `- **报告编号**: REP-${Date.now()}\n`
+  md += `- **生成时间**: ${reportGenerateTime.value || new Date().toLocaleString()}\n`
+  md += `- **事故车辆模型**: ${getModelName(props.modelUrl)}\n`
+  md += `- **网格数据规模**: ${formatNumber(modelStats.value.vertices)} 顶点 | ${formatNumber(modelStats.value.faces)} 三角面\n\n`
+
+  md += `## 一、统计汇总\n\n`
+  md += `| 评估指标 | 测量数值 | 备注 |\n`
+  md += `| :--- | :--- | :--- |\n`
+  md += `| 有效测量项数量 | ${measurements.value.length} 个记录 | 实时绑定场景中点/线/面 |\n`
+  md += `| 最大形变/碰撞侵入距离 | ${getMaxDeformationDistance()} m | 依据 3D 点云与网格算得 |\n`
+  md += `| 累计损毁地面正交投影面积 | ${getTotalDamagedArea()} m² | 基于 Shoelace 投影算法算得 |\n`
+  md += `| 结构安全评估等级 | LEVEL III | 中重度受损 |\n\n`
+
+  md += `## 二、空间三维测量明细表\n\n`
+  md += `| 序号 | 测量类型 | 测量项名称 | 测量数值 / 维度 | 空间三维坐标 (X, Y, Z) | 评估结论 |\n`
+  md += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`
+
+  if (measurements.value.length === 0) {
+    md += `| - | - | 暂无三维测量项 | - | - | - |\n`
+  } else {
+    measurements.value.forEach((m, idx) => {
+      const typeLabel = m.type === 'point' ? '点坐标' : m.type === 'line' ? '直线距离' : '地面投影面积'
+      const coords = m.points.map((p, pIdx) => `P${pIdx + 1}: (${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)})`).join('<br>')
+      let remark = '结构定位正常'
+      if (m.type === 'line' && m.distance > 1.5) remark = '超过大梁安全阈值'
+      else if (m.type === 'area') remark = '地面投影影子覆盖'
+
+      md += `| ${idx + 1} | ${typeLabel} | **${m.name}** | ${m.valueStr} | ${coords} | ${remark} |\n`
+    })
+  }
+
+  md += `\n## 三、综合痕迹与损伤评估结论\n\n`
+  md += `基于高精度 SFM/MVS 算法重建的三维实景网格，经上述步骤四 3D 空间测量数据分析，事故车辆受损区域主要集中于碰撞部位。测得最大深度侵入量为 **${getMaxDeformationDistance()} m**，地面正交投影覆盖面积为 **${getTotalDamagedArea()} m²**。建议结合大梁变形状况安排定损与救援重建方案。\n`
+
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `LKYW_3D_Measurement_Report_${Date.now()}.md`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(link.href)
 }
 
 // 导出 CSV
@@ -2042,6 +2137,20 @@ onBeforeUnmount(() => {
 .remark-warning { background: rgba(251, 191, 36, 0.1); color: #fbbf24; }
 .remark-danger { background: rgba(248, 113, 113, 0.1); color: #f87171; }
 
+.delete-report-btn {
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  color: #f87171;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.delete-report-btn:hover {
+  background: #f87171;
+  color: #020712;
+}
 .report-conclusion-box {
   background: rgba(15, 23, 42, 0.8);
   border: 1px dashed rgba(0, 242, 254, 0.3);
