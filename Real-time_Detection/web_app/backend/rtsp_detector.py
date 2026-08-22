@@ -49,16 +49,21 @@ def get_class_color(class_name):
 
 
 def is_fire_class(class_name):
-    normalized_name = str(class_name or "").strip().lower().replace("-", "_").replace(" ", "_")
-    leak_markers = ("leak", "hazmat", "tank", "泄露", "泄漏", "危化")
-    nofire_markers = ("nofire", "no_fire", "non_fire", "normal", "无火", "未起火", "正常")
-    fire_markers = ("fire", "起火", "火灾", "着火")
+    """
+    检查类别是否属于事故/异常类别（用于事故检测次数统计）：
+    - 包含事故标签：carFire, lkywFire, carNofire, lkywNofire, leak
+    - 排除正常/未泄露标签：noleak, no_leak, tank_normal, normal
+    """
+    if not class_name:
+        return False
+    normalized_name = str(class_name).strip().lower().replace("-", "_").replace(" ", "_")
 
-    if any(marker in normalized_name for marker in leak_markers):
+    normal_markers = ("noleak", "no_leak", "tank_normal", "normal", "正常", "未泄露", "未起火")
+    if any(marker in normalized_name for marker in normal_markers):
         return False
-    if any(marker in normalized_name for marker in nofire_markers):
-        return False
-    return any(marker in normalized_name for marker in fire_markers)
+
+    accident_markers = ("fire", "起火", "火灾", "着火", "leak", "hazmat", "tank", "泄露", "泄漏", "危化", "nofire", "accident")
+    return any(marker in normalized_name for marker in accident_markers)
 
 
 class RTSPDetector:
@@ -85,10 +90,12 @@ class RTSPDetector:
         self.last_inference_time = 0.019
         self.lock = threading.Lock()
         
-        # 统计信息
+        # 统计信息与事故防抖控制
         self.frame_count = 0
         self.fire_count = 0
         self.last_detection_time = None
+        self.in_accident_state = False
+        self.last_accident_count_time = 0.0
 
     def update_settings(self, conf_threshold=None, iou_threshold=None, model_name=None, detection_mode=None, task_type=None):
         with self.lock:
@@ -188,17 +195,26 @@ class RTSPDetector:
 
                 notify_detection = False
                 stats_snapshot = None
+                now_t = time.time()
+                has_accident = detection_info.get('has_fire', False)
+
                 with self.lock:
                     self.current_frame = annotated_frame
                     self.detection_result = detection_info
                     self.frame_count += 1
                     self.frame_version += 1
-                    self.last_detection_time = time.time()
+                    self.last_detection_time = now_t
                     self.last_inference_time = proc_time
                     
-                    if detection_info.get('has_fire', False):
-                        self.fire_count += 1
-                        notify_detection = True
+                    if has_accident:
+                        # 防抖与事件去重逻辑：从无事故变为有事故，或距上次计数超过3秒时记为一次新的事故检测
+                        if not self.in_accident_state or (now_t - self.last_accident_count_time > 3.0):
+                            self.fire_count += 1
+                            self.last_accident_count_time = now_t
+                            notify_detection = True
+                        self.in_accident_state = True
+                    else:
+                        self.in_accident_state = False
 
                     stats_snapshot = {
                         'camera_id': self.camera_id,

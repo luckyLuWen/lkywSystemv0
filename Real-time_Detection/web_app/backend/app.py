@@ -296,16 +296,23 @@ def get_class_color(class_name):
 
 
 def is_fire_class(class_name):
-    normalized_name = str(class_name or "").strip().lower().replace("-", "_").replace(" ", "_")
-    leak_markers = ("leak", "hazmat", "tank", "泄露", "泄漏", "危化")
-    nofire_markers = ("nofire", "no_fire", "non_fire", "normal", "无火", "未起火", "正常")
-    fire_markers = ("fire", "起火", "火灾", "着火")
+    """
+    检查类别是否属于事故/异常类别（用于事故检测次数统计）：
+    - 包含事故标签：carFire, lkywFire, carNofire, lkywNofire, leak
+    - 排除正常/未泄露标签：noleak, no_leak, tank_normal, normal
+    """
+    if not class_name:
+        return False
+    normalized_name = str(class_name).strip().lower().replace("-", "_").replace(" ", "_")
 
-    if any(marker in normalized_name for marker in leak_markers):
+    normal_markers = ("noleak", "no_leak", "tank_normal", "normal", "正常", "未泄露", "未起火")
+    if any(marker in normalized_name for marker in normal_markers):
         return False
-    if any(marker in normalized_name for marker in nofire_markers):
-        return False
-    return any(marker in normalized_name for marker in fire_markers)
+
+    accident_markers = ("fire", "起火", "火灾", "着火", "leak", "hazmat", "tank", "泄露", "泄漏", "危化", "nofire", "accident")
+    return any(marker in normalized_name for marker in accident_markers)
+
+
 
 
 # RTSP检测器管理
