@@ -250,6 +250,9 @@ const currentModelDisplayName = computed(() => {
   return props.settings?.model || 'SFGA-YOLO26M'
 })
 
+let webcamInAccident = false
+let webcamLastAccidentTime = 0
+
 const detectWebcamFrame = async () => {
   if (!isStreaming.value) return
   
@@ -280,6 +283,23 @@ const detectWebcamFrame = async () => {
       webcamDetections.value = data.detections || []
       webcamInferenceTime.value = data.inference_time || 0.018
       webcamLastUpdate.value = new Date().toLocaleTimeString('zh-CN')
+
+      const hasAccident = (data.detections || []).some(d => {
+        const cls = (d.class || '').toLowerCase()
+        return (cls.includes('fire') || cls.includes('leak') || cls.includes('accident') || cls.includes('nofire')) && 
+               !cls.includes('normal') && !cls.includes('noleak')
+      })
+
+      const now = Date.now()
+      if (hasAccident) {
+        if (!webcamInAccident || (now - webcamLastAccidentTime > 3000)) {
+          webcamFireCount.value += 1
+          webcamLastAccidentTime = now
+        }
+        webcamInAccident = true
+      } else {
+        webcamInAccident = false
+      }
     }
   } catch (error) {
     console.error('Webcam detection error:', error)
