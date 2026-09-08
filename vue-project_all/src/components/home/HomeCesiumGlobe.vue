@@ -2447,9 +2447,11 @@ function getModelTopPosition(lng, lat, height, heading, pitch, roll, localZOffse
   const worldOffset = Cesium.Matrix3.multiplyByVector(matrix3, localOffset, new Cesium.Cartesian3());
   return Cesium.Cartesian3.add(basePosition, worldOffset, new Cesium.Cartesian3());
 }
-import { onBeforeUnmount, onMounted, ref, watch, reactive, computed } from 'vue'
+import { onBeforeUnmount, onMounted, onActivated, onDeactivated, ref, watch, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import * as Cesium from 'cesium'
+
+const isComponentActive = ref(true)
 import {
   buildRealtimeDetectionApiUrl,
   getCollaborativeCommandCenterBaseUrl,
@@ -7514,9 +7516,9 @@ function initTrafficVehiclesFromGeoJson(geojson) {
       activeFocusedRiskPoint.position = currentPos;
     }
 
-    // 随机浮动两客一危车辆时速显示，使孪生大屏更有动态感 (每隔 0.8 秒更新一次)
+    // 随机浮动两客一危车辆时速显示，使孪生大屏更有动态感 (每隔 0.8 秒更新一次，仅在组件激活状态下更新 texture 防止 canvas 脱离 DOM 导致 TextureAtlas 损坏)
     speedUpdateAccumulator += dt;
-    if (speedUpdateAccumulator >= 0.8) {
+    if (isComponentActive.value && speedUpdateAccumulator >= 0.8) {
       speedUpdateAccumulator = 0;
       if (lkywVehicles.value && lkywVehicles.value.length > 0) {
         lkywVehicles.value.forEach(lv => {
@@ -11430,6 +11432,22 @@ onMounted(() => {
   initViewer()
   updateTime()
   timeInterval = setInterval(updateTime, 1000)
+})
+onActivated(() => {
+  isComponentActive.value = true
+  if (viewer && !viewer.isDestroyed()) {
+    try {
+      viewer.resize()
+      viewer.scene.requestRender()
+    } catch (e) {}
+  }
+  // 从子模块返回地图大屏首页时，自动重置并重新构建车辆与赛博标牌，确保牌子 100% 恢复正常显示
+  if (cachedHubeiGeojson) {
+    reApplyTrafficRoutes()
+  }
+})
+onDeactivated(() => {
+  isComponentActive.value = false
 })
 onBeforeUnmount(() => {
   stopAutoRotate()
