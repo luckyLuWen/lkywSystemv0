@@ -167,6 +167,22 @@
 
       <!-- 三维空间检测热点与动态测量 HUD 卡片层 -->
       <div v-if="!isLoading && showAnnotations" class="inspection-tags-layer">
+        <!-- 常规检测点 -->
+        <div 
+          v-for="(tag, idx) in inspectionTags" 
+          :key="'tag-' + idx" 
+          class="inspection-tag-card"
+          :style="{ left: tag.screenX + 'px', top: tag.screenY + 'px' }"
+          :class="{ visible: tag.visible }"
+        >
+          <div class="tag-header">
+            <span class="tag-dot"></span>
+            <span class="tag-name">{{ tag.name }}</span>
+          </div>
+          <div class="tag-body">
+            <span class="tag-val">{{ tag.value }}</span>
+          </div>
+        </div>
 
         <!-- 动态三维测量 HUD 卡片 (`Array<Measurement>`) -->
         <div 
@@ -463,6 +479,12 @@ const modelStats = ref({
   faces: 342190
 })
 
+// 常规 3D 检测点
+const inspectionTags = ref([
+  { name: '客车车头撞击点', value: '终点态凹陷: 0.42m', pos: new THREE.Vector3(0, 1.2, 2.5), screenX: 0, screenY: 0, visible: false },
+  { name: '车身激光点云密度', value: '14,200 pts/m²', pos: new THREE.Vector3(-1.8, 1.5, 0), screenX: 0, screenY: 0, visible: false },
+  { name: '轮胎侧倾夹角', value: '倾角偏差: 4.2°', pos: new THREE.Vector3(1.5, 0.6, -2.0), screenX: 0, screenY: 0, visible: false }
+])
 
 const getPresetDefaultLength = (url) => {
   if (!url) return 22.5
@@ -1375,6 +1397,20 @@ const updateTagAndHUDPositions = () => {
   const width = canvasContainerRef.value.clientWidth
   const height = canvasContainerRef.value.clientHeight
 
+  // 更新 3D 检测点
+  inspectionTags.value.forEach((tag) => {
+    const worldPos = tag.pos.clone().add(boundingBoxCenter)
+    const projected = worldPos.project(camera)
+    if (projected.z < 1.0) {
+      const x = (projected.x * 0.5 + 0.5) * width
+      const y = (-(projected.y * 0.5) + 0.5) * height
+      tag.screenX = Math.round(x)
+      tag.screenY = Math.round(y)
+      tag.visible = x >= 20 && x <= width - 20 && y >= 20 && y <= height - 20
+    } else {
+      tag.visible = false
+    }
+  })
 
   // 更新测量 HUD 卡片
   measurements.value.forEach((m) => {
@@ -2115,7 +2151,6 @@ onBeforeUnmount(() => {
   background: #f87171;
   color: #020712;
 }
-
 .report-conclusion-box {
   background: rgba(15, 23, 42, 0.8);
   border: 1px dashed rgba(0, 242, 254, 0.3);
