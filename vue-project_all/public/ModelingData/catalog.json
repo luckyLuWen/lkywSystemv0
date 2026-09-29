@@ -1,0 +1,497 @@
+{
+  "version": 2,
+  "datasets": [
+    {
+      "id": "coach-synthetic",
+      "title": "客运车仿真场景",
+      "vehicleType": "coach",
+      "captureType": "synthetic",
+      "datasetName": "客运车_仿真视角演示",
+      "dataDirectory": "/ModelingData/datasets/coach-synthetic",
+      "counts": {
+        "total": 32,
+        "uav": 24,
+        "ugv": 8
+      },
+      "images": [
+        {
+          "name": "image_001.jpg",
+          "kind": "uav",
+          "bytes": 72740,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_001.jpg"
+        },
+        {
+          "name": "image_002.jpg",
+          "kind": "uav",
+          "bytes": 71815,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_002.jpg"
+        },
+        {
+          "name": "image_003.jpg",
+          "kind": "uav",
+          "bytes": 73017,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_003.jpg"
+        },
+        {
+          "name": "image_004.jpg",
+          "kind": "uav",
+          "bytes": 73415,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_004.jpg"
+        },
+        {
+          "name": "image_005.jpg",
+          "kind": "uav",
+          "bytes": 59722,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_005.jpg"
+        },
+        {
+          "name": "image_006.jpg",
+          "kind": "uav",
+          "bytes": 54851,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_006.jpg"
+        },
+        {
+          "name": "image_007.jpg",
+          "kind": "uav",
+          "bytes": 64002,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_007.jpg"
+        },
+        {
+          "name": "image_008.jpg",
+          "kind": "uav",
+          "bytes": 73859,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_008.jpg"
+        },
+        {
+          "name": "image_009.jpg",
+          "kind": "uav",
+          "bytes": 66766,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_009.jpg"
+        },
+        {
+          "name": "image_010.jpg",
+          "kind": "uav",
+          "bytes": 70182,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_010.jpg"
+        },
+        {
+          "name": "image_011.jpg",
+          "kind": "uav",
+          "bytes": 69517,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_011.jpg"
+        },
+        {
+          "name": "image_012.jpg",
+          "kind": "uav",
+          "bytes": 63913,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_012.jpg"
+        },
+        {
+          "name": "image_013.jpg",
+          "kind": "uav",
+          "bytes": 69026,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_013.jpg"
+        },
+        {
+          "name": "image_014.jpg",
+          "kind": "uav",
+          "bytes": 70751,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_014.jpg"
+        },
+        {
+          "name": "image_015.jpg",
+          "kind": "uav",
+          "bytes": 74761,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_015.jpg"
+        },
+        {
+          "name": "image_016.jpg",
+          "kind": "uav",
+          "bytes": 74851,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_016.jpg"
+        },
+        {
+          "name": "image_017.jpg",
+          "kind": "uav",
+          "bytes": 59246,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_017.jpg"
+        },
+        {
+          "name": "image_018.jpg",
+          "kind": "uav",
+          "bytes": 53838,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_018.jpg"
+        },
+        {
+          "name": "image_019.jpg",
+          "kind": "uav",
+          "bytes": 61358,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_019.jpg"
+        },
+        {
+          "name": "image_020.jpg",
+          "kind": "uav",
+          "bytes": 69563,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_020.jpg"
+        },
+        {
+          "name": "image_021.jpg",
+          "kind": "uav",
+          "bytes": 64322,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_021.jpg"
+        },
+        {
+          "name": "image_022.jpg",
+          "kind": "uav",
+          "bytes": 66566,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_022.jpg"
+        },
+        {
+          "name": "image_023.jpg",
+          "kind": "uav",
+          "bytes": 66452,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_023.jpg"
+        },
+        {
+          "name": "image_024.jpg",
+          "kind": "uav",
+          "bytes": 62705,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_024.jpg"
+        },
+        {
+          "name": "image_001.jpg",
+          "kind": "ugv",
+          "bytes": 72118,
+          "url": "/ModelingData/datasets/coach-synthetic/UGV/image_001.jpg"
+        },
+        {
+          "name": "image_002.jpg",
+          "kind": "ugv",
+          "bytes": 70652,
+          "url": "/ModelingData/datasets/coach-synthetic/UGV/image_002.jpg"
+        },
+        {
+          "name": "image_003.jpg",
+          "kind": "ugv",
+          "bytes": 73135,
+          "url": "/ModelingData/datasets/coach-synthetic/UGV/image_003.jpg"
+        },
+        {
+          "name": "image_004.jpg",
+          "kind": "ugv",
+          "bytes": 87793,
+          "url": "/ModelingData/datasets/coach-synthetic/UGV/image_004.jpg"
+        },
+        {
+          "name": "image_005.jpg",
+          "kind": "ugv",
+          "bytes": 67839,
+          "url": "/ModelingData/datasets/coach-synthetic/UGV/image_005.jpg"
+        },
+        {
+          "name": "image_006.jpg",
+          "kind": "ugv",
+          "bytes": 66406,
+          "url": "/ModelingData/datasets/coach-synthetic/UGV/image_006.jpg"
+        },
+        {
+          "name": "image_007.jpg",
+          "kind": "ugv",
+          "bytes": 71202,
+          "url": "/ModelingData/datasets/coach-synthetic/UGV/image_007.jpg"
+        },
+        {
+          "name": "image_008.jpg",
+          "kind": "ugv",
+          "bytes": 83723,
+          "url": "/ModelingData/datasets/coach-synthetic/UGV/image_008.jpg"
+        }
+      ],
+      "samples": [
+        {
+          "name": "image_001.jpg",
+          "kind": "uav",
+          "bytes": 72740,
+          "url": "/ModelingData/datasets/coach-synthetic/UAV/image_001.jpg"
+        },
+        {
+          "name": "image_001.jpg",
+          "kind": "ugv",
+          "bytes": 72118,
+          "url": "/ModelingData/datasets/coach-synthetic/UGV/image_001.jpg"
+        }
+      ],
+      "model": {
+        "sceneDescription": "客运车仿真场景",
+        "fileName": "vehicle-surface.ply",
+        "format": "PLY",
+        "url": "/ModelingData/datasets/coach-synthetic/models/vehicle-surface.ply",
+        "previewUrl": "/ModelingData/datasets/coach-synthetic/UAV/image_001.jpg",
+        "textureUrl": "",
+        "vertices": 37209,
+        "faces": 68010,
+        "upAxis": "z",
+        "coordinateSystem": "仿真场景局部坐标",
+        "unitLabel": "模型单位",
+        "scaleCalibrated": false,
+        "scaleFactor": 1.0,
+        "coordinateLabel": "未标定 · 模型单位",
+        "scaleSource": "演示模型未提供已知实长或独立控制点",
+        "surfaceAppearance": "顶点颜色",
+        "captureType": "synthetic",
+        "vehicleType": "coach",
+        "datasetCounts": {
+          "total": 32,
+          "uav": 24,
+          "ugv": 8
+        }
+      }
+    },
+    {
+      "id": "coach-jetset-synthetic",
+      "title": "长途客运巴士仿真场景",
+      "vehicleType": "coach",
+      "captureType": "synthetic",
+      "datasetName": "长途客运巴士仿真视角演示",
+      "dataDirectory": "/ModelingData/datasets/coach-jetset-synthetic",
+      "counts": {
+        "total": 32,
+        "uav": 24,
+        "ugv": 8
+      },
+      "images": [
+        {
+          "name": "image_001.jpg",
+          "kind": "uav",
+          "bytes": 71807,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_001.jpg"
+        },
+        {
+          "name": "image_002.jpg",
+          "kind": "uav",
+          "bytes": 73556,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_002.jpg"
+        },
+        {
+          "name": "image_003.jpg",
+          "kind": "uav",
+          "bytes": 76299,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_003.jpg"
+        },
+        {
+          "name": "image_004.jpg",
+          "kind": "uav",
+          "bytes": 78894,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_004.jpg"
+        },
+        {
+          "name": "image_005.jpg",
+          "kind": "uav",
+          "bytes": 61546,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_005.jpg"
+        },
+        {
+          "name": "image_006.jpg",
+          "kind": "uav",
+          "bytes": 56243,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_006.jpg"
+        },
+        {
+          "name": "image_007.jpg",
+          "kind": "uav",
+          "bytes": 67101,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_007.jpg"
+        },
+        {
+          "name": "image_008.jpg",
+          "kind": "uav",
+          "bytes": 79699,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_008.jpg"
+        },
+        {
+          "name": "image_009.jpg",
+          "kind": "uav",
+          "bytes": 70013,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_009.jpg"
+        },
+        {
+          "name": "image_010.jpg",
+          "kind": "uav",
+          "bytes": 74329,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_010.jpg"
+        },
+        {
+          "name": "image_011.jpg",
+          "kind": "uav",
+          "bytes": 74844,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_011.jpg"
+        },
+        {
+          "name": "image_012.jpg",
+          "kind": "uav",
+          "bytes": 69784,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_012.jpg"
+        },
+        {
+          "name": "image_013.jpg",
+          "kind": "uav",
+          "bytes": 71858,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_013.jpg"
+        },
+        {
+          "name": "image_014.jpg",
+          "kind": "uav",
+          "bytes": 77521,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_014.jpg"
+        },
+        {
+          "name": "image_015.jpg",
+          "kind": "uav",
+          "bytes": 82716,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_015.jpg"
+        },
+        {
+          "name": "image_016.jpg",
+          "kind": "uav",
+          "bytes": 85393,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_016.jpg"
+        },
+        {
+          "name": "image_017.jpg",
+          "kind": "uav",
+          "bytes": 65101,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_017.jpg"
+        },
+        {
+          "name": "image_018.jpg",
+          "kind": "uav",
+          "bytes": 59120,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_018.jpg"
+        },
+        {
+          "name": "image_019.jpg",
+          "kind": "uav",
+          "bytes": 66887,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_019.jpg"
+        },
+        {
+          "name": "image_020.jpg",
+          "kind": "uav",
+          "bytes": 78620,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_020.jpg"
+        },
+        {
+          "name": "image_021.jpg",
+          "kind": "uav",
+          "bytes": 70818,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_021.jpg"
+        },
+        {
+          "name": "image_022.jpg",
+          "kind": "uav",
+          "bytes": 74812,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_022.jpg"
+        },
+        {
+          "name": "image_023.jpg",
+          "kind": "uav",
+          "bytes": 74744,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_023.jpg"
+        },
+        {
+          "name": "image_024.jpg",
+          "kind": "uav",
+          "bytes": 68483,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_024.jpg"
+        },
+        {
+          "name": "image_001.jpg",
+          "kind": "ugv",
+          "bytes": 70627,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UGV/image_001.jpg"
+        },
+        {
+          "name": "image_002.jpg",
+          "kind": "ugv",
+          "bytes": 72422,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UGV/image_002.jpg"
+        },
+        {
+          "name": "image_003.jpg",
+          "kind": "ugv",
+          "bytes": 76159,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UGV/image_003.jpg"
+        },
+        {
+          "name": "image_004.jpg",
+          "kind": "ugv",
+          "bytes": 85324,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UGV/image_004.jpg"
+        },
+        {
+          "name": "image_005.jpg",
+          "kind": "ugv",
+          "bytes": 69160,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UGV/image_005.jpg"
+        },
+        {
+          "name": "image_006.jpg",
+          "kind": "ugv",
+          "bytes": 69904,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UGV/image_006.jpg"
+        },
+        {
+          "name": "image_007.jpg",
+          "kind": "ugv",
+          "bytes": 76689,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UGV/image_007.jpg"
+        },
+        {
+          "name": "image_008.jpg",
+          "kind": "ugv",
+          "bytes": 85003,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UGV/image_008.jpg"
+        }
+      ],
+      "samples": [
+        {
+          "name": "image_001.jpg",
+          "kind": "uav",
+          "bytes": 71807,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_001.jpg"
+        },
+        {
+          "name": "image_001.jpg",
+          "kind": "ugv",
+          "bytes": 70627,
+          "url": "/ModelingData/datasets/coach-jetset-synthetic/UGV/image_001.jpg"
+        }
+      ],
+      "model": {
+        "sceneDescription": "长途客运巴士仿真场景",
+        "fileName": "vehicle-surface.ply",
+        "format": "PLY",
+        "url": "/ModelingData/datasets/coach-jetset-synthetic/models/vehicle-surface.ply",
+        "previewUrl": "/ModelingData/datasets/coach-jetset-synthetic/UAV/image_001.jpg",
+        "textureUrl": "/ModelingData/datasets/coach-jetset-synthetic/models/texture.jpg",
+        "vertices": 122786,
+        "faces": 143371,
+        "upAxis": "z",
+        "coordinateSystem": "仿真场景局部坐标",
+        "unitLabel": "模型单位",
+        "scaleCalibrated": false,
+        "scaleFactor": 1.0,
+        "coordinateLabel": "未标定 · 模型单位",
+        "scaleSource": "演示模型未提供已知实长或独立控制点",
+        "surfaceAppearance": "UV纹理图集",
+        "captureType": "synthetic",
+        "vehicleType": "coach",
+        "datasetCounts": {
+          "total": 32,
+          "uav": 24,
+          "ugv": 8
+        }
+      }
+    }
+  ]
+}
