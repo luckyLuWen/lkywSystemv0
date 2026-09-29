@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Metadata>
+  <SRS>LOCAL: source model units; metric scale unverified</SRS>
+  <UpAxis>Z</UpAxis>
+  <CaptureType>synthetic</CaptureType>
+  <CaptureDescription>Rendered viewpoints simulating UAV and UGV camera positions; not real captures.</CaptureDescription>
+  <UAVImageCount>24</UAVImageCount>
+  <UGVImageCount>8</UGVImageCount>
+  <SourceModelFormat>FBX</SourceModelFormat>
+  <ModelConversion>FBX mesh and material maps converted to PLY; not Poisson reconstruction.</ModelConversion>
+  <SurfaceColorSource>Baked UV texture atlas</SurfaceColorSource>
+  <TextureFile>models/texture.jpg</TextureFile>
+  <ScaleCalibrated>false</ScaleCalibrated>
+</Metadata>
