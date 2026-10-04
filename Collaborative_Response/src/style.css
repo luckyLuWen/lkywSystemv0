@@ -1,7 +1,3 @@
-* {
-  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', serif, sans-serif;
-}
-
-body {
-  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', serif, sans-serif;
-}
+:root { --font-ui: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', 'Segoe UI', Arial, sans-serif; --font-mono: 'JetBrains Mono', Consolas, 'Courier New', monospace; }
+* { font-family: var(--font-ui); }
+body { font-family: var(--font-ui); }

@@ -46,6 +46,8 @@
               :is-ws-connected="isWsConnected"
               @accident-picked="onAccidentPickedOnGlobe"
               @models-ready="onModelsReady"
+              @reconstruction-ready="onReconstructionReady"
+              @playback-durations="onPlaybackDurations"
             />
           </div>
           
@@ -56,6 +58,8 @@
               :phases="timelinePhases"
               :accidents="accidentPoints"
               :phases-ready="phasesReady"
+              :reconstruction-ready="reconstructionReady"
+              :playback-durations="playbackDurations"
               @locate="handleLocate"
               @phase-click="handlePhaseClick"
             />
@@ -663,6 +667,8 @@ const isRightCollapsed = ref(false)
 const activeAccidentIndex = ref(0)
 const currentFocusedPoint = ref('')
 const modelsReadyStatus = ref({})
+const reconstructionReady = ref(false)
+const playbackDurations = ref({})
 const timelineBottom = ref(18)
 const activeRightTab = ref('sensor')
 
@@ -793,6 +799,8 @@ function handleLocate() {
   }
 }
 function onModelsReady(status) { modelsReadyStatus.value = status }
+function onReconstructionReady(isReady) { reconstructionReady.value = Boolean(isReady) }
+function onPlaybackDurations(durations) { playbackDurations.value = durations || {} }
 
 onMounted(() => {
   connectWS()

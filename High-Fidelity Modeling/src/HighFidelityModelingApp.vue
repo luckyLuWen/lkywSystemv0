@@ -309,7 +309,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   position: relative;
   overflow: hidden; 
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', 'Segoe UI', Arial, sans-serif;
 }
 
 .app-header {

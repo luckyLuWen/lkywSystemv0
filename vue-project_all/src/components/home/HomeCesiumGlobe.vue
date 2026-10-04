@@ -2485,7 +2485,7 @@ watch(
   },
   { immediate: true } // immediate 确保如果页面刷新直接进入阶段九，也能正常弹出
 );
-const emit = defineEmits(['accident-picked', 'models-ready', 'update:activePhaseIndex'])
+const emit = defineEmits(['accident-picked', 'models-ready', 'update:activePhaseIndex', 'reconstruction-ready', 'playback-durations'])
 
 
 const router = useRouter()
@@ -2610,6 +2610,41 @@ const agentSpeedConfig = reactive({
   ugvDuration: 6.0,          // 无人车出动动画时长 (秒)
   multiAgentMultiplier: 9.8 // 救援装备出动倍速（与后台 Collaborative_Response 保持同步）
 });
+
+// 时间轴不能使用固定秒数：首阶段的四辆车具有不同的错峰发车时间与速度。
+// 以最晚抵达终点的车辆为准，再留出短暂终帧展示时间。
+function getStartStageCompletionMs() {
+  const routeDurationMs = Math.max(5, Number(startStageVehicleAdjust.loopDurationSec) || 18) * 1000
+  const completionRatio = Math.max(...startStageVehicleConfigs.map(({ delayRatio = 0, speedFactor = 1 }) => {
+    return Number(delayRatio) + 1 / Math.max(0.01, Number(speedFactor) || 1)
+  }))
+  return Math.ceil(routeDurationMs * completionRatio) + 800
+}
+
+function emitPlaybackDurations() {
+  const isTruck = props.phases?.[0]?.id?.startsWith('t-')
+  const uavDurationMs = Math.max(1, Number(agentSpeedConfig.uavDuration) || 6) * 1000
+  const ugvDurationMs = Math.max(1, Number(agentSpeedConfig.ugvDuration) || 6) * 1000
+  const vehicleAnimationMs = isTruck ? 4000 : 3000
+
+  emit('playback-durations', {
+    // 0：四辆初始车辆的实际最晚到达时间（根据当前控制面板参数实时计算）
+    0: getStartStageCompletionMs(),
+    // 1、2：GLB 动画文件中的实际时长（货车 4s，油罐车 3s）+ 终帧展示
+    1: vehicleAnimationMs + 800,
+    2: vehicleAnimationMs + 800,
+    // 3、7：使用当前无人机/无人车速度控制值，取并行动画中较长的一项
+    3: uavDurationMs + 800,
+    4: 8800,
+    5: 6000,
+    6: 6000,
+    7: (isTruck ? Math.max(uavDurationMs, ugvDurationMs) : Math.max(uavDurationMs, 10000)) + 800,
+    8: 6800,
+    // 完整环绕航拍 12s + 三维重建 2.2s；额外由 reconstruction-ready 信号兜底。
+    9: 15000,
+    10: 4000
+  })
+}
 
 watch(() => agentSpeedConfig.multiAgentMultiplier, (newVal) => {
   if (viewer && viewer.clock && Number(props.activePhaseIndex) === 11) {
@@ -3465,6 +3500,8 @@ watch(capturedCount, (newCount) => {
         reconstructionProcessState.value = 'done'
         reconstructionStageText.value = '✨ 三维实景数字孪生模型构建完成！'
         reconstructionActiveTab.value = '3d'
+        // 完成模型构建后，才允许时间轴离开“无人感知执行”。
+        emit('reconstruction-ready', true)
       }
     }, 2200)
   }
@@ -3957,6 +3994,17 @@ const startStageVehicleAdjust = reactive({
   copiedMsg: ''
 })
 
+watch(
+  () => [
+    props.phases?.[0]?.id,
+    startStageVehicleAdjust.loopDurationSec,
+    agentSpeedConfig.uavDuration,
+    agentSpeedConfig.ugvDuration
+  ],
+  emitPlaybackDurations,
+  { immediate: true }
+)
+
 // 根据当前场景返回对应的 cars 数组
 const activeCars = computed(() =>
   currentScene.value === 'tanker' ? startStageVehicleAdjust.carsTanker : startStageVehicleAdjust.carsTruck
@@ -4314,7 +4362,7 @@ function getUgvLast200mPosition(currentSceneName, activePhaseIndex, phaseStartTi
     }
     const actualStartTime = currentSceneName === 'truck' ? phase6StartTime : tankerPhase6StartTime;
     const elapsed = Date.now() - actualStartTime;
-    const duration = currentSceneName === 'truck' ? agentSpeedConfig.uavDuration * 1000 : 10000;
+    const duration = currentSceneName === 'truck' ? agentSpeedConfig.ugvDuration * 1000 : 10000;
     const t = Math.min(elapsed / duration, 1.0);
     
     if (t >= 1.0) {
@@ -4978,6 +5026,35 @@ let currentMissionDataSource = null;
 let currentLoadMissionId = 0;
 const missionDataSourceCache = new Map(); // 缓存加载过的 CZML 数据源，避免重复请求和卡顿
 
+// 多智能体 CZML 会在离开救援阶段时被隐藏。再次进入时，不能只复用数据源，
+// 还必须显式恢复五类救援路线和站点的绘制状态。
+function syncMultiAgentRouteVisibility(dataSource, visible) {
+  if (!dataSource || !dataSource.entities) return
+
+  dataSource.entities.values.forEach(entity => {
+    const id = String(entity.id || '')
+    if (id.startsWith('AgentPath_')) {
+      entity.show = visible
+      if (entity.polyline) entity.polyline.show = visible
+    } else if (id.startsWith('Agent_') || id.startsWith('AgentPOI_')) {
+      entity.show = visible
+    } else if (id.startsWith('AgentCP_') || id === 'StartMarker') {
+      // 中间集散点和重复起点不参与主路线展示，避免遮挡五类规划线。
+      entity.show = false
+    }
+  })
+}
+
+function syncAutonomousRouteTelemetry(dataSource, hidden) {
+  if (!dataSource || !dataSource.entities) return
+  dataSource.entities.values.forEach(entity => {
+    const id = String(entity.id || '')
+    if (id.startsWith('CarCP_') || id.startsWith('UAVCP_') || id === 'CarInfo' || id === 'UAVInfo') {
+      entity.show = !hidden
+    }
+  })
+}
+
 const loadMission = async (isMultiAgent = false) => {
   if (!viewer) return;
   const loadId = ++currentLoadMissionId;
@@ -4990,6 +5067,11 @@ const loadMission = async (isMultiAgent = false) => {
     currentMissionDataSource._lastEndpoint === endpoint &&
     !!currentMissionDataSource._isMultiAgent === isMultiAgent
   ) {
+    if (isMultiAgent) {
+      syncMultiAgentRouteVisibility(currentMissionDataSource, Number(props.activePhaseIndex) >= 11)
+    } else {
+      syncAutonomousRouteTelemetry(currentMissionDataSource, endpoint === 'crash' && Number(props.activePhaseIndex) === 3)
+    }
     return;
   }
 
@@ -5005,6 +5087,12 @@ const loadMission = async (isMultiAgent = false) => {
       viewer.dataSources.add(cachedDS);
     }
     currentMissionDataSource = cachedDS;
+    if (isMultiAgent) {
+      cachedDS.entities.values.forEach(entity => { entity.availability = undefined })
+      syncMultiAgentRouteVisibility(cachedDS, Number(props.activePhaseIndex) >= 11)
+    } else {
+      syncAutonomousRouteTelemetry(cachedDS, endpoint === 'crash' && Number(props.activePhaseIndex) === 3)
+    }
     return;
   }
 
@@ -5099,6 +5187,9 @@ const loadMission = async (isMultiAgent = false) => {
     // 第 12 阶段是“救援装备出动”：此时只显示多智能体救援路线，不能复用无人装备阶段的路径。
     const showAutonomousUavRoute = phaseIdx >= 3 && phaseIdx < 11 && !isMultiAgent;
     const showAutonomousUgvRoute = phaseIdx >= 7 && phaseIdx < 11 && !isMultiAgent;
+    // 客车追尾的“无人机出动”仅展示航线与真实无人机模型；隐藏 CZML 附带的
+    // 红/蓝动态点、进度检查点和信息标签，避免它们被误认为额外目标。
+    const hideTruckUavDispatchTelemetry = endpoint === 'crash' && phaseIdx === 3;
 
     // 让 CZML 的 UAV 和 Car 实体位置与自定义 3D 模型位置完全对齐，避免分叉
     const czmlCar = dataSource.entities.getById('Car');
@@ -5120,6 +5211,7 @@ const loadMission = async (isMultiAgent = false) => {
     
     const czmlUav = dataSource.entities.getById('UAV');
     if (czmlUav) {
+      // 保留主无人机的红色大位置点；仅隐藏路径上的小型进度检查点。
       czmlUav.show = showAutonomousUavRoute;
       if (czmlUav.model) {
         czmlUav.model.runAnimations = true;
@@ -5164,7 +5256,15 @@ const loadMission = async (isMultiAgent = false) => {
       }
     }
 
+    syncAutonomousRouteTelemetry(dataSource, hideTruckUavDispatchTelemetry)
+
     viewer.dataSources.add(dataSource);
+
+    // 首次加载与缓存复用保持一致：路线实体和折线都立即可见，
+    // 不依赖后续阶段更新的异步时机。
+    if (isMultiAgent) {
+      syncMultiAgentRouteVisibility(dataSource, phaseIdx >= 11)
+    }
 
     // 同步时间轴
     if (dataSource.clock) {
@@ -6341,6 +6441,8 @@ async function initViewer() {
 
 // 两客一危在途监控分类筛选与状态
 const activeVehicleFilter = ref('all');
+// 无人机出动阶段不显示背景车流中的红/蓝微型态势点，避免与主无人机位置点混淆。
+const suppressAuxiliaryTrafficPoints = ref(false);
 const lkywVehicles = ref([]);
 let lkywBillboardCollection = null;
 let lkywPointCollection = null;
@@ -6990,9 +7092,9 @@ function startHudStatsSimulation() {
 // 启动省界卡口实时流转模拟
 startHudStatsSimulation();
 
-function toggleVehicleFilter(filterType) {
+function toggleVehicleFilter(filterType, preserveSelection = false) {
   // 允许点击已选中的类别时取消选中，恢复显示全部车辆
-  if (activeVehicleFilter.value === filterType && filterType !== 'all') {
+  if (!preserveSelection && activeVehicleFilter.value === filterType && filterType !== 'all') {
     filterType = 'all';
   }
   
@@ -7002,6 +7104,11 @@ function toggleVehicleFilter(filterType) {
   // 1. 过滤精细重点巡航 Demo 悬浮标牌
   if (lkywVehicles.value && lkywVehicles.value.length > 0) {
     lkywVehicles.value.forEach(item => {
+      if (suppressAuxiliaryTrafficPoints.value && (item.category === 'hazard' || item.category === 'tourist')) {
+        if (item.billboard) item.billboard.show = false;
+        if (item.point) item.point.show = false;
+        return;
+      }
       const isMatch = (filterType === 'all' || item.category === filterType);
       if (item.billboard) item.billboard.show = isMatch;
       if (item.point) item.point.show = isMatch;
@@ -7012,6 +7119,10 @@ function toggleVehicleFilter(filterType) {
   if (trafficVehicles && trafficVehicles.length > 0) {
     trafficVehicles.forEach(v => {
       if (!v.primitive) return;
+      if (suppressAuxiliaryTrafficPoints.value && (v.category === 'hazard' || v.category === 'tourist')) {
+        v.primitive.show = false;
+        return;
+      }
       if (filterType === 'all') {
         v.primitive.show = true;
         v.primitive.color = Cesium.Color.fromCssColorString(v.dotColor).withAlpha(0.85);
@@ -10668,6 +10779,12 @@ function updatePhaseScene(index, animate = false) {
     const phase = props.phases[index] || props.phases[0]
     const hasFocusedPoint = !!props.focusedPointId
     const pointId = hasFocusedPoint ? props.focusedPointId : 'gateway'
+    const shouldSuppressAuxiliaryTraffic = pointId === 'accident_blue' && index === 3
+    if (suppressAuxiliaryTrafficPoints.value !== shouldSuppressAuxiliaryTraffic) {
+      suppressAuxiliaryTrafficPoints.value = shouldSuppressAuxiliaryTraffic
+      // 保持用户当前的车流筛选状态，仅刷新阶段专属可见性。
+      toggleVehicleFilter(activeVehicleFilter.value, true)
+    }
 
     // 🗺️ 隐/显盘旋轨迹实体：仅在第5阶段“次生灾害（烟雾/泄露）”和第6阶段“次生灾害（起火/弥漫）”显现
     const isSmokeOrFirePhase = (index === 5 || index === 6);
@@ -10850,6 +10967,7 @@ function updatePhaseScene(index, animate = false) {
           // 第 12 阶段仅保留多智能体救援路线，避免等待救援规划时残留无人装备路线。
           const showAutonomousUavRoute = index >= 3 && index < 11;
           const showAutonomousUgvRoute = index >= 7 && index < 11;
+          const hideTruckUavDispatchTelemetry = pointId === 'accident_blue' && index === 3;
           const uavPath = currentMissionDataSource.entities.getById('UAV_Path');
           if (uavPath) {
             uavPath.show = showAutonomousUavRoute;
@@ -10886,8 +11004,10 @@ function updatePhaseScene(index, animate = false) {
           }
           const czmlUav = currentMissionDataSource.entities.getById('UAV');
           if (czmlUav) {
+            // 保留主无人机的红色大位置点；仅隐藏路径上的小型进度检查点。
             czmlUav.show = showAutonomousUavRoute;
           }
+          syncAutonomousRouteTelemetry(currentMissionDataSource, hideTruckUavDispatchTelemetry)
 
           // 多智能体路径在第 12 阶段(index 11)“救援装备出动”及后续显示
           const multiAgentPrefixes = ['Agent_', 'AgentPath_', 'AgentPOI_', 'AgentCP_'];
@@ -11323,6 +11443,10 @@ watch(() => props.activePhaseIndex, (next, prev) => {
   } else {
     simulationPopup.show = false;
   }
+  // 每次重新进入无人感知执行，都必须等待本轮采集与重建完成。
+  if (Number(next) === 9 && Number(prev) !== 9) {
+    emit('reconstruction-ready', false)
+  }
   accidentViewLevel.value = null;
   stopAutoRotate();
   if (next === 4 && prev !== 4) {
@@ -11724,6 +11848,9 @@ async function triggerRescueMultiAgent() {
         const r = await fetch(url)
         if (!r.ok) throw new Error('HTTP ' + r.status)
     }
+    // 路线数据源装载完成后立即刷新决策日志；不再等待下一轮 5 秒轮询，
+    // 保证五类路线与右上角寻优结果同步出现。
+    await fetchMultiAgentLog()
     rescueDispatchStatus.value = '✅ 救援装备已出动'
   } catch (e) {
     rescueDispatchStatus.value = '失败: ' + (e instanceof Error ? e.message : String(e))
