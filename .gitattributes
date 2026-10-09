@@ -10,4 +10,5 @@
 *.jpg binary
 *.jpeg binary
 *.glb binary
+*.ply binary
 *.wasm binary
