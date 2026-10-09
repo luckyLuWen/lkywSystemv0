@@ -24,6 +24,14 @@
       </div>
       
       <div class="header-right-actions">
+        <div class="role-switcher">
+          <span class="role-switcher-label">当前岗位</span>
+          <span class="role-icon">{{ currentRoleProfile.icon }}</span>
+          <select v-model="currentRole" aria-label="切换当前岗位">
+            <option v-for="role in ROLE_OPTIONS" :key="role.key" :value="role.key">{{ role.label }}</option>
+          </select>
+          <span class="role-description">{{ currentRoleProfile.description }}</span>
+        </div>
         <div class="digital-clock">
           <span class="clock-icon">🕒</span>
           <span class="clock-text">{{ systemTime }}</span>
@@ -507,6 +515,7 @@ import IntegrationEventMonitor from '../components/IntegrationEventMonitor.vue'
 import HomeCesiumGlobe from '../components/home/HomeCesiumGlobe.vue'
 import HomeTimeProgress from '../components/home/HomeTimeProgress.vue'
 import { getSensorGatewayBaseUrl } from '../config/subsystems'
+import { currentRole, currentRoleProfile, ROLE_OPTIONS } from '../composables/useRoleAccess'
 
 const router = useRouter()
 const route = useRoute()
@@ -696,14 +705,18 @@ const isSensorDeployed = computed(() => {
   return activePhaseIndex.value >= 2
 })
 
-const topMenus = [
-  { key: 'home', label: '地图大屏', path: '/' },
-  { key: 'sensor', label: '感知组网', path: '/sensor-manage' },
-  { key: 'realtime', label: '实时检测', path: '/realtime' },
-  { key: 'coordination', label: '协同响应', path: '/coordination' },
-  { key: 'modeling', label: '精细建模', path: '/modeling' },
-  { key: 'simulation', label: '仿真推演', path: '/simulation' },
+const moduleMenus = [
+  { key: 'home', label: '地图大屏', path: '/', roles: [] },
+  { key: 'sensor', label: '感知组网', path: '/sensor-manage', roles: ['dispatcher', 'admin'] },
+  { key: 'realtime', label: '实时检测', path: '/realtime', roles: ['dispatcher', 'expert', 'admin'] },
+  { key: 'coordination', label: '协同响应', path: '/coordination', roles: ['commander', 'dispatcher', 'admin'] },
+  { key: 'modeling', label: '精细建模', path: '/modeling', roles: ['commander', 'expert', 'admin'] },
+  { key: 'simulation', label: '仿真推演', path: '/simulation', roles: ['commander', 'expert', 'admin'] },
 ]
+
+const topMenus = computed(() =>
+  moduleMenus.filter(item => !item.roles.length || item.roles.includes(currentRole.value))
+)
 
 const accidentPoints = [
   {
@@ -781,6 +794,12 @@ function goTo(item) {
   activeMenuKey.value = item.key
   router.push(item.path)
 }
+
+watch(currentRole, () => {
+  // 身份切换后回到总览，确保不会停留在已无权限的旧模块页面。
+  activeMenuKey.value = 'home'
+  router.replace({ path: '/' })
+})
 
 function onAccidentPickedOnGlobe(entityId) {
   const index = accidentPoints.findIndex((acc) => acc.focusPoint === entityId)
@@ -1037,6 +1056,46 @@ function handlePhaseClick(idx) {
   display: flex;
   align-items: center;
   gap: 20px;
+}
+
+.role-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 5px 9px;
+  border: 1px solid rgba(0, 242, 254, 0.28);
+  border-radius: 7px;
+  background: rgba(0, 242, 254, 0.06);
+  color: #dffcff;
+}
+
+.role-switcher-label,
+.role-description {
+  color: #8ca5bd;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.role-icon {
+  color: #00f2fe;
+  font-size: 15px;
+  text-shadow: 0 0 8px rgba(0, 242, 254, 0.8);
+}
+
+.role-switcher select {
+  min-width: 86px;
+  height: 28px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 4px;
+  color: #f2fcff;
+  background: #0a2035;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  outline: none;
+  cursor: pointer;
 }
 
 .toolbar {
