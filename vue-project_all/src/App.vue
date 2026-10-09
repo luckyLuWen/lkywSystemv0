@@ -11,6 +11,12 @@
       </button>
       <div class="nav-divider"></div>
       <span class="subpage-title">{{ routeTitle }}</span>
+      <div class="subpage-role-switcher">
+        <span class="role-caption">当前岗位</span>
+        <select v-model="currentRole" aria-label="切换当前岗位">
+          <option v-for="role in ROLE_OPTIONS" :key="role.key" :value="role.key">{{ role.label }}</option>
+        </select>
+      </div>
     </header>
 
     <main class="module-container">
@@ -26,8 +32,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { canAccessRoute, currentRole, ROLE_OPTIONS } from './composables/useRoleAccess'
 
 const router = useRouter()
 const route = useRoute()
@@ -40,6 +47,12 @@ const routeTitle = computed(() => {
     case '/modeling': return '精细建模'
     case '/simulation': return '仿真推演'
     default: return ''
+  }
+})
+
+watch(currentRole, () => {
+  if (route.path !== '/' && !canAccessRoute(route.meta.roles || [])) {
+    router.replace('/')
   }
 })
 </script>
@@ -136,6 +149,27 @@ body {
   color: #effaff;
   letter-spacing: 1px;
   text-shadow: var(--glow-shadow);
+}
+
+.subpage-role-switcher {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #9fb5c9;
+  font-size: 13px;
+}
+
+.subpage-role-switcher select {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: 6px;
+  color: #eafaff;
+  background: #07182b;
+  font: inherit;
+  font-weight: 700;
+  outline: none;
 }
 
 .fade-enter-active,

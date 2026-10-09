@@ -2,7 +2,7 @@
 
 :root {
   /* 使用系统默认的现代字体，好看且清晰 */
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', 'Segoe UI', Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 

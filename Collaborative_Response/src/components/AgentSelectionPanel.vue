@@ -74,7 +74,7 @@ const props = defineProps({
 
 <style scoped>
 .agent-selection-panel {
-  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', serif, sans-serif;
+  font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', 'Segoe UI', Arial, sans-serif;
   background: rgba(2, 12, 26, 0.8);
   border: 1px solid rgba(0, 242, 254, 0.22);
   border-radius: 12px;

@@ -1,11 +1,5 @@
 <template>
   <div class="simulation-container">
-    <!-- 返回事故时间线按钮 -->
-    <button class="back-to-timeline-btn" @click="goBackToTimeline">
-      <span class="back-arrow">←</span>
-      <span>返回事故时间线</span>
-    </button>
-
     <!-- 视图切换开关 -->
     <div class="view-toggle">
       <button :class="{ active: viewMode === '2d' }" @click="viewMode = '2d'">🗺️ 二维推演</button>
@@ -20,6 +14,48 @@
     </div>
 
     <div id="simulationCesiumContainer" class="cesium-container" :style="{ visibility: (viewMode === '3d') ? 'visible' : 'hidden', position: 'absolute', top: '20px', left: '20px', right: '20px', bottom: '20px', width: 'auto', height: 'auto', zIndex: 1 }"></div>
+    <div v-if="viewMode === '3d' && isInitializing3D" class="three-d-loading-overlay">
+      正在初始化三维仿真地图…
+    </div>
+    <div v-else-if="viewMode === '3d' && threeDError" class="three-d-loading-overlay error">
+      {{ threeDError }}
+    </div>
+    <!-- HUD 不依赖 Cesium 的异步 ready 标记；进入三维模式即展示并同步寻优日志。 -->
+    <template v-if="viewMode === '3d'">
+      <div class="three-d-vignette"></div>
+      <aside class="three-d-situation-panel">
+        <div class="three-d-panel-kicker"><i></i> LIVE INCIDENT</div>
+        <strong>{{ activeScene === 'truck_crash' ? '货车追尾事故' : '油罐车泄露事故' }}</strong>
+        <p>{{ currentCity === 'xiantao' ? '仙桃市 · 高速路段' : '黄冈市 · 化工园区' }}</p>
+        <div class="three-d-risk"><span>应急响应等级</span><b>{{ activeScene === 'truck_crash' ? 'Ⅱ级' : 'Ⅰ级' }}</b></div>
+        <div class="three-d-kpis"><div><b>05</b><span>联动单位</span></div><div><b>RCD</b><span>寻优策略</span></div><div><b>24</b><span>实时监测</span></div></div>
+        <div class="three-d-panel-actions"><button @click="flyToCity(currentCity)">⌖ 定位现场</button><button @click="toggleThreeDFullscreen">⛶ 全屏</button></div>
+      </aside>
+      <aside class="three-d-force-panel">
+        <div class="three-d-panel-head"><span>协同救援力量</span><em><i></i> ONLINE</em></div>
+        <div class="three-d-force"><i class="medical"></i><span>医疗急救</span><b>已出动</b></div><div class="three-d-force"><i class="fire"></i><span>消防灭火</span><b>已出动</b></div><div class="three-d-force"><i class="police"></i><span>公安交警</span><b>已出动</b></div><div class="three-d-force"><i class="hazmat"></i><span>防化处置</span><b>已出动</b></div><div class="three-d-force"><i class="road"></i><span>交通路政</span><b>已出动</b></div>
+      </aside>
+      <aside class="three-d-optimization-log">
+        <div class="three-d-log-head"><div class="three-d-log-title"><i>◈</i><div><strong>多智能体全局寻优决策日志</strong><span>GLOBAL OPTIMIZATION LOG</span></div></div><b :class="{ loading: optimizationLog.loading }">{{ optimizationLog.loading ? '同步中' : '决策已锁定' }}</b></div>
+        <div class="three-d-log-terminal">
+          <p><i>[SYS]</i> 启动多智能体并发寻优，读取区域 OSM 路网拓扑…</p>
+          <p><i>[SYS]</i> Dijkstra 加权算法完成，动态路阻因子已纳入。</p>
+          <p class="success"><i>[SYS]</i> 真实拓扑寻优比对完成，决策结果已落地。</p>
+        </div>
+        <div v-if="optimizationAgents.length" class="three-d-log-results">
+          <div class="three-d-agent-tabs"><button v-for="agent in optimizationAgents" :key="agent.key" :class="{ active: selectedOptimizationAgentKey === agent.key }" :style="{ '--agent-color': agent.color }" @click="selectedOptimizationAgentKey = agent.key">{{ optimizationAgentShortNames[agent.key] || agent.label }}</button></div>
+          <div v-if="selectedOptimizationAgent" class="three-d-agent-decision" :style="{ '--agent-color': selectedOptimizationAgent.color }">
+            <template v-for="agent in [selectedOptimizationAgent]" :key="agent.key">
+            <div class="three-d-agent-head"><span></span><b>{{ agent.label }}</b><strong>{{ agent.poi?.name || '最优站点已选定' }}</strong></div>
+            <div class="three-d-agent-metrics"><div><span>真实路网寻优距离</span><b>{{ agent.poi?.net_dist_km ?? '--' }} km</b></div><div><span>空间直线初筛距离</span><em>{{ agent.poi?.dist_km ?? '--' }} km</em></div></div>
+            <div v-if="agent.losers?.length" class="three-d-agent-losers"><span>[-] 动态路阻因子剔除名录</span><p v-for="(loser, index) in agent.losers" :key="index">✕ {{ loser.name }}<em>{{ loser.reason }}</em></p></div>
+            <div v-else class="three-d-agent-losers empty">[-] 当前无被剔除候选节点</div>
+            </template>
+          </div>
+        </div>
+        <div v-else-if="!optimizationLog.loading" class="three-d-log-empty">等待协同响应寻优结果…</div>
+      </aside>
+    </template>
 
     <!-- 物理仿真不需要加载 Cesium 地图，仅在独立高性能 2D Canvas 中进行极高兼容度的物理粒子级仿真 -->
     <div v-if="viewMode === 'physics'" class="physics-simulation-container" style="position: absolute; top: 20px; left: 20px; right: 20px; bottom: 20px; z-index: 5; background: #070b19; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(0, 255, 180, 0.15);">
@@ -47,7 +83,7 @@
         <span>{{ errorMessage }}</span>
         <button class="retry-btn" @click="generate2DDeduction(currentCity)">重试</button>
       </div>
-      <iframe v-else :src="iframeSrc" class="deduction-iframe"></iframe>
+      <iframe v-else :key="twoDimensionalRunKey" :src="iframeSrc" class="deduction-iframe"></iframe>
     </div>
 
     <!-- 物理仿真控制面板 -->
@@ -310,9 +346,8 @@
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref, reactive, watch, computed, nextTick } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 
-const router = useRouter()
 import * as Cesium from 'cesium'
 import { getCollaborativeCommandCenterBaseUrl } from '../config/subsystems'
 
@@ -322,6 +357,10 @@ const viewMode = ref('2d')
 const iframeSrc = ref('')
 const isGenerating2D = ref(false)
 const errorMessage = ref('')
+const twoDimensionalRunKey = ref(0)
+const isInitializing3D = ref(false)
+const threeDError = ref('')
+const is3DReady = ref(false)
 const hoveredCityName = ref('')
 const tooltipStyle = ref({
   left: '0px',
@@ -339,20 +378,102 @@ let mouseHandler = null
 let persistentCityEntities = []
 let initSimulationViewerTimeout = null
 let removeLightListener = null
+let isSimulationViewerInitializing = false
 const route = useRoute()
 
-function goBackToTimeline() {
-  // 返回首页大屏总览，并指定跳转到无人感知执行阶段 (第9阶段，索引为 8)
-  const scene = currentCity.value === 'xiantao' ? 'rear-end' : 'leakage'
-  router.push({
-    path: '/',
-    query: {
-      scene: scene,
-      phaseIndex: 8
-    }
+const currentCity = ref(route.query.city === 'huanggang' ? 'huanggang' : 'xiantao')
+
+// 三维推演默认采用区域总览视角：完整保留行政边界、事故现场和五类救援路线。
+const THREE_D_OVERVIEW = {
+  xiantao: { lng: 113.28, lat: 30.40, height: 145000 },
+  huanggang: { lng: 114.87, lat: 30.61, height: 150000 }
+}
+
+const flyToThreeDOverview = (city = currentCity.value, duration = 2.0) => {
+  if (!viewer) return
+  const view = THREE_D_OVERVIEW[city] || THREE_D_OVERVIEW.xiantao
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(view.lng, view.lat, view.height),
+    orientation: { heading: 0, pitch: -Cesium.Math.PI_OVER_TWO, roll: 0 },
+    duration
   })
 }
-const currentCity = ref(route.query.city === 'huanggang' ? 'huanggang' : 'xiantao')
+
+// 默认 Cesium 影像依赖 Ion 在线资产；当该资产在当前网络环境中不可用时，
+// 场景仍会正常渲染，但地表会退化为黑色。三维仿真固定使用与首页相同的
+// ArcGIS 卫星影像，并只在成功取得 provider 后替换默认图层，避免出现空底图。
+const configureSimulationBasemap = async () => {
+  if (!viewer) return
+  const targetViewer = viewer
+
+  try {
+    const imagery = await Cesium.ArcGisMapServerImageryProvider.fromUrl(
+      'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
+    )
+    if (viewer !== targetViewer || targetViewer.isDestroyed()) return
+
+    targetViewer.imageryLayers.removeAll(true)
+    const layer = targetViewer.imageryLayers.addImageryProvider(imagery)
+    // 轻微提亮，确保卫星图在深色 HUD 与夜间视觉配置下仍清晰可辨。
+    layer.brightness = 1.08
+    layer.contrast = 1.04
+    layer.gamma = 1.0
+    console.info('[Cesium Simulation] 卫星影像底图加载成功')
+  } catch (error) {
+    // 不清除 Cesium 已创建的默认图层。这样即使备用服务暂时不可用，
+    // 仍可继续使用已成功加载的任何默认瓦片，而不会退化为空白地球。
+    console.warn('[Cesium Simulation] 卫星影像底图加载失败，保留默认底图:', error)
+  }
+}
+
+const optimizationLog = reactive({ loading: false, data: null })
+const optimizationAgentOrder = ['fire', 'medical', 'police', 'hazmat', 'road']
+const optimizationAgentShortNames = { fire: '消防', medical: '医疗', police: '公安', hazmat: '防化', road: '路政' }
+const selectedOptimizationAgentKey = ref('fire')
+const optimizationAgents = computed(() => {
+  const agents = optimizationLog.data?.agents
+  if (!agents) return []
+  return optimizationAgentOrder
+    .filter(key => agents[key])
+    .map(key => ({ key, ...agents[key] }))
+})
+const selectedOptimizationAgent = computed(() =>
+  optimizationAgents.value.find(agent => agent.key === selectedOptimizationAgentKey.value) || optimizationAgents.value[0] || null
+)
+
+const fetchOptimizationLog = async (city = currentCity.value) => {
+  optimizationLog.loading = true
+  const scenario = city === 'huanggang' ? 'leak' : 'crash'
+  try {
+    const baseUrl = getCollaborativeCommandCenterBaseUrl()
+    const response = await fetch(`${baseUrl}/api/strategy_metrics?scenario=${scenario}`, { cache: 'no-store' })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const payload = await response.json()
+    optimizationLog.data = payload?.multi_agent?.agents ? payload.multi_agent : null
+    if (optimizationLog.data?.agents && !optimizationLog.data.agents[selectedOptimizationAgentKey.value]) {
+      selectedOptimizationAgentKey.value = optimizationAgentOrder.find(key => optimizationLog.data.agents[key]) || ''
+    }
+  } catch (error) {
+    console.warn('读取协同响应多智能体寻优日志失败:', error)
+  } finally {
+    optimizationLog.loading = false
+  }
+}
+
+const toggleThreeDFullscreen = async () => {
+  const target = document.querySelector('.simulation-container')
+  if (!target) return
+
+  try {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen()
+    } else {
+      await target.requestFullscreen()
+    }
+  } catch (error) {
+    console.warn('切换三维推演全屏失败:', error)
+  }
+}
 
 // 事故现场与坐标配置
 const activeScene = ref('truck_crash') // 默认：客车追尾现场
@@ -451,6 +572,10 @@ const activeAccidentIndex = computed({
 const activeAccidentPhases = computed(() => {
   return accidentPoints[activeAccidentIndex.value]?.phases || []
 })
+
+const isRescueDispatchPhase = (phaseIndex = activePhaseIndex.value) => {
+  return activeAccidentPhases.value[Number(phaseIndex)]?.id?.endsWith('rescue-start') || false
+}
 
 const phasesReadyList = computed(() => {
   return Array(activeAccidentPhases.value.length).fill(true)
@@ -1087,7 +1212,7 @@ watch([activePhaseIndex, activeScene], ([phaseIdx, scene]) => {
       currentCzmlDataSource.entities.values.forEach(entity => {
         const id = entity.id;
         if (id && multiAgentPrefixes.some(prefix => id.startsWith(prefix))) {
-            const shouldShow = (Number(phaseIdx) >= 10);
+            const shouldShow = isRescueDispatchPhase(phaseIdx);
             entity.show = shouldShow;
         } else if (id === 'Car_Path' || id === 'Car_Path_glow' || id === 'Car') {
             entity.show = (Number(phaseIdx) >= 7);
@@ -1102,7 +1227,19 @@ watch([activePhaseIndex, activeScene], ([phaseIdx, scene]) => {
 }, { immediate: true })
 
 // 监听视图模式变化，在物理仿真模式下自动对焦至事故中心，并切换 2D 渲染引擎
-watch(viewMode, (newMode) => {
+watch(viewMode, async (newMode) => {
+  if (newMode === '3d') {
+    fetchOptimizationLog(currentCity.value)
+    await nextTick()
+    if (!viewer) await initSimulationViewer()
+    if (viewer) {
+      viewer.resize()
+      generate3DRescueDispatch(currentCity.value)
+      flyToThreeDOverview(currentCity.value)
+    }
+    return
+  }
+
   if (newMode === 'physics') {
     const city = currentCity.value
     if (viewer) {
@@ -1135,17 +1272,8 @@ watch(viewMode, (newMode) => {
       simulationEntities = []
       
       if (newMode === '3d') {
-        if (currentCity.value === 'xiantao') {
-          viewer.camera.flyTo({
-            destination: Cesium.Cartesian3.fromDegrees(113.43, 30.29, 120000),
-            duration: 2.0
-          })
-        } else {
-          viewer.camera.flyTo({
-            destination: Cesium.Cartesian3.fromDegrees(114.90, 30.70, 380000),
-            duration: 2.0
-          })
-        }
+        generate3DRescueDispatch(currentCity.value)
+        flyToThreeDOverview(currentCity.value)
       }
     }
   }
@@ -1173,7 +1301,7 @@ const loadMission = async () => {
       entity.availability = undefined;
       const id = entity.id;
       if (id && multiAgentPrefixes.some(prefix => id.startsWith(prefix))) {
-          entity.show = (Number(activePhaseIndex.value) >= 10);
+          entity.show = isRescueDispatchPhase();
       } else if (id === 'Car_Path' || id === 'Car_Path_glow' || id === 'Car') {
           entity.show = (Number(activePhaseIndex.value) >= 7);
       } else if (id === 'UAV_Path' || id === 'UAV_Path_glow' || id === 'UAV') {
@@ -1200,22 +1328,87 @@ const loadMission = async () => {
   }
 }
 
+let latestTwoDimensionalRequest = 0
+let latestThreeDimensionalRequest = 0
+
+// 仿真推演的城市场景与协同响应指挥的二维动态推演场景保持一一对应。
+// 每次切换场景均重新加载该场景的五类救援装备出动结果，防止两个场景共用旧路线。
+const TWO_DIMENSIONAL_SCENARIOS = {
+  xiantao: 'crash',
+  huanggang: 'leak'
+}
+
+// 与协同响应指挥“三维态势地图”的救援装备出动共用同一套多智能体接口，
+// 将五类救援力量的 CZML 动态轨迹加载到当前 Cesium 三维推演中。
+const generate3DRescueDispatch = async (city) => {
+  const endpoint = TWO_DIMENSIONAL_SCENARIOS[city] || 'crash'
+  const requestId = ++latestThreeDimensionalRequest
+  const baseUrl = getCollaborativeCommandCenterBaseUrl()
+
+  try {
+    const params = new URLSearchParams({
+      end_point: endpoint,
+      strategy: 'rcd',
+      ugv_block: '1',
+      uav_smoke: '1',
+      compare: '1'
+    })
+    const response = await fetch(`${baseUrl}/api/run_multi_agent?${params.toString()}`)
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+
+    const result = await response.json().catch(() => ({}))
+    if (result.ok === false) throw new Error(result.message || '三维救援装备路线生成失败')
+    if (requestId !== latestThreeDimensionalRequest) return
+
+    // 三维视图没有独立的阶段选择面板；进入救援出动推演时自动定位到该阶段，
+    // 使五类救援装备及其动态轨迹立即可见。
+    const rescuePhaseIndex = activeAccidentPhases.value.findIndex(phase =>
+      phase.id.endsWith('rescue-start')
+    )
+    if (rescuePhaseIndex >= 0) activePhaseIndex.value = rescuePhaseIndex
+
+    await loadMission()
+    await fetchOptimizationLog(city)
+  } catch (error) {
+    if (requestId !== latestThreeDimensionalRequest) return
+    console.warn('请求协同响应三维救援装备出动失败，保留当前三维推演结果:', error)
+  }
+}
+
 const generate2DDeduction = async (city) => {
-  const endpoint = city === 'xiantao' ? 'crash' : 'leak'
+  const endpoint = TWO_DIMENSIONAL_SCENARIOS[city] || 'crash'
+  const requestId = ++latestTwoDimensionalRequest
   isGenerating2D.value = true
   errorMessage.value = ''
   const baseUrl = getCollaborativeCommandCenterBaseUrl()
   try {
-    // 使用 run_multi_agent 确保二维和三维推演始终带有协同救援的路径
-    const response = await fetch(`${baseUrl}/api/run_multi_agent?end_point=${endpoint}`)
+    // 与协同响应指挥模块的“救援装备出动”使用同一接口和策略：
+    // 五类救援力量（医疗、消防、公安、防化、路政）会生成并写入对应场景的二维动态路线。
+    const params = new URLSearchParams({
+      end_point: endpoint,
+      ugv_block: '1',
+      uav_smoke: '1',
+      strategy: 'rcd',
+      compare: '1'
+    })
+    const response = await fetch(`${baseUrl}/api/run_multi_agent?${params.toString()}`)
     if (!response.ok) {
-      console.warn('后端生成策略返回非200状态码，将启用本地/历史二维推演缓存显示。')
+      throw new Error(`HTTP ${response.status}`)
     }
+    const result = await response.json().catch(() => ({}))
+    if (result.ok === false) throw new Error(result.message || '救援装备路线生成失败')
+
+    // 用户在请求期间已切换场景时，不再用旧场景结果覆盖当前二维推演。
+    if (requestId !== latestTwoDimensionalRequest) return
   } catch (error) {
-    console.warn('请求生成二维推演接口出现异常，自动降级为加载默认二维推演界面:', error)
+    if (requestId !== latestTwoDimensionalRequest) return
+    console.warn('请求救援装备二维动态推演失败，将尝试加载后端最近一次可用结果:', error)
   } finally {
-    // 无论后端动态生成接口成功或异常，始终正常加载并展示二维仿真推演界面（优雅降级）
-    iframeSrc.value = `${baseUrl}/2d_deduction.html?t=${Date.now()}`
+    if (requestId !== latestTwoDimensionalRequest) return
+
+    // 携带场景与出动类型标识，强制 iframe 刷新到本次生成的协同响应二维结果。
+    iframeSrc.value = `${baseUrl}/2d_deduction.html?end_point=${endpoint}&dispatch=rescue&t=${Date.now()}`
+    twoDimensionalRunKey.value += 1
     try {
       await loadMission()
     } catch (e) {
@@ -1240,11 +1433,14 @@ let currentBoundaryLines = [];
 async function loadCityMask(city) {
   if (!viewer) return;
   
-  // 清除旧的蒙版
+  // 清除旧的蒙版。三维推演直接使用协同响应的完整 Cesium 底图，
+  // 不再把仙桃或黄冈以外的地图区域覆盖成深色遮罩。
   if (currentMaskEntity) {
     viewer.entities.remove(currentMaskEntity);
     currentMaskEntity = null;
   }
+
+  if (viewMode.value === '3d') return;
 
   // 定义遮罩镂空（holes）要加载的文件
   let maskFileName = '';
@@ -1409,9 +1605,14 @@ async function initCityRegionsAndLabels() {
 
 const flyToCity = async (city) => {
   currentCity.value = city;
+  activeScene.value = city === 'xiantao' ? 'truck_crash' : 'tanker_leak'
   
-  // 触发生成对应的二维推演
-  generate2DDeduction(city);
+  // 根据当前视图加载协同响应指挥中对应场景的救援装备动态推演。
+  if (viewMode.value === '3d') {
+    await generate3DRescueDispatch(city)
+  } else {
+    generate2DDeduction(city)
+  }
 
   // 即使 viewer 为 null，也要正常更新物理仿真的 Tab 和推演阶段以刷新 2D Canvas
   if (viewMode.value === 'physics') {
@@ -1436,21 +1637,12 @@ const flyToCity = async (city) => {
       duration: 2.0
     });
   } else {
-    if (city === 'xiantao') {
-      viewer.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(113.43, 30.29, 120000), // 仙桃：高度适中，稍微偏东侧以避开右侧面板
-        duration: 2.0
-      });
-    } else if (city === 'huanggang') {
-      viewer.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(114.87, 30.61, 150000), // 黄冈视角：高度适中
-        duration: 2.0
-      });
-    }
+    flyToThreeDOverview(city)
   }
 }
 
 const initSimulationViewer = async () => {
+  if (viewer || isSimulationViewerInitializing) return
   const container = document.getElementById('simulationCesiumContainer')
   if (!container) return
 
@@ -1459,6 +1651,11 @@ const initSimulationViewer = async () => {
     initSimulationViewerTimeout = setTimeout(initSimulationViewer, 100)
     return
   }
+
+  isSimulationViewerInitializing = true
+  isInitializing3D.value = true
+  threeDError.value = ''
+  is3DReady.value = false
 
   // 屏蔽 Cesium 默认的红色崩溃弹窗
   if (Cesium) {
@@ -1496,11 +1693,17 @@ const initSimulationViewer = async () => {
         }
       })
     } catch (e2) {
-      errorMessage.value = '三维地球 WebGL 初始化失败（可能由于浏览器 WebGL 上下文耗尽或未开启显卡硬件加速），请尝试在浏览器设置中开启“使用硬件加速”并刷新页面重试。';
+      threeDError.value = '三维地球初始化失败，请确认浏览器已启用 WebGL/硬件加速后刷新重试。'
+      isInitializing3D.value = false
+      isSimulationViewerInitializing = false
       console.error('三维地球初始化失败:', e2);
       return;
     }
   }
+
+  isInitializing3D.value = false
+  isSimulationViewerInitializing = false
+  is3DReady.value = true
   
   window.simulationViewer = viewer
 
@@ -1521,17 +1724,18 @@ const initSimulationViewer = async () => {
   
   if (!viewer) return
   // 初始化时直接将视角定位到对应的城市，跳过从地球飞跃的过程
-  if (currentCity.value === 'xiantao') {
-    viewer.camera.setView({
-      destination: Cesium.Cartesian3.fromDegrees(113.43, 30.29, 120000)
-    })
-  } else {
-    viewer.camera.setView({
-      destination: Cesium.Cartesian3.fromDegrees(114.90, 30.70, 380000)
-    })
-  }
+  const initialOverview = THREE_D_OVERVIEW[currentCity.value] || THREE_D_OVERVIEW.xiantao
+  viewer.camera.setView({
+    destination: Cesium.Cartesian3.fromDegrees(initialOverview.lng, initialOverview.lat, initialOverview.height),
+    orientation: { heading: 0, pitch: -Cesium.Math.PI_OVER_TWO, roll: 0 }
+  })
   
   viewer.scene.globe.enableLighting = false
+  viewer.scene.globe.depthTestAgainstTerrain = true
+  viewer.scene.highDynamicRange = true
+  viewer.scene.postProcessStages.fxaa.enabled = true
+  viewer.scene.fog.enabled = true
+  viewer.scene.fog.density = 0.00012
   viewer.scene.light = new Cesium.DirectionalLight({
     direction: viewer.camera.direction
   })
@@ -1541,32 +1745,11 @@ const initSimulationViewer = async () => {
   viewer.cesiumWidget.creditContainer.style.display = 'none'
 
   if (!viewer) return
-  viewer.imageryLayers.removeAll()
-  try {
-    const imagery = await Cesium.ArcGisMapServerImageryProvider.fromUrl(
-      'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
-    )
-    if (!viewer) return
-    viewer.imageryLayers.addImageryProvider(imagery)
-  } catch (e) {
-    if (!viewer) return
-    console.error('加载 ArcGIS 影像图层失败:', e)
-  }
+  // 使用可控的卫星影像底图。默认 Ion 图层在部分网络环境会静默失败，
+  // 导致只显示路线和标注、地表近黑；这里提供稳定的卫星影像来源。
+  await configureSimulationBasemap()
 
   if (!viewer) return
-  // 加载地形
-  try {
-    const terrainProvider = await Cesium.CesiumTerrainProvider.fromUrl(
-      'https://sandcastle.cesium.com/cesium-ion/rest/v1/assets/1/endpoint'
-    )
-    if (!viewer) return
-    viewer.terrainProvider = terrainProvider
-    viewer.scene.globe.depthTestAgainstTerrain = true
-  } catch (e) {
-    if (!viewer) return
-    console.error('加载 Cesium 原生基础地形失败:', e)
-  }
-
   if (!viewer) return
   await loadCityMask(currentCity.value)
   if (!viewer) return
@@ -1639,8 +1822,9 @@ const initSimulationViewer = async () => {
 }
 
 onMounted(() => {
-  initSimulationViewer()
-  if (viewMode.value === 'physics') {
+  if (viewMode.value === '2d') {
+    generate2DDeduction(currentCity.value)
+  } else if (viewMode.value === 'physics') {
     start2DPhysicsSimulation()
   }
 })
@@ -2333,6 +2517,151 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
 }
 
+.three-d-loading-overlay {
+  position: absolute;
+  inset: 20px;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #67e8f9;
+  font-size: 15px;
+  background: rgba(2, 8, 20, 0.76);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.three-d-loading-overlay.error {
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.55);
+}
+
+.three-d-titlebar,
+.three-d-scene-card,
+.three-d-legend,
+.three-d-statusbar {
+  position: absolute;
+  z-index: 20;
+  color: #dbeafe;
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  background: linear-gradient(135deg, rgba(5, 15, 31, 0.9), rgba(11, 29, 52, 0.78));
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28), inset 0 1px rgba(186, 230, 253, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.three-d-titlebar {
+  top: 42px;
+  left: 42px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 318px;
+  padding: 11px 14px;
+  border-radius: 9px;
+}
+
+.three-d-title-mark {
+  color: #38bdf8;
+  font-size: 26px;
+  text-shadow: 0 0 13px rgba(56, 189, 248, 0.85);
+}
+
+.three-d-eyebrow,
+.three-d-card-label {
+  color: #7dd3fc;
+  font: 700 9px/1.2 "Segoe UI", sans-serif;
+  letter-spacing: 1.15px;
+}
+
+.three-d-title {
+  margin-top: 3px;
+  color: #f8fafc;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.three-d-live {
+  margin-left: auto;
+  font-size: 11px;
+  color: #a7f3d0;
+  white-space: nowrap;
+}
+
+.three-d-live i,
+.three-d-status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 9px #34d399;
+  animation: three-d-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes three-d-pulse { 50% { opacity: 0.35; transform: scale(1.45); } }
+
+.three-d-scene-card {
+  top: 122px;
+  left: 42px;
+  width: 220px;
+  padding: 13px 15px;
+  border-radius: 8px;
+}
+
+.three-d-scene-card strong { display: block; margin: 7px 0 4px; color: #f8fafc; font-size: 15px; }
+.three-d-scene-card span { color: #94a3b8; font-size: 11px; }
+.three-d-card-divider { height: 1px; margin: 11px 0 8px; background: rgba(96, 165, 250, 0.2); }
+.three-d-card-meta { color: #cbd5e1; font-size: 11px; }
+.three-d-card-meta b { margin-right: 4px; color: #38bdf8; font-size: 16px; }
+
+.three-d-legend {
+  top: 122px;
+  right: 42px;
+  width: 142px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.95;
+}
+
+.three-d-legend-title { margin-bottom: 4px; color: #7dd3fc; font-size: 12px; font-weight: 700; border-bottom: 1px solid rgba(96, 165, 250, 0.2); }
+.three-d-legend i { display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; box-shadow: 0 0 7px currentColor; }
+.three-d-legend .medical { color: #22c55e; background: currentColor; }.three-d-legend .fire { color: #f97316; background: currentColor; }.three-d-legend .police { color: #3b82f6; background: currentColor; }.three-d-legend .hazmat { color: #a855f7; background: currentColor; }.three-d-legend .road { color: #94a3b8; background: currentColor; }
+
+.three-d-statusbar {
+  right: 42px;
+  bottom: 42px;
+  display: flex;
+  align-items: center;
+  padding: 9px 14px;
+  border-radius: 7px;
+  color: #cbd5e1;
+  font-size: 11px;
+}
+.three-d-status-separator { width: 1px; height: 14px; margin: 0 12px; background: rgba(148, 163, 184, 0.35); }
+
+@media (max-width: 900px) {
+  .three-d-titlebar { left: 28px; min-width: 270px; }
+  .three-d-scene-card { left: 28px; }
+  .three-d-legend { right: 28px; }
+  .three-d-statusbar { right: 28px; }
+}
+
+/* 三维态势大屏：以协同响应指挥的低饱和蓝黑玻璃态为基调。 */
+.is-three-d .cesium-container { border: 0; border-radius: 0; box-shadow: none; }
+.three-d-vignette { position: absolute; inset: 20px; z-index: 2; pointer-events: none; background: radial-gradient(ellipse at center, transparent 42%, rgba(1, 8, 20, .18) 100%); box-shadow: inset 0 0 90px rgba(1, 8, 20, .48); }
+.three-d-commandbar { position:absolute; z-index:20; top:34px; left:42px; right:42px; height:62px; display:flex; align-items:center; padding:0 18px; border:1px solid rgba(125,211,252,.22); border-radius:10px; background:linear-gradient(90deg,rgba(5,17,35,.94),rgba(10,30,54,.76)); box-shadow:0 14px 34px rgba(0,0,0,.34), inset 0 1px rgba(255,255,255,.05); backdrop-filter:blur(15px); }
+.three-d-brand { display:flex; align-items:center; gap:10px; min-width:260px; }.three-d-brand>span { color:#38bdf8; font-size:26px; text-shadow:0 0 14px #38bdf8; }.three-d-brand small { display:block; color:#7dd3fc; font:700 8px/1.1 Consolas,sans-serif; letter-spacing:1.5px; }.three-d-brand strong { display:block; margin-top:4px; color:#f1f5f9; font-size:16px; letter-spacing:1px; }
+.three-d-mode-switch { display:flex; align-self:stretch; margin:auto; }.three-d-mode-switch button,.three-d-city-switch button { border:0; background:transparent; color:#94a3b8; cursor:pointer; transition:.2s; }.three-d-mode-switch button { padding:0 17px; border-bottom:2px solid transparent; font-size:12px; }.three-d-mode-switch button:hover,.three-d-mode-switch button.active { color:#e0f2fe; border-color:#38bdf8; background:rgba(14,165,233,.09); }
+.three-d-city-switch { display:flex; gap:5px; padding:4px; border:1px solid rgba(148,163,184,.18); border-radius:6px; }.three-d-city-switch button { padding:7px 9px; border-radius:4px; font-size:11px; }.three-d-city-switch button.active { color:#dff8ff; background:rgba(14,165,233,.2); box-shadow:inset 0 0 0 1px rgba(56,189,248,.28); }
+.three-d-situation-panel,.three-d-force-panel { position:absolute; z-index:20; border:1px solid rgba(125,211,252,.23); border-radius:9px; background:linear-gradient(145deg,rgba(5,17,35,.9),rgba(9,29,52,.7)); box-shadow:0 12px 28px rgba(0,0,0,.28); backdrop-filter:blur(13px); }.three-d-situation-panel { top:116px; left:42px; width:220px; padding:16px; }.three-d-panel-kicker { color:#7dd3fc; font:700 9px/1 Consolas,sans-serif; letter-spacing:1.4px; }.three-d-situation-panel strong { display:block; margin:10px 0 5px; color:#f8fafc; font-size:17px; }.three-d-situation-panel p { margin:0; color:#94a3b8; font-size:11px; }.three-d-risk { display:flex; justify-content:space-between; align-items:center; margin:16px -16px 0; padding:10px 16px; border-top:1px solid rgba(125,211,252,.16); border-bottom:1px solid rgba(125,211,252,.12); color:#94a3b8; font-size:11px; }.three-d-risk b { color:#fbbf24; font-size:14px; }.three-d-kpis { display:flex; gap:22px; margin-top:13px; }.three-d-kpis b,.three-d-kpis span { display:block; }.three-d-kpis b { color:#e0f2fe; font-size:17px; }.three-d-kpis span { margin-top:3px; color:#64748b; font-size:10px; }
+.three-d-force-panel { top:116px; right:42px; width:210px; padding:13px 15px; }.three-d-panel-head { display:flex; justify-content:space-between; padding-bottom:9px; border-bottom:1px solid rgba(125,211,252,.16); color:#dbeafe; font-size:12px; font-weight:700; }.three-d-panel-head em { color:#6ee7b7; font:700 8px/1.5 Consolas,sans-serif; letter-spacing:.5px; }.three-d-panel-head i { display:inline-block; width:5px; height:5px; margin-right:4px; border-radius:50%; background:#34d399; box-shadow:0 0 7px #34d399; }.three-d-force { display:flex; align-items:center; gap:8px; padding:8px 0 5px; border-bottom:1px solid rgba(125,211,252,.08); color:#cbd5e1; font-size:11px; }.three-d-force:last-child { border:0; }.three-d-force i { width:7px; height:7px; border-radius:50%; background:currentColor; box-shadow:0 0 7px currentColor; }.three-d-force .medical { color:#22c55e; }.three-d-force .fire { color:#fb923c; }.three-d-force .police { color:#60a5fa; }.three-d-force .hazmat { color:#c084fc; }.three-d-force .road { color:#cbd5e1; }.three-d-force b { margin-left:auto; color:#86efac; font-size:10px; font-weight:500; }
+.three-d-timeline-bar { position:absolute; z-index:20; bottom:36px; left:50%; transform:translateX(-50%); display:flex; align-items:center; width:min(680px,58vw); padding:12px 16px; border:1px solid rgba(125,211,252,.23); border-radius:9px; background:rgba(5,17,35,.88); box-shadow:0 12px 28px rgba(0,0,0,.32); backdrop-filter:blur(13px); }.three-d-timeline-title { min-width:128px; font-size:10px; color:#94a3b8; }.three-d-timeline-title i { display:inline-block; width:7px; height:7px; margin-right:5px; border-radius:50%; background:#34d399; box-shadow:0 0 8px #34d399; }.three-d-timeline-title strong { display:block; margin:4px 0 0 12px; color:#e0f2fe; font-size:12px; }.three-d-track { position:relative; flex:1; display:flex; justify-content:space-between; align-items:center; height:20px; }.three-d-track span { position:absolute; left:2px; right:2px; height:1px; background:linear-gradient(90deg,#0284c7,#38bdf8,#475569); }.three-d-track i { position:relative; width:7px; height:7px; border:2px solid #0f253e; border-radius:50%; background:#38bdf8; box-shadow:0 0 0 1px #38bdf8,0 0 8px rgba(56,189,248,.55); }.three-d-track i.active { width:10px; height:10px; background:#fbbf24; box-shadow:0 0 0 1px #fbbf24,0 0 12px #fbbf24; }.three-d-timeline-meta { min-width:140px; margin-left:14px; color:#64748b; font-size:10px; line-height:1.45; }
+@media (max-width: 1050px) { .three-d-brand { min-width:210px; }.three-d-mode-switch button { padding:0 9px; }.three-d-timeline-meta { display:none; }.three-d-timeline-bar { width:55vw; } }
+
 /* 城市悬浮提示框样式 - 赛博朋克高阶战术 HUD 标签 */
 .city-tooltip {
   position: absolute;
@@ -2448,8 +2777,8 @@ onBeforeUnmount(() => {
 .view-toggle {
   position: absolute;
   top: 40px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 30px;
+  transform: none;
   background: rgba(6, 22, 40, 0.85);
   border: 1px solid rgba(0, 229, 255, 0.4);
   border-radius: 8px;
@@ -2585,47 +2914,6 @@ onBeforeUnmount(() => {
 .retry-btn:hover {
   background: rgba(239, 68, 68, 0.2);
   border-color: #ef4444;
-}
-
-/* 返回事故时间线按钮 */
-.back-to-timeline-btn {
-  position: absolute;
-  top: 40px;
-  left: 30px;
-  z-index: 1010;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 16px;
-  background: rgba(8, 16, 36, 0.88);
-  border: 1px solid rgba(0, 255, 180, 0.5);
-  border-radius: 8px;
-  color: #6ee7b7;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 0 12px rgba(0, 255, 180, 0.15);
-  transition: all 0.25s ease;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-}
-
-.back-to-timeline-btn:hover {
-  background: rgba(16, 185, 129, 0.15);
-  border-color: #34d399;
-  color: #34d399;
-  box-shadow: 0 0 18px rgba(0, 255, 180, 0.3);
-  transform: translateX(-2px);
-}
-
-.back-arrow {
-  font-weight: bold;
-  font-size: 15px;
-  transition: transform 0.2s;
-}
-
-.back-to-timeline-btn:hover .back-arrow {
-  transform: translateX(-3px);
 }
 
 /* 物理仿真微调面板样式 */
@@ -2857,6 +3145,342 @@ onBeforeUnmount(() => {
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* 三维推演采用与协同响应一致的深海蓝玻璃 HUD：信息靠边，不遮挡事故现场。 */
+.is-three-d {
+  background: #020817;
+}
+
+.is-three-d .cesium-container {
+  inset: 20px !important;
+  overflow: hidden;
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42), inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+}
+
+.is-three-d .view-toggle,
+.is-three-d .city-toggle {
+  z-index: 30;
+  border-color: rgba(96, 165, 250, 0.38);
+  background: rgba(10, 18, 32, 0.86);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.is-three-d .view-toggle button.active,
+.is-three-d .city-toggle button.active {
+  color: #dbeafe;
+  border-color: rgba(96, 165, 250, 0.72);
+  background: rgba(59, 130, 246, 0.18);
+  box-shadow: inset 0 0 16px rgba(59, 130, 246, 0.12);
+}
+
+.three-d-vignette {
+  inset: 20px;
+  border-radius: 12px;
+  background:
+    linear-gradient(90deg, rgba(2, 8, 23, 0.24), transparent 24%, transparent 76%, rgba(2, 8, 23, 0.24)),
+    radial-gradient(ellipse at center, transparent 38%, rgba(1, 8, 20, 0.24) 100%);
+  box-shadow: inset 0 0 80px rgba(1, 8, 20, 0.42);
+}
+
+.three-d-situation-panel,
+.three-d-force-panel,
+.three-d-timeline-bar {
+  border-color: rgba(96, 165, 250, 0.3);
+  background: linear-gradient(140deg, rgba(10, 18, 32, 0.93), rgba(15, 35, 61, 0.76));
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(191, 219, 254, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.three-d-situation-panel {
+  top: 116px;
+  left: 42px;
+  width: 238px;
+  padding: 15px 16px 13px;
+}
+
+.three-d-panel-kicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #93c5fd;
+}
+
+.three-d-panel-kicker i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 9px #34d399;
+}
+
+.three-d-situation-panel strong {
+  margin: 9px 0 4px;
+  font-size: 18px;
+  letter-spacing: 0.5px;
+}
+
+.three-d-risk {
+  margin-top: 14px;
+  border-color: rgba(96, 165, 250, 0.16);
+  background: rgba(2, 6, 23, 0.24);
+}
+
+.three-d-kpis {
+  justify-content: space-between;
+  gap: 0;
+  margin-top: 13px;
+}
+
+.three-d-kpis b { color: #dbeafe; }
+
+.three-d-panel-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.three-d-panel-actions button {
+  padding: 7px 5px;
+  border: 1px solid rgba(96, 165, 250, 0.32);
+  border-radius: 5px;
+  color: #bfdbfe;
+  background: rgba(30, 58, 138, 0.18);
+  font-size: 11px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.three-d-panel-actions button:hover {
+  color: #fff;
+  border-color: #60a5fa;
+  background: rgba(59, 130, 246, 0.35);
+}
+
+.three-d-force-panel {
+  top: 116px;
+  right: 42px;
+  width: 222px;
+  padding: 13px 15px;
+}
+
+.three-d-force {
+  padding: 9px 0 6px;
+  border-color: rgba(148, 163, 184, 0.1);
+}
+
+.three-d-optimization-log {
+  position: absolute;
+  z-index: 20;
+  top: 395px;
+  left: 42px;
+  width: 292px;
+  max-height: calc(100% - 430px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(56, 189, 248, 0.36);
+  border-radius: 9px;
+  background: linear-gradient(145deg, rgba(6, 18, 38, 0.94), rgba(4, 13, 28, 0.88));
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(191, 219, 254, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.three-d-log-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 13px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.22);
+}
+
+.three-d-log-head strong,
+.three-d-log-head span { display: block; }
+.three-d-log-head strong { color: #f1f5f9; font-size: 17px; letter-spacing: 0.3px; }
+.three-d-log-head span { margin-top: 4px; color: #7dd3fc; font: 700 11px/1 Consolas, monospace; letter-spacing: 0.8px; }
+.three-d-log-head > b { flex: 0 0 auto; padding: 6px 8px; border: 1px solid rgba(52, 211, 153, 0.4); border-radius: 4px; color: #6ee7b7; background: rgba(16, 185, 129, 0.1); font-size: 11px; }
+.three-d-log-head > b.loading { color: #fcd34d; border-color: rgba(251, 191, 36, 0.45); background: rgba(245, 158, 11, 0.1); }
+
+.three-d-log-terminal { padding: 11px 13px 9px; border-left: 3px solid #22d3ee; background: rgba(2, 6, 23, 0.42); }
+.three-d-log-terminal p { margin: 0 0 7px; color: #67e8f9; font: 600 12px/1.58 Consolas, 'Microsoft YaHei', sans-serif; }
+.three-d-log-terminal p:last-child { margin-bottom: 0; }
+.three-d-log-terminal p i { margin-right: 4px; color: #22d3ee; font-style: normal; }
+.three-d-log-terminal p.success { color: #bbf7d0; }
+
+.three-d-log-results { overflow-y: auto; overscroll-behavior: contain; }
+.three-d-log-results::-webkit-scrollbar { width: 4px; }
+.three-d-log-results::-webkit-scrollbar-thumb { border-radius: 4px; background: rgba(56, 189, 248, 0.34); }
+.three-d-agent-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 8px 9px; border-top: 1px solid rgba(148, 163, 184, 0.12); border-bottom: 1px solid rgba(148, 163, 184, 0.12); background: rgba(15, 23, 42, 0.52); }
+.three-d-agent-tabs button { overflow: hidden; padding: 7px 1px; border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 4px; color: #94a3b8; background: rgba(30, 41, 59, 0.42); cursor: pointer; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; transition: 0.2s ease; }
+.three-d-agent-tabs button:hover { color: #e0f2fe; border-color: var(--agent-color); }
+.three-d-agent-tabs button.active { color: var(--agent-color); border-color: var(--agent-color); background: color-mix(in srgb, var(--agent-color) 15%, rgba(15, 23, 42, 0.7)); box-shadow: inset 0 0 8px color-mix(in srgb, var(--agent-color) 22%, transparent); font-weight: 700; }
+.three-d-agent-decision { padding: 10px 11px; border-top: 1px solid rgba(148, 163, 184, 0.13); border-left: 3px solid var(--agent-color); background: linear-gradient(90deg, color-mix(in srgb, var(--agent-color) 8%, transparent), transparent 65%); }
+.three-d-agent-head { display: grid; grid-template-columns: 7px auto 1fr; align-items: center; gap: 6px; }
+.three-d-agent-head > span { width: 7px; height: 7px; border-radius: 50%; background: var(--agent-color); box-shadow: 0 0 8px var(--agent-color); }
+.three-d-agent-head b { color: var(--agent-color); font-size: 13px; white-space: nowrap; }
+.three-d-agent-head strong { overflow: hidden; color: #f1f5f9; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.three-d-agent-metrics { margin-top: 9px; padding: 8px 10px; border: 1px solid rgba(56, 189, 248, 0.16); border-radius: 4px; background: rgba(2, 6, 23, 0.48); }
+.three-d-agent-metrics div { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #cbd5e1; font-size: 12px; line-height: 1.8; }
+.three-d-agent-metrics b { color: #22d3ee; font: 700 13px Consolas, monospace; white-space: nowrap; }
+.three-d-agent-metrics em { color: #cbd5e1; font: 12px Consolas, monospace; font-style: normal; white-space: nowrap; }
+.three-d-agent-losers { margin-top: 9px; color: #e2e8f0; font-size: 12px; line-height: 1.48; }
+.three-d-agent-losers > span { display: block; margin-bottom: 3px; }
+.three-d-agent-losers p { margin: 3px 0 0; color: #fb7185; }
+.three-d-agent-losers p em { display: block; padding-left: 13px; color: #f87171; font-style: normal; font-size: 11px; }
+.three-d-agent-losers.empty { color: #64748b; }
+.three-d-log-empty { padding: 10px 12px; color: #64748b; font-size: 10px; }
+
+.three-d-timeline-bar {
+  bottom: 36px;
+  width: min(710px, 61vw);
+  padding: 13px 18px;
+}
+
+.three-d-timeline-meta {
+  display: flex;
+  min-width: 150px;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.three-d-timeline-meta b { color: #bfdbfe; font-size: 10px; }
+
+@media (max-width: 900px) {
+  .three-d-situation-panel { left: 28px; width: 205px; }
+  .three-d-force-panel { right: 28px; width: 190px; }
+  .three-d-optimization-log { left: 28px; width: 248px; }
+  .three-d-kpis div:last-child,
+  .three-d-panel-actions { display: none; }
+}
+
+/* 统一采用首页大屏的可读字号层级，避免仿真操作区在大屏上显得过小。 */
+.simulation-container { font-size: 16px; }
+.view-toggle button,
+.city-toggle button { padding: 10px 19px; font-size: 16px; }
+.view-toggle,
+.city-toggle { gap: 9px; padding: 7px; }
+
+.three-d-panel-kicker { font-size: 11px; }
+.three-d-situation-panel p,
+.three-d-risk,
+.three-d-force { font-size: 13px; }
+.three-d-situation-panel strong { font-size: 21px; }
+.three-d-risk b { font-size: 17px; }
+.three-d-kpis b { font-size: 20px; }
+.three-d-kpis span { font-size: 12px; }
+.three-d-panel-actions button { padding: 9px 6px; font-size: 13px; }
+.three-d-panel-head { font-size: 15px; }
+.three-d-panel-head em { font-size: 10px; }
+.three-d-force b { font-size: 12px; }
+.three-d-timeline-title { font-size: 13px; }
+.three-d-timeline-title strong { font-size: 15px; }
+.three-d-timeline-meta { font-size: 12px; }
+.three-d-timeline-meta b { font-size: 12px; }
+
+.physics-hud { font-size: 16px !important; }
+.physics-hud > div:first-child { font-size: 19px !important; }
+.physics-tweak-header .title { font-size: 20px; }
+.physics-tweak-body .section-title { font-size: 16px; }
+.phase-btn,
+.physics-tab-header .tab-btn { font-size: 14px; }
+.control-row label { font-size: 13px; }
+.tweak-controls input,
+.tweak-controls select,
+.tweak-controls button,
+.action-btn { font-size: 14px !important; }
+
+@media (max-width: 900px) {
+  .view-toggle button,
+  .city-toggle button { padding: 9px 13px; font-size: 14px; }
+  .three-d-situation-panel strong { font-size: 19px; }
+}
+
+/* 寻优日志使用首页大屏的强调字号，便于在地图背景上快速阅读。 */
+.three-d-optimization-log { width: 332px; }
+.three-d-log-head { padding: 13px 15px; }
+.three-d-log-head strong { font-size: 20px; }
+.three-d-log-head span { font-size: 12px; }
+.three-d-log-head > b { padding: 7px 9px; font-size: 12px; }
+.three-d-log-terminal { padding: 13px 15px 11px; }
+.three-d-log-terminal p { font-size: 14px; line-height: 1.65; }
+.three-d-agent-tabs { gap: 5px; padding: 10px; }
+.three-d-agent-tabs button { padding: 8px 2px; font-size: 12px; }
+.three-d-agent-decision { padding: 13px 14px; }
+.three-d-agent-head b,
+.three-d-agent-head strong { font-size: 15px; }
+.three-d-agent-metrics { padding: 10px 12px; }
+.three-d-agent-metrics div { font-size: 14px; }
+.three-d-agent-metrics b { font-size: 15px; }
+.three-d-agent-metrics em { font-size: 14px; }
+.three-d-agent-losers { font-size: 14px; line-height: 1.55; }
+.three-d-agent-losers p em { font-size: 12px; }
+
+@media (max-width: 900px) {
+  .three-d-optimization-log { width: min(332px, calc(100vw - 56px)); }
+}
+
+/* 寻优日志大屏卡片：提高信息密度的同时强化标题、状态和决策层级。 */
+.three-d-optimization-log {
+  width: min(390px, calc(100vw - 56px));
+  border: 1px solid rgba(34, 211, 238, 0.56);
+  border-radius: 14px;
+  background: linear-gradient(155deg, rgba(5, 21, 43, 0.97), rgba(3, 12, 29, 0.94));
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.48), 0 0 28px rgba(14, 165, 233, 0.14), inset 0 1px 0 rgba(186, 230, 253, 0.12);
+}
+.three-d-optimization-log,
+.three-d-optimization-log * {
+  font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', 'Segoe UI', Arial, sans-serif !important;
+}
+.three-d-log-head { align-items: center; padding: 16px 18px; background: linear-gradient(90deg, rgba(14, 165, 233, 0.2), rgba(14, 165, 233, 0.02)); }
+.three-d-log-title { display: flex; align-items: center; min-width: 0; gap: 10px; }
+.three-d-log-title > i { color: #22d3ee; font-size: 23px; font-style: normal; text-shadow: 0 0 12px rgba(34, 211, 238, 0.8); }
+.three-d-log-head strong { font-size: 22px; line-height: 1.18; text-shadow: 0 0 12px rgba(186, 230, 253, 0.22); }
+.three-d-log-head span { margin-top: 5px; font-size: 12px; letter-spacing: 1.1px; }
+.three-d-log-head > b { padding: 8px 10px; border-radius: 6px; font-size: 13px; box-shadow: inset 0 0 10px rgba(16, 185, 129, 0.09); }
+.three-d-log-terminal { margin: 10px 12px 0; padding: 14px 16px 12px; border: 1px solid rgba(34, 211, 238, 0.2); border-left: 4px solid #22d3ee; border-radius: 7px; background: rgba(1, 9, 23, 0.66); }
+.three-d-log-terminal p { font-size: 16px; line-height: 1.62; letter-spacing: 0.1px; }
+.three-d-log-terminal p i { color: #67e8f9; font-weight: 800; }
+.three-d-agent-tabs { gap: 6px; padding: 12px; background: transparent; }
+.three-d-agent-tabs button { padding: 9px 3px; border-radius: 7px; font-size: 14px; font-weight: 700; }
+.three-d-agent-tabs button.active { box-shadow: 0 0 0 1px var(--agent-color), inset 0 0 16px color-mix(in srgb, var(--agent-color) 25%, transparent), 0 0 12px color-mix(in srgb, var(--agent-color) 25%, transparent); }
+.three-d-agent-decision { margin: 0 12px 13px; padding: 15px 16px 16px; border: 1px solid color-mix(in srgb, var(--agent-color) 48%, rgba(148, 163, 184, 0.24)); border-left: 5px solid var(--agent-color); border-radius: 9px; background: linear-gradient(135deg, color-mix(in srgb, var(--agent-color) 13%, rgba(4, 15, 32, 0.9)), rgba(3, 12, 27, 0.74)); }
+.three-d-agent-head { grid-template-columns: 9px auto 1fr; gap: 8px; }
+.three-d-agent-head > span { width: 9px; height: 9px; }
+.three-d-agent-head b { font-size: 17px; }
+.three-d-agent-head strong { font-size: 16px; }
+.three-d-agent-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0; border: 0; background: transparent; }
+.three-d-agent-metrics div { display: flex; min-height: 60px; flex-direction: column; align-items: flex-start; justify-content: center; padding: 8px 10px; border: 1px solid rgba(56, 189, 248, 0.22); border-radius: 6px; background: rgba(2, 10, 24, 0.66); font-size: 14px; line-height: 1.3; }
+.three-d-agent-metrics b { margin-top: 5px; font-size: 17px; }
+.three-d-agent-metrics em { margin-top: 5px; font-size: 17px; }
+.three-d-agent-losers { padding-top: 10px; border-top: 1px dashed rgba(148, 163, 184, 0.25); font-size: 15px; }
+.three-d-agent-losers > span { color: #e2e8f0; font-weight: 700; }
+.three-d-agent-losers p { margin-top: 6px; font-size: 14px; }
+.three-d-agent-losers p em { padding-left: 16px; font-size: 13px; line-height: 1.42; }
+
+@media (max-width: 520px) {
+  .three-d-log-head strong { font-size: 19px; }
+  .three-d-log-terminal p { font-size: 14px; }
+  .three-d-agent-tabs button { font-size: 12px; }
+  .three-d-agent-head b { font-size: 15px; }
+  .three-d-agent-head strong { font-size: 14px; }
+}
+
+/* 事故态势卡与下方寻优日志共用同一版心，形成左侧对齐的信息栏。 */
+.three-d-situation-panel {
+  left: 42px;
+  width: min(390px, calc(100vw - 56px));
+  box-sizing: border-box;
+}
+.three-d-kpis { gap: 0; }
+.three-d-kpis > div { flex: 1; }
+.three-d-panel-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+@media (max-width: 900px) {
+  .three-d-situation-panel { left: 28px; width: min(390px, calc(100vw - 56px)); }
 }
 
 </style>

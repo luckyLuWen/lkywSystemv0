@@ -1327,4 +1327,10 @@ onBeforeUnmount(() => {
   background: rgba(168, 54, 54, 0.18);
   border: 1px solid rgba(255, 180, 180, 0.28);
 }
+
+/* 与主系统的中文界面字体保持一致。 */
+.realtime-detection-card,
+.realtime-detection-card * {
+  font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', 'Segoe UI', Arial, sans-serif !important;
+}
 </style>
