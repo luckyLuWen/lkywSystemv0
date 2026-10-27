@@ -259,6 +259,7 @@ const formatCount = (value) => {
 }
 
 const formatVram = (used, total) => {
+  if (used === null || used === undefined || total === null || total === undefined) return 'N/A'
   const usedValue = Number(used)
   const totalValue = Number(total)
   if (!Number.isFinite(usedValue) || !Number.isFinite(totalValue) || totalValue <= 0) return 'N/A'
@@ -266,11 +267,13 @@ const formatVram = (used, total) => {
 }
 
 const formatPercentMetric = (value) => {
+  if (value === null || value === undefined || value === '') return 'N/A'
   const numeric = Number(value)
   return Number.isFinite(numeric) ? `${numeric}%` : 'N/A'
 }
 
 const formatTemperature = (value) => {
+  if (value === null || value === undefined || value === '') return 'N/A'
   const numeric = Number(value)
   return Number.isFinite(numeric) ? `${numeric}°C` : 'N/A'
 }
@@ -728,5 +731,4 @@ onUnmounted(() => {
   }
 }
 </style>
-
 

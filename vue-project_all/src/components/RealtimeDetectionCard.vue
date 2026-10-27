@@ -121,15 +121,15 @@
           </div>
           <div class="telemetry-row">
             <span class="telemetry-col-label">显存占用</span>
-            <span class="telemetry-col-val">{{ systemInfoData.vram_used_gb || 0 }} / {{ systemInfoData.vram_total_gb || 0 }} GB</span>
+            <span class="telemetry-col-val">{{ formatVram(systemInfoData.vram_used_gb, systemInfoData.vram_total_gb) }}</span>
           </div>
           <div class="telemetry-row">
             <span class="telemetry-col-label">显卡温度</span>
-            <span class="telemetry-col-val">{{ systemInfoData.gpu_temp || '--' }}°C</span>
+            <span class="telemetry-col-val">{{ formatTemperature(systemInfoData.gpu_temp) }}</span>
           </div>
           <div class="telemetry-row">
             <span class="telemetry-col-label">显卡负载率</span>
-            <span class="telemetry-col-val">{{ systemInfoData.gpu_util || '--' }}%</span>
+            <span class="telemetry-col-val">{{ formatPercent(systemInfoData.gpu_util) }}</span>
           </div>
           <div class="telemetry-row">
             <span class="telemetry-col-label">推理模型状态</span>
@@ -400,6 +400,27 @@ const formatMetric = (value) => {
   if (value === undefined || value === null || value === '') return '--'
   const numeric = Number(value)
   return Number.isFinite(numeric) ? numeric.toFixed(4) : String(value)
+}
+
+const formatVram = (used, total) => {
+  if (used === undefined || used === null || total === undefined || total === null) return 'N/A'
+  const usedValue = Number(used)
+  const totalValue = Number(total)
+  return Number.isFinite(usedValue) && Number.isFinite(totalValue) && totalValue > 0
+    ? `${usedValue} / ${totalValue} GB`
+    : 'N/A'
+}
+
+const formatPercent = (value) => {
+  if (value === undefined || value === null || value === '') return 'N/A'
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? `${numeric}%` : 'N/A'
+}
+
+const formatTemperature = (value) => {
+  if (value === undefined || value === null || value === '') return 'N/A'
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? `${numeric}°C` : 'N/A'
 }
 
 const displayStatsData = computed(() => statsData.value || null)
