@@ -739,8 +739,8 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
         uav_saving_pct = (uav_saving_km / greedy_dist * 100) if greedy_dist > 0 else 0
         compare_rows = f'''
             <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(96,165,250,0.12);">
-                <div style="font-size: 13px; font-weight: 700; color: #a78bfa; margin-bottom: 6px;">路径算法优化对比</div>
-                <div style="font-size: 11.5px; margin-bottom: 5px; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px 8px;">
+                <div style="font-size: 16px; font-weight: 700; color: #a78bfa; margin-bottom: 8px;">路径算法优化对比</div>
+                <div style="font-size: 14px; line-height: 1.75; margin-bottom: 8px; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 9px 11px;">
                     <div style="color: #cbd5e1; font-weight: 600; margin-bottom: 3px;">无人车（地面道路）</div>
                     <div style="display: flex; justify-content: space-between;">
                         <span style="color: #fdba74;">广度优先搜索</span><span style="color: #cbd5e1; font-weight: 600;">{bfs_dist:.1f} km</span>
@@ -748,9 +748,9 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
                     <div style="display: flex; justify-content: space-between;">
                         <span style="color: #93c5fd;">加权最短路径</span><span style="color: #cbd5e1; font-weight: 600;">{car_dist:.1f} km</span>
                     </div>
-                    <div style="color: #4ade80; font-weight: 700; text-align: center; margin-top: 3px; font-size: 12px;">▼ 优化 {car_saving_km:.1f} km（缩短 {car_saving_pct:.1f}%）</div>
+                    <div style="color: #4ade80; font-weight: 700; text-align: center; margin-top: 4px; font-size: 14px;">▼ 优化 {car_saving_km:.1f} km（缩短 {car_saving_pct:.1f}%）</div>
                 </div>
-                <div style="font-size: 11.5px; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px 8px;">
+                <div style="font-size: 14px; line-height: 1.75; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 9px 11px;">
                     <div style="color: #cbd5e1; font-weight: 600; margin-bottom: 3px;">无人机（空中航线）</div>
                     <div style="display: flex; justify-content: space-between;">
                         <span style="color: #fdba74;">贪心搜索</span><span style="color: #cbd5e1; font-weight: 600;">{greedy_dist:.1f} km</span>
@@ -758,19 +758,19 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
                     <div style="display: flex; justify-content: space-between;">
                         <span style="color: #93c5fd;">全局最优搜索</span><span style="color: #cbd5e1; font-weight: 600;">{uav_dist:.1f} km</span>
                     </div>
-                    <div style="color: #4ade80; font-weight: 700; text-align: center; margin-top: 3px; font-size: 12px;">▼ 优化 {uav_saving_km:.1f} km（缩短 {uav_saving_pct:.1f}%）</div>
+                    <div style="color: #4ade80; font-weight: 700; text-align: center; margin-top: 4px; font-size: 14px;">▼ 优化 {uav_saving_km:.1f} km（缩短 {uav_saving_pct:.1f}%）</div>
                 </div>
             </div>
         '''
 
     ui_html = f'''
-    <div style="position: fixed; top: 96px; left: 20px; z-index: 1000; width: 310px;
-                background: rgba(2, 12, 26, 0.88); padding: 14px 16px; border-radius: 10px;
+    <div id="collaboration-efficiency-panel" style="position: fixed; top: 96px; left: 20px; z-index: 1000; width: min(380px, calc(100vw - 40px));
+                background: rgba(2, 12, 26, 0.88); padding: 18px 20px; border-radius: 10px;
                 border: 1px solid rgba(0, 242, 254, 0.25); backdrop-filter: blur(12px);
-                box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 0 15px rgba(0, 242, 254, 0.05); font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', serif, sans-serif; color: #cbd5e1;">
-        <div style="font-size: 16px; font-weight: 700; color: #00f2fe; margin-bottom: 4px;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 0 15px rgba(0, 242, 254, 0.05); font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', 'Segoe UI', Arial, sans-serif; color: #cbd5e1;">
+        <div style="font-size: 22px; font-weight: 700; color: #00f2fe; margin-bottom: 7px;
                     letter-spacing: 1px; text-align: center; text-shadow: 0 0 8px rgba(0, 242, 254, 0.3);">协同效能评估</div>
-        <div id="eta-display" style="text-align:center;font-size:13px;font-weight:700;color:#fbbf24;margin-bottom:6px;">预计到达 --:--</div>
+        <div id="eta-display" style="text-align:center;font-size:16px;font-weight:700;color:#fbbf24;margin-bottom:10px;">预计到达 --:--</div>
         <script>
         (function(){{
             var totalS = {int((max(car_interp['timestamp'].max(), uav_interp['timestamp'].max()) - START_TIME).total_seconds())};
@@ -789,27 +789,27 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
         }})();
         </script>
         <!-- 核心指标 -->
-        <div style="font-size: 13px; line-height: 1.8;">
+        <div style="font-size: 16px; line-height: 2;">
             <div style="display: flex; justify-content: space-between; padding: 2px 0;">
                 <span style="color: #94a3b8;">协同策略</span>
-                <b style="color: #00f2fe; font-size: 13.5px;">{strategy_name}</b>
+                <b style="color: #00f2fe; font-size: 17px;">{strategy_name}</b>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 2px 0;">
                 <span style="color: #94a3b8;">无人车行驶耗时</span>
-                <b style="color: #ffffff; font-size: 13.5px;">{car_df['time_s'].iloc[-1]/60:.1f} 分钟</b>
+                <b style="color: #ffffff; font-size: 17px;">{car_df['time_s'].iloc[-1]/60:.1f} 分钟</b>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 2px 0;">
                 <span style="color: #94a3b8;">无人机飞行耗时</span>
-                <b style="color: #ffffff; font-size: 13.5px;">{(uav_df['time_s'].iloc[-1]-delay)/60:.1f} 分钟</b>
+                <b style="color: #ffffff; font-size: 17px;">{(uav_df['time_s'].iloc[-1]-delay)/60:.1f} 分钟</b>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 3px 8px; margin: 4px 0;
-                        background: rgba(245,158,11,0.12); border-radius: 4px; font-size: 13px;">
+                        background: rgba(245,158,11,0.12); border-radius: 4px; font-size: 16px;">
                 <span style="color: #fbbf24;">空地协同等待</span>
-                <b style="color: #fbbf24; font-size: 13.5px;">{delay:.1f} 秒</b>
+                <b style="color: #fbbf24; font-size: 17px;">{delay:.1f} 秒</b>
             </div>
         </div>
         <!-- 路径参数 -->
-        <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(0, 242, 254, 0.15); font-size: 12.5px; line-height: 1.8;">
+        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0, 242, 254, 0.15); font-size: 15px; line-height: 2;">
             <div style="display: flex; justify-content: space-between;">
                 <span style="color: #94a3b8;">无人车行驶距离</span><span style="color: #c4b5fd; font-weight: 600;">{car_dist:.1f} km</span>
             </div>
@@ -825,8 +825,8 @@ def create_visualization(car_df, uav_df, raw_uav_df, car_interp, uav_interp, del
             <div style="display: flex; justify-content: space-between;">
                 <span style="color: #94a3b8;">无人机能源消耗</span><span style="color: #f472b6; font-weight: 600;">{uav_energy:.1f} kWh</span>
             </div>
-            <div style="display: flex; justify-content: space-between; color: #ef4444; font-size: 13px;">
-                <span>空地到达时间差</span><b style="font-size: 13.5px;">{time_diff:.1f} 秒</b>
+            <div style="display: flex; justify-content: space-between; color: #ef4444; font-size: 15px;">
+                <span>空地到达时间差</span><b style="font-size: 17px;">{time_diff:.1f} 秒</b>
             </div>
         </div>
         {compare_rows}

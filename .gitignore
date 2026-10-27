@@ -48,6 +48,12 @@ Collaborative_Response/backend/command_center/cache/
 *.cpg
 *.prj
 
+# 精细建模仅提交两套内置演示，其他现场影像与大模型保留在本地
+/vue-project_all/public/ModelingData/datasets/*
+!/vue-project_all/public/ModelingData/datasets/coach-synthetic/
+!/vue-project_all/public/ModelingData/datasets/coach-jetset-synthetic/
+/vue-project_all/public/ModelingData/models/
+
 # 编辑器文件
 .DS_Store
 .idea/

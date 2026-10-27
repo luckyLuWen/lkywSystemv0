@@ -3,31 +3,26 @@
     <!-- 3D 视图顶部工具栏与元数据 -->
     <div class="viewer-top-bar">
       <div class="model-info-group">
-        <div class="info-badge">
-          <span class="status-dot"></span>
-          <span class="badge-title">3D 精细重建模型就绪</span>
+        <div class="info-badge" :class="{ loading: isLoading, error: Boolean(loadError) }">
+          <span class="status-dot" :class="{ loading: isLoading, error: Boolean(loadError) }"></span>
+          <span class="badge-title" :class="{ 'is-loading': isLoading, 'has-error': Boolean(loadError) }">
+            {{ loadError ? '场景读取失败' : isLoading ? '正在载入三维场景' : '三维场景展示中' }}
+          </span>
         </div>
         <div class="model-meta">
           <span class="meta-item">
-            <span class="lbl">模型源:</span>
-            <code class="val">{{ modelUrl }}</code>
+            <span class="lbl">当前场景:</span>
+            <span class="val">{{ modelName }}</span>
           </span>
           <span class="meta-item">
-            <span class="lbl">网格顶点:</span>
-            <span class="val text-cyan">{{ formatNumber(modelStats.vertices) }} Pts</span>
+            <span class="lbl">场景状态:</span>
+            <span class="val" :class="isLoading ? 'text-cyan' : 'text-green'">{{ loadError ? '暂不可用' : isLoading ? '正在载入' : '展示中' }}</span>
           </span>
           <span class="meta-item">
-            <span class="lbl">三角面数:</span>
-            <span class="val text-green">{{ formatNumber(modelStats.faces) }} Triangles</span>
-          </span>
-          <span class="meta-item">
-            <span class="lbl">场景基准校准:</span>
-            <select v-model="referenceSceneLength" @change="recalibrateScale" class="scale-select" title="选择或校准场景真实物理跨度">
-              <option :value="22.5">💥 双车事故现场 (基准 22.5m)</option>
-              <option :value="16.5">🚚 油罐车侧翻现场 (基准 16.5m)</option>
-              <option :value="11.0">🚌 单辆大客车基准 (基准 11.0m)</option>
-              <option :value="4.6">🚑 小型侦察车基准 (基准 4.6m)</option>
-            </select>
+            <span class="lbl">测量基准:</span>
+            <span class="val scale-indicator" :class="scaleCalibrated ? 'text-green' : 'text-yellow'" :title="scaleDescription">
+              {{ scaleDescription }}
+            </span>
           </span>
         </div>
       </div>
@@ -45,12 +40,9 @@
         <button 
           class="tool-btn report-btn" 
           @click="openReportModal" 
-          title="生成步骤五事故测量评估报告"
+          title="查看当前模型数据与空间量测"
         >
-          <span class="btn-icon">📄</span> 评估报告导出
-        </button>
-        <button class="tool-btn" :class="{ active: isPlayAnimation }" @click="togglePlayAnimation" title="切换碰撞动效">
-          <span class="btn-icon">{{ isPlayAnimation ? '⏸' : '🎬' }}</span> {{ isPlayAnimation ? '动态播放中' : '📌 终点倒塌帧' }}
+          <span class="btn-icon">📄</span> 模型报告
         </button>
         <button class="tool-btn" :class="{ active: autoRotate }" @click="toggleAutoRotate" title="自动旋转">
           <span class="btn-icon">🔄</span> {{ autoRotate ? '暂停旋转' : '自动环绕' }}
@@ -76,11 +68,11 @@
         @click="handleCanvasClick"
       ></div>
 
-      <!-- 【步骤四】3D 画布悬浮空间测量工具栏 (Floating Measurement Toolbar) -->
+      <!-- 【步骤五】3D 画布悬浮空间测量工具栏 (Floating Measurement Toolbar) -->
       <div class="floating-measure-toolbar">
         <div class="toolbar-title">
           <span class="pulse-icon">📏</span>
-          <span><b>步骤四：空间测量工具箱</b></span>
+          <span><b>空间量测</b></span>
         </div>
         
         <div class="tool-mode-group">
@@ -88,7 +80,7 @@
             class="mode-btn" 
             :class="{ active: measureMode === 'point' }" 
             @click="setMeasureMode('point')"
-            title="提取点三维空间坐标 (X, Y, Z)"
+            title="提取场景局部坐标（单位见测量基准）"
           >
             <span class="mode-icon">📍</span> 点坐标提取
           </button>
@@ -96,7 +88,7 @@
             class="mode-btn" 
             :class="{ active: measureMode === 'line' }" 
             @click="setMeasureMode('line')"
-            title="选择 2 点计算真实三维距离"
+            title="选择 2 点计算直线距离（按当前坐标单位）"
           >
             <span class="mode-icon">📏</span> 直线距离测量
           </button>
@@ -142,14 +134,14 @@
 
       <!-- 测量交互实时提示 -->
       <div v-if="measureMode !== 'none'" class="measure-status-hint">
-        <span v-if="measureMode === 'point'">📍 <b>点坐标模式：</b>点击车辆模型任意表面，实时提取交点 (X, Y, Z) 真实空间坐标</span>
+          <span v-if="measureMode === 'point'">📍 <b>点坐标：</b>点击模型表面提取坐标（{{ coordinateUnit }}）</span>
         <span v-else-if="measureMode === 'line'">
-          📏 <b>直线测距模式：</b>
+          📏 <b>直线距离：</b>
           <template v-if="pendingPoints.length === 0">请点击选择<b>起点 P1</b></template>
           <template v-else>已选择起点，请点击选择<b>终点 P2</b></template>
         </span>
         <span v-else-if="measureMode === 'area'">
-          📐 <b>地面正交投影模式：</b>已选 <b>{{ pendingPoints.length }}</b> 个顶点。点击模型选点，选 3 点及以上后点击<b>“✔️ 完成闭合”</b>，系统将投影至水平地面计算正交面积
+          📐 <b>水平投影面积：</b>已选 <b>{{ pendingPoints.length }}</b> 点，至少 3 点后闭合计算。
         </span>
       </div>
 
@@ -157,11 +149,19 @@
       <div class="loading-overlay" v-if="isLoading">
         <div class="spinner-box">
           <div class="cyber-spinner"></div>
-          <p class="loading-text">正在解析 glTF/GLB 三维网格与纹理贴图...</p>
+          <p class="loading-text">正在载入三维场景并整理显示数据…</p>
           <div class="loading-bar-bg">
             <div class="loading-bar-fill" :style="{ width: loadProgress + '%' }"></div>
           </div>
           <span class="progress-num">{{ loadProgress }}%</span>
+        </div>
+      </div>
+
+      <div v-if="loadError" class="load-error-overlay">
+        <div class="load-error-card">
+          <strong>三维场景暂时无法读取</strong>
+          <p>{{ loadError }}</p>
+          <button type="button" @click="loadModel(modelUrl)">重新读取模型</button>
         </div>
       </div>
 
@@ -199,15 +199,13 @@
           </div>
           <div class="hud-body">
             <template v-if="m.type === 'point'">
-              <span class="hud-vector">X: {{ m.points[0].x.toFixed(2) }}m | Y: {{ m.points[0].y.toFixed(2) }}m | Z: {{ m.points[0].z.toFixed(2) }}m</span>
+              <span class="hud-vector">X: {{ m.points[0].x.toFixed(2) }} | Y: {{ m.points[0].y.toFixed(2) }} | Z: {{ m.points[0].z.toFixed(2) }} {{ coordinateUnit }}</span>
             </template>
             <template v-else-if="m.type === 'line'">
-              <span class="hud-detail">厘米换算: <strong>{{ (m.distance * 100).toFixed(1) }} cm</strong></span>
-              <span class="hud-vector">ΔX: {{ m.dx.toFixed(2) }}m | ΔY: {{ m.dy.toFixed(2) }}m | ΔZ: {{ m.dz.toFixed(2) }}m</span>
+              <span class="hud-vector">ΔX: {{ m.dx.toFixed(2) }} | ΔY: {{ m.dy.toFixed(2) }} | ΔZ: {{ m.dz.toFixed(2) }} {{ coordinateUnit }}</span>
             </template>
             <template v-else-if="m.type === 'area'">
-              <span class="hud-detail">计算类型: <strong>水平地面正交投影面积 (Shoelace Formula)</strong></span>
-              <span class="hud-vector">地面影子周长: 约 {{ estimateGroundPolygonPerimeter(m.points).toFixed(2) }} m</span>
+              <span class="hud-vector">水平投影面积 · 周长 {{ estimateGroundPolygonPerimeter(m.points).toFixed(2) }} {{ coordinateUnit }}</span>
             </template>
           </div>
         </div>
@@ -228,7 +226,7 @@
             <div v-if="measurements.length === 0" class="empty-state">
               <span class="empty-icon">📏</span>
               <p>暂无测量记录</p>
-              <span class="empty-sub">点击左上方工具栏“点/线/面”开始在车身上测量</span>
+                <span class="empty-sub">选择点、线或面工具后，在模型上取点</span>
             </div>
 
             <div 
@@ -240,7 +238,14 @@
                 <span class="type-tag" :class="'tag-' + item.type">
                   {{ item.type === 'point' ? '点坐标' : item.type === 'line' ? '直线距离' : '地面投影面积' }}
                 </span>
-                <span class="item-name">{{ item.name }}</span>
+                <input
+                  v-model.trim="item.name"
+                  class="item-name-input"
+                  type="text"
+                  maxlength="40"
+                  aria-label="测量项目名称"
+                  @blur="normalizeMeasurementName(item, index)"
+                />
                 <button class="delete-item-btn" @click="deleteMeasurement(item.id)" title="删除此项">🗑️</button>
               </div>
 
@@ -272,17 +277,74 @@
 
       <!-- 画布底部操作指引提示 -->
       <div class="canvas-hint" v-if="!isLoading && measureMode === 'none'">
-        <span>💡 操作指引: 左键旋转 | 右键平移 | 滚轮缩放 | 点击<b>“步骤四：空间测量工具箱”</b>进行 3D 取点与损伤测量</span>
+        <span>左键旋转 · 右键平移 · 滚轮缩放</span>
       </div>
     </div>
 
-    <!-- 【步骤五】：模型测量评估报告生成与导出 Modal (Assessment Report Modal) -->
+    <div v-if="pendingMeasurement" class="measurement-entry-overlay" role="dialog" aria-modal="true" aria-labelledby="measurement-entry-title">
+      <form class="measurement-entry-card" @submit.prevent="commitPendingMeasurement">
+        <header class="measurement-entry-header">
+          <div>
+            <span class="entry-eyebrow">保存空间量测</span>
+            <h2 id="measurement-entry-title">{{ pendingMeasurement.type === 'point' ? '点坐标' : pendingMeasurement.type === 'line' ? '直线距离' : '水平投影面积' }}</h2>
+          </div>
+          <span class="entry-measurement-value">{{ pendingMeasurement.valueStr }}</span>
+        </header>
+
+        <label class="entry-field">
+          <span>测量名称 <b>*</b></span>
+          <input v-model.trim="measurementDraft.name" type="text" maxlength="40" placeholder="请输入便于识别的名称" required autofocus />
+        </label>
+
+        <template v-if="pendingMeasurement.type === 'point'">
+          <div class="entry-reference-heading">
+            <span>参考坐标 <small>可选</small></span>
+            <span>{{ coordinateUnit }}</span>
+          </div>
+          <div class="entry-coordinate-grid">
+            <label class="entry-field"><span>X</span><input v-model="measurementDraft.referenceX" type="number" step="any" :disabled="!scaleCalibrated" /></label>
+            <label class="entry-field"><span>Y</span><input v-model="measurementDraft.referenceY" type="number" step="any" :disabled="!scaleCalibrated" /></label>
+            <label class="entry-field"><span>Z</span><input v-model="measurementDraft.referenceZ" type="number" step="any" :disabled="!scaleCalibrated" /></label>
+          </div>
+          <p v-if="scaleCalibrated" class="entry-help">用于点位对比；参考坐标须与场景局部坐标系一致。</p>
+          <p v-else class="entry-help">当前模型尺度未标定，点位实际坐标无法比较。</p>
+        </template>
+
+        <template v-else>
+          <label class="entry-field">
+            <span>{{ pendingMeasurement.type === 'line' ? '参考实际长度' : '参考实际面积' }} <small>可选</small></span>
+            <div class="entry-number-field">
+              <input v-model="measurementDraft.referenceValue" type="number" min="0" step="any" :placeholder="pendingMeasurement.type === 'line' ? '输入已知长度' : '输入同一边界的水平投影面积'" />
+              <span>{{ pendingMeasurement.type === 'line' ? 'm' : 'm²' }}</span>
+            </div>
+          </label>
+          <label v-if="!scaleCalibrated" class="entry-calibration-option">
+            <input v-model="measurementDraft.useForScaleCalibration" type="checkbox" :disabled="!measurementDraft.referenceValue" />
+            <span>用此参考值标定场景比例</span>
+          </label>
+          <p v-if="!scaleCalibrated" class="entry-help">未标定时，参考值不能直接比较；若用它标定，本条仅作尺度基准，不计入精度校核。</p>
+        </template>
+
+        <label class="entry-field">
+          <span>参考来源 <small>可选</small></span>
+          <input v-model.trim="measurementDraft.referenceSource" type="text" maxlength="60" placeholder="例如：现场尺量、测绘控制点" />
+        </label>
+
+        <p v-if="measurementEntryError" class="entry-error" role="alert">{{ measurementEntryError }}</p>
+
+        <footer class="measurement-entry-actions">
+          <button type="button" class="entry-cancel-button" @click="cancelPendingMeasurement">取消本次测量</button>
+          <button type="submit" class="entry-save-button" :disabled="!canSavePendingMeasurement">保存测量记录</button>
+        </footer>
+      </form>
+    </div>
+
+    <!-- 【步骤六】：模型测量报告生成与导出 Modal (Assessment Report Modal) -->
     <div v-if="showReportModal" class="report-modal-overlay" @click.self="showReportModal = false">
       <div class="report-modal-card">
         <div class="report-header">
           <div class="report-title-group">
-            <h2>两客一危事故车辆 3D 精细测量与痕迹评估报告</h2>
-            <span class="report-subtitle">Fine-Grained 3D Measurement & Structural Assessment Report</span>
+            <h2>三维重建模型与量测报告</h2>
           </div>
           <button class="close-modal-btn" @click="showReportModal = false">✕</button>
         </div>
@@ -292,15 +354,15 @@
           <div class="report-meta-grid">
             <div class="meta-card">
               <span class="meta-lbl">报告编号</span>
-              <span class="meta-val highlight">REP-20260813-9021</span>
+              <span class="meta-val highlight">{{ reportId }}</span>
             </div>
             <div class="meta-card">
               <span class="meta-lbl">事故车辆模型</span>
-              <span class="meta-val">{{ getModelName(modelUrl) }}</span>
+              <span class="meta-val">{{ modelName }}</span>
             </div>
             <div class="meta-card">
-              <span class="meta-lbl">网格解算规模</span>
-              <span class="meta-val">{{ formatNumber(modelStats.vertices) }} 顶点 / {{ formatNumber(modelStats.faces) }} 面</span>
+              <span class="meta-lbl">{{ captureImageTypeLabel }}</span>
+              <span class="meta-val">{{ captureImageSummary }}</span>
             </div>
             <div class="meta-card">
               <span class="meta-lbl">生成时间</span>
@@ -308,33 +370,62 @@
             </div>
           </div>
 
-          <!-- 统计汇总 KPI 挂牌 -->
+          <p v-if="isSyntheticCapture && showSyntheticCaptureNote" class="precision-note synthetic-data-note">仿真 UAV/UGV 视角由三维模型渲染生成，不是真实采集影像，也不构成独立精度验证数据。</p>
+
+          <!-- 当前模型可直接读取的数据与精度依据 -->
           <div class="report-kpi-row">
             <div class="kpi-box">
-              <span class="kpi-label">有效测量项</span>
-              <span class="kpi-num text-cyan">{{ measurements.length }}</span>
-              <span class="kpi-unit">个记录</span>
+              <span class="kpi-label">输入影像</span>
+              <span class="kpi-num text-cyan">{{ formatInteger(modelMetadata.datasetCounts?.total || 0) }}</span>
+              <span class="kpi-unit">{{ captureViewShortSummary }}</span>
             </div>
             <div class="kpi-box">
-              <span class="kpi-label">最大形变/碰撞侵入距离</span>
-              <span class="kpi-num text-yellow">{{ getMaxDeformationDistance() }}</span>
-              <span class="kpi-unit">米</span>
+              <span class="kpi-label">三角网格</span>
+              <span class="kpi-num text-yellow">{{ formatMeshCount(modelMetadata.faces) }} 面</span>
+              <span class="kpi-unit">{{ formatMeshCount(modelMetadata.vertices) }} 顶点 · {{ surfaceAppearance }}</span>
             </div>
             <div class="kpi-box">
-              <span class="kpi-label">累计损毁地面正交投影面积</span>
-              <span class="kpi-num text-green">{{ getTotalDamagedArea() }}</span>
-              <span class="kpi-unit">m²</span>
+              <span class="kpi-label">坐标与尺度</span>
+              <span class="kpi-num text-green">{{ coordinateUnit }}</span>
+              <span class="kpi-unit">{{ scaleDescription }}</span>
             </div>
-            <div class="kpi-box">
-              <span class="kpi-label">结构安全评估等级</span>
-              <span class="kpi-num text-red">LEVEL III</span>
-              <span class="kpi-unit">中重度受损</span>
+            <div class="kpi-box precision-box">
+              <span class="kpi-label">实测准确度</span>
+              <span class="kpi-num text-red">待验证</span>
+              <span class="kpi-unit">数值显示：{{ measurementReadout }}</span>
             </div>
           </div>
 
+          <p v-if="showReportPrecisionNote" class="precision-note">{{ measurementAccuracyNote }} 网格规模不等于精度；下列内容包括软件处理指标与既有网格内测量，不替代独立检查点的三维误差。</p>
+
+          <section v-if="qualityReportMetrics.length" class="report-table-section quality-report-section">
+            <h3>建模处理指标与网格内测量</h3>
+            <p class="quality-report-source">
+              <span v-if="qualityReportShowSource">{{ modelMetadata.qualityReport.source }}</span>
+              <a v-if="modelMetadata.qualityReport.reportFileUrl" :href="modelMetadata.qualityReport.reportFileUrl" target="_blank" rel="noopener">查看原始处理报告</a>
+            </p>
+            <table class="report-data-table">
+              <thead>
+                <tr>
+                  <th>指标</th>
+                  <th>报告值</th>
+                  <th v-if="qualityReportShowScopes">来源与口径</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="metric in qualityReportMetrics" :key="metric.id">
+                  <td><strong>{{ metric.label }}</strong></td>
+                  <td>{{ formatQualityMetric(metric) }}</td>
+                  <td v-if="qualityReportShowScopes">{{ metric.scope }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p v-if="qualityReportShowCaveat" class="quality-report-caveat">{{ qualityReportCaveat }}</p>
+          </section>
+
           <!-- 测量数据明细列表 -->
           <div class="report-table-section">
-            <h3>📊 空间三维测量明细表 (Spatial Measurement Breakdown)</h3>
+            <h3>空间量测记录 · {{ measurements.length }} 项</h3>
             <table class="report-data-table">
               <thead>
                 <tr>
@@ -342,14 +433,14 @@
                   <th>类型</th>
                   <th>测量项名称</th>
                   <th>测量数值 / 维度</th>
-                  <th>空间三维坐标 (X, Y, Z)</th>
-                  <th>评估结论与合规判断</th>
+                  <th>场景局部坐标（{{ coordinateUnit }}）</th>
+                  <th>参考校核状态</th>
                   <th>操作</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="measurements.length === 0">
-                  <td colspan="7" class="no-data-td">暂无三维测量项（请在 3D 画布中使用测量工具栏拾取点/线/面）</td>
+                  <td colspan="7" class="no-data-td">暂无量测记录</td>
                 </tr>
                 <tr v-for="(m, index) in measurements" :key="m.id">
                   <td>{{ index + 1 }}</td>
@@ -359,16 +450,19 @@
                     </span>
                   </td>
                   <td><strong>{{ m.name }}</strong></td>
-                  <td class="value-cell">{{ m.valueStr }}</td>
+                  <td class="value-cell">
+                    {{ m.valueStr }}
+                    <small class="reference-comparison">{{ getMeasurementComparisonSummary(m) }}</small>
+                  </td>
                   <td class="coord-cell">
                     <div v-for="(p, pIdx) in m.points" :key="pIdx">
                       P{{ pIdx + 1 }}: ({{ p.x.toFixed(2) }}, {{ p.y.toFixed(2) }}, {{ p.z.toFixed(2) }})
                     </div>
                   </td>
                   <td>
-                    <span v-if="m.type === 'line' && m.distance > 1.5" class="remark-tag remark-warning">超过大梁安全阈值</span>
-                    <span v-else-if="m.type === 'area'" class="remark-tag remark-danger">地面投影影子覆盖</span>
-                    <span v-else class="remark-tag remark-normal">结构定位正常</span>
+                    <span class="remark-tag" :class="m.referenceComparisonStatus === '单项参考对比' || m.referenceComparisonStatus === '单点坐标对比' ? 'remark-warning' : 'remark-normal'">
+                      {{ m.referenceComparisonStatus }}
+                    </span>
                   </td>
                   <td>
                     <button class="delete-report-btn" @click="deleteMeasurement(m.id)" title="同步从场景与报表中移除">🗑️ 移除</button>
@@ -378,13 +472,10 @@
             </table>
           </div>
 
-          <!-- 专家评估结论说明 -->
+          <!-- 精度数据来源说明 -->
           <div class="report-conclusion-box">
-            <h4>📌 综合痕迹与损伤评估结论:</h4>
-            <p>
-              基于高精度 SFM/MVS 算法重建的三维实景网格，经上述步骤四 3D 空间测量数据分析，事故车辆受损区域主要集中于碰撞部位。
-              测得最大深度侵入量为 <strong>{{ getMaxDeformationDistance() }} m</strong>，地面正交投影覆盖面积为 <strong>{{ getTotalDamagedArea() }} m²</strong>。建议结合大梁变形状况安排定损与救援重建方案。
-            </p>
+            <h4>量测口径</h4>
+            <p>{{ measurementAccuracyNote }} 单项偏差只表示与该参考值的比较，不代表模型整体准确度；总体准确度仍需独立检查点或参考扫描验证。</p>
           </div>
         </div>
 
@@ -408,25 +499,33 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 
 // Props & Emits
 const props = defineProps({
   modelUrl: {
     type: String,
-    default: '/Dashboard/models/Accident_Occur1.glb'
+    default: ''
+  },
+  modelName: {
+    type: String,
+    default: '重建场景'
+  },
+  modelMetadata: {
+    type: Object,
+    default: () => ({})
   },
   activeStep: {
     type: Number,
-    default: 3
+    default: 4
   }
 })
 
-const emit = defineEmits(['reset-step', 'update-step'])
+const emit = defineEmits(['reset-step', 'update-step', 'model-loaded'])
 
 // DOM 引用与 Three.js 句柄
 const canvasContainerRef = ref(null)
@@ -451,88 +550,200 @@ let boundingBoxCenter = new THREE.Vector3()
 let boundingBoxSize = new THREE.Vector3()
 let boundingSphereRadius = 10
 
-// 场景物理校准基准跨度 (单位: 米)
-const referenceSceneLength = ref(22.5)
-
-// 比例物理校准因子 (将 3D 模型原始非标坐标单位动态归一化为真实物理米)
+// 只采用资源清单声明的尺度；缺少外部基准时保留模型原始单位。
 const modelScaleFactor = ref(1.0)
+const runtimeScaleFactor = ref(null)
+const runtimeScaleSource = ref('')
+const scaleCalibrated = computed(() => Number(runtimeScaleFactor.value) > 0 || Boolean(props.modelMetadata.scaleCalibrated))
+const coordinateUnit = computed(() => Number(runtimeScaleFactor.value) > 0 ? 'm' : props.modelMetadata.unitLabel || (props.modelMetadata.coordinateSystem === 'ENU' ? 'm' : '模型单位'))
+const areaUnit = computed(() => coordinateUnit.value === 'm' ? 'm²' : `${coordinateUnit.value}²`)
+const scaleDescription = computed(() => Number(runtimeScaleFactor.value) > 0 ? '参考尺寸标定 · 场景局部坐标' : props.modelMetadata.coordinateLabel || (scaleCalibrated.value ? `米制 · ${props.modelMetadata.coordinateSystem || '场景局部坐标'}` : '未标定 · 模型单位'))
+const scaleSourceDescription = computed(() => runtimeScaleSource.value || props.modelMetadata.scaleSource || '未提供')
+const surfaceAppearance = computed(() => props.modelMetadata.surfaceAppearance || (props.modelMetadata.textureUrl ? '照片纹理' : '顶点颜色'))
+const measurementReadout = computed(() => scaleCalibrated.value && coordinateUnit.value === 'm'
+  ? '距离/坐标 0.01 m；面积 0.01 m²'
+  : `距离/坐标 0.01 ${coordinateUnit.value}；面积 0.01 ${areaUnit.value}`)
+const measurementAccuracyNote = computed(() => scaleCalibrated.value && coordinateUnit.value === 'm'
+  ? '距离与坐标显示到 0.01 m（厘米位），面积显示到 0.01 m²；这是数值显示分辨率，不代表实际误差。'
+  : `当前按 ${coordinateUnit.value} 显示，尚无米制标定，不能声明厘米级准确度。`)
+const isSyntheticCapture = computed(() => String(props.modelMetadata.captureType || '').toLowerCase() === 'synthetic')
+const captureImageTypeLabel = computed(() => isSyntheticCapture.value ? '影像来源' : '采集影像')
+const captureUavLabel = computed(() => isSyntheticCapture.value ? '仿真 UAV 视角' : '航拍')
+const captureUgvLabel = computed(() => isSyntheticCapture.value ? '仿真 UGV 视角' : '地面')
+const captureImageSummary = computed(() => {
+  const counts = props.modelMetadata.datasetCounts || {}
+  const parts = [
+    `${captureUavLabel.value} ${counts.uav || 0} 张`,
+    `${captureUgvLabel.value} ${counts.ugv || 0} 张`
+  ]
+  if (counts.other) parts.push(`其他 ${counts.other} 张`)
+  return `${isSyntheticCapture.value ? '合成仿真 · ' : ''}${parts.join(' / ')}`
+})
+const captureViewShortSummary = computed(() => isSyntheticCapture.value
+  ? `仿真 UAV ${props.modelMetadata.datasetCounts?.uav || 0} · 仿真 UGV ${props.modelMetadata.datasetCounts?.ugv || 0}`
+  : `UAV ${props.modelMetadata.datasetCounts?.uav || 0} · UGV ${props.modelMetadata.datasetCounts?.ugv || 0}`)
+const qualityReportMetrics = computed(() => Array.isArray(props.modelMetadata.qualityReport?.metrics)
+  ? props.modelMetadata.qualityReport.metrics
+  : [])
+const qualityReportCaveat = computed(() => props.modelMetadata.qualityReport?.caveat || '')
+const qualityReportShowScopes = computed(() => props.modelMetadata.qualityReport?.showScopes !== false)
+const qualityReportShowSource = computed(() => props.modelMetadata.qualityReport?.showSource !== false)
+const qualityReportShowCaveat = computed(() => props.modelMetadata.qualityReport?.showCaveat !== false && Boolean(qualityReportCaveat.value))
+const showSyntheticCaptureNote = computed(() => props.modelMetadata.qualityReport?.showSyntheticCaptureNote !== false)
+const showReportPrecisionNote = computed(() => props.modelMetadata.qualityReport?.showPrecisionNote !== false)
+const formatQualityMetric = (metric) => `${metric.value}${metric.unit ? ` ${metric.unit}` : ''}`
+
+const formatInteger = (value) => Number(value || 0).toLocaleString('zh-CN')
+const formatMeshCount = (value) => {
+  const count = Number(value || 0)
+  return count >= 1_000_000 ? `约${Math.round(count / 10_000)}万` : formatInteger(count)
+}
+const formatDistance = (value, digits = 2) => value == null ? '暂无记录' : Number.isFinite(Number(value)) ? `${Number(value).toFixed(digits)} ${coordinateUnit.value}` : '暂无记录'
+const formatArea = (value, digits = 2) => value == null ? '暂无记录' : Number.isFinite(Number(value)) ? `${Number(value).toFixed(digits)} ${areaUnit.value}` : '暂无记录'
 
 // 状态管理
 const isLoading = ref(true)
 const loadProgress = ref(0)
-const autoRotate = ref(true)
+const loadError = ref('')
+const autoRotate = ref(false)
 const isWireframe = ref(false)
-const showAnnotations = ref(true)
+const showAnnotations = ref(false)
 const isPlayAnimation = ref(false)
 const showDrawer = ref(false)
 const showReportModal = ref(false)
 const reportGenerateTime = ref('')
 
-// 【步骤四核心】：空间测量模式 ('none' | 'point' | 'line' | 'area')
-const measureMode = ref('line')
+// 【步骤五核心】：空间测量模式 ('none' | 'point' | 'line' | 'area')
+const measureMode = ref('none')
 const pendingPoints = ref([])
 const measurements = ref([])
-
-// 统计信息
-const modelStats = ref({
-  vertices: 184520,
-  faces: 342190
+const pendingMeasurement = ref(null)
+const measurementEntryError = ref('')
+const measurementDraft = ref({
+  name: '',
+  referenceValue: '',
+  referenceX: '',
+  referenceY: '',
+  referenceZ: '',
+  referenceSource: '',
+  useForScaleCalibration: false
 })
+const referenceInputValid = computed(() => {
+  if (!pendingMeasurement.value) return true
+  if (pendingMeasurement.value.type === 'point') {
+    const coords = [measurementDraft.value.referenceX, measurementDraft.value.referenceY, measurementDraft.value.referenceZ].map(value => String(value).trim())
+    return coords.every(value => value === '') || (scaleCalibrated.value && coords.every(value => value !== '' && Number.isFinite(Number(value))))
+  }
+  const rawValue = String(measurementDraft.value.referenceValue).trim()
+  return rawValue === '' || (Number.isFinite(Number(rawValue)) && Number(rawValue) > 0)
+})
+const canSavePendingMeasurement = computed(() => Boolean(measurementDraft.value.name.trim()) && referenceInputValid.value)
 
 // 常规 3D 检测点
-const inspectionTags = ref([
-  { name: '客车车头撞击点', value: '终点态凹陷: 0.42m', pos: new THREE.Vector3(0, 1.2, 2.5), screenX: 0, screenY: 0, visible: false },
-  { name: '车身激光点云密度', value: '14,200 pts/m²', pos: new THREE.Vector3(-1.8, 1.5, 0), screenX: 0, screenY: 0, visible: false },
-  { name: '轮胎侧倾夹角', value: '倾角偏差: 4.2°', pos: new THREE.Vector3(1.5, 0.6, -2.0), screenX: 0, screenY: 0, visible: false }
-])
+const inspectionTags = ref([])
+const reportId = ref('')
+let modelLoadId = 0
 
-const getPresetDefaultLength = (url) => {
-  if (!url) return 22.5
-  if (url.includes('Accident_Occur1')) return 22.5
-  if (url.includes('Side_roll_Tanker')) return 16.5
-  if (url.includes('Normal_Drive')) return 11.0
-  if (url.includes('recure car')) return 4.6
-  return 22.5
+const referenceValueLabel = (measurement) => {
+  if (measurement.referenceValue == null) return ''
+  const unit = measurement.referenceUnit || (measurement.type === 'area' ? areaUnit.value : coordinateUnit.value)
+  const digits = measurement.type === 'area' ? 2 : 2
+  return `${Number(measurement.referenceValue).toFixed(digits)} ${unit}`
 }
 
-// 手动或自动重设物理缩放比例
-const recalibrateScale = () => {
-  if (!currentModelGroup) return
-  const rawMeshLength = Math.max(boundingBoxSize.x, boundingBoxSize.z)
-  if (rawMeshLength > 0) {
-    modelScaleFactor.value = referenceSceneLength.value / rawMeshLength
-  } else {
-    modelScaleFactor.value = 1.0
+const updateMeasurementComparison = (measurement) => {
+  measurement.referenceAbsoluteDeviation = null
+  measurement.referenceRelativeDeviation = null
+
+  if (measurement.referenceRole === 'scale-calibration') {
+    measurement.referenceComparisonStatus = '比例标定基准'
+    measurement.referenceComparisonText = `参考值 ${referenceValueLabel(measurement)}；本条用于尺度标定，不作为精度校核。`
+    return
   }
 
-  measurements.value.forEach(m => {
-    const rawPts = m.rawPoints || m.points
-    if (m.type === 'point') {
-      const p = rawPts[0]
-      const realP = new THREE.Vector3(p.x * modelScaleFactor.value, p.y * modelScaleFactor.value, p.z * modelScaleFactor.value)
-      m.points = [realP]
-      m.valueStr = `(${realP.x.toFixed(2)}, ${realP.y.toFixed(2)}, ${realP.z.toFixed(2)}) m`
-    } else if (m.type === 'line') {
-      const p1 = rawPts[0]
-      const p2 = rawPts[1]
-      const rawDist = p1.distanceTo(p2)
-      const realDist = rawDist * modelScaleFactor.value
-      m.distance = realDist
-      m.valueStr = `${realDist.toFixed(3)} m`
-      m.dx = Math.abs(p1.x - p2.x) * modelScaleFactor.value
-      m.dy = Math.abs(p1.y - p2.y) * modelScaleFactor.value
-      m.dz = Math.abs(p1.z - p2.z) * modelScaleFactor.value
-      m.points = [
-        new THREE.Vector3(p1.x * modelScaleFactor.value, p1.y * modelScaleFactor.value, p1.z * modelScaleFactor.value),
-        new THREE.Vector3(p2.x * modelScaleFactor.value, p2.y * modelScaleFactor.value, p2.z * modelScaleFactor.value)
-      ]
-    } else if (m.type === 'area') {
-      const realArea = calculateGroundProjectionArea(rawPts)
-      m.area = realArea
-      m.valueStr = `${realArea.toFixed(3)} m²`
-      m.points = rawPts.map(p => new THREE.Vector3(p.x * modelScaleFactor.value, p.y * modelScaleFactor.value, p.z * modelScaleFactor.value))
+  if (measurement.type === 'point') {
+    if (!measurement.referenceCoordinates) {
+      measurement.referenceComparisonStatus = '未提供参考坐标'
+      measurement.referenceComparisonText = '未提供参考坐标。'
+      return
     }
-  })
+    if (!scaleCalibrated.value || !measurement.points?.[0]) {
+      measurement.referenceComparisonStatus = '尺度未标定'
+      measurement.referenceComparisonText = '已录入参考坐标；尺度未标定，未比较。'
+      return
+    }
+
+    const delta = measurement.points[0].clone().sub(measurement.referenceCoordinates)
+    measurement.referenceAbsoluteDeviation = delta.length()
+    measurement.referenceComparisonStatus = '单点坐标对比'
+    measurement.referenceComparisonText = `参考坐标 (${measurement.referenceCoordinates.x.toFixed(2)}, ${measurement.referenceCoordinates.y.toFixed(2)}, ${measurement.referenceCoordinates.z.toFixed(2)}) ${coordinateUnit.value}；三维差 ${formatDistance(delta.length())}${measurement.referenceSource ? `；来源 ${measurement.referenceSource}` : ''}。`
+    return
+  }
+
+  if (measurement.referenceValue == null) {
+    measurement.referenceComparisonStatus = '未提供参考值'
+    measurement.referenceComparisonText = '未提供参考值。'
+    return
+  }
+  if (!scaleCalibrated.value) {
+    measurement.referenceComparisonStatus = '尺度未标定'
+    measurement.referenceComparisonText = `已录入参考值 ${referenceValueLabel(measurement)}；尺度未标定，未比较。`
+    return
+  }
+
+  const measuredValue = measurement.type === 'area' ? measurement.area : measurement.distance
+  const deviation = Math.abs(measuredValue - Number(measurement.referenceValue))
+  measurement.referenceAbsoluteDeviation = deviation
+  measurement.referenceRelativeDeviation = Number(measurement.referenceValue) > 0 ? (deviation / Number(measurement.referenceValue)) * 100 : null
+  const formattedDeviation = measurement.type === 'area' ? formatArea(deviation) : formatDistance(deviation)
+  const relative = measurement.referenceRelativeDeviation == null ? '' : `（${measurement.referenceRelativeDeviation.toFixed(2)}%）`
+  measurement.referenceComparisonStatus = '单项参考对比'
+  measurement.referenceComparisonText = `参考值 ${referenceValueLabel(measurement)}；偏差 ${formattedDeviation}${relative}${measurement.referenceSource ? `；来源 ${measurement.referenceSource}` : ''}。`
+}
+
+const updateMeasurementGeometry = (measurement) => {
+  const rawPoints = measurement.rawPoints || measurement.points
+  if (!rawPoints?.length) return
+
+  if (measurement.type === 'point') {
+    const raw = rawPoints[0]
+    const point = new THREE.Vector3(raw.x * modelScaleFactor.value, raw.y * modelScaleFactor.value, raw.z * modelScaleFactor.value)
+    measurement.points = [point]
+    measurement.valueStr = `(${point.x.toFixed(2)}, ${point.y.toFixed(2)}, ${point.z.toFixed(2)}) ${coordinateUnit.value}`
+    measurement.unit = coordinateUnit.value
+  } else if (measurement.type === 'line') {
+    const [p1, p2] = rawPoints
+    const distance = p1.distanceTo(p2) * modelScaleFactor.value
+    measurement.distance = distance
+    measurement.valueStr = formatDistance(distance)
+    measurement.unit = coordinateUnit.value
+    measurement.dx = Math.abs(p1.x - p2.x) * modelScaleFactor.value
+    measurement.dy = Math.abs(p1.y - p2.y) * modelScaleFactor.value
+    measurement.dz = Math.abs(p1.z - p2.z) * modelScaleFactor.value
+    measurement.points = [
+      new THREE.Vector3(p1.x * modelScaleFactor.value, p1.y * modelScaleFactor.value, p1.z * modelScaleFactor.value),
+      new THREE.Vector3(p2.x * modelScaleFactor.value, p2.y * modelScaleFactor.value, p2.z * modelScaleFactor.value)
+    ]
+  } else if (measurement.type === 'area') {
+    const area = calculateGroundProjectionArea(rawPoints)
+    measurement.area = area
+    measurement.valueStr = formatArea(area)
+    measurement.unit = areaUnit.value
+    measurement.points = rawPoints.map(point => new THREE.Vector3(point.x * modelScaleFactor.value, point.y * modelScaleFactor.value, point.z * modelScaleFactor.value))
+  }
+
+  updateMeasurementComparison(measurement)
+}
+
+// 应用有来源的尺度基准，并同步更新已有测量值。
+const recalibrateScale = () => {
+  const runtimeScale = Number(runtimeScaleFactor.value)
+  const declaredScale = Number(props.modelMetadata.scaleFactor)
+  modelScaleFactor.value = runtimeScale > 0
+    ? runtimeScale
+    : scaleCalibrated.value && Number.isFinite(declaredScale) && declaredScale > 0 ? declaredScale : 1.0
+
+  measurements.value.forEach(updateMeasurementGeometry)
 }
 
 // 模式切换
@@ -548,8 +759,8 @@ const setMeasureMode = (mode) => {
     controls.autoRotate = measureMode.value === 'none' ? autoRotate.value : false
   }
 
-  if (measureMode.value !== 'none' && props.activeStep !== 4) {
-    emit('update-step', 4)
+  if (measureMode.value !== 'none' && props.activeStep !== 5) {
+    emit('update-step', 5)
   }
 }
 
@@ -592,46 +803,126 @@ const deleteMeasurement = (id) => {
   rebuildAllMeasurementGeometries()
 }
 
-// 打开评估报告 (步骤五)
+// 打开测量报告 (步骤六)
 const openReportModal = () => {
   reportGenerateTime.value = new Date().toLocaleString()
+  reportId.value = `REP-${Date.now()}`
   showReportModal.value = true
-  emit('update-step', 5)
+  emit('update-step', 6)
 }
 
-// 格式化数字
-const formatNumber = (num) => {
-  return num ? num.toLocaleString() : '0'
+const getModelName = () => props.modelName || '重建场景'
+
+const normalizeMeasurementName = (item, index) => {
+  const cleanedName = String(item.name || '').replace(/[\r\n]+/g, ' ').trim()
+  if (cleanedName) {
+    item.name = cleanedName
+    return
+  }
+
+  const typeName = item.type === 'point' ? '点坐标' : item.type === 'line' ? '直线距离' : '水平投影面积'
+  item.name = `${typeName} #${index + 1}`
 }
 
-const getModelName = (url) => {
-  if (!url) return '两客一危事故车辆 3D 模型'
-  if (url.includes('Accident_Occur1')) return '客车追尾撞击事故重建模型'
-  if (url.includes('Side_roll_Tanker')) return '油罐车侧翻泄露现场重建模型'
-  if (url.includes('Normal_Drive')) return '巡航长途大客车基准模型'
-  if (url.includes('recure car')) return '1号无人侦察车装备模型'
-  return '两客一危事故车辆 3D 模型'
+const queueMeasurement = (measurement) => {
+  pendingMeasurement.value = measurement
+  measurementDraft.value = {
+    name: '',
+    referenceValue: '',
+    referenceX: '',
+    referenceY: '',
+    referenceZ: '',
+    referenceSource: '',
+    useForScaleCalibration: false
+  }
+  measurementEntryError.value = ''
+  measureMode.value = 'none'
+  clearPendingPoints()
+  if (controls) controls.autoRotate = autoRotate.value
 }
+
+const cancelPendingMeasurement = () => {
+  pendingMeasurement.value = null
+  measurementEntryError.value = ''
+  clearPendingPoints()
+  if (controls) controls.autoRotate = autoRotate.value
+}
+
+const commitPendingMeasurement = () => {
+  const measurement = pendingMeasurement.value
+  if (!measurement || !canSavePendingMeasurement.value) return
+
+  measurement.name = measurementDraft.value.name.trim()
+  measurement.referenceSource = measurementDraft.value.referenceSource.trim()
+
+  if (measurement.type === 'point') {
+    const referenceCoords = [measurementDraft.value.referenceX, measurementDraft.value.referenceY, measurementDraft.value.referenceZ].map(value => String(value).trim())
+    if (referenceCoords.every(value => value !== '')) {
+      measurement.referenceCoordinates = new THREE.Vector3(...referenceCoords.map(Number))
+      measurement.referenceUnit = coordinateUnit.value
+    }
+    updateMeasurementGeometry(measurement)
+  } else {
+    const referenceValueText = String(measurementDraft.value.referenceValue).trim()
+    if (referenceValueText) {
+      measurement.referenceValue = Number(referenceValueText)
+      measurement.referenceUnit = measurement.type === 'area' ? 'm²' : 'm'
+      measurement.referenceRole = 'comparison'
+    }
+
+    if (referenceValueText && !scaleCalibrated.value && measurementDraft.value.useForScaleCalibration) {
+      const referenceValue = Number(referenceValueText)
+      const rawValue = getUnscaledMeasurementValue(measurement)
+      if (!(rawValue > 0) || !(referenceValue > 0)) {
+        measurementEntryError.value = '当前量测值无法用于比例标定，请检查参考尺寸。'
+        return
+      }
+
+      runtimeScaleFactor.value = measurement.type === 'line' ? referenceValue / rawValue : Math.sqrt(referenceValue / rawValue)
+      runtimeScaleSource.value = `${measurement.name} 的参考${measurement.type === 'line' ? '长度' : '面积'}`
+      measurement.referenceRole = 'scale-calibration'
+      measurement.referenceUnit = measurement.type === 'area' ? 'm²' : 'm'
+      recalibrateScale()
+    }
+
+    updateMeasurementGeometry(measurement)
+  }
+
+  updateMeasurementComparison(measurement)
+  measurements.value.push(measurement)
+  pendingMeasurement.value = null
+  measurementEntryError.value = ''
+  rebuildAllMeasurementGeometries()
+}
+
+const getUnscaledMeasurementValue = (measurement) => {
+  if (!measurement?.rawPoints?.length) return null
+  if (measurement.type === 'line') return measurement.rawPoints[0].distanceTo(measurement.rawPoints[1])
+  if (measurement.type === 'area') return calculateGroundProjectionArea(measurement.rawPoints) / Math.pow(modelScaleFactor.value, 2)
+  return null
+}
+
+const getMeasurementComparisonSummary = (measurement) => measurement.referenceComparisonText || '未提供参考值。'
 
 // 评估报告计算辅助
-const getMaxDeformationDistance = () => {
+const getMaxMeasuredDistance = () => {
   let maxD = 0
   measurements.value.forEach(m => {
     if (m.type === 'line' && m.distance > maxD) {
       maxD = m.distance
     }
   })
-  return maxD > 0 ? maxD.toFixed(3) : '1.420'
+  return maxD > 0 ? maxD : null
 }
 
-const getTotalDamagedArea = () => {
+const getTotalProjectionArea = () => {
   let totalA = 0
   measurements.value.forEach(m => {
     if (m.type === 'area' && m.area > 0) {
       totalA += m.area
     }
   })
-  return totalA > 0 ? totalA.toFixed(2) : '2.15'
+  return totalA > 0 ? totalA : null
 }
 
 const estimateGroundPolygonPerimeter = (pts) => {
@@ -645,17 +936,30 @@ const estimateGroundPolygonPerimeter = (pts) => {
     const dz = p1.z - p2.z
     len += Math.sqrt(dx * dx + dz * dz)
   }
-  return len * modelScaleFactor.value
+  return len
 }
 
 // 纯文本 (TXT 格式) 导出
 const exportTXTReport = () => {
   let txt = `====================================================\n`
-  txt += `两客一危事故车辆 3D 精细测量与痕迹评估报告\n`
-  txt += `报告编号: REP-${Date.now()}\n`
+  txt += `三维重建模型与空间量测报告\n`
+  txt += `报告编号: ${reportId.value || `REP-${Date.now()}`}\n`
   txt += `生成时间: ${reportGenerateTime.value || new Date().toLocaleString()}\n`
   txt += `事故车辆模型: ${getModelName(props.modelUrl)}\n`
-  txt += `网格规模: ${formatNumber(modelStats.value.vertices)} 顶点 / ${formatNumber(modelStats.value.faces)} 三角面\n`
+  txt += `${captureImageTypeLabel.value}: ${captureImageSummary.value}\n`
+  if (isSyntheticCapture.value && showSyntheticCaptureNote.value) txt += `影像性质: 三维模型渲染的仿真机位，不是真实采集影像，不作为独立精度验证数据。\n`
+  if (qualityReportMetrics.value.length) {
+    txt += `\n【建模处理指标与网格内测量】\n`
+    if (qualityReportShowSource.value) txt += `来源: ${props.modelMetadata.qualityReport.source}\n`
+    if (props.modelMetadata.qualityReport.reportFileUrl) txt += `原始处理报告: 已从所选数据集中关联，可在页面报告中打开。\n`
+    qualityReportMetrics.value.forEach(metric => {
+      const scope = qualityReportShowScopes.value && metric.scope ? `（${metric.scope}）` : ''
+      txt += `${metric.label}: ${formatQualityMetric(metric)}${scope}\n`
+    })
+    if (qualityReportShowCaveat.value) txt += `口径说明: ${qualityReportCaveat.value}\n`
+  }
+  txt += `网格规模: ${formatInteger(props.modelMetadata.vertices || 0)} 顶点 / ${formatInteger(props.modelMetadata.faces || 0)} 面\n`
+  txt += `坐标与尺度: ${scaleDescription.value}；量测单位 ${coordinateUnit.value}；尺度来源 ${scaleSourceDescription.value}\n`
   txt += `====================================================\n\n`
   txt += `【测量数据明细列表】\n`
 
@@ -665,16 +969,18 @@ const exportTXTReport = () => {
     measurements.value.forEach((m, idx) => {
       const typeLabel = m.type === 'point' ? '点坐标' : m.type === 'line' ? '直线距离' : '地面投影面积'
       txt += `测量项${idx + 1}: ${m.name} (${typeLabel}) - ${m.valueStr}\n`
+      txt += `   参考对比: ${getMeasurementComparisonSummary(m)}\n`
       m.points.forEach((p, pIdx) => {
-        txt += `   P${pIdx + 1}: X=${p.x.toFixed(2)}m, Y=${p.y.toFixed(2)}m, Z=${p.z.toFixed(2)}m\n`
+        txt += `   P${pIdx + 1}: X=${p.x.toFixed(2)}, Y=${p.y.toFixed(2)}, Z=${p.z.toFixed(2)} ${coordinateUnit.value}\n`
       })
     })
   }
 
-  txt += `\n【综合评估结论】\n`
-  txt += `最大深度侵入/形变距离: ${getMaxDeformationDistance()} m\n`
-  txt += `累计损毁地面正交投影面积: ${getTotalDamagedArea()} m²\n`
-  txt += `结构安全评估等级: LEVEL III (中重度受损)\n`
+  txt += `\n【空间量测汇总】\n`
+  txt += `最大记录距离: ${formatDistance(getMaxMeasuredDistance())}\n`
+  txt += `累计水平投影面积: ${formatArea(getTotalProjectionArea(), 2)}\n`
+  txt += `数值显示分辨率: ${measurementReadout.value}\n`
+  txt += `实测准确度: 待验证（需要独立检查点或参考扫描）。\n`
 
   const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' })
   const link = document.createElement('a')
@@ -688,22 +994,44 @@ const exportTXTReport = () => {
 
 // Markdown (MD 格式) 导出
 const exportMDReport = () => {
-  let md = `# 两客一危事故车辆 3D 精细测量与痕迹评估报告\n\n`
-  md += `- **报告编号**: REP-${Date.now()}\n`
+  let md = `# 三维重建模型与空间量测报告\n\n`
+  md += `- **报告编号**: ${reportId.value || `REP-${Date.now()}`}\n`
   md += `- **生成时间**: ${reportGenerateTime.value || new Date().toLocaleString()}\n`
   md += `- **事故车辆模型**: ${getModelName(props.modelUrl)}\n`
-  md += `- **网格数据规模**: ${formatNumber(modelStats.value.vertices)} 顶点 | ${formatNumber(modelStats.value.faces)} 三角面\n\n`
+  md += `- **${captureImageTypeLabel.value}**: ${captureImageSummary.value}\n`
+  if (isSyntheticCapture.value && showSyntheticCaptureNote.value) md += `- **影像性质**: 三维模型渲染的仿真机位，不是真实采集影像，不作为独立精度验证数据。\n`
+  md += '\n'
 
-  md += `## 一、统计汇总\n\n`
-  md += `| 评估指标 | 测量数值 | 备注 |\n`
-  md += `| :--- | :--- | :--- |\n`
-  md += `| 有效测量项数量 | ${measurements.value.length} 个记录 | 实时绑定场景中点/线/面 |\n`
-  md += `| 最大形变/碰撞侵入距离 | ${getMaxDeformationDistance()} m | 依据 3D 点云与网格算得 |\n`
-  md += `| 累计损毁地面正交投影面积 | ${getTotalDamagedArea()} m² | 基于 Shoelace 投影算法算得 |\n`
-  md += `| 结构安全评估等级 | LEVEL III | 中重度受损 |\n\n`
+  md += `## 一、模型数据与精度依据\n\n`
+  md += `| 项目 | 当前数据 | 说明 |\n| :--- | :--- | :--- |\n`
+  md += `| ${captureImageTypeLabel.value} | ${formatInteger(props.modelMetadata.datasetCounts?.total || 0)} 张 | ${captureImageSummary.value} |\n`
+  md += `| 网格规模 | ${formatInteger(props.modelMetadata.vertices || 0)} 顶点 / ${formatInteger(props.modelMetadata.faces || 0)} 面 | 表面显示：${surfaceAppearance.value}；不等同于精度 |\n`
+  md += `| 坐标与尺度 | ${scaleDescription.value} | 量测单位：${coordinateUnit.value}；来源：${scaleSourceDescription.value} |\n`
+  md += `| 数值显示分辨率 | ${measurementReadout.value} | 仅指读数显示位数，不代表实际误差 |\n`
+  md += `| 实测准确度 | 待验证 | 缺少独立检查点或参考扫描，绝对位置 RMSE/完整率未计算；重投影 RMS 为软件内部指标 |\n\n`
 
-  md += `## 二、空间三维测量明细表\n\n`
-  md += `| 序号 | 测量类型 | 测量项名称 | 测量数值 / 维度 | 空间三维坐标 (X, Y, Z) | 评估结论 |\n`
+  if (qualityReportMetrics.value.length) {
+    md += `### 建模处理指标与网格内测量\n\n`
+    if (qualityReportShowSource.value) md += `来源：${props.modelMetadata.qualityReport.source}\n\n`
+    if (props.modelMetadata.qualityReport.reportFileUrl) md += `原始处理报告：已从所选数据集中关联，可在页面报告中打开。\n\n`
+    md += qualityReportShowScopes.value
+      ? `| 指标 | 报告值 | 来源与口径 |\n| :--- | :--- | :--- |\n`
+      : `| 指标 | 报告值 |\n| :--- | :--- |\n`
+    qualityReportMetrics.value.forEach(metric => {
+      md += qualityReportShowScopes.value
+        ? `| ${metric.label} | ${formatQualityMetric(metric)} | ${metric.scope} |\n`
+        : `| ${metric.label} | ${formatQualityMetric(metric)} |\n`
+    })
+    if (qualityReportShowCaveat.value) md += `\n${qualityReportCaveat.value}\n\n`
+  }
+
+  md += `## 二、空间量测汇总\n\n`
+  md += `| 项目 | 当前数值 | 来源 |\n| :--- | :--- | :--- |\n`
+  md += `| 最大记录距离 | ${formatDistance(getMaxMeasuredDistance())} | 本次空间量测 |\n`
+  md += `| 累计水平投影面积 | ${formatArea(getTotalProjectionArea(), 2)} | 本次空间量测 |\n\n`
+
+  md += `## 三、空间量测明细\n\n`
+  md += `| 序号 | 测量类型 | 测量项名称 | 测量数值 / 维度 | 场景局部坐标 (${coordinateUnit.value}) | 参考校核状态 |\n`
   md += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`
 
   if (measurements.value.length === 0) {
@@ -712,16 +1040,16 @@ const exportMDReport = () => {
     measurements.value.forEach((m, idx) => {
       const typeLabel = m.type === 'point' ? '点坐标' : m.type === 'line' ? '直线距离' : '地面投影面积'
       const coords = m.points.map((p, pIdx) => `P${pIdx + 1}: (${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)})`).join('<br>')
-      let remark = '结构定位正常'
-      if (m.type === 'line' && m.distance > 1.5) remark = '超过大梁安全阈值'
-      else if (m.type === 'area') remark = '地面投影影子覆盖'
+      const remark = getMeasurementComparisonSummary(m)
 
       md += `| ${idx + 1} | ${typeLabel} | **${m.name}** | ${m.valueStr} | ${coords} | ${remark} |\n`
     })
   }
 
-  md += `\n## 三、综合痕迹与损伤评估结论\n\n`
-  md += `基于高精度 SFM/MVS 算法重建的三维实景网格，经上述步骤四 3D 空间测量数据分析，事故车辆受损区域主要集中于碰撞部位。测得最大深度侵入量为 **${getMaxDeformationDistance()} m**，地面正交投影覆盖面积为 **${getTotalDamagedArea()} m²**。建议结合大梁变形状况安排定损与救援重建方案。\n`
+  if (showReportPrecisionNote.value) {
+    md += `\n## 四、精度口径\n\n`
+    md += `${measurementAccuracyNote.value} 网格规模是模型数据量，不是重建精度。Metashape 重投影和坐标精度结果作为软件内部处理指标列出；独立检查点/参考扫描不足，因此不作为全局实际误差或结构安全等级。\n`
+  }
 
   const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' })
   const link = document.createElement('a')
@@ -735,10 +1063,20 @@ const exportMDReport = () => {
 
 // 导出 CSV
 const exportCSVData = () => {
-  let csvContent = 'data:text/csv;charset=utf-8,序号,类型,测量项名称,测量数值,X(m),Y(m),Z(m)\n'
+  let csvContent = `data:text/csv;charset=utf-8,序号,类型,测量项名称,测量数值,参考值与偏差,X(${coordinateUnit.value}),Y(${coordinateUnit.value}),Z(${coordinateUnit.value}),数值显示分辨率,实测准确度,来源与口径\n`
+  const csvCell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`
   measurements.value.forEach((m, idx) => {
     const firstP = m.points[0] || { x: 0, y: 0, z: 0 }
-    csvContent += `${idx + 1},${m.type},${m.name},"${m.valueStr}",${firstP.x.toFixed(2)},${firstP.y.toFixed(2)},${firstP.z.toFixed(2)}\n`
+    const row = [idx + 1, m.type, m.name, m.valueStr, getMeasurementComparisonSummary(m), firstP.x.toFixed(2), firstP.y.toFixed(2), firstP.z.toFixed(2), measurementReadout.value, '待验证', '本次空间量测']
+    csvContent += `${row.map(csvCell).join(',')}\n`
+  })
+  qualityReportMetrics.value.forEach(metric => {
+    const recordType = metric.id === 'meshlab-scale-m0' ? '换算系数' : '处理指标'
+    const reportAttachmentNote = props.modelMetadata.qualityReport.reportFileUrl ? '；已关联原始处理报告 PDF' : ''
+    const source = qualityReportShowSource.value ? props.modelMetadata.qualityReport.source : ''
+    const sourceAndScope = [source, qualityReportShowScopes.value ? metric.scope : ''].filter(Boolean).join('；')
+    const row = ['', recordType, metric.label, formatQualityMetric(metric), '', '', '', '', '', '待验证', `${sourceAndScope}${reportAttachmentNote}`]
+    csvContent += `${row.map(csvCell).join(',')}\n`
   })
   const encodedUri = encodeURI(csvContent)
   const link = document.createElement('a')
@@ -792,7 +1130,7 @@ const initThreeScene = () => {
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = THREE.PCFSoftShadowMap
   renderer.toneMapping = THREE.ACESFilmicToneMapping
-  renderer.toneMappingExposure = 1.85
+  renderer.toneMappingExposure = 0.75
 
   threeCanvasRef.value.innerHTML = ''
   threeCanvasRef.value.appendChild(renderer.domElement)
@@ -813,23 +1151,23 @@ const initThreeScene = () => {
 }
 
 const setupLighting = () => {
-  const ambientLight = new THREE.AmbientLight(0xffffff, 3.8)
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.35)
   scene.add(ambientLight)
 
-  const keyLight = new THREE.DirectionalLight(0xffffff, 3.5)
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.1)
   keyLight.position.set(25, 45, 25)
   keyLight.castShadow = true
   scene.add(keyLight)
 
-  const fillLight = new THREE.DirectionalLight(0xe0f2fe, 2.8)
+  const fillLight = new THREE.DirectionalLight(0xe0f2fe, 0.24)
   fillLight.position.set(-25, 25, -25)
   scene.add(fillLight)
 
-  const backLight = new THREE.DirectionalLight(0x38bdf8, 2.5)
+  const backLight = new THREE.DirectionalLight(0x38bdf8, 0.1)
   backLight.position.set(0, 35, -35)
   scene.add(backLight)
 
-  const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 2.5)
+  const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 0.25)
   scene.add(hemiLight)
 }
 
@@ -866,7 +1204,7 @@ const enhanceMaterialLuminance = (mat) => {
   })
 }
 
-// 【步骤四核心】：3D 画布点击射线拾取与精确测距 (Raycasting + Scale Factor)
+// 【步骤五核心】：3D 画布点击射线拾取与精确测距 (Raycasting + Scale Factor)
 const handleCanvasClick = (event) => {
   if (measureMode.value === 'none' || !threeCanvasRef.value || !currentModelGroup || !camera) return
 
@@ -887,12 +1225,12 @@ const handleCanvasClick = (event) => {
         hitPoint.z * modelScaleFactor.value
       )
 
-      measurements.value.push({
+      queueMeasurement({
         id: Date.now(),
         type: 'point',
-        name: `提取点坐标 #${measurements.value.length + 1}`,
-        valueStr: `(${realP.x.toFixed(2)}, ${realP.y.toFixed(2)}, ${realP.z.toFixed(2)}) m`,
-        unit: 'm',
+        name: '',
+        valueStr: `(${realP.x.toFixed(2)}, ${realP.y.toFixed(2)}, ${realP.z.toFixed(2)}) ${coordinateUnit.value}`,
+        unit: coordinateUnit.value,
         points: [realP],
         rawPoints: [hitPoint],
         rawMidPoint: hitPoint.clone(),
@@ -901,7 +1239,6 @@ const handleCanvasClick = (event) => {
         screenY: 0,
         visible: true
       })
-      rebuildAllMeasurementGeometries()
 
     } else if (measureMode.value === 'line') {
       if (pendingPoints.value.length === 0) {
@@ -917,12 +1254,12 @@ const handleCanvasClick = (event) => {
         const realP1 = new THREE.Vector3(p1.x * modelScaleFactor.value, p1.y * modelScaleFactor.value, p1.z * modelScaleFactor.value)
         const realP2 = new THREE.Vector3(p2.x * modelScaleFactor.value, p2.y * modelScaleFactor.value, p2.z * modelScaleFactor.value)
 
-        measurements.value.push({
+        queueMeasurement({
           id: Date.now(),
           type: 'line',
-          name: `形变深度测距 #${measurements.value.length + 1}`,
-          valueStr: `${realDist.toFixed(3)} m`,
-          unit: 'm',
+          name: '',
+          valueStr: formatDistance(realDist),
+          unit: coordinateUnit.value,
           distance: realDist,
           dx: Math.abs(p1.x - p2.x) * modelScaleFactor.value,
           dy: Math.abs(p1.y - p2.y) * modelScaleFactor.value,
@@ -936,8 +1273,6 @@ const handleCanvasClick = (event) => {
           visible: true
         })
 
-        clearPendingPoints()
-        rebuildAllMeasurementGeometries()
       }
 
     } else if (measureMode.value === 'area') {
@@ -959,12 +1294,12 @@ const finishPolygonArea = () => {
 
   const realPts = rawPts.map(p => new THREE.Vector3(p.x * modelScaleFactor.value, p.y * modelScaleFactor.value, p.z * modelScaleFactor.value))
 
-  measurements.value.push({
+  queueMeasurement({
     id: Date.now(),
     type: 'area',
-    name: `地面正交投影面积 #${measurements.value.length + 1}`,
-    valueStr: `${realArea.toFixed(3)} m²`,
-    unit: 'm²',
+    name: '',
+    valueStr: formatArea(realArea),
+    unit: areaUnit.value,
     area: realArea,
     points: realPts,
     rawPoints: rawPts,
@@ -974,9 +1309,6 @@ const finishPolygonArea = () => {
     screenY: 0,
     visible: true
   })
-
-  clearPendingPoints()
-  rebuildAllMeasurementGeometries()
 }
 
 // 核心公式：【水平地面正交投影面积】算法 (鞋带公式 / Shoelace Formula on XZ-Plane)
@@ -1210,102 +1542,150 @@ const renderGroundOrthographicProjectionOverlay = (targetGroup, pts) => {
   targetGroup.add(topLineLoop)
 }
 
-// 模型加载逻辑
+const disposeModelGroup = (group) => {
+  if (!group) return
+  const geometries = new Set()
+  const materials = new Set()
+  const textures = new Set()
+
+  group.traverse((child) => {
+    if (child.geometry) geometries.add(child.geometry)
+    const childMaterials = Array.isArray(child.material) ? child.material : [child.material]
+    childMaterials.filter(Boolean).forEach((material) => {
+      materials.add(material)
+      Object.values(material).forEach((value) => {
+        if (value && value.isTexture) textures.add(value)
+      })
+    })
+  })
+
+  geometries.forEach((geometry) => geometry.dispose())
+  textures.forEach((texture) => texture.dispose())
+  materials.forEach((material) => material.dispose())
+}
+
+// 直接读取项目中的 PLY 重建成果，并用 XHR 进度反馈实际文件读取进度。
 const loadModel = (url) => {
+  const requestId = ++modelLoadId
+  if (!url || !scene) return
+
   isLoading.value = true
-  loadProgress.value = 5
+  loadError.value = ''
+  loadProgress.value = 0
   clearMeasurements()
 
   if (currentModelGroup) {
     scene.remove(currentModelGroup)
+    disposeModelGroup(currentModelGroup)
     currentModelGroup = null
   }
 
-  if (mixer) {
-    mixer.stopAllAction()
-    mixer = null
-  }
-
-  const loader = new GLTFLoader()
+  const loader = new PLYLoader()
   loader.load(
     url,
-    (gltf) => {
-      currentModelGroup = gltf.scene || gltf.scenes[0]
-      scene.add(currentModelGroup)
-
-      if (gltf.animations && gltf.animations.length > 0) {
-        mixer = new THREE.AnimationMixer(currentModelGroup)
-        gltf.animations.forEach((clip) => {
-          const action = mixer.clipAction(clip)
-          action.play()
-          action.time = clip.duration
-        })
-        mixer.update(0)
+    (geometry) => {
+      if (requestId !== modelLoadId) {
+        geometry.dispose()
+        return
       }
 
-      let vertCount = 0
-      let faceCount = 0
-      currentModelGroup.traverse((child) => {
-        if (child.isMesh) {
-          child.castShadow = true
-          child.receiveShadow = true
-          if (child.material) enhanceMaterialLuminance(child.material)
+      const position = geometry.getAttribute('position')
+      if (!position || position.count === 0) {
+        geometry.dispose()
+        isLoading.value = false
+        loadError.value = '场景数据暂时无法读取，请检查资源配置。'
+        return
+      }
 
-          if (child.geometry) {
-            const geom = child.geometry
-            if (geom.attributes && geom.attributes.position) {
-              vertCount += geom.attributes.position.count
+      if (props.modelMetadata.upAxis === 'z') {
+        geometry.computeBoundingBox()
+        const sourceBounds = geometry.boundingBox
+        const sourceCenter = sourceBounds.getCenter(new THREE.Vector3())
+        geometry.translate(-sourceCenter.x, -sourceCenter.y, -sourceBounds.min.z)
+      } else {
+        geometry.computeBoundingBox()
+        const sourceBounds = geometry.boundingBox
+        const sourceCenter = sourceBounds.getCenter(new THREE.Vector3())
+        geometry.translate(-sourceCenter.x, -sourceBounds.min.y, -sourceCenter.z)
+      }
+
+      if (!geometry.getAttribute('normal')) geometry.computeVertexNormals()
+
+      const hasUv = Boolean(geometry.getAttribute('uv'))
+      const useTexture = Boolean(props.modelMetadata.textureUrl && hasUv)
+      const hasVertexColors = Boolean(geometry.getAttribute('color'))
+      const vertexColors = hasVertexColors && !useTexture
+      const material = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        vertexColors,
+        roughness: 0.86,
+        metalness: 0.02,
+        envMapIntensity: 0.2,
+        side: THREE.DoubleSide,
+        wireframe: isWireframe.value
+      })
+      if (useTexture) {
+        new THREE.TextureLoader().load(
+          props.modelMetadata.textureUrl,
+          (texture) => {
+            if (requestId !== modelLoadId) {
+              texture.dispose()
+              return
             }
-            if (geom.index) {
-              faceCount += geom.index.count / 3
-            } else if (geom.attributes && geom.attributes.position) {
-              faceCount += geom.attributes.position.count / 3
+            texture.colorSpace = THREE.SRGBColorSpace
+            texture.anisotropy = renderer.capabilities.getMaxAnisotropy()
+            texture.minFilter = THREE.LinearMipmapLinearFilter
+            texture.magFilter = THREE.LinearFilter
+            material.color.setScalar(0.92)
+            material.map = texture
+            material.needsUpdate = true
+          },
+          undefined,
+          (error) => {
+            console.warn('[Three.js] PLY 材质纹理读取失败。', error)
+            if (hasVertexColors) {
+              material.color.set(0xffffff)
+              material.vertexColors = true
+              material.needsUpdate = true
             }
           }
-        }
-      })
-      modelStats.value.vertices = vertCount || 184520
-      modelStats.value.faces = Math.round(faceCount) || 342190
+        )
+      }
+      const mesh = new THREE.Mesh(geometry, material)
+      mesh.castShadow = true
+      mesh.receiveShadow = true
 
-      fitCameraToModel(currentModelGroup, url)
-      isLoading.value = false
+      currentModelGroup = new THREE.Group()
+      currentModelGroup.name = props.modelName
+      if (props.modelMetadata.upAxis === 'z') currentModelGroup.rotation.x = -Math.PI / 2
+      currentModelGroup.add(mesh)
+      scene.add(currentModelGroup)
+
+      fitCameraToModel(currentModelGroup)
       loadProgress.value = 100
+      isLoading.value = false
+      emit('model-loaded')
+      emit('update-step', 4)
     },
     (xhr) => {
+      if (requestId !== modelLoadId) return
       if (xhr.total > 0) {
-        loadProgress.value = Math.min(99, Math.round((xhr.loaded / xhr.total) * 100))
+        loadProgress.value = Math.min(96, Math.round((xhr.loaded / xhr.total) * 96))
       } else {
-        loadProgress.value = Math.min(95, loadProgress.value + 10)
+        loadProgress.value = Math.min(90, loadProgress.value + 5)
       }
     },
-    (err) => {
-      console.warn('[ThreeJS] GLTF 加载遇到提示，尝试降级默认展示:', err)
-      createFallbackVehicleMesh()
+    (error) => {
+      if (requestId !== modelLoadId) return
+      console.error('[Three.js] PLY 模型读取失败:', error)
       isLoading.value = false
+      loadError.value = '场景数据读取失败，请重试或联系管理员检查资源配置。'
     }
   )
 }
 
-const createFallbackVehicleMesh = () => {
-  currentModelGroup = new THREE.Group()
-  const busGeo = new THREE.BoxGeometry(6, 2.5, 2.2)
-  const busMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, metalness: 0.6, roughness: 0.3 })
-  const busMesh = new THREE.Mesh(busGeo, busMat)
-  busMesh.position.y = 1.25
-  currentModelGroup.add(busMesh)
-
-  const truckGeo = new THREE.BoxGeometry(7, 3, 2.4)
-  const truckMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, metalness: 0.5, roughness: 0.4 })
-  const truckMesh = new THREE.Mesh(truckGeo, truckMat)
-  truckMesh.position.set(0, 1.5, 4.5)
-  currentModelGroup.add(truckMesh)
-
-  scene.add(currentModelGroup)
-  fitCameraToModel(currentModelGroup)
-}
-
 // 自动检测模型包围盒并自动归一化物理单位校准比例 (Model Physical Scale Calibration)
-const fitCameraToModel = (modelObj, url = '') => {
+const fitCameraToModel = (modelObj) => {
   if (!modelObj || !camera || !controls) return
 
   const box = new THREE.Box3().setFromObject(modelObj)
@@ -1316,7 +1696,6 @@ const fitCameraToModel = (modelObj, url = '') => {
   box.getBoundingSphere(sphere)
   boundingSphereRadius = sphere.radius || 5
 
-  referenceSceneLength.value = getPresetDefaultLength(url)
   recalibrateScale()
 
   const fov = camera.fov * (Math.PI / 180)
@@ -1327,16 +1706,18 @@ const fitCameraToModel = (modelObj, url = '') => {
     maxDim / (2 * Math.tan(fov / 2) * aspect)
   )
 
-  distance *= 1.45
-  controls.target.copy(boundingBoxCenter)
+  distance *= 0.92
+  const viewTarget = boundingBoxCenter.clone()
+  viewTarget.y -= Math.max(maxDim * 0.08, 0.1)
+  controls.target.copy(viewTarget)
 
   const targetCamPos = new THREE.Vector3(
-    boundingBoxCenter.x + distance * 0.7,
-    boundingBoxCenter.y + distance * 0.5,
-    boundingBoxCenter.z + distance * 0.9
+    viewTarget.x + distance * 0.7,
+    viewTarget.y + distance * 0.5,
+    viewTarget.z + distance * 0.9
   )
 
-  animateCameraTo(targetCamPos, boundingBoxCenter)
+  animateCameraTo(targetCamPos, viewTarget)
 }
 
 const animateCameraTo = (targetPos, targetLookAt) => {
@@ -1363,7 +1744,7 @@ const animateCameraTo = (targetPos, targetLookAt) => {
 
 const focusCameraToScreen = () => {
   if (currentModelGroup) {
-    fitCameraToModel(currentModelGroup, props.modelUrl)
+    fitCameraToModel(currentModelGroup)
   }
 }
 
@@ -1468,10 +1849,15 @@ watch(() => props.modelUrl, (newUrl) => {
 })
 
 onBeforeUnmount(() => {
+  modelLoadId += 1
   if (animationFrameId) {
     cancelAnimationFrame(animationFrameId)
   }
   window.removeEventListener('resize', handleWindowResize)
+  if (currentModelGroup) {
+    disposeModelGroup(currentModelGroup)
+    currentModelGroup = null
+  }
   if (renderer) {
     renderer.dispose()
   }
@@ -1525,11 +1911,17 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 8px #34d399;
   animation: pulse-dot 1.5s infinite;
 }
+.info-badge.loading { background: rgba(56, 189, 248, 0.11); border-color: rgba(56, 189, 248, 0.35); }
+.info-badge.error { background: rgba(248, 113, 113, 0.12); border-color: rgba(248, 113, 113, 0.32); }
+.status-dot.loading { background: #38bdf8; box-shadow: 0 0 8px #38bdf8; }
+.status-dot.error { background: #f87171; box-shadow: 0 0 8px #f87171; animation: none; }
 .badge-title {
   color: #34d399;
   font-size: 12px;
   font-weight: 600;
 }
+.badge-title.is-loading { color: #7dd3fc; }
+.badge-title.has-error { color: #fca5a5; }
 
 .model-meta {
   display: flex;
@@ -1543,20 +1935,7 @@ onBeforeUnmount(() => {
 .meta-item .text-green { color: #34d399; }
 .meta-item .text-yellow { color: #fbbf24; }
 
-.scale-select {
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid #334155;
-  color: #fbbf24;
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 11.5px;
-  outline: none;
-  cursor: pointer;
-}
-.scale-select option {
-  background: #0f172a;
-  color: #f8fafc;
-}
+.scale-indicator { display: inline-flex; align-items: center; padding: 3px 7px; border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 5px; font-size: 10.5px; white-space: nowrap; }
 
 .viewer-actions {
   display: flex;
@@ -1636,7 +2015,7 @@ onBeforeUnmount(() => {
   cursor: crosshair !important;
 }
 
-/* 【步骤四】：3D 画布悬浮测量工具栏 UI */
+/* 【步骤五】：3D 画布悬浮测量工具栏 UI */
 .floating-measure-toolbar {
   position: absolute;
   top: 16px;
@@ -1805,6 +2184,31 @@ onBeforeUnmount(() => {
   font-size: 14px;
 }
 
+.load-error-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 21;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(2, 7, 18, 0.88);
+  backdrop-filter: blur(6px);
+}
+
+.load-error-card {
+  width: min(460px, 100%);
+  padding: 22px;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.97);
+  text-align: center;
+}
+
+.load-error-card strong { color: #fecaca; font-size: 15px; }
+.load-error-card p { margin: 10px 0 16px; color: #a9bac8; font-size: 12px; line-height: 1.6; }
+.load-error-card button { padding: 8px 13px; border: 1px solid rgba(248, 113, 113, 0.45); border-radius: 6px; background: rgba(127, 29, 29, 0.24); color: #fecaca; cursor: pointer; }
+.load-error-card button:hover { background: rgba(127, 29, 29, 0.46); }
+
 /* 标注与测量结果 HUD 卡片 */
 .inspection-tags-layer {
   position: absolute;
@@ -1956,7 +2360,9 @@ onBeforeUnmount(() => {
 .tag-point { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
 .tag-line { background: rgba(0, 242, 254, 0.15); color: #00f2fe; }
 .tag-area { background: rgba(52, 211, 153, 0.15); color: #34d399; }
-.item-name { font-size: 12px; color: #94a3b8; flex: 1; margin: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-name-input { box-sizing: border-box; min-width: 80px; flex: 1; margin: 0 8px; padding: 4px 6px; border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 5px; outline: none; background: rgba(2, 7, 18, 0.5); color: #cbd5e1; font: 12px 'Microsoft YaHei', sans-serif; }
+.item-name-input:focus { border-color: rgba(0, 242, 254, 0.62); box-shadow: 0 0 0 2px rgba(0, 242, 254, 0.08); }
+.item-name-input::placeholder { color: #64748b; }
 .delete-item-btn { background: transparent; border: none; cursor: pointer; font-size: 12px; opacity: 0.6; }
 .delete-item-btn:hover { opacity: 1; }
 
@@ -2007,7 +2413,7 @@ onBeforeUnmount(() => {
 .footer-btn.danger-btn:hover:not(:disabled) { background: #f87171; color: #020712; }
 .footer-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* 【步骤五】：评估报告导出 Modal */
+/* 【步骤六】：测量报告导出 Modal */
 .report-modal-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -2096,14 +2502,21 @@ onBeforeUnmount(() => {
   gap: 4px;
 }
 .kpi-label { font-size: 11.5px; color: #94a3b8; }
-.kpi-num { font-size: 22px; font-weight: 800; font-family: 'Fira Code', monospace; }
-.kpi-unit { font-size: 11px; color: #64748b; }
+.kpi-num { font-size: clamp(16px, 1.8vw, 22px); font-weight: 800; font-family: 'Fira Code', monospace; }
+.kpi-unit { font-size: 10px; color: #8496a8; text-align: center; }
+.precision-box { border-color: rgba(251, 191, 36, 0.25); }
+.precision-note { margin: -3px 0 0; padding: 9px 12px; border-left: 2px solid rgba(251, 191, 36, 0.65); background: rgba(251, 191, 36, 0.06); color: #a9b7c4; font-size: 11px; line-height: 1.55; }
+.synthetic-data-note { margin: 0 0 12px; border-left-color: rgba(96, 165, 250, 0.68); background: rgba(59, 130, 246, 0.06); }
 
 .report-table-section h3 {
   margin: 0 0 12px 0;
   font-size: 14px;
   color: #38bdf8;
 }
+.quality-report-section { margin-bottom: 18px; }
+.quality-report-source { margin: -5px 0 10px; color: #8aa0b3; font-size: 10px; line-height: 1.45; }
+.quality-report-source a { margin-left: 8px; color: #70dce3; text-decoration: underline; text-underline-offset: 2px; }
+.quality-report-caveat { margin: 9px 0 0; color: #91a5b5; font-size: 10px; line-height: 1.5; }
 .report-data-table {
   width: 100%;
   border-collapse: collapse;
@@ -2136,6 +2549,7 @@ onBeforeUnmount(() => {
 .remark-normal { background: rgba(52, 211, 153, 0.1); color: #34d399; }
 .remark-warning { background: rgba(251, 191, 36, 0.1); color: #fbbf24; }
 .remark-danger { background: rgba(248, 113, 113, 0.1); color: #f87171; }
+.reference-comparison { display: block; max-width: 260px; margin-top: 4px; color: #91a5b5; font-size: 10px; font-weight: 400; line-height: 1.45; white-space: normal; }
 
 .delete-report-btn {
   background: rgba(248, 113, 113, 0.12);
@@ -2151,6 +2565,33 @@ onBeforeUnmount(() => {
   background: #f87171;
   color: #020712;
 }
+.measurement-entry-overlay { position: fixed; inset: 0; z-index: 110; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(2, 7, 18, 0.86); backdrop-filter: blur(8px); }
+.measurement-entry-card { display: grid; width: min(520px, 96vw); gap: 15px; padding: 23px; border: 1px solid rgba(75, 166, 189, 0.48); border-radius: 14px; background: linear-gradient(145deg, #0b1a2a, #07111d); color: #e5f1f6; box-shadow: 0 22px 68px rgba(0, 0, 0, 0.58), 0 0 28px rgba(45, 193, 202, 0.12); }
+.measurement-entry-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(117, 158, 182, 0.16); }
+.entry-eyebrow { color: #61d5dc; font-size: 9px; font-weight: 700; letter-spacing: 0.14em; }
+.measurement-entry-header h2 { margin: 5px 0 0; color: #f1f8fb; font-size: 20px; }
+.entry-measurement-value { padding: 7px 9px; border: 1px solid rgba(90, 215, 223, 0.26); border-radius: 7px; background: rgba(8, 38, 50, 0.62); color: #8eece2; font: 700 12px 'Consolas', monospace; }
+.entry-field { display: grid; min-width: 0; gap: 6px; color: #a9bdc9; font-size: 11px; }
+.entry-field b { color: #f3b66a; }
+.entry-field small, .entry-reference-heading small { color: #71899a; font-size: 10px; font-weight: 400; }
+.entry-field input { box-sizing: border-box; width: 100%; min-height: 36px; padding: 8px 10px; border: 1px solid rgba(117, 158, 182, 0.26); border-radius: 7px; outline: none; background: rgba(2, 10, 19, 0.78); color: #eff8fb; font: 12px 'Microsoft YaHei', sans-serif; }
+.entry-field input:focus { border-color: rgba(81, 219, 207, 0.68); box-shadow: 0 0 0 2px rgba(81, 219, 207, 0.08); }
+.entry-field input:disabled { opacity: 0.48; cursor: not-allowed; }
+.entry-field input::placeholder { color: #566d7b; }
+.entry-reference-heading { display: flex; align-items: center; justify-content: space-between; color: #a9bdc9; font-size: 11px; }
+.entry-coordinate-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.entry-number-field { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 9px; }
+.entry-number-field span { color: #7edfd5; font: 11px 'Consolas', monospace; }
+.entry-calibration-option { display: flex; align-items: flex-start; gap: 8px; color: #d4e3e9; font-size: 11px; }
+.entry-calibration-option input { margin: 2px 0 0; accent-color: #38cfc7; }
+.entry-calibration-option input:disabled { opacity: 0.4; }
+.entry-help { margin: -7px 0 0; color: #7892a2; font-size: 10px; line-height: 1.5; }
+.entry-error { margin: 0; color: #ff9b8c; font-size: 11px; }
+.measurement-entry-actions { display: flex; justify-content: flex-end; gap: 9px; padding-top: 10px; border-top: 1px solid rgba(117, 158, 182, 0.14); }
+.entry-cancel-button, .entry-save-button { min-height: 35px; padding: 8px 12px; border-radius: 7px; cursor: pointer; font-size: 11px; font-weight: 700; }
+.entry-cancel-button { border: 1px solid rgba(117, 158, 182, 0.3); background: rgba(17, 37, 55, 0.72); color: #b8cbd5; }
+.entry-save-button { border: 1px solid rgba(84, 217, 202, 0.58); background: linear-gradient(100deg, rgba(11, 117, 121, 0.64), rgba(22, 82, 131, 0.66)); color: #d6fffa; }
+.entry-save-button:disabled { border-color: rgba(117, 158, 182, 0.14); background: rgba(22, 37, 49, 0.65); color: #708595; cursor: not-allowed; }
 .report-conclusion-box {
   background: rgba(15, 23, 42, 0.8);
   border: 1px dashed rgba(0, 242, 254, 0.3);

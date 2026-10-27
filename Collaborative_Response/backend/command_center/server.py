@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 from urllib import error as urllib_error, request as urllib_request
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 
@@ -493,7 +493,32 @@ def cesium_viewer():
 
 @app.route("/2d_deduction.html")
 def serve_2d_deduction():
-    response = send_from_directory(BASE_DIR, "2d_deduction.html")
+    # 2D 推演文件会在每次解算时重新生成；在响应层注入统一的大屏字体规则，
+    # 避免生成器恢复旧的 Times New Roman 行内样式后出现字体不一致。
+    html = FOLIUM_PATH.read_text(encoding="utf-8")
+    font_override = """
+    <style id=\"command-center-font-override\">
+      body > div[style*="top: 96px"][style*="left: 20px"],
+      body > div[style*="top: 96px"][style*="left: 20px"] * {
+        font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', 'Segoe UI', Arial, sans-serif !important;
+      }
+      body > div[style*="top: 96px"][style*="left: 20px"] {
+        width: min(380px, calc(100vw - 40px)) !important;
+        padding: 18px 20px !important;
+      }
+      body > div[style*="top: 96px"][style*="left: 20px"] > div:first-child { font-size: 22px !important; margin-bottom: 7px !important; }
+      #eta-display { font-size: 16px !important; margin-bottom: 10px !important; }
+      body > div[style*="top: 96px"][style*="left: 20px"] > div[style*="line-height: 1.8"] { font-size: 16px !important; line-height: 2 !important; }
+      body > div[style*="top: 96px"][style*="left: 20px"] b { font-size: 17px !important; }
+      body > div[style*="top: 96px"][style*="left: 20px"] span { font-size: 14px !important; }
+      body > div[style*="top: 96px"][style*="left: 20px"] > div[style*="margin-top: 8px"] { font-size: 15px !important; line-height: 2 !important; }
+      body > div[style*="top: 96px"][style*="left: 20px"] > div[style*="margin-top: 8px"] div[style*="font-size: 11.5px"] {
+        font-size: 14px !important; line-height: 1.75 !important; padding: 9px 11px !important;
+      }
+    </style>
+    """
+    html = html.replace("</head>", font_override + "</head>", 1)
+    response = Response(html, mimetype="text/html; charset=utf-8")
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"

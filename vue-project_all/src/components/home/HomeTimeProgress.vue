@@ -103,7 +103,11 @@ const props = defineProps({
   modelValue: { type: Number, default: 0 },
   accidents: { type: Array, default: () => [] },
   accidentIndex: { type: Number, default: 0 },
-  phasesReady: { type: Array, default: () => [] }
+  phasesReady: { type: Array, default: () => [] },
+  // 第 9 阶段的完成信号：四视角采集完成且三维重建模型可展示。
+  reconstructionReady: { type: Boolean, default: false },
+  // 来自三维场景的实时节奏表；会随车流和无人装备速度控制参数同步更新。
+  playbackDurations: { type: Object, default: () => ({}) }
 })
 
 const emit = defineEmits(['update:modelValue', 'update:accidentIndex', 'locate', 'phaseClick'])
@@ -113,35 +117,61 @@ const forceReady = ref(false)
 const isCollapsed = ref(false)
 let playbackTimer = null
 let loadTimeout = null
+let reconstructionReadyAt = 0
+const RECONSTRUCTION_RESULT_HOLD_MS = 2000
+
+// 自动播放节奏表（毫秒）。这里的停留时间与 HomeCesiumGlobe 中真正的
+// 位移动画一一对应；末尾的缓冲时间用于让镜头、标注和动画终帧稳定下来。
+//
+// 关键动画来源：
+// - 正常行驶/事故发生：模型单次动画 + 终帧展示；
+// - 无人机出动：默认 6 秒航线飞行；
+// - 无人机侦察：200 米末段飞行 8 秒；
+// - 无人装备出动：货车场景 6 秒，油罐车场景的地面装备需 10 秒；
+// - 无人感知部署：空、地装备最后 200 米均为 6 秒；
+// - 无人感知执行：12 秒完成一圈航拍并触发四个拍摄节点。
+const PLAYBACK_DURATION_MS = Object.freeze({
+  initialize: 2500,
+  normalDriving: 5500,
+  accident: 5000,
+  uavDispatch: 7000,
+  uavReconnaissance: 9000,
+  secondaryHazard: 6000,
+  truckEquipmentDispatch: 7000,
+  tankerEquipmentDispatch: 11000,
+  sensorDeployment: 7000,
+  sensorExecution: 13000,
+  signalInterference: 4000
+})
 
 const TRUCK_PHASE_DESC = [
-  { shortLabel: '仿真开始', time: '14:00', description: '基于高速仙桃市高速公路上的真实事故原型展开全过程推演，车辆正常在高速公路上行驶。' },
-  { shortLabel: '正常行驶', time: '14:05', description: '2011年7月4日，发生撞击的货车和客车正在行驶，后方满载冬瓜的货车以超限速度驶来。' },
-  { shortLabel: '事故发生', time: '14:12', description: '货车驾驶员因疲劳驾驶未保持安全车距，避让不及追尾客车。车载边缘网关实时采集碰撞冲击数据并触发一级告警。' },
-  { shortLabel: '无人机出动', time: '14:14', description: '指挥中心启动空中响应机制，应用三维空间B样条曲线平滑算法规划最优航向。' },
-  { shortLabel: '无人机侦察', time: '14:15', description: '无人机根据路线到达现场，准备进行数据采集。' },
-  { shortLabel: '次生灾害·烟雾', time: '14:18', description: '事故车辆碰撞后发动机舱过热冒烟，烟雾快速上升扩散。传感器检测到异常烟雾浓度，指挥中心推送应急预警。无人机率先抵达现场并执行低空巡查，实时回传高清画面与倾斜摄影数据。' },
-  { shortLabel: '次生灾害·起火', time: '14:26', description: '燃油泄露引燃发动机舱，现场火势急剧增大并向车身蔓延。' },
-  { shortLabel: '无人装备出动', time: '14:30', description: '开启车机协同动态推演，采用 RCD/A* 寻优算法避绕路阻与禁飞区，无人车与无人机在时延与能耗约束下向现场高效协同集结。' },
-  { shortLabel: '无人感知部署', time: '14:35', description: '无人装备抵达现场，按预规划坐标自动布设空地多维传感节点（地面监测点、空域监测点与固定监控点），形成现场感知覆盖网。' },
-  { shortLabel: '无人感知执行', time: '14:40', description: '无人机与无人车在指定点位协同作业，与基站建立无线组网，形成“空-地-固定-基站”一体化传感网原型并持续回传环境数据。' },
-  { shortLabel: '信号干扰', time: '14:45', description: '现场复杂电磁环境导致基站通信受到强干扰。系统自动启动抗干扰机制，由搭载移动基站自组网路由切换为Jetson 算力板的无人车。' },
-  { shortLabel: '救援装备出动', time: '14:50', description: '触发多智能体并发决策，基于真实 OSM 拓扑路网运行 Dijkstra 加权寻优算法，动态剔除路网阻断与远距绕行节点，精确定位并联动五类救援站点（消防、医疗、公安、防化、路政）协同出动。' },
+  { shortLabel: '仿真开始', time: '14:00', description: '数字孪生场景完成初始化，事故路段的四辆社会车辆按真实道路轨迹行驶；感知、通信与指挥链路进入持续监测状态。' },
+  { shortLabel: '正常行驶', time: '14:05', description: '客车与前方车辆保持正常行驶，后方货车持续接近；边缘网关同步采集车速、车距与道路环境数据，为异常识别建立基线。' },
+  { shortLabel: '事故发生', time: '14:12', description: '货车因疲劳驾驶未能保持安全车距，避让不及追尾客车；碰撞冲击数据触发一级告警，事故画面与位置随即上报指挥中心。' },
+  { shortLabel: '无人机出动', time: '14:14', description: '指挥中心确认告警后派出先遣无人机，系统以三维 B 样条航线避开风险区域，引导无人机从基地快速飞往事故现场外围。' },
+  { shortLabel: '无人机侦察', time: '14:15', description: '无人机抵达现场外约 200 米的安全侦察位，开始低空巡查与影像回传，为灾情等级研判和后续装备调度提供实时依据。' },
+  { shortLabel: '次生灾害·烟雾', time: '14:18', description: '侦察发现发动机舱受热冒烟，烟雾开始向上扩散；环境传感器同步捕捉异常浓度，指挥中心将处置状态由事故响应升级为灾情预警。' },
+  { shortLabel: '次生灾害·起火', time: '14:26', description: '燃油泄漏后被高温部件引燃，火势向车身蔓延；系统据此扩大危险区并进入空地协同处置准备状态。' },
+  { shortLabel: '无人装备出动', time: '14:30', description: '无人机与无人车接收协同任务后同步集结，RCD/A* 规划避开路阻和禁飞约束，保障空地装备以可控时延抵近火场。' },
+  { shortLabel: '无人感知部署', time: '14:35', description: '空地装备到达安全边界后完成最后 200 米接近，在预设坐标投放地面、空域与固定监测节点，形成覆盖事故核心区的感知网。' },
+  { shortLabel: '无人感知执行', time: '14:40', description: '部署完成后，无人机环绕航拍并采集四视角影像，无人车持续采集地面数据；系统完成三维实景重建，形成“空—地—固定—基站”协同感知闭环。' },
+  { shortLabel: '信号干扰', time: '14:45', description: '现场复杂电磁环境使基站通信受干扰；系统启动抗干扰自愈机制，将数据链路切换至搭载 Jetson 算力板的无人车，维持现场数据回传。' },
+  { shortLabel: '救援装备出动', time: '14:50', description: '在稳定的数据链路支撑下，多智能体引擎基于真实 OSM 路网完成 Dijkstra 加权寻优，联动消防、医疗、公安、防化、路政五类力量沿最优路线协同出动。' },
 ]
 
 const TANKER_PHASE_DESC = [
-  { shortLabel: '仿真推演开始', time: '15:00', description: '系统完成数字孪生场景初始化，开始对危化品油罐车侧翻泄露事故进行全过程仿真推演，全域感知网络进入就绪状态。' },
-  { shortLabel: '车辆正常行驶', time: '15:05', description: '满载危险化学品的油罐车在省道正常行驶，车载传感器实时监测罐体压力、温度及车身行驶姿态，数据保持稳定。' },
-  { shortLabel: '事故发生·侧翻', time: '15:12', description: '油罐车在弯道紧急避让时发生侧翻，碰撞传感器触发一级告警，路侧监控捕获图像并实时上报，应急响应流程启动。' },
-  { shortLabel: '无人机出动', time: '15:14', description: '指挥中心快速下达指令，无人机从黄州区路口镇消防站紧急起飞，沿预定三维航线前往侧翻现场。' },
-  { shortLabel: '无人机侦察', time: '15:15', description: '无人机抵达现场进行低空巡查与红外侦察，实时回传侧翻罐体姿态与现场高空影像，辅助研判泄漏风险。' },
-  { shortLabel: '次生灾害·泄露', time: '15:20', description: '受侧翻剧烈碰撞影响，罐体缝隙开始向外泄漏危化液体。TVOC传感器浓度陡增，系统立即推送危险区域隔离预警。' },
-  { shortLabel: '次生灾害·弥漫', time: '15:35', description: '泄露液体在地面快速铺展并挥发，有毒有害气体大面积向四周空域弥漫。系统自动推送周边 1 公里范围疏散撤离建议。' },
-  { shortLabel: '无人装备出动', time: '15:40', description: '无人车与无人机从消防站协同集结出发，采用车机追赶与速比匹配算法，确保地面与空中装备同时高效抵达事故核心区。' },
-  { shortLabel: '无人感知部署', time: '15:45', description: '无人装备到达现场，自动规避高浓度危险污染源，在安全边界内自动投射布设 TVOC、CO 等传感节点，完成多维网格部署。' },
-  { shortLabel: '无人感知执行', time: '15:50', description: '无人机维持安全高度俯瞰全场，无人车采集地面气体数据，与基站建立自组网，形成“空-地-固定-基站”四位一体传感网原型。' },
-  { shortLabel: '信号干扰', time: '15:55', description: '现场复杂环境导致基站通信出现强干扰。系统自动启动路由自愈机制，由搭载 Jetson 模块的无人车接管并担任移动基站组网。' },
-  { shortLabel: '救援装备出动', time: '16:00', description: '多智能体决策引擎基于 OSM 拓扑路网运行 Dijkstra 加权寻优算法，剔除阻断节点，精确定位并联动五类专业救援力量（消防、防化、医疗、公安、路政）协同出动实施封堵处置。' },
+  { shortLabel: '仿真推演开始', time: '15:00', description: '危化品油罐车数字孪生场景完成初始化，车辆、道路与全域感知网络进入稳定运行状态，开始持续监测罐体与行驶姿态。' },
+  { shortLabel: '车辆正常行驶', time: '15:05', description: '满载危化品的油罐车在省道正常行驶，车载传感器持续回传压力、温度和姿态数据，为后续风险变化建立正常基线。' },
+  { shortLabel: '事故发生·侧翻', time: '15:12', description: '油罐车在弯道紧急避让时发生侧翻；碰撞与姿态异常触发一级告警，路侧影像和车辆状态同步送达指挥中心。' },
+  { shortLabel: '无人机出动', time: '15:14', description: '指挥中心确认侧翻事故后派出无人机，从应急基地沿预定三维航线起飞，优先获取罐体周边的高空态势。' },
+  { shortLabel: '无人机侦察', time: '15:15', description: '无人机到达安全侦察位，执行低空巡查与红外观测，回传罐体姿态、现场影像和泄漏风险线索，为危险区划定提供依据。' },
+  { shortLabel: '次生灾害·泄露', time: '15:20', description: '侧翻冲击造成罐体缝隙泄露，TVOC 等指标快速升高；系统立即标记危险源并启动泄漏隔离与人员防护预警。' },
+  { shortLabel: '次生灾害·弥漫', time: '15:35', description: '泄露介质在地面铺展并持续挥发，有毒有害气体向周边空域弥漫；系统据扩散态势扩大警戒区并推送疏散建议。' },
+  { shortLabel: '无人装备出动', time: '15:40', description: '无人机与无人车按空地协同方案从基地集结出发，通过车机追赶和速比匹配抵近事故核心区，同时避开高风险污染范围。' },
+  { shortLabel: '无人感知部署', time: '15:45', description: '装备在安全边界完成最后接近后，自动布设 TVOC、CO 等空地传感节点，形成围绕泄漏源的多维监测网格。' },
+  { shortLabel: '无人感知执行', time: '15:50', description: '无人机环绕采集四视角影像并完成三维实景重建，无人车持续采集地面气体数据；空、地、固定节点与基站共同输出动态风险态势。' },
+  { shortLabel: '信号干扰', time: '15:55', description: '复杂现场环境造成基站通信受强干扰；系统启动路由自愈，将现场数据链路切换至搭载 Jetson 模块的无人车，保障监测不中断。' },
+  { shortLabel: '救援装备出动', time: '16:00', description: '稳定回传的灾情数据进入多智能体决策引擎，系统基于真实 OSM 路网筛选最优路线，联动消防、防化、医疗、公安、路政五类力量实施封堵与协同处置。' },
 ]
 
 const currentPhaseDesc = computed(() => {
@@ -218,36 +248,80 @@ function togglePlay() {
   }
 }
 
+function getPlaybackDuration(currentIdx) {
+  const measuredDuration = Number(props.playbackDurations?.[currentIdx])
+  if (Number.isFinite(measuredDuration) && measuredDuration > 0) {
+    return measuredDuration
+  }
+
+  const isTruck = props.phases[0]?.id.startsWith('t-')
+
+  switch (currentIdx) {
+    case 0: return PLAYBACK_DURATION_MS.initialize
+    case 1: return PLAYBACK_DURATION_MS.normalDriving
+    case 2: return PLAYBACK_DURATION_MS.accident
+    case 3: return PLAYBACK_DURATION_MS.uavDispatch
+    case 4: return PLAYBACK_DURATION_MS.uavReconnaissance
+    case 5:
+    case 6: return PLAYBACK_DURATION_MS.secondaryHazard
+    case 7:
+      // 油罐车场景的地面装备从基地集结到事故点需要 10 秒，
+      // 因而取两类装备中较长的一段，防止其尚未到位就切换阶段。
+      return isTruck
+        ? PLAYBACK_DURATION_MS.truckEquipmentDispatch
+        : PLAYBACK_DURATION_MS.tankerEquipmentDispatch
+    case 8: return PLAYBACK_DURATION_MS.sensorDeployment
+    case 9: return PLAYBACK_DURATION_MS.sensorExecution
+    case 10: return PLAYBACK_DURATION_MS.signalInterference
+    default: return PLAYBACK_DURATION_MS.signalInterference
+  }
+}
+
+function advancePlayback(currentIdx) {
+  if (!isPlaying.value) return
+
+  // 第 9 阶段不能只依赖预估时长：浏览器性能或资源加载可能使重建稍晚完成。
+  // 未收到完成信号时，游标保持在当前节点，待模型就绪后才继续。
+  if (currentIdx === 9 && !props.reconstructionReady) {
+    playbackTimer = setTimeout(() => advancePlayback(currentIdx), 250)
+    return
+  }
+
+  // 三维模型切换为“已生成”后，固定保留两秒完整展示时间，
+  // 避免用户刚看到重建结果就被时间轴切换到下一阶段。
+  if (currentIdx === 9) {
+    const readyAt = reconstructionReadyAt || Date.now()
+    const remaining = RECONSTRUCTION_RESULT_HOLD_MS - (Date.now() - readyAt)
+    if (remaining > 0) {
+      playbackTimer = setTimeout(() => advancePlayback(currentIdx), remaining)
+      return
+    }
+  }
+
+  emit('update:modelValue', currentIdx + 1)
+}
+
+watch(
+  () => [props.reconstructionReady, props.modelValue],
+  ([isReady, phaseIndex]) => {
+    if (Number(phaseIndex) !== 9 || !isReady) {
+      reconstructionReadyAt = 0
+    } else if (!reconstructionReadyAt) {
+      reconstructionReadyAt = Date.now()
+    }
+  },
+  { immediate: true }
+)
+
 // 自动播放逻辑
 watch([isPlaying, () => props.modelValue], ([playing, currentIdx]) => {
   if (playbackTimer) clearTimeout(playbackTimer)
   
   if (playing && currentIdx < props.phases.length - 1) {
-    // 根据当前事故类型确定时长
-    const isTruck = props.phases[0]?.id.startsWith('t-')
-    let duration = 3000 // 默认 3 秒
-
-    if (currentIdx === 0) {
-      duration = 2500 // 仿真开始
-    } else if (isTruck) {
-      // 货车专属逻辑
-      if (currentIdx === 1) duration = 5500 // 正常行驶阶段完整播放（4秒动画+1.5秒展示，不再被3秒硬切断）
-      else if (currentIdx === 2) duration = 5000 // 事故发生碰撞动画完整播放
-      else if (currentIdx >= 4 && currentIdx <= 6) duration = 3000 // 烟火灾害 3 秒
-      else if (currentIdx === 8) duration = 7000 // 无人感知部署阶段设为 7 秒，保证 6 秒飞行及停靠动画完整播放
-      else if (currentIdx >= 7) duration = 3000 // 其他无人机阶段 3 秒
-    } else {
-      // 油罐车专属逻辑
-      if (currentIdx === 1) duration = 5500 // 正常行驶阶段完整播放
-      else if (currentIdx === 2) duration = 5000 // 事故发生侧翻动画完整播放
-      else if (currentIdx === 8) duration = 7000 // 无人感知部署阶段设为 7 秒
-      else duration = 3000
-    }
+    const duration = getPlaybackDuration(currentIdx)
 
     playbackTimer = setTimeout(() => {
-      if (isPlaying.value) {
-        emit('update:modelValue', currentIdx + 1)
-      }
+      advancePlayback(currentIdx)
     }, duration)
   } else if (currentIdx >= props.phases.length - 1) {
     isPlaying.value = false
