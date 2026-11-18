@@ -48,8 +48,9 @@
 
     <!-- Result State -->
     <div v-if="result && !loading" class="result-section">
-      <h4 class="section-subtitle cyan-title">✅ 检测完成</h4>
-      <div class="detection-info">
+      <h4 class="section-subtitle cyan-title">{{ result.skipped_detection ? '未执行检测' : '检测完成' }}</h4>
+      <p v-if="result.skipped_detection" class="no-detection">{{ result.skip_reason }}</p>
+      <div v-else class="detection-info">
         <div class="info-box">
           <h4>抽样帧数</h4>
           <p class="stat-value">{{ result.sampled_frames }}</p>
@@ -72,41 +73,43 @@
         </div>
       </div>
 
-      <h4 class="section-subtitle">📸 检测结果帧:</h4>
-      <div class="frames-container">
-        <div v-for="(frame, index) in result.frames" :key="index" class="frame-card">
-          <div class="frame-header">
-            <h5 class="frame-title">🎬 第 {{ index + 1 }} 帧 <span class="frame-num">(帧号: {{ frame.frame_number }})</span></h5>
-            <div class="frame-info">
-              <span class="frame-info-item">⏱️ 时间: <strong>{{ frame.time }}s</strong></span>
-              <span class="frame-info-item">🎯 检测数: <strong class="count-highlight">{{ frame.detection_count }}</strong></span>
+      <template v-if="!result.skipped_detection">
+        <h4 class="section-subtitle">📸 检测结果帧:</h4>
+        <div class="frames-container">
+          <div v-for="(frame, index) in result.frames" :key="frame.frame_number" class="frame-card">
+            <div class="frame-header">
+              <h5 class="frame-title">🎬 第 {{ index + 1 }} 帧 <span class="frame-num">(帧号: {{ frame.frame_number }})</span></h5>
+              <div class="frame-info">
+                <span class="frame-info-item">⏱️ 时间: <strong>{{ frame.time }}s</strong></span>
+                <span class="frame-info-item">🎯 检测数: <strong class="count-highlight">{{ frame.detection_count }}</strong></span>
+              </div>
             </div>
-          </div>
-          <div class="frame-image-wrapper">
-            <img :src="frame.image" :alt="'Frame ' + frame.frame_number">
-          </div>
-          <div v-if="frame.detections.length > 0" class="detection-list">
-            <template v-for="(det, detIdx) in frame.detections" :key="detIdx">
-              <template v-for="(label, labelIdx) in displayLabels(det)" :key="labelIdx">
-                <span 
-                  class="detection-badge en-badge"
-                  :style="getClassStyle(primaryClass(det))"
-                >
-                  {{ label.class }} ({{ formatConfidencePercent(label.confidence) }})
-                </span>
-                <span 
-                  v-if="getClassChinese(label.class)" 
-                  class="detection-badge zh-badge"
-                  :style="getClassStyle(primaryClass(det))"
-                >
-                  {{ getClassChinese(label.class) }}
-                </span>
+            <div class="frame-image-wrapper">
+              <img :src="frame.image" :alt="'Frame ' + frame.frame_number">
+            </div>
+            <div v-if="frame.detections.length > 0" class="detection-list">
+              <template v-for="(det, detIdx) in frame.detections" :key="detIdx">
+                <template v-for="(label, labelIdx) in displayLabels(det)" :key="labelIdx">
+                  <span
+                    class="detection-badge en-badge"
+                    :style="getClassStyle(primaryClass(det))"
+                  >
+                    {{ label.class }} ({{ formatConfidencePercent(label.confidence) }})
+                  </span>
+                  <span
+                    v-if="getClassChinese(label.class)"
+                    class="detection-badge zh-badge"
+                    :style="getClassStyle(primaryClass(det))"
+                  >
+                    {{ getClassChinese(label.class) }}
+                  </span>
+                </template>
               </template>
-            </template>
+            </div>
+            <p v-else-if="frame.detection_performed !== false && !result.frame_filter_active" class="no-detection">未检测到目标</p>
           </div>
-          <p v-else class="no-detection">未检测到目标</p>
         </div>
-      </div>
+      </template>
     </div>
   </div>
 </template>
@@ -129,7 +132,7 @@ const pendingVideoFile = ref(null)
 const pendingVideoUrl = ref('')
 const loading = ref(false)
 const result = ref(null)
-const frameInterval = ref(30)
+const frameInterval = ref(15)
 
 const cleanModelName = (name) => {
   if (!name) return ''
@@ -145,7 +148,7 @@ const cleanModelName = (name) => {
 }
 
 const normalizedInterval = computed(() => {
-  const value = Number(frameInterval.value) || 30
+  const value = Number(frameInterval.value) || 15
   return Math.min(Math.max(Math.floor(value), 1), 600)
 })
 
@@ -361,7 +364,7 @@ const startDetection = async () => {
   color: #ffffff;
   font-size: 24px;
   font-weight: 700;
-  font-family: monospace;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
   text-align: center;
   outline: none;
   transition: all 0.2s ease;
@@ -413,7 +416,7 @@ const startDetection = async () => {
 }
 
 .loading-text {
-  font-family: monospace;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
   font-size: 26px;
   color: var(--primary-cyan);
   letter-spacing: 1px;
@@ -558,7 +561,7 @@ const startDetection = async () => {
 .frame-info-item strong {
   color: #ffffff;
   font-size: 24px;
-  font-family: monospace;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
 }
 
 .frame-info-item .count-highlight {

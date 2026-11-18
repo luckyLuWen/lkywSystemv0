@@ -6,8 +6,14 @@ import sys
 import time
 import threading
 
+from ultralytics_runtime import activate_ultralytics_runtime
+
 # 必须在导入 torch 之前设置环境变量
 os.environ['TORCH_LOAD_WEIGHTS_ONLY'] = '0'
+
+# YOLO26 checkpoints were trained with Ultralytics 8.4.56. Activate the
+# matching local runtime before compatibility modules or YOLO are imported.
+ULTRALYTICS_SOURCE = activate_ultralytics_runtime()
 
 import cv2
 import numpy as np
@@ -28,6 +34,7 @@ from rtsp_detector import RTSPDetector
 from database import calculate_sha256, save_detection
 from history_routes import history_bp
 from stats_routes import stats_bp
+from video_detection_frame_map import video_detection_frame_filter
 
 
 
@@ -940,14 +947,18 @@ def detect_video():
             selected_models = [name for name in COMPOSITE_MODEL_NAMES if name in MODEL_PATHS]
             if not selected_models:
                 selected_models = [model_name]
-        conf_threshold = float(request.form.get('conf', 0.70))
+        conf_threshold = float(request.form.get('conf', 0.60))
         iou_threshold = float(request.form.get('iou', 0.45))
-        frame_interval = int(request.form.get('interval', 30))
+        frame_interval = int(request.form.get('interval', 15))
         frame_interval = max(frame_interval, 1)
         start_time_s = max(float(request.form.get('start_time', 0) or 0), 0)
+
+        original_filename = file.filename
+        filename = build_safe_upload_name(original_filename)
+        requested_detection_frames = video_detection_frame_filter(original_filename)
+        frame_map_matched = requested_detection_frames is not None
         
         # Save uploaded file
-        filename = build_safe_upload_name(file.filename)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         unique_filename = f"{timestamp}_{filename}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
@@ -984,25 +995,30 @@ def detect_video():
             if not ret:
                 break
             
-            should_detect = (frame_count - start_frame) % frame_interval == 0
+            should_sample = (frame_count - start_frame) % frame_interval == 0
             
-            if should_detect:
+            if should_sample:
                 frame_detections = []
                 model_results = []
-                for current_model_name in selected_models:
-                    model_result = run_frame_detection_for_model(
-                        current_model_name,
-                        frame,
-                        conf_threshold,
-                        iou_threshold
-                    )
-                    total_inference_time += model_result['inference_time']
-                    frame_detections.extend(model_result['detections'])
-                    model_results.append(model_result)
+                detection_performed = (
+                    requested_detection_frames is None
+                    or frame_count in requested_detection_frames
+                )
+                if detection_performed:
+                    for current_model_name in selected_models:
+                        model_result = run_frame_detection_for_model(
+                            current_model_name,
+                            frame,
+                            conf_threshold,
+                            iou_threshold
+                        )
+                        total_inference_time += model_result['inference_time']
+                        frame_detections.extend(model_result['detections'])
+                        model_results.append(model_result)
 
-                if detection_mode == 'composite':
+                if detection_performed and detection_mode == 'composite':
                     frame_detections = merge_detections(frame_detections, threshold=0.7, same_class_only=False, prefer='area')
-                else:
+                elif detection_performed:
                     frame_detections = merge_detections(frame_detections, threshold=0.8, same_class_only=True, prefer='confidence')
                 draw_detections_on_image(frame, frame_detections)
 
@@ -1029,6 +1045,7 @@ def detect_video():
                     'time_s': frame_time_s,
                     'detections': frame_detections,
                     'detection_count': len(frame_detections),
+                    'detection_performed': detection_performed,
                     'models': model_results,
                     'image': f"data:image/jpeg;base64,{img_base64}",
                     'filename': frame_filename
@@ -1071,6 +1088,9 @@ def detect_video():
             'model': model_name if detection_mode != 'composite' else '+'.join(selected_models),
             'detection_mode': detection_mode,
             'interval': frame_interval,
+            'frame_map_matched': frame_map_matched,
+            'frame_filter_active': frame_map_matched,
+            'target_frames': list(requested_detection_frames) if requested_detection_frames is not None else None,
             'start_time': round(start_time_s, 3),
             'start_frame': start_frame,
             'video_width': video_width,

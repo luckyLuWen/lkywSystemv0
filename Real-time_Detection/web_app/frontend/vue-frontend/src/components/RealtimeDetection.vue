@@ -514,7 +514,7 @@ onUnmounted(() => {
   padding: 16px 24px;
   font-size: 26px;
   font-weight: 700;
-  font-family: monospace;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
   background: rgba(0, 229, 255, 0.08);
   border: 2px solid var(--border-cyan);
   border-radius: 8px;
