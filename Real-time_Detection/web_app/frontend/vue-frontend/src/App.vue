@@ -148,7 +148,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import Header from './components/Header.vue'
 import DetectionSettings from './components/DetectionSettings.vue'
 import ModelMetricsPanel from './components/ModelMetricsPanel.vue'
@@ -161,6 +161,20 @@ import { useApi } from './composables/useApi'
 
 const { apiUrl, isOnline, statusDetail, settings, availableModels, safeFetch } = useApi()
 const activeTab = ref('image')
+const nonVideoConfidence = ref(settings.conf)
+const videoConfidence = ref(0.60)
+
+watch(activeTab, (tab) => {
+  settings.conf = tab === 'video' ? videoConfidence.value : nonVideoConfidence.value
+})
+
+watch(() => settings.conf, (confidence) => {
+  if (activeTab.value === 'video') {
+    videoConfidence.value = Number(confidence)
+  } else {
+    nonVideoConfidence.value = Number(confidence)
+  }
+})
 
 const sysInfo = reactive({
   gpu_name: '', cuda_version: '', vram_total_gb: null, vram_used_gb: null,
@@ -259,6 +273,7 @@ const formatCount = (value) => {
 }
 
 const formatVram = (used, total) => {
+  if (used === null || used === undefined || total === null || total === undefined) return 'N/A'
   const usedValue = Number(used)
   const totalValue = Number(total)
   if (!Number.isFinite(usedValue) || !Number.isFinite(totalValue) || totalValue <= 0) return 'N/A'
@@ -266,11 +281,13 @@ const formatVram = (used, total) => {
 }
 
 const formatPercentMetric = (value) => {
+  if (value === null || value === undefined || value === '') return 'N/A'
   const numeric = Number(value)
   return Number.isFinite(numeric) ? `${numeric}%` : 'N/A'
 }
 
 const formatTemperature = (value) => {
+  if (value === null || value === undefined || value === '') return 'N/A'
   const numeric = Number(value)
   return Number.isFinite(numeric) ? `${numeric}°C` : 'N/A'
 }
@@ -728,5 +745,4 @@ onUnmounted(() => {
   }
 }
 </style>
-
 

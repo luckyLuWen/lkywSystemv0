@@ -5,6 +5,11 @@ RTSP实时流检测模块
 import cv2
 import threading
 import time
+
+from ultralytics_runtime import activate_ultralytics_runtime
+
+activate_ultralytics_runtime()
+
 from ultralytics import YOLO
 import numpy as np
 
