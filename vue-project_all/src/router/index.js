@@ -1,3 +1,5 @@
+import LoginView from '../views/LoginView.vue'
+import { authUser, authReady, checkSession } from '../composables/useAuth'
 import { createRouter, createWebHistory } from 'vue-router'
 
 import HomeDashboardView from '../views/HomeDashboardView.vue'
@@ -9,6 +11,7 @@ import CoordinationView from '../views/CoordinationView.vue'
 import { canAccessRoute } from '../composables/useRoleAccess'
 
 const routes = [
+  { path: '/login', component: LoginView },
   { path: '/', component: HomeDashboardView },
   { path: '/realtime', component: AccidentDetectionView, meta: { roles: ['dispatcher', 'expert', 'admin'] } },
   { path: '/sensor-manage', component: SensorManage, meta: { roles: ['dispatcher', 'admin'] } },
@@ -24,7 +27,10 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
+  if (!authReady.value) await checkSession()
+  if (!authUser.value && to.path !== '/login') return '/login'
+  if (to.path === '/login') return authUser.value ? '/' : true
   if (!canAccessRoute(to.meta.roles || [])) {
     return { path: '/', query: { notice: 'access-denied' } }
   }

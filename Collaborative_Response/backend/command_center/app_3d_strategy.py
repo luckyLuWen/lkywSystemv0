@@ -1281,7 +1281,7 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
     start_str = format_timestamp(global_start_time)
     avail = f"{start_str}/{format_timestamp(global_end_time)}"
     
-    czml = [{"id": "document", "version": "1.0", "clock": {"interval": avail, "currentTime": start_str, "multiplier": 1, "range": "LOOP_STOP"}}]
+    czml = [{"id": "document", "version": "1.0", "clock": {"interval": avail, "currentTime": start_str, "multiplier": 20 if multi_agent_data else 1, "range": "LOOP_STOP"}}]
     
     # 静态地标
     czml.append({"id": "StartMarker", "position": {"cartographicDegrees": [START_POINT[1], START_POINT[0], 0]}, "point": {"pixelSize": 12, "color": {"rgba": [0,255,0,255]}}, "label": {"text": START_POINT_NAME, "font": "16px Microsoft YaHei", "pixelOffset": {"cartesian2": [0, -20]}, "distanceDisplayCondition": {"distanceDisplayCondition": [0.0, 25000.0]}}})
@@ -1363,7 +1363,7 @@ def save_to_czml(uav_df, car_df, delay, multi_agent_data=None):
             for lat, lon in path: line_flat.extend([lon, lat, 6])
             czml.append({
                 "id": f"AgentPath_{agent_key}",
-                "polyline": {"positions": {"cartographicDegrees": line_flat}, "width": 5,
+                "polyline": {"positions": {"cartographicDegrees": line_flat}, "width": 5, "clampToGround": True, "zIndex": 20,
                              "material": {"solidColor": {"color": {"rgba": rgba}}}}
             })
             agent_pos = []

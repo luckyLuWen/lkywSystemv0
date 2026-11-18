@@ -18,6 +18,17 @@ const STORAGE_KEYS = {
   integrationHubBaseUrl: 'lkyw.integrationHubBaseUrl',
 }
 
+// Also read settings saved in the standalone dashboard.
+const STANDALONE_STORAGE_KEYS = {
+  [STORAGE_KEYS.sensorGatewayBaseUrl]: 'sensorManagement.edgeBaseUrl',
+  [STORAGE_KEYS.realtimeDetectionBaseUrl]: 'realtimeDetection.apiBaseUrl',
+  [STORAGE_KEYS.realtimeDetectionRtspUrl]: 'realtimeDetection.rtspUrl',
+  [STORAGE_KEYS.integrationHubBaseUrl]: 'lkyw.integrationHub.baseUrl',
+  [STORAGE_KEYS.collaborativeControllerBaseUrl]: 'lkyw.collaborative.controllerBaseUrl',
+  [STORAGE_KEYS.collaborativeStreamlitUrl]: 'lkyw.collaborative.streamlitUrl',
+  [STORAGE_KEYS.collaborativeCommandCenterBaseUrl]: 'lkyw.collaborative.commandCenterBaseUrl',
+}
+
 export function normalizeBaseUrl(value) {
   if (!value || typeof value !== 'string') return ''
   const trimmed = value.trim()
@@ -45,7 +56,10 @@ function getQueryValue(name) {
 function getStorageValue(key) {
   if (typeof window === 'undefined') return ''
   try {
-    return window.localStorage.getItem(key) || ''
+    const previousKey = STANDALONE_STORAGE_KEYS[key]
+    return window.localStorage.getItem(key) ||
+      (previousKey ? window.localStorage.getItem(previousKey) : '') ||
+      ''
   } catch {
     return ''
   }
@@ -57,7 +71,7 @@ function persistValue(key, value) {
       if (value) {
         window.localStorage.setItem(key, value)
       } else {
-        window.localStorage.removeItem(key)
+        resetValue(key)
       }
     } catch {
       // Ignore storage failures and still use runtime values.
@@ -69,10 +83,17 @@ function resetValue(key) {
   if (typeof window !== 'undefined') {
     try {
       window.localStorage.removeItem(key)
+      const previousKey = STANDALONE_STORAGE_KEYS[key]
+      if (previousKey) window.localStorage.removeItem(previousKey)
     } catch {
       // Ignore storage failures and fall back to defaults.
     }
   }
+}
+
+function iframePath(path) {
+  const base = import.meta.env?.BASE_URL || '/'
+  return `${base.replace(/\/$/, '')}/${path}`
 }
 
 function getEnvValue(name) {
@@ -115,7 +136,7 @@ export function buildSensorGatewayApiUrl(path = '', baseUrl = getSensorGatewayBa
 
 export function buildSensorManagementIframeSrc(baseUrl = getSensorGatewayBaseUrl()) {
   const normalizedBase = normalizeBaseUrl(baseUrl) || DEFAULT_SENSOR_GATEWAY_BASE_URL
-  return `/sensor-management/index.html?edgeBase=${encodeURIComponent(normalizedBase)}`
+  return `${iframePath('sensor-management/index.html')}?edgeBase=${encodeURIComponent(normalizedBase)}`
 }
 
 export function getCollaborativeControllerBaseUrl() {
@@ -209,7 +230,7 @@ export function buildCollaborativeResponseIframeSrc(
   streamlitUrl = getCollaborativeStreamlitUrl(),
   commandCenterBaseUrl = getCollaborativeCommandCenterBaseUrl()
 ) {
-  return `/collaborative-response/index.html?controllerBase=${encodeURIComponent(
+  return `${iframePath('collaborative-response/index.html')}?controllerBase=${encodeURIComponent(
     normalizeBaseUrl(controllerBaseUrl) || DEFAULT_COLLABORATIVE_CONTROLLER_BASE_URL
   )}&streamlitUrl=${encodeURIComponent(
     normalizeUrl(streamlitUrl) || DEFAULT_COLLABORATIVE_STREAMLIT_URL
@@ -271,7 +292,7 @@ export function buildRealtimeDetectionIframeSrc(
   const normalizedBase = normalizeBaseUrl(baseUrl) || DEFAULT_REALTIME_DETECTION_BASE_URL
   const resolvedRtspUrl = String(rtspUrl || '').trim() || DEFAULT_REALTIME_RTSP_URL
 
-  return `/realtime-detection/index.html?apiBase=${encodeURIComponent(
+  return `${iframePath('realtime-detection/index.html')}?apiBase=${encodeURIComponent(
     normalizedBase
   )}&rtspUrl=${encodeURIComponent(resolvedRtspUrl)}`
 }
