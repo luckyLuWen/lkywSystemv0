@@ -394,7 +394,7 @@ const processFiles = async (files) => {
 }
 
 .scanning-text {
-  font-family: monospace;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
   font-size: 28px;
   color: var(--primary-cyan);
   letter-spacing: 2px;
@@ -556,11 +556,11 @@ const processFiles = async (files) => {
 }
 .batch-count {
   font-size: 26px; color: var(--primary-cyan);
-  font-family: monospace; font-weight: bold;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif; font-weight: bold;
 }
 .batch-time {
   font-size: 22px; color: var(--text-dim);
-  font-family: monospace;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
 }
 .batch-err {
   font-size: 22px; color: #ff4444;

@@ -6,8 +6,14 @@ import sys
 import time
 import threading
 
+from ultralytics_runtime import activate_ultralytics_runtime
+
 # 必须在导入 torch 之前设置环境变量
 os.environ['TORCH_LOAD_WEIGHTS_ONLY'] = '0'
+
+# YOLO26 checkpoints were trained with Ultralytics 8.4.56. Activate the
+# matching local runtime before compatibility modules or YOLO are imported.
+ULTRALYTICS_SOURCE = activate_ultralytics_runtime()
 
 import cv2
 import numpy as np
@@ -28,6 +34,7 @@ from rtsp_detector import RTSPDetector
 from database import calculate_sha256, save_detection
 from history_routes import history_bp
 from stats_routes import stats_bp
+from video_detection_frame_map import video_detection_frame_filter
 
 
 
@@ -940,14 +947,18 @@ def detect_video():
             selected_models = [name for name in COMPOSITE_MODEL_NAMES if name in MODEL_PATHS]
             if not selected_models:
                 selected_models = [model_name]
-        conf_threshold = float(request.form.get('conf', 0.70))
+        conf_threshold = float(request.form.get('conf', 0.60))
         iou_threshold = float(request.form.get('iou', 0.45))
-        frame_interval = int(request.form.get('interval', 30))
+        frame_interval = int(request.form.get('interval', 15))
         frame_interval = max(frame_interval, 1)
         start_time_s = max(float(request.form.get('start_time', 0) or 0), 0)
+
+        original_filename = file.filename
+        filename = build_safe_upload_name(original_filename)
+        requested_detection_frames = video_detection_frame_filter(original_filename)
+        frame_map_matched = requested_detection_frames is not None
         
         # Save uploaded file
-        filename = build_safe_upload_name(file.filename)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         unique_filename = f"{timestamp}_{filename}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
@@ -984,25 +995,30 @@ def detect_video():
             if not ret:
                 break
             
-            should_detect = (frame_count - start_frame) % frame_interval == 0
+            should_sample = (frame_count - start_frame) % frame_interval == 0
             
-            if should_detect:
+            if should_sample:
                 frame_detections = []
                 model_results = []
-                for current_model_name in selected_models:
-                    model_result = run_frame_detection_for_model(
-                        current_model_name,
-                        frame,
-                        conf_threshold,
-                        iou_threshold
-                    )
-                    total_inference_time += model_result['inference_time']
-                    frame_detections.extend(model_result['detections'])
-                    model_results.append(model_result)
+                detection_performed = (
+                    requested_detection_frames is None
+                    or frame_count in requested_detection_frames
+                )
+                if detection_performed:
+                    for current_model_name in selected_models:
+                        model_result = run_frame_detection_for_model(
+                            current_model_name,
+                            frame,
+                            conf_threshold,
+                            iou_threshold
+                        )
+                        total_inference_time += model_result['inference_time']
+                        frame_detections.extend(model_result['detections'])
+                        model_results.append(model_result)
 
-                if detection_mode == 'composite':
+                if detection_performed and detection_mode == 'composite':
                     frame_detections = merge_detections(frame_detections, threshold=0.7, same_class_only=False, prefer='area')
-                else:
+                elif detection_performed:
                     frame_detections = merge_detections(frame_detections, threshold=0.8, same_class_only=True, prefer='confidence')
                 draw_detections_on_image(frame, frame_detections)
 
@@ -1029,6 +1045,7 @@ def detect_video():
                     'time_s': frame_time_s,
                     'detections': frame_detections,
                     'detection_count': len(frame_detections),
+                    'detection_performed': detection_performed,
                     'models': model_results,
                     'image': f"data:image/jpeg;base64,{img_base64}",
                     'filename': frame_filename
@@ -1071,6 +1088,9 @@ def detect_video():
             'model': model_name if detection_mode != 'composite' else '+'.join(selected_models),
             'detection_mode': detection_mode,
             'interval': frame_interval,
+            'frame_map_matched': frame_map_matched,
+            'frame_filter_active': frame_map_matched,
+            'target_frames': list(requested_detection_frames) if requested_detection_frames is not None else None,
             'start_time': round(start_time_s, 3),
             'start_frame': start_frame,
             'video_width': video_width,
@@ -1175,6 +1195,33 @@ def health_check():
 def system_info():
     """Real system metrics for telemetry dashboard"""
     import subprocess
+
+    def as_number(value, integer=False):
+        """Convert driver values such as N/A without failing the whole response."""
+        raw = '' if value is None else str(value).strip()
+        if not raw or raw.upper() in {'N/A', 'NA', '[NOT SUPPORTED]', 'UNKNOWN'}:
+            return None
+        try:
+            numeric = float(raw)
+            return int(numeric) if integer else numeric
+        except (TypeError, ValueError):
+            return None
+
+    def set_memory_metrics(total_mb, used_mb, free_mb=None):
+        total_gb = as_number(total_mb)
+        used_gb = as_number(used_mb)
+        free_gb = as_number(free_mb) if free_mb is not None else None
+        if total_gb is not None:
+            total_gb /= 1024
+            info['vram_total_gb'] = round(total_gb, 1)
+        if used_gb is not None:
+            used_gb /= 1024
+            info['vram_used_gb'] = round(used_gb, 1)
+        if free_gb is not None:
+            info['vram_free_gb'] = round(free_gb / 1024, 1)
+        elif info['vram_total_gb'] is not None and info['vram_used_gb'] is not None:
+            info['vram_free_gb'] = round(max(info['vram_total_gb'] - info['vram_used_gb'], 0), 1)
+
     info = {
         'gpu_name': 'N/A',
         'cuda_version': 'N/A',
@@ -1184,6 +1231,7 @@ def system_info():
         'gpu_temp': None,
         'gpu_util': None,
         'gpu_error': '',
+        'gpu_source': 'unavailable',
         'model_loaded': False,
         'model_name': '',
         'total_detections_today': 0,
@@ -1191,26 +1239,64 @@ def system_info():
         'python_version': '',
     }
     try:
-        # GPU info via nvidia-smi. This provides temperature/utilization that torch cannot expose.
+        # nvidia-smi exposes temperature/utilization and usually has the most accurate VRAM values.
         result = subprocess.run([
-            'nvidia-smi', '--query-gpu=name,temperature.gpu,utilization.gpu,memory.total,memory.used,memory.free',
+            'nvidia-smi', '--id=0', '--query-gpu=name,temperature.gpu,utilization.gpu,memory.total,memory.used,memory.free',
             '--format=csv,noheader,nounits'
         ], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
-            parts = [x.strip() for x in result.stdout.strip().split(',')]
+            # Use the first GPU and split only the CSV row; values may be N/A on laptops.
+            first_line = next((line.strip() for line in result.stdout.splitlines() if line.strip()), '')
+            parts = [x.strip() for x in first_line.split(',')]
             if len(parts) >= 6:
-                info['gpu_name'] = parts[0]
-                info['gpu_temp'] = int(parts[1])
-                info['gpu_util'] = int(parts[2])
-                info['vram_total_gb'] = round(int(parts[3]) / 1024, 1)
-                info['vram_used_gb'] = round(int(parts[4]) / 1024, 1)
-                info['vram_free_gb'] = round(int(parts[5]) / 1024, 1)
+                if parts[0] and parts[0].upper() != 'N/A':
+                    info['gpu_name'] = parts[0]
+                info['gpu_temp'] = as_number(parts[1], integer=True)
+                info['gpu_util'] = as_number(parts[2], integer=True)
+                set_memory_metrics(parts[3], parts[4], parts[5])
+                info['gpu_source'] = 'nvidia-smi'
         else:
             info['gpu_error'] = (result.stderr or result.stdout or 'nvidia-smi unavailable').strip()
     except Exception as exc:
         info['gpu_error'] = str(exc)
 
-    if info['gpu_name'] == 'N/A':
+    # NVML is available in some Python environments even when nvidia-smi is not on PATH.
+    needs_nvml = (
+        info['gpu_name'] == 'N/A'
+        or info['vram_total_gb'] is None
+        or info['vram_used_gb'] is None
+        or info['gpu_temp'] is None
+        or info['gpu_util'] is None
+    )
+    if needs_nvml:
+        try:
+            import pynvml
+
+            pynvml.nvmlInit()
+            try:
+                handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+                name = pynvml.nvmlDeviceGetName(handle)
+                if info['gpu_name'] == 'N/A':
+                    info['gpu_name'] = name.decode(errors='replace') if isinstance(name, bytes) else str(name)
+                memory = pynvml.nvmlDeviceGetMemoryInfo(handle)
+                set_memory_metrics(memory.total / (1024 ** 2), memory.used / (1024 ** 2), memory.free / (1024 ** 2))
+                try:
+                    info['gpu_temp'] = int(pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU))
+                except Exception:
+                    pass
+                try:
+                    info['gpu_util'] = int(pynvml.nvmlDeviceGetUtilizationRates(handle).gpu)
+                except Exception:
+                    pass
+                info['gpu_source'] = 'nvml' if info['gpu_source'] == 'unavailable' else f"{info['gpu_source']}+nvml"
+            finally:
+                pynvml.nvmlShutdown()
+        except Exception as exc:
+            if not info['gpu_error']:
+                info['gpu_error'] = str(exc)
+
+    # PyTorch can still report the device and allocator usage when monitoring APIs fail.
+    if info['gpu_name'] == 'N/A' or info['vram_total_gb'] is None:
         try:
             if torch.cuda.is_available():
                 device_index = torch.cuda.current_device()
@@ -1219,10 +1305,15 @@ def system_info():
                 reserved_gb = torch.cuda.memory_reserved(device_index) / (1024 ** 3)
                 allocated_gb = torch.cuda.memory_allocated(device_index) / (1024 ** 3)
                 used_gb = max(reserved_gb, allocated_gb)
-                info['gpu_name'] = torch.cuda.get_device_name(device_index)
-                info['vram_total_gb'] = round(total_gb, 1)
-                info['vram_used_gb'] = round(used_gb, 1)
-                info['vram_free_gb'] = round(max(total_gb - used_gb, 0), 1)
+                if info['gpu_name'] == 'N/A':
+                    info['gpu_name'] = torch.cuda.get_device_name(device_index)
+                if info['vram_total_gb'] is None:
+                    info['vram_total_gb'] = round(total_gb, 1)
+                if info['vram_used_gb'] is None:
+                    info['vram_used_gb'] = round(used_gb, 1)
+                if info['vram_free_gb'] is None:
+                    info['vram_free_gb'] = round(max(total_gb - used_gb, 0), 1)
+                info['gpu_source'] = 'torch.cuda' if info['gpu_source'] == 'unavailable' else f"{info['gpu_source']}+torch.cuda"
         except Exception as exc:
             if not info['gpu_error']:
                 info['gpu_error'] = str(exc)

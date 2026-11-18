@@ -314,21 +314,14 @@ def save_detection(timestamp, model_name, original_filename, saved_filename,
     return row_id
 
 
-def get_detections(limit=50, offset=0, model_name=None, label=None, source_type=None):
-    conn = get_db()
-    query = (
-        'SELECT id, timestamp, model_name, original_filename, saved_filename, '
-        'result_filename, detection_count, detections_json, inference_time_s, conf_threshold, iou_threshold, source_type '
-        'FROM detections'
-    )
+def build_detection_filters(model_name=None, label=None, source_type=None):
     where_clauses = []
     params = []
 
     if model_name:
         model_query_names = get_model_query_names(model_name)
         if not model_query_names:
-            conn.close()
-            return []
+            return None
         placeholders = ','.join('?' for _ in model_query_names)
         where_clauses.append(f'model_name IN ({placeholders})')
         params.extend(model_query_names)
@@ -341,8 +334,7 @@ def get_detections(limit=50, offset=0, model_name=None, label=None, source_type=
             where_clauses.append('source_type = ?')
             params.append(normalized_source_type)
         else:
-            conn.close()
-            return []
+            return None
 
     if label:
         label_query_names = get_label_query_names(label)
@@ -354,6 +346,21 @@ def get_detections(limit=50, offset=0, model_name=None, label=None, source_type=
             params.append(f'%"class":"{label_name}"%')
         where_clauses.append('(' + ' OR '.join(label_clauses) + ')')
 
+    return where_clauses, params
+
+
+def get_detections(limit=50, offset=0, model_name=None, label=None, source_type=None):
+    filters = build_detection_filters(model_name, label, source_type)
+    if filters is None:
+        return []
+
+    where_clauses, params = filters
+    conn = get_db()
+    query = (
+        'SELECT id, timestamp, model_name, original_filename, saved_filename, '
+        'result_filename, detection_count, detections_json, inference_time_s, conf_threshold, iou_threshold, source_type '
+        'FROM detections'
+    )
     if where_clauses:
         query += ' WHERE ' + ' AND '.join(where_clauses)
 
@@ -371,6 +378,22 @@ def get_detections(limit=50, offset=0, model_name=None, label=None, source_type=
         record.pop('detections_json', None)
         records.append(record)
     return records
+
+
+def get_detections_count(model_name=None, label=None, source_type=None):
+    filters = build_detection_filters(model_name, label, source_type)
+    if filters is None:
+        return 0
+
+    where_clauses, params = filters
+    query = 'SELECT COUNT(*) FROM detections'
+    if where_clauses:
+        query += ' WHERE ' + ' AND '.join(where_clauses)
+
+    conn = get_db()
+    total = conn.execute(query, params).fetchone()[0]
+    conn.close()
+    return total
 
 
 def get_detection_by_id(detection_id):
@@ -396,6 +419,31 @@ def delete_detection(detection_id):
     conn.commit()
     conn.close()
     return True
+
+
+def delete_detections(detection_ids):
+    unique_ids = list(dict.fromkeys(detection_ids))
+    if not unique_ids:
+        return []
+
+    placeholders = ','.join('?' for _ in unique_ids)
+    conn = get_db()
+    rows = conn.execute(
+        f'SELECT id FROM detections WHERE id IN ({placeholders})',
+        unique_ids,
+    ).fetchall()
+    deleted_ids = [row['id'] for row in rows]
+
+    if deleted_ids:
+        delete_placeholders = ','.join('?' for _ in deleted_ids)
+        conn.execute(
+            f'DELETE FROM detections WHERE id IN ({delete_placeholders})',
+            deleted_ids,
+        )
+        conn.commit()
+
+    conn.close()
+    return deleted_ids
 
 
 def get_stats():

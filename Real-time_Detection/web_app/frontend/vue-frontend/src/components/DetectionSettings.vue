@@ -304,7 +304,7 @@ watch(
   align-items: baseline;
   margin-bottom: 15px;
   color: var(--text-main);
-  font-family: monospace;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
 }
 
 .control-label span {

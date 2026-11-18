@@ -14,7 +14,7 @@
       </span>
     </button>
 
-    <section class="timeline-shell">
+    <section class="timeline-shell" @click="onTimelineBlankClick">
       <!-- 固定描述文本 -->
       <div v-if="currentPhaseDesc" class="timeline-phase-desc">
         {{ currentPhaseDesc }}
@@ -49,11 +49,29 @@
               <span v-if="!isPlaying" class="status-icon">▶</span>
               <span v-else class="status-icon">||</span>
               {{ isPlaying ? '仿真运行中' : '仿真已暂停' }}
-            </template>
+              <Teleport to="body">
+    <div v-if="conclusionOpen" class="story-conclusion-mask" @click.self="closeConclusion" @keydown.esc="closeConclusion">
+      <section class="story-conclusion" role="dialog" aria-modal="true" aria-labelledby="story-conclusion-title" tabindex="-1">
+        <header><h2 id="story-conclusion-title">系统展示总结</h2><button autofocus type="button" aria-label="关闭总结" @click="closeConclusion">×</button></header>
+        <p>{{ conclusionVisibleText }}<span v-if="conclusionVisibleText.length < conclusionText.length" class="conclusion-caret">▍</span></p>
+
+      </section>
+    </div>
+  </Teleport>
+</template>
             <template v-else>
               <span class="loading-spinner"></span>
               模型加载中...
-            </template>
+              <Teleport to="body">
+    <div v-if="conclusionOpen" class="story-conclusion-mask" @click.self="closeConclusion" @keydown.esc="closeConclusion">
+      <section class="story-conclusion" role="dialog" aria-modal="true" aria-labelledby="story-conclusion-title" tabindex="-1">
+        <header><h2 id="story-conclusion-title">系统展示总结</h2><button autofocus type="button" aria-label="关闭总结" @click="closeConclusion">×</button></header>
+        <p>{{ conclusionVisibleText }}<span v-if="conclusionVisibleText.length < conclusionText.length" class="conclusion-caret">▍</span></p>
+
+      </section>
+    </div>
+  </Teleport>
+</template>
           </div>
         </div>
       </div>
@@ -93,6 +111,15 @@
       </div>
     </section>
   </div>
+  <Teleport to="body">
+    <div v-if="conclusionOpen" class="story-conclusion-mask" @click.self="closeConclusion" @keydown.esc="closeConclusion">
+      <section class="story-conclusion" role="dialog" aria-modal="true" aria-labelledby="story-conclusion-title" tabindex="-1">
+        <header><h2 id="story-conclusion-title">系统展示总结</h2><button autofocus type="button" aria-label="关闭总结" @click="closeConclusion">×</button></header>
+        <p>{{ conclusionVisibleText }}<span v-if="conclusionVisibleText.length < conclusionText.length" class="conclusion-caret">▍</span></p>
+
+      </section>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
@@ -112,6 +139,35 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'update:accidentIndex', 'locate', 'phaseClick'])
 
+const conclusionText = '综上，重大交通事故往往伴随火灾、危化品泄漏和通信受阻等多重风险，考验着灾情感知与跨部门协同能力。本系统以立体感知为基础，以空地协同和数字孪生为支撑，贯通事故识别、灾情研判与救援决策，为多方力量科学处置提供依据。面向“两客一危”安全治理，应进一步推动风险早发现、灾情快研判、力量高效协同，以科技创新提升应急救援能力，为守护人民生命财产安全、推进交通安全治理现代化提供支撑。'
+const conclusionOpen = ref(false)
+const conclusionVisibleText = ref('')
+let conclusionTimer = null
+// 估算中文解说约5字/秒；可按实际配音时长调整。
+const CONCLUSION_CHARACTER_MS = 200
+function stopConclusionTimer() { clearTimeout(conclusionTimer); conclusionTimer = null }
+function closeConclusion() { stopConclusionTimer(); conclusionOpen.value = false }
+function startConclusion() {
+  stopConclusionTimer()
+  conclusionVisibleText.value = ''
+  const typeNext = () => {
+    if (!conclusionOpen.value) return
+    conclusionVisibleText.value = conclusionText.slice(0, conclusionVisibleText.value.length + 1)
+    if (conclusionVisibleText.value.length < conclusionText.length) {
+      const last = conclusionVisibleText.value.slice(-1)
+      conclusionTimer = setTimeout(typeNext, /[，、；]/.test(last) ? 300 : /[。！？]/.test(last) ? 550 : CONCLUSION_CHARACTER_MS)
+    }
+  }
+  typeNext()
+}
+function onTimelineBlankClick(event) {
+  if (Number(props.modelValue) !== 11 || !props.phases[0]?.id?.startsWith('l-')) return
+  if (event.target.closest('button, select, input, a, .simulation-status, .phase-step, .timeline-phase-desc')) return
+  conclusionOpen.value = true
+  startConclusion()
+}
+watch(() => [props.modelValue, props.accidentIndex], closeConclusion)
+onBeforeUnmount(stopConclusionTimer)
 const isPlaying = ref(false)
 const forceReady = ref(false)
 const isCollapsed = ref(false)
@@ -241,7 +297,7 @@ function togglePlay() {
     isPlaying.value = false
   } else {
     // 如果已经到最后了，从头开始
-    if (props.modelValue >= props.phases.length - 1) {
+    if (props.modelValue < 0 || props.modelValue >= props.phases.length - 1) {
       emit('update:modelValue', 0)
     }
     isPlaying.value = true
@@ -338,7 +394,16 @@ onBeforeUnmount(() => {
 .timeline-wrapper {
   position: relative;
   width: 100%;
+  color: #eafcff;
+  font-family: 'LkywOppoSans', "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.timeline-wrapper button,
+.timeline-wrapper select {
+  font-family: inherit;
 }
 
 .timeline-wrapper.is-collapsed {
@@ -352,7 +417,7 @@ onBeforeUnmount(() => {
   transform: translateX(-50%);
   width: 56px;
   height: 24px;
-  background: rgba(10, 15, 24, 0.95);
+  background: rgba(7, 21, 36, 0.68);
   border: 1px solid rgba(0, 229, 255, 0.4);
   border-bottom: none;
   border-radius: 12px 12px 0 0;
@@ -386,40 +451,84 @@ onBeforeUnmount(() => {
 }
 
 .timeline-shell {
-  padding: 12px 24px; /* 减小上下内边距 */
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(10, 15, 24, 0.85);
-  backdrop-filter: blur(20px);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  position: relative;
+  isolation: isolate;
+  padding: 14px 18px 10px;
+  border: 1px solid rgba(42, 193, 223, 0.28);
+  border-radius: 6px;
+  background: rgba(2, 14, 30, 0.18);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28), 0 0 18px rgba(32, 127, 255, 0.1);
+  overflow: hidden;
+}
+
+.timeline-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  /* 框架纹理单独降透明度，让地图地形能够透过底板显示。 */
+  background-image:
+    url('/hud-assets/framework/mask.png'),
+    linear-gradient(90deg, rgba(2, 12, 29, 0.62), rgba(5, 26, 51, 0.4), rgba(2, 12, 29, 0.62));
+  background-size: 100% 100%, 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.56;
+}
+
+.timeline-shell > * {
+  position: relative;
+  z-index: 1;
 }
 
 .timeline-phase-desc {
+  display: flex;
+  align-items: center;
   width: 100%;
-  padding: 4px 0 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  margin-bottom: 12px;
-  color: rgba(186, 230, 253, 0.95);
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  line-height: 1.6;
+  min-height: 36px;
+  padding: 5px 10px;
+  border-bottom: 1px solid rgba(126, 212, 236, 0.25);
+  margin-bottom: 11px;
+  background: linear-gradient(90deg, rgba(35, 129, 153, 0.3), transparent);
+  color: #eafcff;
+  font-family: 'LkywTencentSans', "Microsoft YaHei", sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.35px;
+  line-height: 1.45;
   text-align: left;
+}
+
+.timeline-phase-desc::before {
+  flex: 0 0 auto;
+  width: 4px;
+  height: 19px;
+  margin-right: 9px;
+  content: '';
+  background: #1dddf4;
+  box-shadow: 0 0 6px rgba(29, 221, 244, 0.85);
 }
 
 .accident-header {
   display: flex;
   align-items: center;
-  gap: 18px;
-  margin-bottom: 12px; /* 显著减小间距 */
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
 .accident-kicker {
-  padding: 4px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 11px;
+  border: 1px solid rgba(93, 197, 214, 0.25);
+  border-radius: 4px;
+  background: rgba(2, 42, 61, 0.34);
+  color: #c9edf2;
   font-size: 13px;
+  font-weight: 600;
 }
 
 .accident-select-box {
@@ -429,18 +538,14 @@ onBeforeUnmount(() => {
   min-width: 180px;
   height: 36px;
   padding: 0 12px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  border: 1px solid rgba(93, 197, 214, 0.3);
+  background: rgba(2, 42, 61, 0.34);
 }
 
-.status-dot {
-  width: 6px; height: 6px; border-radius: 50%; background: #00e5ff; margin-right: 10px;
-}
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: #1dddf4; margin-right: 10px; box-shadow: 0 0 7px rgba(29, 221, 244, 0.85); }
 
-.accident-native-select {
-  flex: 1; background: transparent; border: none; color: #fff; font-size: 14px; outline: none; cursor: pointer;
-}
+.accident-native-select { flex: 1; background: transparent; border: none; color: #eafcff; font-size: 14px; font-weight: 600; outline: none; cursor: pointer; }
 
 .accident-native-select option {
   background: #0a0f18; /* 显式设置背景色 */
@@ -448,18 +553,21 @@ onBeforeUnmount(() => {
 }
 
 .locate-btn {
-  display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 16px; border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(255, 255, 255, 0.05); color: #fff; cursor: pointer;
+  display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 13px; border-radius: 4px;
+  border: 1px solid rgba(93, 197, 214, 0.3); background: rgba(2, 42, 61, 0.34); color: #c9edf2; font-size: 14px; font-weight: 600; cursor: pointer;
 }
 
+.locate-btn:hover,
+.accident-select-box:hover { border-color: rgba(61, 234, 255, 0.68); background: rgba(22, 122, 151, 0.2); }
+
 .timeline-bar-wrapper {
-  padding: 0 10px;
-  margin-bottom: 12px; /* 减小间距 */
+  padding: 0 8px;
+  margin-bottom: 2px;
 }
 
 .timeline-bar {
   position: relative;
-  height: 90px; /* 显著减小高度 (从140降到90) */
+  height: 84px;
   display: flex;
   align-items: center;
 }
@@ -470,17 +578,17 @@ onBeforeUnmount(() => {
   right: 40px;
   top: 50%; /* 轨道居中 */
   transform: translateY(-50%);
-  height: 10px;
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.15);
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(115, 156, 169, 0.25);
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  border-radius: 5px;
-  background: linear-gradient(90deg, #00e5ff, #8cf7c5);
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.6);
+  border-radius: 3px;
+  background: linear-gradient(90deg, #14d7ec, #42eda8);
+  box-shadow: 0 0 8px rgba(55, 230, 204, 0.48);
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -532,12 +640,16 @@ onBeforeUnmount(() => {
   top: -38px; /* 标签上移距离减小 */
   left: 50%;
   transform: translateX(-50%);
-  padding: 3px 12px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-  font-size: 13px; /* 略微缩小字号 */
+  min-height: 30px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  background: rgba(1, 39, 58, 0.48);
+  border: 1px solid rgba(112, 195, 213, 0.26);
+  color: #c9edf2;
+  font-family: 'LkywTencentSans', "Microsoft YaHei", sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
   white-space: nowrap;
   transition: all 0.3s ease;
 }
@@ -548,23 +660,25 @@ onBeforeUnmount(() => {
 }
 
 .phase-step.active .phase-label-pill {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: #8cf7c5;
-  box-shadow: 0 0 15px rgba(140, 247, 197, 0.2);
+  color: #f4feff;
+  background: rgba(22, 122, 151, 0.28);
+  border-color: rgba(61, 234, 255, 0.72);
+  box-shadow: inset 0 0 12px rgba(25, 220, 255, 0.08), 0 0 10px rgba(25, 220, 255, 0.15);
 }
 
 .phase-dot {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: #777;
+  background: #647c84;
   transition: all 0.3s ease;
-  border: 2px solid #000;
+  border: 2px solid #071724;
 }
 
 .phase-step.active .phase-dot {
-  background: #fff;
-  box-shadow: 0 0 10px #fff;
+  background: #eaffff;
+  border-color: #1dddf4;
+  box-shadow: 0 0 10px rgba(29, 221, 244, 0.9);
   transform: scale(1.2);
 }
 
@@ -578,21 +692,21 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   height: 36px;
-  padding: 0 16px;
-  border-radius: 18px;
-  background: rgba(0, 229, 255, 0.1);
-  border: 1px solid rgba(0, 229, 255, 0.35);
-  color: #00e5ff;
+  padding: 0 13px;
+  border-radius: 4px;
+  background: rgba(0, 117, 148, 0.16);
+  border: 1px solid rgba(34, 182, 216, 0.42);
+  color: #72efff;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .play-trigger:hover:not(.disabled) {
-  background: rgba(0, 229, 255, 0.2);
-  border-color: rgba(0, 229, 255, 0.6);
-  box-shadow: 0 0 12px rgba(0, 229, 255, 0.3);
+  background: rgba(0, 229, 255, 0.17);
+  border-color: rgba(61, 234, 255, 0.72);
+  box-shadow: 0 0 10px rgba(25, 220, 255, 0.15);
 }
 
 .simulation-status.disabled {
@@ -630,8 +744,27 @@ onBeforeUnmount(() => {
   letter-spacing: -2px;
 }
 
-@media (max-width: 1080px) {
-  .phase-step { width: 80px; }
-  .phase-label-pill { padding: 4px 10px; font-size: 12px; }
+/* Match the accident controls to the timeline phase labels. */
+.accident-header .accident-kicker,
+.accident-header .accident-native-select,
+.accident-header .locate-btn,
+.accident-header .play-trigger {
+  font-family: 'LkywTencentSans', "Microsoft YaHei", sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  font-style: normal;
+  line-height: 18px;
 }
+<<<<<<< HEAD
+=======
+.story-conclusion-mask { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; padding: 24px; background: rgba(0,12,24,.58); }
+.story-conclusion { width: min(1100px,94vw); max-height: 85vh; overflow: auto; padding: 30px 36px; box-sizing: border-box; color: #e5f8ff; background: linear-gradient(135deg,rgba(10,61,83,.98),rgba(4,26,43,.98)); border: 1px solid #46d9f2; border-radius: 10px; box-shadow: 0 0 30px #11c9ee33,inset 0 0 30px #2cc4ec11; font-family: 'LkywOppoSans',var(--font-family-ui); }
+.story-conclusion header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #42bedb66; padding-bottom: 16px; }
+.story-conclusion h2 { margin: 0; font: 28px 'LkywTencentSans',sans-serif; color: #8ceeff; }
+.story-conclusion p { min-height: 300px; font-size: 28px; line-height: 1.95; margin: 24px 0; white-space: pre-wrap; }
+.story-conclusion button { color: #dffaff; background: #0b435c; border: 1px solid #42bcd8; border-radius: 4px; padding: 8px 16px; font: inherit; cursor: pointer; }
+.conclusion-caret { color: #60f2ff; animation: conclusion-blink 1s steps(2) infinite; }
+@keyframes conclusion-blink { 50% { opacity: 0; } }
+@media(max-width:700px) { .story-conclusion { padding: 20px; } .story-conclusion p { font-size: 21px; } }
+>>>>>>> lkywSystem/develop
 </style>

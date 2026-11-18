@@ -16,6 +16,9 @@ start "Flask-指挥后端" /min cmd /c "cd /d "%ROOT%Collaborative_Response\back
 echo [2/3] 等待 Flask 就绪...
 timeout /t 3 /nobreak >nul
 
+echo Starting login verification service...
+powershell -NoProfile -Command "$scriptPath = Join-Path $env:ROOT 'scripts\keep_hub_running.ps1'; Start-Process -FilePath 'powershell.exe' -ArgumentList ('-NoProfile -ExecutionPolicy Bypass -File ' + [char]34 + $scriptPath + [char]34) -WindowStyle Hidden"
+
 echo [3/3] 启动主系统前端 (Vue:5173)
 start "Vue-主系统前端" /min cmd /c "cd /d "%ROOT%vue-project_all" && npm run dev"
 

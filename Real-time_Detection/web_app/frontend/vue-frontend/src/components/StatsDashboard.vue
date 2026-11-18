@@ -593,7 +593,7 @@ onMounted(fetchStats)
 
 .model-cnt {
   font-size: 22px;
-  font-family: monospace;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
   color: var(--primary-cyan);
   min-width: 75px;
 }

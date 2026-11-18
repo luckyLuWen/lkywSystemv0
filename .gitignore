@@ -39,6 +39,8 @@ Collaborative_Response/backend/command_center/cache/
 # 本地数据与媒体文件
 *.db
 *.mp4
+# 数字人本地资源（文件过大，不提交到 Git）
+/vue-project_all/public/hud-assets/digital-human-assistant.gif
 *.pt
 *.onnx
 *.engine
@@ -84,7 +86,6 @@ start_sensor_gateway.sh
 
 .claude/
 *.improve
-subsystems.js
 Collaborative_Response/backend/command_center/runtime/
 
 # 程序自动生成文件（每次运行重新生成，不纳入版本管理）
@@ -95,3 +96,30 @@ Collaborative_Response/backend/command_center/multi_agent_result*.json
 !Collaborative_Response/backend/command_center/multi_agent_result_leak.json
 2d_deduction.html
 
+# 文档撰写与校验的本地过程材料（Word/PDF 渲染页、图表和辅助脚本）
+# 页面运行所需的静态资源仍放在 vue-project_all/public/ 下，不受此规则影响。
+/artifacts/
+/deliverables/
+/document_revision/
+/document_revision_v6/
+/docx_qa/
+/qa_graphic_pages/
+/qa_pages/
+/report_media/
+/taskbook_pages/
+/technical_selection_figure/
+/v7_comment_revision/
+/v8_chapter_merge/
+/generate_*.py
+/rebuild_emergency_loop.py
+/scripts/extract_report_media.py
+/scripts/insert_report_figures_into_v9.py
+/scripts/revise_v9_ch5_9.py
+/tools/
+/*.docx
+/系统总体架构图*.png
+/系统总体架构图*.svg
+
+
+# Local authentication database
+Integration_Hub/accounts.sqlite3*

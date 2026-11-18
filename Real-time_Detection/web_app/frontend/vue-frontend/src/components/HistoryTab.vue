@@ -24,7 +24,7 @@
         </select>
       </div>
       <div class="filter-actions">
-        <button class="btn-filter primary" @click="loadRecords">查询</button>
+        <button class="btn-filter primary" @click="applyFilters">查询</button>
         <button class="btn-filter" @click="resetFilters">重置</button>
       </div>
     </div>
@@ -44,44 +44,112 @@
       </div>
     </div>
 
-    <div v-else class="records-list">
-      <div
-        v-for="rec in records"
-        :key="rec.id"
-        class="record-card card"
-        @click="openDetail(rec.id)"
-      >
-        <img
-          :src="`${apiUrl}/api/results/${rec.result_filename}`"
-          class="record-thumb"
-          @error="$event.target.style.display='none'"
-        >
-        <div class="record-info">
-          <div class="record-time">{{ formatTime(rec.timestamp) }}</div>
-          <div class="record-meta-row line-1">
-            <span class="meta-tag task-tag">{{ displayTaskLabel(rec) }}</span>
-            <span
-              v-for="model in displayModelNames(rec)"
-              :key="`${rec.id}-${model}`"
-              class="meta-tag model-tag"
-            >{{ model }}</span>
-            <span class="meta-tag source-tag">{{ rec.source_type }}</span>
-          </div>
-          <div class="record-meta-row line-2">
-            <span class="meta-tag param-tag">置信度阈值: {{ formatParam(rec.conf_threshold) }}</span>
-            <span class="meta-tag param-tag">IOU阈值: {{ formatParam(rec.iou_threshold) }}</span>
-            <template v-if="rec.labels && rec.labels.length">
-              <span v-for="label in rec.labels" :key="label" class="label-chip">{{ label }}</span>
-            </template>
-          </div>
-        </div>
-        <div class="record-stats">
-          <span class="stat-count">{{ rec.detection_count }}</span>
-          <span class="stat-label">个目标</span>
-        </div>
-        <div class="record-time-s">{{ rec.inference_time_s }} s</div>
-        <button class="btn-delete-record" @click.stop="deleteRecord(rec.id)">删除</button>
+    <div v-else class="history-results">
+      <div class="batch-toolbar card">
+        <label class="select-all-control" @click.stop>
+          <input
+            type="checkbox"
+            :checked="allRecordsSelected"
+            :indeterminate="someRecordsSelected"
+            @change="toggleSelectAll"
+          >
+          <span>全选当前 {{ records.length }} 条</span>
+        </label>
+        <span class="selected-count">已选择 {{ selectedCount }} 条</span>
+        <button
+          v-if="selectedCount"
+          type="button"
+          class="btn-clear-selection"
+          :disabled="deletingSelected"
+          @click="clearSelection"
+        >取消选择</button>
+        <button
+          type="button"
+          class="btn-delete-selected"
+          :disabled="selectedCount === 0 || deletingSelected"
+          @click="deleteSelectedRecords"
+        >{{ deletingSelected ? '删除中...' : '删除已选' }}</button>
       </div>
+
+      <div class="records-list">
+        <div
+          v-for="rec in records"
+          :key="rec.id"
+          class="record-card card"
+          :class="{ selected: isRecordSelected(rec.id) }"
+          @click="openDetail(rec.id)"
+        >
+          <label class="record-select" :aria-label="`选择记录 ${formatTime(rec.timestamp)}`" @click.stop>
+            <input
+              type="checkbox"
+              :checked="isRecordSelected(rec.id)"
+              @change="toggleRecordSelection(rec.id)"
+            >
+          </label>
+          <img
+            :src="`${apiUrl}/api/results/${rec.result_filename}`"
+            class="record-thumb"
+            @error="$event.target.style.display='none'"
+          >
+          <div class="record-info">
+            <div class="record-time">{{ formatTime(rec.timestamp) }}</div>
+            <div class="record-meta-row line-1">
+              <span class="meta-tag task-tag">{{ displayTaskLabel(rec) }}</span>
+              <span
+                v-for="model in displayModelNames(rec)"
+                :key="`${rec.id}-${model}`"
+                class="meta-tag model-tag"
+              >{{ model }}</span>
+              <span class="meta-tag source-tag">{{ rec.source_type }}</span>
+            </div>
+            <div class="record-meta-row line-2">
+              <span class="meta-tag param-tag">置信度阈值: {{ formatParam(rec.conf_threshold) }}</span>
+              <span class="meta-tag param-tag">IOU阈值: {{ formatParam(rec.iou_threshold) }}</span>
+              <template v-if="rec.labels && rec.labels.length">
+                <span v-for="label in rec.labels" :key="label" class="label-chip">{{ label }}</span>
+              </template>
+            </div>
+          </div>
+          <div class="record-stats">
+            <span class="stat-count">{{ rec.detection_count }}</span>
+            <span class="stat-label">个目标</span>
+          </div>
+          <div class="record-time-s">{{ rec.inference_time_s }} s</div>
+          <button class="btn-delete-record" @click.stop="deleteRecord(rec.id)">删除</button>
+        </div>
+      </div>
+
+      <nav class="pagination card" aria-label="历史记录分页">
+        <span class="pagination-summary">共 {{ totalRecords }} 条 · 第 {{ currentPage }} / {{ totalPages }} 页</span>
+        <div v-if="totalPages > 1" class="pagination-controls">
+          <button
+            type="button"
+            class="page-button page-arrow"
+            :disabled="currentPage === 1 || loading"
+            title="上一页"
+            aria-label="上一页"
+            @click="goToPage(currentPage - 1)"
+          >‹</button>
+          <button
+            v-for="page in visiblePages"
+            :key="page"
+            type="button"
+            class="page-button"
+            :class="{ active: page === currentPage }"
+            :aria-current="page === currentPage ? 'page' : undefined"
+            :disabled="loading"
+            @click="goToPage(page)"
+          >{{ page }}</button>
+          <button
+            type="button"
+            class="page-button page-arrow"
+            :disabled="currentPage === totalPages || loading"
+            title="下一页"
+            aria-label="下一页"
+            @click="goToPage(currentPage + 1)"
+          >›</button>
+        </div>
+      </nav>
     </div>
 
     <!-- Detail Modal -->
@@ -259,6 +327,11 @@ const loading = ref(false)
 const records = ref([])
 const detail = ref(null)
 const selectedVideoFrame = ref(null)
+const selectedRecordIds = ref(new Set())
+const deletingSelected = ref(false)
+const totalRecords = ref(0)
+const currentPage = ref(1)
+const PAGE_SIZE = 50
 
 const modelOptions = [
   'SFGA-YOLO26M', 'YOLO26M', 'YOLO11M',
@@ -272,6 +345,38 @@ const filters = reactive({
 })
 
 const hasActiveFilters = computed(() => Boolean(filters.model || filters.label || filters.sourceType))
+const selectedCount = computed(() => selectedRecordIds.value.size)
+const allRecordsSelected = computed(() => (
+  records.value.length > 0
+  && records.value.every(record => selectedRecordIds.value.has(record.id))
+))
+const someRecordsSelected = computed(() => selectedCount.value > 0 && !allRecordsSelected.value)
+const totalPages = computed(() => Math.max(1, Math.ceil(totalRecords.value / PAGE_SIZE)))
+const visiblePages = computed(() => {
+  const pageCount = Math.min(totalPages.value, 5)
+  let start = Math.max(1, currentPage.value - Math.floor(pageCount / 2))
+  start = Math.min(start, totalPages.value - pageCount + 1)
+  return Array.from({ length: pageCount }, (_, index) => start + index)
+})
+
+const isRecordSelected = (id) => selectedRecordIds.value.has(id)
+
+const clearSelection = () => {
+  selectedRecordIds.value = new Set()
+}
+
+const toggleRecordSelection = (id) => {
+  const nextSelection = new Set(selectedRecordIds.value)
+  if (nextSelection.has(id)) nextSelection.delete(id)
+  else nextSelection.add(id)
+  selectedRecordIds.value = nextSelection
+}
+
+const toggleSelectAll = () => {
+  selectedRecordIds.value = allRecordsSelected.value
+    ? new Set()
+    : new Set(records.value.map(record => record.id))
+}
 
 const formatTime = (ts) => {
   if (!ts) return ''
@@ -353,7 +458,10 @@ const closeDetail = () => {
 }
 
 const buildHistoryQuery = () => {
-  const params = new URLSearchParams({ limit: '50' })
+  const params = new URLSearchParams({
+    limit: String(PAGE_SIZE),
+    offset: String((currentPage.value - 1) * PAGE_SIZE)
+  })
   if (filters.model) params.set('model', filters.model)
   if (filters.label) params.set('label', filters.label)
   if (filters.sourceType) params.set('source_type', filters.sourceType)
@@ -364,7 +472,16 @@ const loadRecords = async () => {
   loading.value = true
   try {
     const data = await props.safeFetch(`/api/history?${buildHistoryQuery()}`)
-    if (data.success) records.value = data.records
+    if (data.success) {
+      records.value = data.records
+      totalRecords.value = Number(data.total ?? data.records.length)
+      clearSelection()
+
+      if (currentPage.value > totalPages.value) {
+        currentPage.value = totalPages.value
+        return await loadRecords()
+      }
+    }
   } catch (e) {
     alert('加载历史记录失败: ' + e.message)
   } finally {
@@ -372,10 +489,23 @@ const loadRecords = async () => {
   }
 }
 
+const applyFilters = () => {
+  currentPage.value = 1
+  loadRecords()
+}
+
 const resetFilters = () => {
   filters.model = ''
   filters.label = ''
   filters.sourceType = ''
+  currentPage.value = 1
+  loadRecords()
+}
+
+const goToPage = (page) => {
+  const nextPage = Math.min(Math.max(page, 1), totalPages.value)
+  if (nextPage === currentPage.value || loading.value) return
+  currentPage.value = nextPage
   loadRecords()
 }
 
@@ -395,10 +525,35 @@ const deleteRecord = async (id) => {
     const data = await props.safeFetch(`/api/history/${id}`, { method: 'DELETE' })
     if (data.success) {
       if (detail.value?.id === id) detail.value = null
-      records.value = records.value.filter((record) => record.id !== id)
+      await loadRecords()
     }
   } catch (e) {
     alert('删除失败: ' + e.message)
+  }
+}
+
+const deleteSelectedRecords = async () => {
+  const ids = Array.from(selectedRecordIds.value)
+  if (!ids.length) return
+  if (!confirm(`确认删除选中的 ${ids.length} 条检测历史记录？此操作不可恢复。`)) return
+
+  deletingSelected.value = true
+  try {
+    const data = await props.safeFetch('/api/history/batch', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids })
+    })
+    if (data.success) {
+      const deletedIds = new Set(data.deleted_ids || ids)
+      if (detail.value && deletedIds.has(detail.value.id)) closeDetail()
+      clearSelection()
+      await loadRecords()
+    }
+  } catch (e) {
+    alert('批量删除失败: ' + e.message)
+  } finally {
+    deletingSelected.value = false
   }
 }
 
@@ -473,12 +628,139 @@ onMounted(loadRecords)
   font-weight: 700;
 }
 
+.history-results {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.batch-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 58px;
+  padding: 10px 18px;
+}
+
+.select-all-control,
+.record-select {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.select-all-control {
+  gap: 10px;
+  color: var(--text-main);
+  font-size: 18px;
+}
+
+.select-all-control input,
+.record-select input {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--primary-cyan);
+  cursor: pointer;
+}
+
+.selected-count {
+  color: var(--primary-cyan);
+  font-size: 18px;
+  margin-right: auto;
+}
+
+.btn-clear-selection,
+.btn-delete-selected {
+  min-height: 38px;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.btn-clear-selection {
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  background: rgba(0, 229, 255, 0.08);
+  color: var(--primary-cyan);
+}
+
+.btn-delete-selected {
+  min-width: 110px;
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  background: rgba(239, 68, 68, 0.16);
+  color: #fecaca;
+}
+
+.btn-delete-selected:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.28);
+}
+
+.btn-clear-selection:disabled,
+.btn-delete-selected:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .records-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
   max-height: calc(100vh - 180px);
   overflow-y: auto;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 62px;
+  padding: 10px 18px;
+}
+
+.pagination-summary {
+  color: var(--text-dim);
+  font-size: 17px;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(0, 229, 255, 0.28);
+  border-radius: 6px;
+  background: rgba(0, 229, 255, 0.07);
+  color: var(--text-main);
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.page-button:hover:not(:disabled),
+.page-button.active {
+  border-color: var(--primary-cyan);
+  background: rgba(0, 229, 255, 0.18);
+  color: var(--primary-cyan);
+}
+
+.page-button.active {
+  font-weight: 700;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.14);
+}
+
+.page-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.page-arrow {
+  font-size: 29px;
+  line-height: 1;
 }
 
 .record-card {
@@ -493,6 +775,16 @@ onMounted(loadRecords)
 .record-card:hover {
   background: rgba(0, 229, 255, 0.05);
   box-shadow: 0 0 15px rgba(0, 229, 255, 0.1);
+}
+
+.record-card.selected {
+  border-color: rgba(0, 229, 255, 0.55);
+  background: rgba(0, 229, 255, 0.08);
+  box-shadow: inset 3px 0 0 var(--primary-cyan);
+}
+
+.record-select {
+  flex: 0 0 22px;
 }
 
 .record-thumb {
@@ -595,7 +887,7 @@ onMounted(loadRecords)
   font-size: 42px;
   font-weight: bold;
   color: var(--primary-cyan);
-  font-family: monospace;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
   text-shadow: 0 0 5px var(--primary-cyan);
 }
 
@@ -607,7 +899,7 @@ onMounted(loadRecords)
 .record-time-s {
   font-size: 21px;
   color: var(--text-dim);
-  font-family: monospace;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
   min-width: 135px;
   text-align: right;
 }
@@ -625,6 +917,24 @@ onMounted(loadRecords)
 
 .btn-delete-record:hover {
   background: rgba(239, 68, 68, 0.22);
+}
+
+@media (max-width: 1100px) {
+  .batch-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .selected-count {
+    margin-right: 0;
+  }
+
+  .btn-clear-selection {
+    margin-left: auto;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+  }
 }
 
 /* Modal — reused from ImageDetection */
@@ -780,7 +1090,7 @@ onMounted(loadRecords)
   justify-content: space-between;
   gap: 8px;
   margin-top: 8px;
-  font-family: monospace;
+  font-family: 'Times New Roman', 'Microsoft YaHei', '微软雅黑', sans-serif;
 }
 
 .frame-card-meta strong {

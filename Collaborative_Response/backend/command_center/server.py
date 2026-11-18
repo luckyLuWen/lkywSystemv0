@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 from urllib import error as urllib_error, request as urllib_request
 
-from flask import Flask, Response, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 
@@ -561,7 +561,26 @@ def serve_agent_paths():
 
 @app.route("/mission.czml")
 def serve_czml():
-    response = send_from_directory(BASE_DIR, "mission.czml")
+    # 按现场和模式读取缓存，避免另一个故事线覆盖全局 mission.czml。
+    endpoint = request.args.get("ep")
+    mode = request.args.get("multi")
+    mission_source = MISSION_PATH
+    if endpoint in ("crash", "leak") and mode in ("0", "1"):
+        cached = BASE_DIR / "cache" / f"mission_{endpoint}_rcd_ugv1_uav1_multi{mode}.czml"
+        if cached.exists():
+            mission_source = cached
+    # 为所选现场的多智能体回放设置时钟，兼容已有缓存。
+    if not mission_source.is_file():
+        abort(404)
+    with mission_source.open(encoding="utf-8") as source:
+        packets = json.load(source)
+    if any(str(packet.get("id", "")).startswith("AgentPath_") for packet in packets):
+        for packet in packets:
+            if packet.get("id") == "document":
+                packet.setdefault("clock", {})["multiplier"] = 20
+        response = jsonify(packets)
+    else:
+        response = send_from_directory(mission_source.parent, mission_source.name)
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
