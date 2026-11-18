@@ -1,5 +1,15 @@
 /* color palette from <https://github.com/vuejs/theme> */
 :root {
+  /* 智慧园区大屏字体规范（以 1920 × 1080 设计稿为基准） */
+  --font-family-ui: 'Microsoft YaHei UI', 'Microsoft YaHei', '微软雅黑', 'PingFang SC', 'Segoe UI', Arial, sans-serif;
+  --font-family-number: 'DIN Alternate', Arial, sans-serif;
+  --font-size-system-title: 30px;
+  --font-size-navigation: 19px;
+  --font-size-panel-title: 17px;
+  --font-size-body: 15px;
+  --font-size-assist: 13px;
+  --font-weight-heading: 600;
+  --font-weight-body: 400;
   --vt-c-white: #ffffff;
   --vt-c-white-soft: #f8f8f8;
   --vt-c-white-mute: #f2f2f2;
@@ -66,8 +76,9 @@ body {
     color 0.5s,
     background-color 0.5s;
   line-height: 1.6;
-  font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', 'Segoe UI', Arial, sans-serif;
-  font-size: 15px;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-body);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

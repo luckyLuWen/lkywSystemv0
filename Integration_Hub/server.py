@@ -32,7 +32,13 @@ def redis_client() -> redis.Redis:
 
 
 redis_conn = redis_client()
+if __package__:
+    from .auth import router as auth_router
+else:
+    from auth import router as auth_router
+
 app = FastAPI(title="LKYW Integration Hub", version="0.1.0")
+app.include_router(auth_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
