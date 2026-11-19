@@ -76,14 +76,9 @@ body {
     color 0.5s,
     background-color 0.5s;
   line-height: 1.6;
-<<<<<<< HEAD
-  font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', 'Segoe UI', Arial, sans-serif;
-  font-size: 15px;
-=======
   font-family: var(--font-family-ui);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-body);
->>>>>>> lkywSystem/develop
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

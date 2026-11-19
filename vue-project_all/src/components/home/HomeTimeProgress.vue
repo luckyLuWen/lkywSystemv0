@@ -755,8 +755,6 @@ onBeforeUnmount(() => {
   font-style: normal;
   line-height: 18px;
 }
-<<<<<<< HEAD
-=======
 .story-conclusion-mask { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; padding: 24px; background: rgba(0,12,24,.58); }
 .story-conclusion { width: min(1100px,94vw); max-height: 85vh; overflow: auto; padding: 30px 36px; box-sizing: border-box; color: #e5f8ff; background: linear-gradient(135deg,rgba(10,61,83,.98),rgba(4,26,43,.98)); border: 1px solid #46d9f2; border-radius: 10px; box-shadow: 0 0 30px #11c9ee33,inset 0 0 30px #2cc4ec11; font-family: 'LkywOppoSans',var(--font-family-ui); }
 .story-conclusion header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #42bedb66; padding-bottom: 16px; }
@@ -766,5 +764,4 @@ onBeforeUnmount(() => {
 .conclusion-caret { color: #60f2ff; animation: conclusion-blink 1s steps(2) infinite; }
 @keyframes conclusion-blink { 50% { opacity: 0; } }
 @media(max-width:700px) { .story-conclusion { padding: 20px; } .story-conclusion p { font-size: 21px; } }
->>>>>>> lkywSystem/develop
 </style>

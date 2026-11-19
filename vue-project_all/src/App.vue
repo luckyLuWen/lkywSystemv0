@@ -1,27 +1,6 @@
 <template>
   <div class="dashboard-container">
-<<<<<<< HEAD
-    <!-- 统一的子页面导航栏，避免返回首页按钮遮挡子系统自身标题 -->
-    <header v-if="route.path !== '/'" class="subpage-navbar">
-      <button
-        type="button"
-        class="return-home-btn-inline"
-        @click="router.push('/')"
-      >
-        <span class="back-icon">←</span> 返回首页
-      </button>
-      <div class="nav-divider"></div>
-      <span class="subpage-title">{{ routeTitle }}</span>
-      <div class="subpage-role-switcher">
-        <span class="role-caption">当前岗位</span>
-        <select v-model="currentRole" aria-label="切换当前岗位">
-          <option v-for="role in ROLE_OPTIONS" :key="role.key" :value="role.key">{{ role.label }}</option>
-        </select>
-      </div>
-    </header>
-=======
     <SystemChrome v-if="route.path === '/'" />
->>>>>>> lkywSystem/develop
 
     <main class="module-container">
       <router-view v-slot="{ Component }">
@@ -36,26 +15,14 @@
 </template>
 
 <script setup>
-<<<<<<< HEAD
-import { computed, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { canAccessRoute, currentRole, ROLE_OPTIONS } from './composables/useRoleAccess'
-=======
 import { watch } from 'vue'
 import { authUser } from './composables/useAuth'
 import { useRoute, useRouter } from 'vue-router'
 import { canAccessRoute, currentRole } from './composables/useRoleAccess'
 import SystemChrome from './components/SystemChrome.vue'
->>>>>>> lkywSystem/develop
 
 const router = useRouter()
 const route = useRoute()
-
-watch(currentRole, () => {
-  if (route.path !== '/' && !canAccessRoute(route.meta.roles || [])) {
-    router.replace('/')
-  }
-})
 
 watch(currentRole, () => {
   if (route.path !== '/' && !canAccessRoute(route.meta.roles || [])) {
@@ -134,27 +101,6 @@ textarea {
   z-index: 1;
 }
 
-
-.subpage-role-switcher {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #9fb5c9;
-  font-size: 13px;
-}
-
-.subpage-role-switcher select {
-  min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid rgba(0, 229, 255, 0.3);
-  border-radius: 6px;
-  color: #eafaff;
-  background: #07182b;
-  font: inherit;
-  font-weight: 700;
-  outline: none;
-}
 
 .fade-enter-active,
 .fade-leave-active {

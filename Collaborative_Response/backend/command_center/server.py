@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 from urllib import error as urllib_error, request as urllib_request
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory, abort
 from flask_cors import CORS
 
 

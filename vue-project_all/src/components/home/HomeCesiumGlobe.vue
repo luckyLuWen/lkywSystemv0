@@ -1531,9 +1531,6 @@ watch(
   },
   { immediate: true } // immediate 确保如果页面刷新直接进入阶段九，也能正常弹出
 );
-<<<<<<< HEAD
-const emit = defineEmits(['accident-picked', 'models-ready', 'update:activePhaseIndex', 'reconstruction-ready', 'playback-durations'])
-=======
 const emit = defineEmits(['accident-picked', 'models-ready', 'update:activePhaseIndex', 'reconstruction-ready', 'playback-durations', 'loading-change', 'vehicle-layer-change'])
 const overviewAccident = ref(null)
 const overviewAccidents = {
@@ -1541,7 +1538,6 @@ const overviewAccidents = {
   accident_red: { id: 'accident_red', city: '湖北 · 黄冈团风', title: '甲醇槽罐车侧翻泄漏事故', date: '2021年6月18日 07:14左右', location: 'G347国道 · 团风县迎宾大道环岛', description: '一辆装载33.3吨甲醇的槽罐车侧翻并发生泄漏。消防、公安、环保、住建等部门联合处置，采取警戒疏散、稀释降毒、冷却保护和倒罐转运，经过近7小时排除险情，无人员伤亡。', caption: '事故场景参考图', imageSource: 'https://www.chinanews.com/sh/2018/06-09/8534066.shtml', image: '/Dashboard/images/methanol-reference-qinzhou.jpg', source: 'https://www.wangkanglawyer.com/2327.html' }
 }
 
->>>>>>> lkywSystem/develop
 
 
 const router = useRouter()
@@ -3754,19 +3750,13 @@ const missionDataSourceCache = new Map(); // 缓存加载过的 CZML 数据源�
 // 多智能体 CZML 会在离开救援阶段时被隐藏。再次进入时，不能只复用数据源，
 // 还必须显式恢复五类救援路线和站点的绘制状态。
 function syncMultiAgentRouteVisibility(dataSource, visible) {
-<<<<<<< HEAD
-=======
   hideTankerSiteLabel(dataSource)
->>>>>>> lkywSystem/develop
   if (!dataSource || !dataSource.entities) return
 
   dataSource.entities.values.forEach(entity => {
     const id = String(entity.id || '')
     if (id.startsWith('AgentPath_')) {
       entity.show = visible
-<<<<<<< HEAD
-      if (entity.polyline) entity.polyline.show = visible
-=======
       if (entity.polyline) {
         entity.polyline.show = visible
         // 路线贴合地图表面，避免固定海拔落入地面或被表面遮挡。
@@ -3774,7 +3764,6 @@ function syncMultiAgentRouteVisibility(dataSource, visible) {
         entity.polyline.width = 5
         entity.polyline.zIndex = 20
       }
->>>>>>> lkywSystem/develop
     } else if (id.startsWith('Agent_') || id.startsWith('AgentPOI_')) {
       entity.show = visible
     } else if (id.startsWith('AgentCP_') || id === 'StartMarker') {
@@ -3784,14 +3773,6 @@ function syncMultiAgentRouteVisibility(dataSource, visible) {
   })
 }
 
-<<<<<<< HEAD
-function syncAutonomousRouteTelemetry(dataSource, hidden) {
-  if (!dataSource || !dataSource.entities) return
-  dataSource.entities.values.forEach(entity => {
-    const id = String(entity.id || '')
-    if (id.startsWith('CarCP_') || id.startsWith('UAVCP_') || id === 'CarInfo' || id === 'UAVInfo') {
-      entity.show = !hidden
-=======
 function hideTankerSiteLabel(dataSource) {
   const marker = dataSource?.entities?.getById('EndMarker')
   const text = marker?.label?.text?.getValue(viewer?.clock.currentTime)
@@ -3838,13 +3819,10 @@ function syncAutonomousRouteTelemetry(dataSource, hidden) {
       entity.show = phase >= 7 && phase < 11
     } else if (id.startsWith('UAVCP_') || id === 'UAVInfo') {
       entity.show = !hidden && phase >= 3 && phase < 11
->>>>>>> lkywSystem/develop
     }
   })
 }
 
-<<<<<<< HEAD
-=======
 // 提前准备救援路线；同一现场的并发调用共用一次请求。
 const rescuePreparation = new Map()
 function prepareRescueRoutes(endpoint) {
@@ -3862,7 +3840,6 @@ function prepareRescueRoutes(endpoint) {
   pending.catch(() => rescuePreparation.delete(endpoint))
   return pending
 }
->>>>>>> lkywSystem/develop
 const loadMission = async (isMultiAgent = false) => {
   if (!viewer) return;
   const loadId = ++currentLoadMissionId;
